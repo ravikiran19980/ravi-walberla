@@ -89,5 +89,24 @@ inline void addHydrodynamicForceAtWFPosAtomic(const size_t p_idx, ParticleAccess
 }
 
 
+template <typename ParticleAccessor_T>
+inline void addElectrostaticForceAtomic(const size_t p_idx, ParticleAccessor_T& ac, const Vector3<real_t>& f)
+{
+   // Increasing the force and torque on this particle
+#ifdef _OPENMP
+#pragma omp atomic
+#endif
+   ac.getElectrostaticForceRef(p_idx)[0]  += f[0];
+#ifdef _OPENMP
+#pragma omp atomic
+#endif
+   ac.getElectrostaticForceRef(p_idx)[1]  += f[1];
+#ifdef _OPENMP
+#pragma omp atomic
+#endif
+   ac.getElectrostaticForceRef(p_idx)[2]  += f[2];
+}
+
+
 } // namespace lbm_mesapd_coupling
 } // namespace walberla
