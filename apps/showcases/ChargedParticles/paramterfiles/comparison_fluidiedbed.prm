@@ -1,0 +1,52 @@
+PhysicalSetup // all to be specified in SI units!
+{
+    xSize 0.02; // = 0.01width
+    ySize 0.02; // = 0.005depth
+    zSize 0.02; // = 0.02height
+
+    periodicInX false;
+    periodicInY false;
+
+    runtime 3;
+
+    uInflow 0.01;
+    gravitationalAcceleration 9.81;
+
+    kinematicViscosityFluid 1e-5;
+    densityFluid 1000.;
+
+    particleDiameter 0.0012; //0.002 RL= 6
+    densityParticle 1100.;
+    dynamicFrictionCoefficient 0.15;
+    coefficientOfRestitution 0.6;
+
+    particleGenerationSpacing_x 0.01;  //0.00401 previous
+    particleGenerationSpacing_y 0.01;
+    particleGenerationSpacing_z 0.01;
+}
+
+NumericalSetup
+{
+    dx 0.00005; // in m 0.0002
+    uInflow 0.01; // in LBM units, should be smaller than 0.1, this then determines dt
+
+    // product of number of blocks should be equal to number of used processes
+    numXBlocks 10;
+    numYBlocks 10;
+    numZBlocks 10;
+
+    useLubricationForces true;
+    numberOfParticleSubCycles 10;
+}
+
+Output
+{
+    infoSpacing 0.01; // in s
+
+    vtkSpacingParticles 0.1; // in s
+    vtkSpacingFluid 0.1; // in s
+    vtkFolder fluidizedcheck;
+}
+
+
+

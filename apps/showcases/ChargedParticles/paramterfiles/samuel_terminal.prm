@@ -1,0 +1,83 @@
+PhysicalSetup // all to be specified in SI units!
+{
+    xSize 0.02; // = width
+    ySize 0.02; // = depth
+    zSize 0.1; // = height
+
+    periodicInX false;
+    periodicInY false;
+
+    runtime 10.0;
+
+    uInflow 0.018461975000000002;
+    gravitationalAcceleration 9.81;
+
+    kinematicViscosityFluid 1e-4;
+    densityFluid 1000.;
+
+    particleDiameter 0.004;
+    densityParticle 1100.;
+    dynamicFrictionCoefficient 0.15;
+    coefficientOfRestitution 0.6;
+
+    particleGenerationSpacing_x 0.01;
+    particleGenerationSpacing_y 0.01;
+    particleGenerationSpacing_z 0.025;
+}
+
+NumericalSetup
+{
+    dx 0.0002; // in m
+    uInflow 0.018461975000000002; // in LBM units, should be smaller than 0.1, this then determines dt
+
+    // product of number of blocks should be equal to number of used processes
+    numXBlocks 2;
+    numYBlocks 2;
+    numZBlocks 2;
+
+    useLubricationForces true;
+    numberOfParticleSubCycles 10;
+}
+
+Output
+{
+    infoSpacing 0.01; // in s
+
+    vtkSpacingParticles 0.01; // in s
+    vtkSpacingFluid 0.01; // in s
+    vtkFolder vtk_out;
+}
+
+IntegratorSchemes
+{
+   ON 1;  // 0 means no integrator is used. Any number other than 0, integrator is used by default
+
+}
+
+boundarytypes
+{
+    North_type Dirichlet;
+    South_type Dirichlet;
+    West_type Dirichlet;
+    East_type Dirichlet;
+    Top_type Dirichlet;
+    Bottom_type Dirichlet;
+}
+
+boundaryvalues
+{
+    North_value 1.1404530594971161e-05;
+    South_value 1.1404530594971161e-05;
+    West_value 1.1404530594971161e-05;
+    East_value  1.1404530594971161e-05;
+    Top_value   1.1404530594971161e-05;
+    Bottom_value 1.1404530594971161e-05;
+}
+
+ParticleCharges
+{
+    maxCharge 8000;
+    minCharge 20;
+}
+
+

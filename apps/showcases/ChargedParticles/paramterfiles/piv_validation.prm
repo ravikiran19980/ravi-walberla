@@ -1,0 +1,68 @@
+PhysicalSetup // all to be specified in SI units!
+{
+    xSize 100e-3; // width
+    ySize 100e-3; // depth 0.000564
+    zSize 160e-3; // height
+
+    periodicInX false;
+    periodicInY false;
+    uInflow 0.12224;
+    gravitationalAcceleration 9.81;
+    DynamicViscosity 58e-3;
+    densityFluid 960;
+    particleDiameter 15e-3;
+    densityParticle 1120;
+    dynamicFrictionCoefficient 0.15;
+    coefficientOfRestitution 0.6;
+    particleGenerationSpacing_x 0.0001;
+    particleGenerationSpacing_y 0.0001;
+    particleGenerationSpacing_z 0.0001;
+}
+
+NumericalSetup
+{
+
+    uInflow 0.01; // in LBM units, should be smaller than 0.1, this then determines dt
+
+    // product of number of blocks should be equal to number of used processes
+    numXBlocks 5;
+    numYBlocks 5;
+    numZBlocks 12;
+
+    useLubricationForces true;
+    numberOfParticleSubCycles 10;
+}
+
+
+IntegratorSchemes
+{
+   ON 1;  // 0 means no integrator is used. Any number other than 0, integrator is used by default
+
+}
+
+boundarytypes
+{
+    North_type Neumann;
+    South_type Neumann;
+    West_type Neumann;
+    East_type Neumann;
+    Top_type Dirichlet;
+    Bottom_type Dirichlet;
+}
+
+boundaryvalues
+{
+    North_value 0;
+    South_value 0;
+    West_value  0;
+    East_value  0;
+    Top_value   64000000000.0;
+    Bottom_value -64000000000.0;
+}
+
+ParticleCharges
+{
+    maxCharge 21640.187026807627;
+    minCharge 20;
+}
+
