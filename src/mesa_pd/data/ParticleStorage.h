@@ -82,6 +82,7 @@ public:
       using invMass_type = walberla::real_t;
       using force_type = walberla::mesa_pd::Vec3;
       using oldForce_type = walberla::mesa_pd::Vec3;
+      using charge_type = walberla::real_t;
       using shapeID_type = size_t;
       using baseShape_type = std::shared_ptr<walberla::mesa_pd::data::BaseShape>;
       using rotation_type = walberla::mesa_pd::Rot3;
@@ -103,6 +104,7 @@ public:
       using hydrodynamicTorque_type = walberla::mesa_pd::Vec3;
       using oldHydrodynamicForce_type = walberla::mesa_pd::Vec3;
       using oldHydrodynamicTorque_type = walberla::mesa_pd::Vec3;
+      using electrostaticForce_type = walberla::mesa_pd::Vec3;
       using virtualMass_type = walberla::real_t;
       using invMassIncludingVirtual_type = walberla::real_t;
       using oldLinearAcceleration_type = walberla::mesa_pd::Vec3;
@@ -154,6 +156,10 @@ public:
       oldForce_type const & getOldForce() const {return storage_.getOldForce(i_);}
       oldForce_type& getOldForceRef() {return storage_.getOldForceRef(i_);}
       void setOldForce(oldForce_type const & v) { storage_.setOldForce(i_, v);}
+      
+      charge_type const & getCharge() const {return storage_.getCharge(i_);}
+      charge_type& getChargeRef() {return storage_.getChargeRef(i_);}
+      void setCharge(charge_type const & v) { storage_.setCharge(i_, v);}
       
       shapeID_type const & getShapeID() const {return storage_.getShapeID(i_);}
       shapeID_type& getShapeIDRef() {return storage_.getShapeIDRef(i_);}
@@ -238,6 +244,10 @@ public:
       oldHydrodynamicTorque_type const & getOldHydrodynamicTorque() const {return storage_.getOldHydrodynamicTorque(i_);}
       oldHydrodynamicTorque_type& getOldHydrodynamicTorqueRef() {return storage_.getOldHydrodynamicTorqueRef(i_);}
       void setOldHydrodynamicTorque(oldHydrodynamicTorque_type const & v) { storage_.setOldHydrodynamicTorque(i_, v);}
+      
+      electrostaticForce_type const & getElectrostaticForce() const {return storage_.getElectrostaticForce(i_);}
+      electrostaticForce_type& getElectrostaticForceRef() {return storage_.getElectrostaticForceRef(i_);}
+      void setElectrostaticForce(electrostaticForce_type const & v) { storage_.setElectrostaticForce(i_, v);}
       
       virtualMass_type const & getVirtualMass() const {return storage_.getVirtualMass(i_);}
       virtualMass_type& getVirtualMassRef() {return storage_.getVirtualMassRef(i_);}
@@ -349,6 +359,7 @@ public:
    using invMass_type = walberla::real_t;
    using force_type = walberla::mesa_pd::Vec3;
    using oldForce_type = walberla::mesa_pd::Vec3;
+   using charge_type = walberla::real_t;
    using shapeID_type = size_t;
    using baseShape_type = std::shared_ptr<walberla::mesa_pd::data::BaseShape>;
    using rotation_type = walberla::mesa_pd::Rot3;
@@ -370,6 +381,7 @@ public:
    using hydrodynamicTorque_type = walberla::mesa_pd::Vec3;
    using oldHydrodynamicForce_type = walberla::mesa_pd::Vec3;
    using oldHydrodynamicTorque_type = walberla::mesa_pd::Vec3;
+   using electrostaticForce_type = walberla::mesa_pd::Vec3;
    using virtualMass_type = walberla::real_t;
    using invMassIncludingVirtual_type = walberla::real_t;
    using oldLinearAcceleration_type = walberla::mesa_pd::Vec3;
@@ -421,6 +433,10 @@ public:
    oldForce_type const & getOldForce(const size_t idx) const {return oldForce_[idx];}
    oldForce_type& getOldForceRef(const size_t idx) {return oldForce_[idx];}
    void setOldForce(const size_t idx, oldForce_type const & v) { oldForce_[idx] = v; }
+   
+   charge_type const & getCharge(const size_t idx) const {return charge_[idx];}
+   charge_type& getChargeRef(const size_t idx) {return charge_[idx];}
+   void setCharge(const size_t idx, charge_type const & v) { charge_[idx] = v; }
    
    shapeID_type const & getShapeID(const size_t idx) const {return shapeID_[idx];}
    shapeID_type& getShapeIDRef(const size_t idx) {return shapeID_[idx];}
@@ -505,6 +521,10 @@ public:
    oldHydrodynamicTorque_type const & getOldHydrodynamicTorque(const size_t idx) const {return oldHydrodynamicTorque_[idx];}
    oldHydrodynamicTorque_type& getOldHydrodynamicTorqueRef(const size_t idx) {return oldHydrodynamicTorque_[idx];}
    void setOldHydrodynamicTorque(const size_t idx, oldHydrodynamicTorque_type const & v) { oldHydrodynamicTorque_[idx] = v; }
+   
+   electrostaticForce_type const & getElectrostaticForce(const size_t idx) const {return electrostaticForce_[idx];}
+   electrostaticForce_type& getElectrostaticForceRef(const size_t idx) {return electrostaticForce_[idx];}
+   void setElectrostaticForce(const size_t idx, electrostaticForce_type const & v) { electrostaticForce_[idx] = v; }
    
    virtualMass_type const & getVirtualMass(const size_t idx) const {return virtualMass_[idx];}
    virtualMass_type& getVirtualMassRef(const size_t idx) {return virtualMass_[idx];}
@@ -647,6 +667,7 @@ public:
    std::vector<invMass_type> invMass_ {};
    std::vector<force_type> force_ {};
    std::vector<oldForce_type> oldForce_ {};
+   std::vector<charge_type> charge_ {};
    std::vector<shapeID_type> shapeID_ {};
    std::vector<baseShape_type> baseShape_ {};
    std::vector<rotation_type> rotation_ {};
@@ -668,6 +689,7 @@ public:
    std::vector<hydrodynamicTorque_type> hydrodynamicTorque_ {};
    std::vector<oldHydrodynamicForce_type> oldHydrodynamicForce_ {};
    std::vector<oldHydrodynamicTorque_type> oldHydrodynamicTorque_ {};
+   std::vector<electrostaticForce_type> electrostaticForce_ {};
    std::vector<virtualMass_type> virtualMass_ {};
    std::vector<invMassIncludingVirtual_type> invMassIncludingVirtual_ {};
    std::vector<oldLinearAcceleration_type> oldLinearAcceleration_ {};
@@ -697,6 +719,7 @@ ParticleStorage::Particle& ParticleStorage::Particle::operator=(const ParticleSt
    getInvMassRef() = rhs.getInvMass();
    getForceRef() = rhs.getForce();
    getOldForceRef() = rhs.getOldForce();
+   getChargeRef() = rhs.getCharge();
    getShapeIDRef() = rhs.getShapeID();
    getBaseShapeRef() = rhs.getBaseShape();
    getRotationRef() = rhs.getRotation();
@@ -718,6 +741,7 @@ ParticleStorage::Particle& ParticleStorage::Particle::operator=(const ParticleSt
    getHydrodynamicTorqueRef() = rhs.getHydrodynamicTorque();
    getOldHydrodynamicForceRef() = rhs.getOldHydrodynamicForce();
    getOldHydrodynamicTorqueRef() = rhs.getOldHydrodynamicTorque();
+   getElectrostaticForceRef() = rhs.getElectrostaticForce();
    getVirtualMassRef() = rhs.getVirtualMass();
    getInvMassIncludingVirtualRef() = rhs.getInvMassIncludingVirtual();
    getOldLinearAccelerationRef() = rhs.getOldLinearAcceleration();
@@ -744,6 +768,7 @@ ParticleStorage::Particle& ParticleStorage::Particle::operator=(ParticleStorage:
    getInvMassRef() = std::move(rhs.getInvMassRef());
    getForceRef() = std::move(rhs.getForceRef());
    getOldForceRef() = std::move(rhs.getOldForceRef());
+   getChargeRef() = std::move(rhs.getChargeRef());
    getShapeIDRef() = std::move(rhs.getShapeIDRef());
    getBaseShapeRef() = std::move(rhs.getBaseShapeRef());
    getRotationRef() = std::move(rhs.getRotationRef());
@@ -765,6 +790,7 @@ ParticleStorage::Particle& ParticleStorage::Particle::operator=(ParticleStorage:
    getHydrodynamicTorqueRef() = std::move(rhs.getHydrodynamicTorqueRef());
    getOldHydrodynamicForceRef() = std::move(rhs.getOldHydrodynamicForceRef());
    getOldHydrodynamicTorqueRef() = std::move(rhs.getOldHydrodynamicTorqueRef());
+   getElectrostaticForceRef() = std::move(rhs.getElectrostaticForceRef());
    getVirtualMassRef() = std::move(rhs.getVirtualMassRef());
    getInvMassIncludingVirtualRef() = std::move(rhs.getInvMassIncludingVirtualRef());
    getOldLinearAccelerationRef() = std::move(rhs.getOldLinearAccelerationRef());
@@ -792,6 +818,7 @@ void swap(ParticleStorage::Particle lhs, ParticleStorage::Particle rhs)
    std::swap(lhs.getInvMassRef(), rhs.getInvMassRef());
    std::swap(lhs.getForceRef(), rhs.getForceRef());
    std::swap(lhs.getOldForceRef(), rhs.getOldForceRef());
+   std::swap(lhs.getChargeRef(), rhs.getChargeRef());
    std::swap(lhs.getShapeIDRef(), rhs.getShapeIDRef());
    std::swap(lhs.getBaseShapeRef(), rhs.getBaseShapeRef());
    std::swap(lhs.getRotationRef(), rhs.getRotationRef());
@@ -813,6 +840,7 @@ void swap(ParticleStorage::Particle lhs, ParticleStorage::Particle rhs)
    std::swap(lhs.getHydrodynamicTorqueRef(), rhs.getHydrodynamicTorqueRef());
    std::swap(lhs.getOldHydrodynamicForceRef(), rhs.getOldHydrodynamicForceRef());
    std::swap(lhs.getOldHydrodynamicTorqueRef(), rhs.getOldHydrodynamicTorqueRef());
+   std::swap(lhs.getElectrostaticForceRef(), rhs.getElectrostaticForceRef());
    std::swap(lhs.getVirtualMassRef(), rhs.getVirtualMassRef());
    std::swap(lhs.getInvMassIncludingVirtualRef(), rhs.getInvMassIncludingVirtualRef());
    std::swap(lhs.getOldLinearAccelerationRef(), rhs.getOldLinearAccelerationRef());
@@ -840,6 +868,7 @@ std::ostream& operator<<( std::ostream& os, const ParticleStorage::Particle& p )
          "invMass             : " << p.getInvMass() << "\n" <<
          "force               : " << p.getForce() << "\n" <<
          "oldForce            : " << p.getOldForce() << "\n" <<
+         "charge              : " << p.getCharge() << "\n" <<
          "shapeID             : " << p.getShapeID() << "\n" <<
          "baseShape           : " << p.getBaseShape() << "\n" <<
          "rotation            : " << p.getRotation() << "\n" <<
@@ -861,6 +890,7 @@ std::ostream& operator<<( std::ostream& os, const ParticleStorage::Particle& p )
          "hydrodynamicTorque  : " << p.getHydrodynamicTorque() << "\n" <<
          "oldHydrodynamicForce: " << p.getOldHydrodynamicForce() << "\n" <<
          "oldHydrodynamicTorque: " << p.getOldHydrodynamicTorque() << "\n" <<
+         "electrostaticForce  : " << p.getElectrostaticForce() << "\n" <<
          "virtualMass         : " << p.getVirtualMass() << "\n" <<
          "invMassIncludingVirtual: " << p.getInvMassIncludingVirtual() << "\n" <<
          "oldLinearAcceleration: " << p.getOldLinearAcceleration() << "\n" <<
@@ -958,6 +988,7 @@ inline ParticleStorage::iterator ParticleStorage::create(const id_t& uid)
    invMass_.emplace_back(real_t(1));
    force_.emplace_back(real_t(0));
    oldForce_.emplace_back(real_t(0));
+   charge_.emplace_back(real_t(0));
    shapeID_.emplace_back();
    baseShape_.emplace_back(make_shared<walberla::mesa_pd::data::BaseShape>());
    rotation_.emplace_back();
@@ -979,6 +1010,7 @@ inline ParticleStorage::iterator ParticleStorage::create(const id_t& uid)
    hydrodynamicTorque_.emplace_back(real_t(0));
    oldHydrodynamicForce_.emplace_back(real_t(0));
    oldHydrodynamicTorque_.emplace_back(real_t(0));
+   electrostaticForce_.emplace_back(real_t(0));
    virtualMass_.emplace_back(real_t(0));
    invMassIncludingVirtual_.emplace_back(real_t(0));
    oldLinearAcceleration_.emplace_back(real_t(0));
@@ -1031,6 +1063,7 @@ inline ParticleStorage::iterator ParticleStorage::erase(iterator& it)
    invMass_.pop_back();
    force_.pop_back();
    oldForce_.pop_back();
+   charge_.pop_back();
    shapeID_.pop_back();
    baseShape_.pop_back();
    rotation_.pop_back();
@@ -1052,6 +1085,7 @@ inline ParticleStorage::iterator ParticleStorage::erase(iterator& it)
    hydrodynamicTorque_.pop_back();
    oldHydrodynamicForce_.pop_back();
    oldHydrodynamicTorque_.pop_back();
+   electrostaticForce_.pop_back();
    virtualMass_.pop_back();
    invMassIncludingVirtual_.pop_back();
    oldLinearAcceleration_.pop_back();
@@ -1091,6 +1125,7 @@ inline void ParticleStorage::reserve(const size_t size)
    invMass_.reserve(size);
    force_.reserve(size);
    oldForce_.reserve(size);
+   charge_.reserve(size);
    shapeID_.reserve(size);
    baseShape_.reserve(size);
    rotation_.reserve(size);
@@ -1112,6 +1147,7 @@ inline void ParticleStorage::reserve(const size_t size)
    hydrodynamicTorque_.reserve(size);
    oldHydrodynamicForce_.reserve(size);
    oldHydrodynamicTorque_.reserve(size);
+   electrostaticForce_.reserve(size);
    virtualMass_.reserve(size);
    invMassIncludingVirtual_.reserve(size);
    oldLinearAcceleration_.reserve(size);
@@ -1136,6 +1172,7 @@ inline void ParticleStorage::clear()
    invMass_.clear();
    force_.clear();
    oldForce_.clear();
+   charge_.clear();
    shapeID_.clear();
    baseShape_.clear();
    rotation_.clear();
@@ -1157,6 +1194,7 @@ inline void ParticleStorage::clear()
    hydrodynamicTorque_.clear();
    oldHydrodynamicForce_.clear();
    oldHydrodynamicTorque_.clear();
+   electrostaticForce_.clear();
    virtualMass_.clear();
    invMassIncludingVirtual_.clear();
    oldLinearAcceleration_.clear();
@@ -1182,6 +1220,7 @@ inline size_t ParticleStorage::size() const
    //WALBERLA_ASSERT_EQUAL( uid_.size(), invMass.size() );
    //WALBERLA_ASSERT_EQUAL( uid_.size(), force.size() );
    //WALBERLA_ASSERT_EQUAL( uid_.size(), oldForce.size() );
+   //WALBERLA_ASSERT_EQUAL( uid_.size(), charge.size() );
    //WALBERLA_ASSERT_EQUAL( uid_.size(), shapeID.size() );
    //WALBERLA_ASSERT_EQUAL( uid_.size(), baseShape.size() );
    //WALBERLA_ASSERT_EQUAL( uid_.size(), rotation.size() );
@@ -1203,6 +1242,7 @@ inline size_t ParticleStorage::size() const
    //WALBERLA_ASSERT_EQUAL( uid_.size(), hydrodynamicTorque.size() );
    //WALBERLA_ASSERT_EQUAL( uid_.size(), oldHydrodynamicForce.size() );
    //WALBERLA_ASSERT_EQUAL( uid_.size(), oldHydrodynamicTorque.size() );
+   //WALBERLA_ASSERT_EQUAL( uid_.size(), electrostaticForce.size() );
    //WALBERLA_ASSERT_EQUAL( uid_.size(), virtualMass.size() );
    //WALBERLA_ASSERT_EQUAL( uid_.size(), invMassIncludingVirtual.size() );
    //WALBERLA_ASSERT_EQUAL( uid_.size(), oldLinearAcceleration.size() );
@@ -1469,6 +1509,15 @@ public:
    walberla::mesa_pd::Vec3 const & operator()(const data::Particle& p) const {return p.getOldForce();}
 };
 ///Predicate that selects a certain property from a Particle
+class SelectParticleCharge
+{
+public:
+   using return_type = walberla::real_t;
+   walberla::real_t& operator()(data::Particle& p) const {return p.getChargeRef();}
+   walberla::real_t& operator()(data::Particle&& p) const {return p.getChargeRef();}
+   walberla::real_t const & operator()(const data::Particle& p) const {return p.getCharge();}
+};
+///Predicate that selects a certain property from a Particle
 class SelectParticleShapeID
 {
 public:
@@ -1656,6 +1705,15 @@ public:
    walberla::mesa_pd::Vec3& operator()(data::Particle& p) const {return p.getOldHydrodynamicTorqueRef();}
    walberla::mesa_pd::Vec3& operator()(data::Particle&& p) const {return p.getOldHydrodynamicTorqueRef();}
    walberla::mesa_pd::Vec3 const & operator()(const data::Particle& p) const {return p.getOldHydrodynamicTorque();}
+};
+///Predicate that selects a certain property from a Particle
+class SelectParticleElectrostaticForce
+{
+public:
+   using return_type = walberla::mesa_pd::Vec3;
+   walberla::mesa_pd::Vec3& operator()(data::Particle& p) const {return p.getElectrostaticForceRef();}
+   walberla::mesa_pd::Vec3& operator()(data::Particle&& p) const {return p.getElectrostaticForceRef();}
+   walberla::mesa_pd::Vec3 const & operator()(const data::Particle& p) const {return p.getElectrostaticForce();}
 };
 ///Predicate that selects a certain property from a Particle
 class SelectParticleVirtualMass
