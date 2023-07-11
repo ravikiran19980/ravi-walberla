@@ -494,13 +494,13 @@ int main(int argc, char** argv)
    BoundaryCondition top(stencil::Direction::T, Topboundarytype, Topboundaryvalue);
    BoundaryCondition bottom(stencil::Direction::B, Bottomboundarytype, Bottomboundaryvalue);
 
-   std::vector< BoundaryCondition > boundaryconditions; // this will be passed into the poissonsolver as an argument
-   boundaryconditions.push_back(north);
-   boundaryconditions.push_back(south);
-   boundaryconditions.push_back(west);
-   boundaryconditions.push_back(east);
-   boundaryconditions.push_back(top);
-   boundaryconditions.push_back(bottom);
+   std::vector< BoundaryCondition > boundaryConditions; // this will be passed into the poisson solver as an argument
+   boundaryConditions.push_back(north);
+   boundaryConditions.push_back(south);
+   boundaryConditions.push_back(west);
+   boundaryConditions.push_back(east);
+   boundaryConditions.push_back(top);
+   boundaryConditions.push_back(bottom);
 
    // For boundaries in paramter file -> end
 
@@ -652,10 +652,11 @@ int main(int argc, char** argv)
    BlockDataID potentialFieldCopyID =
       field::addCloneToStorage< ScalarField_T >(blocks, potentialFieldID, "electric potential field (copy)");
 
+   auto boundaryHandling = CustomBoundary< ScalarField_T >(*blocks, potentialFieldID, boundaryConditions);
    auto poissonSolver = PoissonSolver< DAMPED_JACOBI >(/* src */ potentialFieldID, /* dst */ potentialFieldCopyID,
-                                                       /* rhs */ chargeDensityFieldID, /*domainAABB*/ simulationDomain,
-                                                       blocks, vacuum_permitivity, maxCharge, uint_c(1000),
-                                                       real_c(1e-16), uint_c(1000), boundaryconditions);
+                                                       /* rhs */ chargeDensityFieldID,
+                                                       blocks, boundaryHandling,
+                                                       uint_c(1000), real_c(1e-16), uint_c(1000));
    //////////////////
    // RPD COUPLING //
    //////////////////

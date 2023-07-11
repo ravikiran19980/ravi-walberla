@@ -8,18 +8,18 @@ class DirichletDomainBoundary
 {
  public:
    DirichletDomainBoundary(StructuredBlockStorage& blocks, const BlockDataID& fieldId,
-                           std::vector< BoundaryCondition > boundaryconditions)
-      : blocks_(blocks), fieldId_(fieldId), boundaryconditions_(boundaryconditions)
+                           const std::vector< BoundaryCondition >& boundaryConditions)
+      : blocks_(blocks), fieldId_(fieldId), boundaryconditions_(boundaryConditions)
    {
       // ravi implementation
 
-      for (auto e : boundaryconditions)
+      for (auto e : boundaryConditions)
       {
-         if (e.type == "Neumann") { this->excludeBoundary(e.direction); } // swap conditions
+         if (e.getType() == "Neumann") { this->excludeBoundary(e.getDirection()); } // swap conditions
          else
          {
-            this->includeBoundary(e.direction);
-            this->setValue(e.direction, e.value);
+            this->includeBoundary(e.getDirection());
+            this->setValue(e.getDirection(), e.getValue());
          }
       }
    }

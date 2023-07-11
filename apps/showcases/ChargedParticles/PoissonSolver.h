@@ -41,17 +41,13 @@ class PoissonSolver
       srcField->swapDataPointers(dstField);
    }
 
-   PoissonSolver(const BlockDataID& src, const BlockDataID& dst, const BlockDataID& rhs, const math::AABB& domainAABB,
-                 const std::shared_ptr< StructuredBlockForest >& blocks, real_t epsilon, real_t charge,
-                 uint_t iterations = uint_t(1000), real_t residualNormThreshold = real_c(1e-4),
-                 uint_t residualCheckFrequency                             = uint_t(100),
-                 const std::vector< BoundaryCondition > boundaryconditions = {},
-                 const std::function< void() >& boundaryHandling           = {})
-      : src_(src), dst_(dst), rhs_(rhs), blocks_(blocks), boundaryHandling_(boundaryHandling),
-        boundaryconditions_(boundaryconditions), domainAABB_(domainAABB)
-   {
-      // stencil weights
+   PoissonSolver(const BlockDataID& src, const BlockDataID& dst, const BlockDataID& rhs,
+                 const std::shared_ptr< StructuredBlockForest >& blocks,
+                 const std::function< void() >& boundaryHandling,
+                 uint_t iterations = uint_t(1000), real_t residualNormThreshold = real_c(1e-4), uint_t residualCheckFrequency = uint_t(100))
+      : src_(src), dst_(dst), rhs_(rhs), blocks_(blocks), boundaryHandling_(boundaryHandling) {
 
+      // stencil weights
       laplaceWeights_                             = std::vector< real_t >(Stencil_T::Size, real_c(0));
       laplaceWeights_[Stencil_T::idx[stencil::C]] = real_t(2) / (blocks_->dx() * blocks_->dx()) +
                                                     real_t(2) / (blocks_->dy() * blocks_->dy()) +
@@ -69,22 +65,9 @@ class PoissonSolver
       commScheme_->addPackInfo(make_shared< field::communication::PackInfo< ScalarField_T > >(src_));
       commScheme_->addPackInfo(make_shared< field::communication::PackInfo< ScalarField_T > >(rhs_));
 
-      // boundary handling
-
-      // ravi implementation
-
-      if (!boundaryHandling_)
-      {
-         boundaryHandling_ = CustomBoundary< ScalarField_T >(*blocks_, src_, boundaryconditions_);
-         // boundaryHandling_ = CustomFunctionBoundary< ScalarField_T >(*blocks_, src_, boundaryconditions_);
-         // boundaryHandling_ = FunctionBoundary< ScalarField_T >(*blocks_, src_,
-         // boundaryconditions_,domainAABB_,charge,epsilon);
-      }
-
       // res norm
 
-      residualNorm_ =
-         make_shared< pde::ResidualNorm< Stencil_T > >(blocks_->getBlockStorage(), src_, rhs_, laplaceWeights_);
+      residualNorm_ = make_shared< pde::ResidualNorm< Stencil_T > >(blocks_->getBlockStorage(), src_, rhs_, laplaceWeights_);
 
       // jacobi
 
@@ -92,18 +75,14 @@ class PoissonSolver
 
       // use custom impl with damping or jacobi from waLBerla
       std::function< void(IBlock*) > jacSweep = {};
-      if (solver == DAMPED_JACOBI)
-      {
+      if (solver == DAMPED_JACOBI) {
          jacSweep = [this](IBlock* block) { dampedJacobiSweep(block); };
-      }
-      else
-      {
+      } else {
          jacSweep = *jacobiFixedSweep_;
       }
 
-      jacobiIteration_ =
-         std::make_unique< pde::JacobiIteration >(blocks_->getBlockStorage(), iterations, *commScheme_, jacSweep,
-                                                  *residualNorm_, residualNormThreshold, residualCheckFrequency);
+      jacobiIteration_ = std::make_unique< pde::JacobiIteration >(blocks_->getBlockStorage(), iterations, *commScheme_,
+                                                                  jacSweep, *residualNorm_, residualNormThreshold, residualCheckFrequency);
 
       jacobiIteration_->addBoundaryHandling(boundaryHandling_);
 
@@ -123,9 +102,9 @@ class PoissonSolver
    // get approximate solution of electric potential
    void operator()()
    {
-      if constexpr (solver != WALBERLA_SOR) { (*jacobiIteration_)(); }
-      else
-      {
+      if constexpr (solver != WALBERLA_SOR) {
+         (*jacobiIteration_)();
+      } else {
          (*sorIteration_)();
       }
    }
@@ -134,8 +113,6 @@ class PoissonSolver
    BlockDataID src_;
    BlockDataID dst_;
    BlockDataID rhs_;
-   std::vector< BoundaryCondition > boundaryconditions_;
-   const math::AABB& domainAABB_;
    std::vector< real_t > laplaceWeights_;
    std::shared_ptr< StructuredBlockForest > blocks_;
    std::shared_ptr< blockforest::communication::UniformBufferedScheme< Stencil_T > > commScheme_;

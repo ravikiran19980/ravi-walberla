@@ -1,3 +1,5 @@
+#include <utility>
+
 //
 // Created by avnss on 4/7/2023.
 //
@@ -9,13 +11,26 @@ namespace walberla
 {
 struct BoundaryCondition
 {
-   stencil::Direction direction;
-   std::string type;
-   double value;
+   stencil::Direction getDirection() {
+      return direction_;
+   }
+
+   std::string getType() {
+      return type_;
+   }
+
+   double getValue() {
+      return value_;
+   }
 
    BoundaryCondition(stencil::Direction direction, std::string type, double value)
-      : direction(direction), type(type), value(value)
+      : direction_(direction), type_(std::move(type)), value_(value)
    {}
+
+ protected:
+   stencil::Direction direction_;
+   std::string type_;
+   double value_;
 }; // the struct defined here needs to be used in different files,
 
 } // namespace walberla

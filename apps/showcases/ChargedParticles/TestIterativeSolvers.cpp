@@ -138,6 +138,8 @@ void solve(const shared_ptr< StructuredBlockForest > & blocks,
       dirichletFunction.setFunction(stencil::T, GET_BOUNDARY_LAMBDA(stencil::T));
 
       boundaryHandling = dirichletFunction;
+   } else {
+      pde::NeumannDomainBoundary< ScalarField_T >(*blocks, solution);
    }
 
    // solvers: Jacobi and SOR
@@ -146,9 +148,9 @@ void solve(const shared_ptr< StructuredBlockForest > & blocks,
    auto resThres = real_c(1e-10);
    auto resCheckFreq = uint_c(1000);
 
-   //auto poissonSolverJacobi = PoissonSolver< WALBERLA_JACOBI, useDirichlet > (solution, solutionCpy, rhs, blocks, numIter, resThres, resCheckFreq, boundaryHandling);
-   //auto poissonSolverDampedJac = PoissonSolver< DAMPED_JACOBI, useDirichlet > (solution, solutionCpy, rhs, blocks, numIter, resThres, resCheckFreq, boundaryHandling);
-   //auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR, useDirichlet > (solution, solutionCpy, rhs, blocks, numIter, resThres, resCheckFreq, boundaryHandling);
+   auto poissonSolverJacobi = PoissonSolver< WALBERLA_JACOBI > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, resThres, resCheckFreq);
+   auto poissonSolverDampedJac = PoissonSolver< DAMPED_JACOBI > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, resThres, resCheckFreq);
+   auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, resThres, resCheckFreq);
 
    // calc error depending on scenario
 
@@ -253,21 +255,21 @@ void solve(const shared_ptr< StructuredBlockForest > & blocks,
 
    // solve with jacobi
    WALBERLA_LOG_INFO_ON_ROOT("-- Solve using Jacobi --");
-  // poissonSolverJacobi();
+   poissonSolverJacobi();
    auto errJac = computeMaxError();
    WALBERLA_LOG_INFO_ON_ROOT("Error after Jacobi solver is: " << errJac);
 
    // solve with damped jacobi
    WALBERLA_LOG_INFO_ON_ROOT("-- Solve using (damped) Jacobi --");
    resetSolution(blocks, solution, solutionCpy); // reset solutions and solve anew
-   //poissonSolverDampedJac();
+   poissonSolverDampedJac();
    auto errDampedJac = computeMaxError();
    WALBERLA_LOG_INFO_ON_ROOT("Error after (damped) Jacobi solver is: " << errDampedJac);
 
    // solve with SOR
    WALBERLA_LOG_INFO_ON_ROOT("-- Solve using SOR --");
    resetSolution(blocks, solution, solutionCpy); // reset solutions and solve anew
-   //poissonSolverSOR();
+   poissonSolverSOR();
    auto errSOR = computeMaxError();
    WALBERLA_LOG_INFO_ON_ROOT("Error after SOR solver is: " << errSOR);
 }
@@ -283,8 +285,21 @@ void solveChargedParticles(const shared_ptr< StructuredBlockForest > & blocks,
    auto resThres = real_c(1e-5);
    auto resCheckFreq = uint_c(1000);
 
-  // auto poissonSolverJacobi = PoissonSolver< DAMPED_JACOBI, useDirichlet > (solution, solutionCpy, rhs, blocks, numIter, resThres, resCheckFreq);
-  // auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR, useDirichlet > (solution, solutionCpy, rhs, blocks, numIter, resThres, resCheckFreq);
+   // set boundary handling depending on scenario
+   std::function< void () > boundaryHandling = {};
+   std::vector< BoundaryCondition > boundaryConditions;
+
+   if constexpr (useDirichlet) {
+      for (const auto& e : stencil::D3Q6::dir)
+         boundaryConditions.emplace_back(e, "Dirichlet", 0_r);
+
+      boundaryHandling = DirichletDomainBoundary< ScalarField_T >(*blocks, solution, boundaryConditions);
+   } else {
+      boundaryHandling = pde::NeumannDomainBoundary< ScalarField_T >(*blocks, solution);
+   }
+
+   auto poissonSolverJacobi = PoissonSolver< DAMPED_JACOBI > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, resThres, resCheckFreq);
+   auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, resThres, resCheckFreq);
 
    // init rhs with two charged particles
 
@@ -326,11 +341,11 @@ void solveChargedParticles(const shared_ptr< StructuredBlockForest > & blocks,
    }
 
    // solve with jacobi
-   //poissonSolverJacobi();
+   poissonSolverJacobi();
 
    // solve with SOR
    resetSolution(blocks, solution, solutionCpy); // reset solutions and solve anew
-   //poissonSolverSOR();
+   poissonSolverSOR();
 }
 
 int main(int argc, char** argv)
