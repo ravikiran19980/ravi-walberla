@@ -1,4 +1,4 @@
-add_subdirectory( paramterfiles )
+add_subdirectory( parameterfiles )
 
 waLBerla_add_executable ( NAME ChargedParticles FILES ChargedParticles.cpp
         DEPENDS blockforest boundary core pde domain_decomposition field lbm lbm_mesapd_coupling mesa_pd timeloop vtk )
