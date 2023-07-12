@@ -559,28 +559,28 @@ int main(int argc, char** argv)
    // dielectric permitivity = (relative_permitivity_medium)*(vacuum_permitivity)
    // relative_permitivity = 78 and vacuum_permitivity SI units ->  A2⋅s4⋅kg−1⋅m−3
 
-   const real_t vacuum_permitivity_SI = 78.5 * 8.8541878128 * pow(10, -12);
-   const real_t Ampere_unit           = ((densityFluid_SI) * (pow(dx_SI, 5))) / (pow(dt_SI, 3) * V);
+   const real_t vacuum_permitivity_SI = real_c(78.5 * 8.8541878128 * pow(10, -12));
+   const real_t Ampere_unit           = ((densityFluid_SI) * real_c(pow(dx_SI, 5))) / (real_c(pow(dt_SI, 3)) * V);
    real_t vacuum_permitivity =
-      ((densityFluid_SI * (pow(dx_SI, 3))) * (pow(dx_SI, 3))) / ((pow(dt_SI, 4)) * Ampere_unit * Ampere_unit);
+      ((densityFluid_SI * real_c(pow(dx_SI, 3))) * real_c(pow(dx_SI, 3))) / (real_c(pow(dt_SI, 4)) * Ampere_unit * Ampere_unit);
 
    vacuum_permitivity = vacuum_permitivity * (vacuum_permitivity_SI);
 
    // now for the charge: read from the parameter file
    const real_t elementaryCharge =
-      1.60217663 * pow(10, -19); // 1 elementary charge = 1.60217663 * pow(10, -19) coloumbs
+           real_c(1.60217663 * pow(10, -19)); // 1 elementary charge = 1.60217663 * pow(10, -19) coloumbs
    maxCharge_SI           = maxCharge_SI * elementaryCharge;
    minCharge_SI           = minCharge_SI * elementaryCharge;
-   const real_t maxCharge = ((maxCharge_SI) * (V * dt_SI * dt_SI)) / (densityFluid_SI * pow(dx_SI, 5));
-   const real_t minCharge = ((minCharge_SI) * (V * dt_SI * dt_SI)) / (densityFluid_SI * pow(dx_SI, 5));
+   const real_t maxCharge = ((maxCharge_SI) * (V * dt_SI * dt_SI)) / (densityFluid_SI * real_c(pow(dx_SI, 5)));
+   const real_t minCharge = ((minCharge_SI) * (V * dt_SI * dt_SI)) / (densityFluid_SI * real_c(pow(dx_SI, 5)));
 
    WALBERLA_LOG_INFO_ON_ROOT("permitivity in LBM units" << " " << vacuum_permitivity);
    WALBERLA_LOG_INFO_ON_ROOT("charge in LBM units" << " " << maxCharge);
 
    // this is just for verification of the SI to LBM conversions is correctly done or not
-   const real_t q_unit = (densityFluid_SI * pow(dx_SI, 5)) / (V * dt_SI * dt_SI);
+   const real_t q_unit = (densityFluid_SI * real_c(pow(dx_SI, 5))) / (V * dt_SI * dt_SI);
    const real_t epsilon_unit =
-      ((pow(dt_SI, 4)) * Ampere_unit * Ampere_unit) / ((densityFluid_SI * (pow(dx_SI, 3))) * (pow(dx_SI, 3)));
+      (real_c(pow(dt_SI, 4)) * Ampere_unit * Ampere_unit) / ((densityFluid_SI * real_c(pow(dx_SI, 3))) * real_c(pow(dx_SI, 3)));
    const real_t potential_unit = q_unit / (epsilon_unit * dx_SI);
 
    WALBERLA_UNUSED(minCharge);
