@@ -15,7 +15,7 @@ PhysicalSetup // all to be specified in SI units!
     kinematicViscosityFluid 1e-5;
     densityFluid 1000.;
 
-    particleDiameter 0.0024; //0.002 RL= 12
+    particleDiameter 0.0012; //0.002 RL= 12
     densityParticle 1100.;
     dynamicFrictionCoefficient 0.15;
     coefficientOfRestitution 0.6;
@@ -27,7 +27,7 @@ PhysicalSetup // all to be specified in SI units!
 
 NumericalSetup
 {
-    dx 0.0004; // in m 0.0002
+    dx 0.0002; // in m 0.0002
     uInflow 0.01; // in LBM units, should be smaller than 0.1, this then determines dt
 
     // product of number of blocks should be equal to number of used processes
@@ -45,7 +45,7 @@ Output
 
     vtkSpacingParticles 0.01; // in s
     vtkSpacingFluid 0.01; // in s
-    vtkFolder vtk_out;
+    vtkFolder vtk_speedtestpotential;
 }
 
 IntegratorSchemes
@@ -79,4 +79,5 @@ ParticleCharges
     maxCharge 8000;
     minCharge 20;
 }
-
+// This is for validating the potential of a single particle
+// at the center of the domain

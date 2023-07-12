@@ -7,7 +7,7 @@ PhysicalSetup // all to be specified in SI units!
     periodicInX false;
     periodicInY false;
 
-    runtime 10.0;
+    runtime 3.0;
 
     uInflow 0.01;
     gravitationalAcceleration 9.81;
@@ -20,7 +20,9 @@ PhysicalSetup // all to be specified in SI units!
     dynamicFrictionCoefficient 0.15;
     coefficientOfRestitution 0.6;
 
-    particleGenerationSpacing 0.01;  //0.00401 previous
+    particleGenerationSpacing_x 0.01;  //0.00401 previous
+    particleGenerationSpacing_y 0.01;
+    particleGenerationSpacing_z 0.01;
 }
 
 NumericalSetup
@@ -43,7 +45,7 @@ Output
 
     vtkSpacingParticles 0.01; // in s 0.1
     vtkSpacingFluid 0.01; // in s 0.1
-    vtkFolder vtk_out;
+    vtkFolder vtk_force_speedtest;
 }
 
 IntegratorSchemes
@@ -78,3 +80,6 @@ ParticleCharges
     minCharge 20;
 }
 
+// This file is to validate the electrostatic force acting on a single particle
+// placed at the center of the domain. The east and west boundaries
+// are given constant potentials of 0 and -10V and rest are Neumann conditions

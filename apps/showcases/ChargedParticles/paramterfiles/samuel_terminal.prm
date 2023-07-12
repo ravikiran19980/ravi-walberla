@@ -1,21 +1,21 @@
 PhysicalSetup // all to be specified in SI units!
 {
-    xSize 0.02; // = width
-    ySize 0.02; // = depth
-    zSize 0.1; // = height
+    xSize 0.06; // = width
+    ySize 0.06; // = depth
+    zSize 0.2; // = height
 
     periodicInX false;
     periodicInY false;
 
     runtime 10.0;
 
-    uInflow 0.018461975000000002;
+    uInflow 0.02307746875;
     gravitationalAcceleration 9.81;
 
     kinematicViscosityFluid 1e-4;
     densityFluid 1000.;
 
-    particleDiameter 0.004;
+    particleDiameter 0.0032;
     densityParticle 1100.;
     dynamicFrictionCoefficient 0.15;
     coefficientOfRestitution 0.6;
@@ -28,12 +28,12 @@ PhysicalSetup // all to be specified in SI units!
 NumericalSetup
 {
     dx 0.0002; // in m
-    uInflow 0.018461975000000002; // in LBM units, should be smaller than 0.1, this then determines dt
+    uInflow 0.02307746875; // in LBM units, should be smaller than 0.1, this then determines dt
 
     // product of number of blocks should be equal to number of used processes
-    numXBlocks 2;
-    numYBlocks 2;
-    numZBlocks 2;
+    numXBlocks 10;
+    numYBlocks 10;
+    numZBlocks 10;
 
     useLubricationForces true;
     numberOfParticleSubCycles 10;
@@ -45,7 +45,7 @@ Output
 
     vtkSpacingParticles 0.01; // in s
     vtkSpacingFluid 0.01; // in s
-    vtkFolder vtk_out;
+    vtkFolder stokes_d16;
 }
 
 IntegratorSchemes
@@ -56,28 +56,29 @@ IntegratorSchemes
 
 boundarytypes
 {
-    North_type Dirichlet;
-    South_type Dirichlet;
-    West_type Dirichlet;
-    East_type Dirichlet;
+    North_type Neumann;
+    South_type Neumann;
+    West_type Neumann;
+    East_type Neumann;
     Top_type Dirichlet;
     Bottom_type Dirichlet;
 }
 
 boundaryvalues
 {
-    North_value 1.1404530594971161e-05;
-    South_value 1.1404530594971161e-05;
-    West_value 1.1404530594971161e-05;
-    East_value  1.1404530594971161e-05;
-    Top_value   1.1404530594971161e-05;
-    Bottom_value 1.1404530594971161e-05;
+    North_value 0;
+    South_value 0;
+    West_value  0;
+    East_value  0;
+    Top_value   543011290.8337704;
+    Bottom_value -543011290.8337704;
 }
 
 ParticleCharges
 {
-    maxCharge 8000;
+    maxCharge 80000;
     minCharge 20;
 }
 
-
+// This is for the validations of the terminal velocity
+// This file has to be run with the file validations_related/stokes_velocity/StokesVelocity.cpp
