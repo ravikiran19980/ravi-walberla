@@ -575,7 +575,8 @@ int main(int argc, char** argv)
    const real_t minCharge = ((minCharge_SI) * (V * dt_SI * dt_SI)) / (densityFluid_SI * real_c(pow(dx_SI, 5)));
 
    WALBERLA_LOG_INFO_ON_ROOT("permitivity in LBM units" << " " << vacuum_permitivity);
-   WALBERLA_LOG_INFO_ON_ROOT("charge in LBM units" << " " << maxCharge);
+   WALBERLA_LOG_INFO_ON_ROOT("Max charge in LBM units" << " " << maxCharge);
+   WALBERLA_LOG_INFO_ON_ROOT("Min charge in LBM units" << " " << minCharge);
 
    // this is just for verification of the SI to LBM conversions is correctly done or not
    const real_t q_unit = (densityFluid_SI * real_c(pow(dx_SI, 5))) / (V * dt_SI * dt_SI);
@@ -583,7 +584,6 @@ int main(int argc, char** argv)
       (real_c(pow(dt_SI, 4)) * Ampere_unit * Ampere_unit) / ((densityFluid_SI * real_c(pow(dx_SI, 3))) * real_c(pow(dx_SI, 3)));
    const real_t potential_unit = q_unit / (epsilon_unit * dx_SI);
 
-   WALBERLA_UNUSED(minCharge);
    WALBERLA_UNUSED(potential_unit);
 
    // std:: cout << "Potential_unit" << " " << potential_unit << std::endl;
@@ -675,8 +675,8 @@ int main(int argc, char** argv)
    ss->shapes[sphereShape]->updateMassAndInertia(densityParticle);
 
    // create spheres
-   // auto generationDomain = simulationDomain.getExtended(-Spacing * 0.5_r);
-   auto generationDomain = simulationDomain.createFromMinMaxCorner(0, 0, 0, 200, 200, 400);
+   auto generationDomain = simulationDomain.getExtended(-Spacing * 0.5_r);
+   //auto generationDomain = simulationDomain.createFromMinMaxCorner(0, 0, 0, 200, 200, 400);
    Vector3< real_t > pointOfReference{ generationDomain.center()[0], generationDomain.center()[1],
                                        generationDomain.center()[2] };
    WALBERLA_LOG_INFO_ON_ROOT("pointOfReference is:" << pointOfReference);

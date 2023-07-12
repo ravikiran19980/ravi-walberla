@@ -66,3 +66,7 @@ ParticleCharges
     minCharge 20;
 }
 
+// This is also for terminal velocity validation
+// But this is for moderate reynolds number cases
+// These are validated against the experimental piv results
+//  should be run with the file validations_related/experimental_terminal_velocity/MigrationVelocity.cpp file
