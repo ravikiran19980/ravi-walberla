@@ -48,7 +48,7 @@ class PoissonSolver
                  const std::vector< BoundaryCondition > boundaryconditions = {},
                  const std::function< void() >& boundaryHandling           = {})
       : src_(src), dst_(dst), rhs_(rhs), blocks_(blocks), boundaryHandling_(boundaryHandling),
-        boundaryconditions_(boundaryconditions), domainAABB_(domainAABB), charge_(charge), epsilon_(epsilon)
+        boundaryconditions_(boundaryconditions), domainAABB_(domainAABB)
    {
       // stencil weights
 
@@ -134,16 +134,13 @@ class PoissonSolver
    BlockDataID src_;
    BlockDataID dst_;
    BlockDataID rhs_;
-   std::shared_ptr< StructuredBlockForest > blocks_;
-   std::function< void() > boundaryHandling_;
    std::vector< BoundaryCondition > boundaryconditions_;
    const math::AABB& domainAABB_;
    std::vector< real_t > laplaceWeights_;
-
+   std::shared_ptr< StructuredBlockForest > blocks_;
    std::shared_ptr< blockforest::communication::UniformBufferedScheme< Stencil_T > > commScheme_;
 
-   real_t charge_;
-   real_t epsilon_;
+   std::function< void() > boundaryHandling_;
 
    std::shared_ptr< pde::ResidualNorm< Stencil_T > > residualNorm_;
 
