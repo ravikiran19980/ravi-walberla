@@ -1,34 +1,34 @@
 PhysicalSetup // all to be specified in SI units!
 {
-    xSize 0.02; // = 10dp
-    ySize 0.02; // = 10dp
-    zSize 0.12; // = 60dp
+    xSize 0.02; // = 0.01width
+    ySize 0.02; // = 0.005depth
+    zSize 0.02; // = 0.02height
 
-    periodicInX true;
-    periodicInY true;
+    periodicInX false;
+    periodicInY false;
 
     runtime 3;
 
-    uInflow 0.035;
+    uInflow 0.01;
     gravitationalAcceleration 9.81;
 
-    kinematicViscosityFluid 1e-6;
-    densityFluid  998.21;
+    kinematicViscosityFluid 1e-5;
+    densityFluid 1000.;
 
-    particleDiameter 0.002; // dp = 2mm
-    densityParticle 1300;
+    particleDiameter 0.0024; //0.002 RL= 12
+    densityParticle 1100.;
     dynamicFrictionCoefficient 0.15;
     coefficientOfRestitution 0.6;
 
-    particleGenerationSpacing_x 0.002;  // spacing between particles = dp
-    particleGenerationSpacing_y 0.002;
-    particleGenerationSpacing_z 0.002;
+    particleGenerationSpacing_x 0.01;  //0.00401 previous
+    particleGenerationSpacing_y 0.01;
+    particleGenerationSpacing_z 0.01;
 }
 
 NumericalSetup
 {
-    dx 0.0001; // in m 0.0002
-    uInflow 0.035; // in LBM units, should be smaller than 0.1, this then determines dt
+    dx 0.0004; // in m 0.0002
+    uInflow 0.01; // in LBM units, should be smaller than 0.1, this then determines dt
 
     // product of number of blocks should be equal to number of used processes
     numXBlocks 2;
@@ -45,16 +45,16 @@ Output
 
     vtkSpacingParticles 0.01; // in s
     vtkSpacingFluid 0.01; // in s
-    vtkFolder showcase;
+    vtkFolder vtk_out;
 }
 
 IntegratorSchemes
 {
-   ON 1;  // 0 means no integrator is used. Any number other than 0, integrator is used by default
+   ON 0;  // 0 means no integrator is used. Any number other than 0, integrator is used by default
 
 }
 
-boundarytypes
+BoundaryTypes
 {
     North_type Dirichlet;
     South_type Dirichlet;
@@ -64,7 +64,7 @@ boundarytypes
     Bottom_type Dirichlet;
 }
 
-boundaryvalues
+BoundaryValues
 {
     North_value 1.4768867120487655e-05;
     South_value 1.4768867120487655e-05;

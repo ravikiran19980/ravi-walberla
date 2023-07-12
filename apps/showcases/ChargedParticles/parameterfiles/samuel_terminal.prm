@@ -54,7 +54,7 @@ IntegratorSchemes
 
 }
 
-boundarytypes
+BoundaryTypes
 {
     North_type Dirichlet;
     South_type Dirichlet;
@@ -64,7 +64,7 @@ boundarytypes
     Bottom_type Dirichlet;
 }
 
-boundaryvalues
+BoundaryValues
 {
     North_value 1.1404530594971161e-05;
     South_value 1.1404530594971161e-05;
