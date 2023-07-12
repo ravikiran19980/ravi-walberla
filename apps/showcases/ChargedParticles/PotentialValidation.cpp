@@ -119,7 +119,7 @@ void solveElectrostaticPoisson(const shared_ptr< StructuredBlockForest >& blocks
    dirichletFunction.setFunction(stencil::B, GET_POTENTIAL_BCS_LAMBDA(stencil::B));
    dirichletFunction.setFunction(stencil::T, GET_POTENTIAL_BCS_LAMBDA(stencil::T));
 
-   auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR, true > (solution, solutionCpy, rhs, blocks, numIter, resThres, resCheckFreq, dirichletFunction);
+   auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR > (solution, solutionCpy, rhs, blocks, dirichletFunction, numIter, resThres, resCheckFreq);
 
    // init rhs with two charged particles
 
