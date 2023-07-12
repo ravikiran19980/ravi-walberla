@@ -1,4 +1,4 @@
-waLBerla_link_files_to_builddir( "*.prm" )
+add_subdirectory( paramterfiles )
 
 waLBerla_add_executable ( NAME ChargedParticles FILES ChargedParticles.cpp
         DEPENDS blockforest boundary core pde domain_decomposition field lbm lbm_mesapd_coupling mesa_pd timeloop vtk )

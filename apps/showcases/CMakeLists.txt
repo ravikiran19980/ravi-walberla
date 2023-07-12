@@ -1,4 +1,5 @@
 add_subdirectory( BidisperseFluidizedBed )
+add_subdirectory( ChargedParticles )
 add_subdirectory( CombinedResolvedUnresolved )
 add_subdirectory( FluidizedBed )
 add_subdirectory( FreeSurface )
