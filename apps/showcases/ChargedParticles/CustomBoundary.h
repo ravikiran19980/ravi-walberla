@@ -22,7 +22,7 @@ class CustomBoundary : public DirichletDomainBoundary< PdeField >, public Neuman
                                                                                      boundaryconditions)
    {}
 
-   virtual void operator()();
+   void operator()();
 };
 
 template< typename PdeField >
