@@ -40,7 +40,7 @@ class DirichletDomainBoundary
       values_[stencil::D3Q6::idx[direction]] = value;
    }
 
-    virtual void operator()();
+   virtual void operator()();
 
  protected:
    // first-order dirichlet boundary conditions with scalar value

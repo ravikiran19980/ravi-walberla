@@ -9,25 +9,20 @@
 
 namespace walberla
 {
-struct BoundaryCondition
+class BoundaryCondition
 {
-   stencil::Direction getDirection() {
-      return direction_;
-   }
+public:
+   stencil::Direction getDirection() { return direction_; }
 
-   std::string getType() {
-      return type_;
-   }
+   std::string getType() { return type_; }
 
-   real_t getValue() {
-      return value_;
-   }
+   real_t getValue() { return value_; }
 
    BoundaryCondition(stencil::Direction direction, std::string type, real_t value)
       : direction_(direction), type_(std::move(type)), value_(value)
    {}
 
- protected:
+protected:
    stencil::Direction direction_;
    std::string type_;
    real_t value_;
