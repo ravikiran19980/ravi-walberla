@@ -383,12 +383,14 @@ int main(int argc, char** argv)
    BlockDataID solution = field::addToStorage< ScalarField_T >(blocks, "solution", 0, field::fzyx, 1);
    BlockDataID solutionCpy = field::addCloneToStorage< ScalarField_T >(blocks, solution, "solution (copy)");
 
+   /* 1. analytical tests */
+
    // first solve neumann problem...
    WALBERLA_LOG_INFO_ON_ROOT("Run analytical test cases...")
    WALBERLA_LOG_INFO_ON_ROOT("- Solving analytical Neumann problem with Jacobi and SOR... -")
    solve< TEST_NEUMANN > (blocks, domainAABB, solution, solutionCpy, rhs, maxIterations, resThres, resCheckFreq);
 
-   // ... then solve dirichlet problem
+   // ... then solve dirichlet problems
    resetRHS(blocks, rhs); // reset fields and solve anew
    resetSolution(blocks, solution, solutionCpy);
    WALBERLA_LOG_INFO_ON_ROOT("- Solving analytical Dirichlet problem (1) with Jacobi and SOR... -")
@@ -399,7 +401,7 @@ int main(int argc, char** argv)
    WALBERLA_LOG_INFO_ON_ROOT("- Solving analytical Dirichlet problem (2) with Jacobi and SOR... -")
    solve< TEST_DIRICHLET_2 > (blocks, domainAABB, solution, solutionCpy, rhs, maxIterations, resThres, resCheckFreq);
 
-   // ... charged particle test
+   /* 2. experimental charged particle tests */
 
    WALBERLA_LOG_INFO_ON_ROOT("Run charged particle test cases...")
    resetRHS(blocks, rhs); // reset fields and solve anew
