@@ -42,6 +42,8 @@ class DirichletDomainBoundary
 
    virtual void operator()();
 
+   virtual ~DirichletDomainBoundary() = default;
+
  protected:
    // first-order dirichlet boundary conditions with scalar value
    void apply(PdeField* p, const CellInterval& interval, const cell_idx_t cx, const cell_idx_t cy, const cell_idx_t cz,
