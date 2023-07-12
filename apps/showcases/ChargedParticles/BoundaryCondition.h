@@ -13,8 +13,8 @@ struct BoundaryCondition
    std::string type;
    double value;
 
-   BoundaryCondition(stencil::Direction direction, std::string type, double value)
-      : direction(direction), type(type), value(value)
+   BoundaryCondition(stencil::Direction direction_, std::string type_, double value_)
+      : direction(direction_), type(type_), value(value_)
    {}
 }; // the struct defined here needs to be used in different files,
 
