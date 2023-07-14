@@ -1,6 +1,8 @@
 #ifndef WALBERLA_DIRICHLETDOMAINBOUNDARY_H
 #define WALBERLA_DIRICHLETDOMAINBOUNDARY_H
+
 #include "BoundaryCondition.h"
+
 namespace walberla
 {
 template< typename PdeField >

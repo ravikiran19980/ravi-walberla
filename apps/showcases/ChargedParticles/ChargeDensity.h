@@ -57,27 +57,26 @@ class ChargeDensityUpdate {
             real_t charge = 0;
             real_t particleVolume = 0;
             WALBERLA_FOR_ALL_CELLS_XYZ(particleAndVolumeFractionField,
-                                       chargeDensityField->get(x, y, z) = 0.0; real_t cell_fractions_sum = 0.0;
-                                               if (particleAndVolumeFractionField->get(x, y, z).size() !=
-                                                   size_t(0)) {
-                                                   for (auto &e: particleAndVolumeFractionField->get(x, y, z)) {
-                                                       // passing unique uid of the particle
-                                                       const size_t idx = accessor_->uidToIdx(e.first);
-                                                       // charges could be different
-                                                       charge = accessor_->getCharge(idx);
-                                                       // all the particle have same radius and so volume is same for all idx
-                                                       particleVolume = accessor_->getShape(idx)->getVolume();
-                                                       // particle have different charges
-                                                       cell_fractions_sum +=
-                                                               real_c(1 / particleVolume) * charge *
-                                                               e.second;
-                                                   }
-                                                   //std::cout << epsilon << std::endl;
+                                       chargeDensityField->get(x, y, z) = 0.0;
+                                       real_t cell_fractions_sum = 0.0;
 
-                                                   chargeDensityField->get(x, y, z) = cell_fractions_sum / epsilon_;
-                                                   // - sign is there because rhs is negative of charge
-                                                   // density in poisson equation , correct me if iam wrong
-                                               }
+                                       if (particleAndVolumeFractionField->get(x, y, z).size() != size_t(0)) {
+                                           for (auto &e: particleAndVolumeFractionField->get(x, y, z)) {
+                                               // passing unique uid of the particle
+                                               const size_t idx = accessor_->uidToIdx(e.first);
+                                               // charges could be different
+                                               charge = accessor_->getCharge(idx);
+                                               // all the particle have same radius and so volume is same for all idx
+                                               particleVolume = accessor_->getShape(idx)->getVolume();
+                                               // particle have different charges
+                                               cell_fractions_sum += real_c(1 / particleVolume) * charge * e.second;
+                                           }
+                                           //std::cout << epsilon << std::endl;
+
+                                           chargeDensityField->get(x, y, z) = cell_fractions_sum / epsilon_;
+                                           // - sign is there because rhs is negative of charge
+                                           // density in poisson equation , correct me if iam wrong
+                                       }
             )
         }
     }

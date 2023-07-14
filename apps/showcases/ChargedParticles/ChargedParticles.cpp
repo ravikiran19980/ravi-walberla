@@ -859,10 +859,12 @@ int main(int argc, char** argv)
                   particleAndVolumeFractionFieldID);
             ScalarField_T* BField = blockIt->getData< ScalarField_T >(BFieldID);
 
-            WALBERLA_FOR_ALL_CELLS_XYZ(particleAndVolumeFractionField, BField->get(x, y, z) = 0.0;
-                                       for (auto& e
-                                            : particleAndVolumeFractionField->get(x, y, z)) BField->get(x, y, z) +=
-                                       e.second;)
+             WALBERLA_FOR_ALL_CELLS_XYZ(particleAndVolumeFractionField,
+                                        BField->get(x, y, z) = 0.0;
+
+                                        for (auto &e: particleAndVolumeFractionField->get(x, y, z))
+                                            BField->get(x, y, z) += e.second;
+             )
          }
       });
 
