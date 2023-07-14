@@ -1,7 +1,3 @@
-//
-// Created by RichardAngersbach on 16.01.2023.
-//
-
 #ifndef WALBERLA_CHARGEFORCE_H
 #define WALBERLA_CHARGEFORCE_H
 

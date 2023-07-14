@@ -1,9 +1,3 @@
-#include <utility>
-
-//
-// Created by avnss on 4/7/2023.
-//
-
 #ifndef WALBERLA_BOUNDARYCONDITION_H
 #define WALBERLA_BOUNDARYCONDITION_H
 
