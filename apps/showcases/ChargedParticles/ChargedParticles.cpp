@@ -90,7 +90,7 @@
 #include "ChargeForce.h"
 #include "PoissonSolver.h"
 #include "ResetElectrostaticForceKernel.h"
-#include "Utility.h"
+#include "ChargeDensity.h"
 
 namespace charged_particles
 {
@@ -765,8 +765,9 @@ int main(int argc, char** argv)
    // note: planes are not mapped and are thus only visible to the particles, not to the fluid
    // instead, the respective boundary conditions for the fluid are explicitly set, see the boundary handling
 
-   // Here the particleAndVolumeFractionFieldID is declared becasue it has to be passed as an argument to
-   // chargeForceUpdate
+   // Here the particleAndVolumeFractionFieldID is declared as it has to be passed as an argument to:
+   // - chargeForceUpdate
+   // - chargeDensityUpdate
 
    BlockDataID particleAndVolumeFractionFieldID =
       field::addToStorage< lbm_mesapd_coupling::psm::ParticleAndVolumeFractionField_T >(
@@ -775,6 +776,9 @@ int main(int argc, char** argv)
 
    auto chargeForceUpdate = ChargeForceUpdate(blocks, potentialFieldID, electrostaticForceFieldID,
                                   particleAndVolumeFractionFieldID, chargeDensityFieldID, accessor, vacuum_permitivity);
+
+   auto chargeDensityUpdate = ChargeDensityUpdate(blocks, particleAndVolumeFractionFieldID, chargeDensityFieldID,
+                                                  accessor, vacuum_permitivity);
 
    lbm_mesapd_coupling::psm::ParticleAndVolumeFractionMapping particleMapping(
       blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(), particleAndVolumeFractionFieldID, 3);
@@ -933,8 +937,8 @@ int main(int argc, char** argv)
 
       reduceProperty.operator()< mesa_pd::HydrodynamicForceTorqueNotification >(*ps);
 
-      walberla::charged_particles::computeChargeDensity(blocks, particleAndVolumeFractionFieldID, chargeDensityFieldID,
-                                                        accessor, vacuum_permitivity);
+      // update charge density field from physical properties and overlapFraction field
+      chargeDensityUpdate();
 
       // Solve poisson equation to obtain electric potential
 
