@@ -773,9 +773,8 @@ int main(int argc, char** argv)
          blocks, "particle and volume fraction field",
          std::vector< lbm_mesapd_coupling::psm::ParticleAndVolumeFraction_T >(), field::fzyx, 0);
 
-   auto chargeForceUpdate =
-      ChargeForceUpdate(potentialFieldID, electrostaticForceFieldID, blocks, particleAndVolumeFractionFieldID,
-                        chargeDensityFieldID, accessor, vacuum_permitivity);
+   auto chargeForceUpdate = ChargeForceUpdate(blocks, potentialFieldID, electrostaticForceFieldID,
+                                  particleAndVolumeFractionFieldID, chargeDensityFieldID, accessor, vacuum_permitivity);
 
    lbm_mesapd_coupling::psm::ParticleAndVolumeFractionMapping particleMapping(
       blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(), particleAndVolumeFractionFieldID, 3);

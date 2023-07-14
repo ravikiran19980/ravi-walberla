@@ -17,14 +17,17 @@ template< typename ParticleAccessor_T >
 class ChargeForceUpdate
 {
  public:
-   ChargeForceUpdate(const BlockDataID& potential, const BlockDataID& chargeForce,
-                     const std::shared_ptr< StructuredBlockForest >& blocks,
-                     const BlockDataID& particleAndVolumeFractionFieldID, const BlockDataID& chargeDensityFieldID,
-                     const shared_ptr< ParticleAccessor_T >& ac, const real_t epsilon)
-      : potential_(potential), chargeForce_(chargeForce), blocks_(blocks),
-        particleAndVolumeFractionFieldID_(particleAndVolumeFractionFieldID), accessor_(ac),
-        chargeDensityFieldID_(chargeDensityFieldID), epsilon_(epsilon)
-   {}
+    ChargeForceUpdate(const std::shared_ptr<StructuredBlockForest> &blocks,
+                      const BlockDataID &potential, const BlockDataID &chargeForce,
+                      const BlockDataID &particleAndVolumeFractionFieldID,
+                      const BlockDataID &chargeDensityFieldID,
+                      const shared_ptr<ParticleAccessor_T> &ac, const real_t epsilon)
+
+                      : blocks_(blocks), \
+                      potential_(potential), chargeForce_(chargeForce), \
+                      particleAndVolumeFractionFieldID_(particleAndVolumeFractionFieldID), \
+                      chargeDensityFieldID_(chargeDensityFieldID), \
+                      accessor_(ac), epsilon_(epsilon) {}
 
    void operator()()
    {
@@ -83,14 +86,16 @@ class ChargeForceUpdate
    }
 
  private:
-   BlockDataID potential_;
-   BlockDataID chargeForce_;
-   std::shared_ptr< StructuredBlockForest > blocks_;
+    std::shared_ptr<StructuredBlockForest> blocks_;
 
-   const BlockDataID particleAndVolumeFractionFieldID_;
-   const shared_ptr< ParticleAccessor_T > accessor_;
-   const BlockDataID chargeDensityFieldID_;
-   const real_t epsilon_;
+    BlockDataID potential_;
+    BlockDataID chargeForce_;
+    const BlockDataID particleAndVolumeFractionFieldID_;
+    const BlockDataID chargeDensityFieldID_;
+
+    const shared_ptr<ParticleAccessor_T> accessor_;
+
+    const real_t epsilon_;
 };
 
 } // namespace walberla
