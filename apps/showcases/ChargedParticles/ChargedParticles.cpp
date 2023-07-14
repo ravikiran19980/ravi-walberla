@@ -973,7 +973,6 @@ int main(int argc, char** argv)
          {
             ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, vvIntegratorPreForce, *accessor);
          }
-         ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, vvIntegratorPreForce, *accessor);
          syncCall();
 
          if (useLubricationForces)
