@@ -88,7 +88,7 @@
 
 #include "AddElectrostaticInteractionKernel.h"
 #include "ChargeForce.h"
-#include "PoissonSolver.h"
+#include "poisson_solver/PoissonSolver.h"
 #include "ResetElectrostaticForceKernel.h"
 #include "ChargeDensity.h"
 

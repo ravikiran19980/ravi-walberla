@@ -10,7 +10,7 @@
 
 #include "geometry/bodies/Sphere.h"
 
-#include <core/math/all.h>
+#include "core/math/all.h"
 
 #include "PoissonSolver.h"
 
