@@ -7,7 +7,7 @@ PhysicalSetup // all to be specified in SI units!
     periodicInX false;
     periodicInY false;
 
-    runtime 3;
+    runtime 3.0;
 
     uInflow 0.01;
     gravitationalAcceleration 9.81;
@@ -15,7 +15,7 @@ PhysicalSetup // all to be specified in SI units!
     kinematicViscosityFluid 1e-5;
     densityFluid 1000.;
 
-    particleDiameter 0.0012; //0.002 RL= 12
+    particleDiameter 0.0024; //0.002 RL= 12
     densityParticle 1100.;
     dynamicFrictionCoefficient 0.15;
     coefficientOfRestitution 0.6;
@@ -41,11 +41,11 @@ NumericalSetup
 
 Output
 {
-    infoSpacing 0.001; // in s
+    infoSpacing 0.001; // in s 0.01
 
-    vtkSpacingParticles 0.01; // in s
-    vtkSpacingFluid 0.01; // in s
-    vtkFolder vtk_speedtestpotential;
+    vtkSpacingParticles 0.01; // in s 0.1
+    vtkSpacingFluid 0.01; // in s 0.1
+    vtkFolder vtk_force_speedtest;
 }
 
 IntegratorSchemes
@@ -54,24 +54,24 @@ IntegratorSchemes
 
 }
 
-boundarytypes
+BoundaryTypes
 {
-    North_type Dirichlet;
-    South_type Dirichlet;
+    North_type Neumann;
+    South_type Neumann;
     West_type Dirichlet;
     East_type Dirichlet;
-    Top_type Dirichlet;
-    Bottom_type Dirichlet;
+    Top_type Neumann;
+    Bottom_type Neumann;
 }
 
-boundaryvalues
+BoundaryValues
 {
-    North_value 1.4768867120487655e-05;
-    South_value 1.4768867120487655e-05;
-    West_value 1.4768867120487655e-05;
-    East_value  1.4768867120487655e-05;
-    Top_value   1.4768867120487655e-05;
-    Bottom_value 1.4768867120487655e-05;
+    North_value 0;
+    South_value 0;
+    West_value  0;
+    East_value  -10;
+    Top_value   0;
+    Bottom_value 0;
 }
 
 ParticleCharges
@@ -79,5 +79,7 @@ ParticleCharges
     maxCharge 8000;
     minCharge 20;
 }
-// This is for validating the potential of a single particle
-// at the center of the domain
+
+// This file is to validate the electrostatic force acting on a single particle
+// placed at the center of the domain. The east and west boundaries
+// are given constant potentials of 0 and -10V and rest are Neumann conditions

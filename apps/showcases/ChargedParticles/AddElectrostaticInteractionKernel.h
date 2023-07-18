@@ -1,5 +1,3 @@
-//
-// Created by avnss on 3/18/2023.
 // This file is for electrostatic coupling and hence has to be included in a different namespace and directory
 
 #ifndef WALBERLA_ADDELECTROSTATICINTERACTIONKERNEL_H

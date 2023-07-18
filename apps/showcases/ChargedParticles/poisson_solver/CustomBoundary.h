@@ -1,9 +1,6 @@
-//
-// Created by avnss on 4/7/2023.
-//
-
 #ifndef WALBERLA_CUSTOMBOUNDARY_H
 #define WALBERLA_CUSTOMBOUNDARY_H
+
 #include "DirichletDomainBoundary.h"
 #include "Neumann.h"
 
@@ -22,7 +19,7 @@ class CustomBoundary : public DirichletDomainBoundary< PdeField >, public Neuman
                                                                                      boundaryconditions)
    {}
 
-   virtual void operator()();
+   void operator()();
 };
 
 template< typename PdeField >
