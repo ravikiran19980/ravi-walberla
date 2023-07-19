@@ -40,7 +40,7 @@ IntegratorSchemes
 
 }
 
-boundarytypes
+BoundaryTypes
 {
     North_type Neumann;
     South_type Neumann;
@@ -50,7 +50,7 @@ boundarytypes
     Bottom_type Dirichlet;
 }
 
-boundaryvalues
+BoundaryValues
 {
     North_value 0;
     South_value 0;

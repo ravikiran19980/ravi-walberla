@@ -11,7 +11,7 @@
 #include "field/AddToStorage.h"
 #include "field/vtk/all.h"
 
-#include <core/math/all.h>
+#include "core/math/all.h"
 
 #include "PoissonSolver.h"
 
@@ -80,9 +80,9 @@ void applyDirichletFunction(const shared_ptr< StructuredBlockStorage > & blocks,
             funcVal = (boundaryCoord_x * boundaryCoord_x) - real_c(0.5) * (boundaryCoord_y * boundaryCoord_y) - real_c(0.5) * (boundaryCoord_z * boundaryCoord_z);
             break;
          case TEST_DIRICHLET_2:
-            funcVal = real_c( sin ( math::pi * boundaryCoord_x ) ) *
-                      real_c( sin ( math::pi * boundaryCoord_y ) ) *
-                      real_c( math::root_two * math::pi * boundaryCoord_z );
+            funcVal = real_c( sin  ( math::pi * boundaryCoord_x ) ) *
+                      real_c( sin  ( math::pi * boundaryCoord_y ) ) *
+                      real_c( sinh ( math::root_two * math::pi * boundaryCoord_z ) );
             break;
          default:
             WALBERLA_ABORT("Unknown testcase");
@@ -114,7 +114,8 @@ void resetRHS(const shared_ptr< StructuredBlockStorage > & blocks, BlockDataID &
 // solve two different scenarios (dirichlet scenario and neumann scenario) with different analytical solutions and setups
 template < Testcase testcase >
 void solve(const shared_ptr< StructuredBlockForest > & blocks,
-           const math::AABB & domainAABB, BlockDataID & solution, BlockDataID & solutionCpy, BlockDataID & rhs) {
+           const math::AABB & domainAABB, BlockDataID & solution, BlockDataID & solutionCpy, BlockDataID & rhs,
+           const uint_t numIter, real_t resThres, uint_t resCheckFreq) {
 
    const bool useDirichlet = testcase == TEST_DIRICHLET_1 || testcase == TEST_DIRICHLET_2;
 
@@ -138,17 +139,15 @@ void solve(const shared_ptr< StructuredBlockForest > & blocks,
       dirichletFunction.setFunction(stencil::T, GET_BOUNDARY_LAMBDA(stencil::T));
 
       boundaryHandling = dirichletFunction;
+   } else {
+       boundaryHandling = pde::NeumannDomainBoundary< ScalarField_T >(*blocks, solution);
    }
 
    // solvers: Jacobi and SOR
 
-   auto numIter = uint_c(50000);
-   auto resThres = real_c(1e-10);
-   auto resCheckFreq = uint_c(1000);
-
-   //auto poissonSolverJacobi = PoissonSolver< WALBERLA_JACOBI, useDirichlet > (solution, solutionCpy, rhs, blocks, numIter, resThres, resCheckFreq, boundaryHandling);
-   //auto poissonSolverDampedJac = PoissonSolver< DAMPED_JACOBI, useDirichlet > (solution, solutionCpy, rhs, blocks, numIter, resThres, resCheckFreq, boundaryHandling);
-   //auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR, useDirichlet > (solution, solutionCpy, rhs, blocks, numIter, resThres, resCheckFreq, boundaryHandling);
+   auto poissonSolverJacobi = PoissonSolver< WALBERLA_JACOBI > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, resThres, resCheckFreq);
+   auto poissonSolverDampedJac = PoissonSolver< DAMPED_JACOBI > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, resThres, resCheckFreq);
+   auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, resThres, resCheckFreq);
 
    // calc error depending on scenario
 
@@ -230,7 +229,7 @@ void solve(const shared_ptr< StructuredBlockForest > & blocks,
                rhsField->get(x, y, z) = real_c(0);
                break;
             case TEST_DIRICHLET_2:
-               rhsField->get(x, y, z) = real_c( -( math::pi * math::pi ) * ( -( scaleX * scaleX ) - ( scaleY * scaleY ) + real_c(2) * ( scaleZ * scaleZ ) ) ) *
+               rhsField->get(x, y, z) = real_c( ( math::pi * math::pi ) * ( ( scaleX * scaleX ) + ( scaleY * scaleY ) - real_c(2) * ( scaleZ * scaleZ ) ) ) *
                                         real_c( sin ( math::pi * posX ) ) *
                                         real_c( sin ( math::pi * posY ) ) *
                                         real_c( sinh ( math::root_two * math::pi * posZ ) );
@@ -253,21 +252,21 @@ void solve(const shared_ptr< StructuredBlockForest > & blocks,
 
    // solve with jacobi
    WALBERLA_LOG_INFO_ON_ROOT("-- Solve using Jacobi --");
-  // poissonSolverJacobi();
+   poissonSolverJacobi();
    auto errJac = computeMaxError();
    WALBERLA_LOG_INFO_ON_ROOT("Error after Jacobi solver is: " << errJac);
 
    // solve with damped jacobi
    WALBERLA_LOG_INFO_ON_ROOT("-- Solve using (damped) Jacobi --");
    resetSolution(blocks, solution, solutionCpy); // reset solutions and solve anew
-   //poissonSolverDampedJac();
+   poissonSolverDampedJac();
    auto errDampedJac = computeMaxError();
    WALBERLA_LOG_INFO_ON_ROOT("Error after (damped) Jacobi solver is: " << errDampedJac);
 
    // solve with SOR
    WALBERLA_LOG_INFO_ON_ROOT("-- Solve using SOR --");
    resetSolution(blocks, solution, solutionCpy); // reset solutions and solve anew
-   //poissonSolverSOR();
+   poissonSolverSOR();
    auto errSOR = computeMaxError();
    WALBERLA_LOG_INFO_ON_ROOT("Error after SOR solver is: " << errSOR);
 }
@@ -283,8 +282,21 @@ void solveChargedParticles(const shared_ptr< StructuredBlockForest > & blocks,
    auto resThres = real_c(1e-5);
    auto resCheckFreq = uint_c(1000);
 
-  // auto poissonSolverJacobi = PoissonSolver< DAMPED_JACOBI, useDirichlet > (solution, solutionCpy, rhs, blocks, numIter, resThres, resCheckFreq);
-  // auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR, useDirichlet > (solution, solutionCpy, rhs, blocks, numIter, resThres, resCheckFreq);
+   // set boundary handling depending on scenario
+   std::function< void () > boundaryHandling = {};
+   std::vector< BoundaryCondition > boundaryConditions;
+
+   if constexpr (useDirichlet) {
+      for (const auto& e : stencil::D3Q6::dir)
+         boundaryConditions.emplace_back(e, "Dirichlet", 0_r);
+
+      boundaryHandling = DirichletDomainBoundary< ScalarField_T >(*blocks, solution, boundaryConditions);
+   } else {
+      boundaryHandling = pde::NeumannDomainBoundary< ScalarField_T >(*blocks, solution);
+   }
+
+   auto poissonSolverJacobi = PoissonSolver< DAMPED_JACOBI > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, resThres, resCheckFreq);
+   auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, resThres, resCheckFreq);
 
    // init rhs with two charged particles
 
@@ -326,11 +338,11 @@ void solveChargedParticles(const shared_ptr< StructuredBlockForest > & blocks,
    }
 
    // solve with jacobi
-   //poissonSolverJacobi();
+   poissonSolverJacobi();
 
    // solve with SOR
    resetSolution(blocks, solution, solutionCpy); // reset solutions and solve anew
-   //poissonSolverSOR();
+   poissonSolverSOR();
 }
 
 int main(int argc, char** argv)
@@ -346,38 +358,50 @@ int main(int argc, char** argv)
    // BLOCK STRUCTURE SETUP //
    ///////////////////////////
 
-   auto domainAABB = math::AABB(0, 0, 0, 125, 50, 250);
+   auto cfgFile = env.config();
+   if (!cfgFile) WALBERLA_ABORT("Usage: " << argv[0] << " < path-to-configuration-file > \n");
+
+   Config::BlockHandle setup                   = cfgFile->getBlock("Setup");
+   const Vector3< uint_t > numBlocksPerDim     = setup.getParameter< Vector3< uint_t > >("numBlocks");
+   const Vector3< uint_t > numCellsBlockPerDim = setup.getParameter< Vector3< uint_t > >("numCellsPerBlock");
+   const uint_t maxIterations                  = setup.getParameter< uint_t >("maxIterations");
+   const real_t resThres                       = setup.getParameter< real_t >("resThreshold");
+   const uint_t resCheckFreq                   = setup.getParameter< uint_t >("resCheckFreq");
+
+   auto domainAABB = math::AABB(0, 0, 0, 1, 1, 1);
    WALBERLA_LOG_INFO_ON_ROOT("Domain sizes are: x = " << domainAABB.size(0) << ", y = " << domainAABB.size(1) << ", z = " << domainAABB.size(2));
 
    shared_ptr< StructuredBlockForest > blocks = blockforest::createUniformBlockGrid(
       domainAABB,
-      uint_c( 1), uint_c( 1), uint_c( 1), // number of blocks in x,y,z direction
-      uint_c( 125), uint_c( 50), uint_c( 250), // how many cells per block (x,y,z)
-      true,                               // max blocks per process
-      false, false, false,                // periodicity
+      numBlocksPerDim[0], numBlocksPerDim[1], numBlocksPerDim[2],
+      numCellsBlockPerDim[0], numCellsBlockPerDim[1], numCellsBlockPerDim[2],
+      true,
+      false, false, false,
       false);
 
    BlockDataID rhs = field::addToStorage< ScalarField_T >(blocks, "rhs", 0, field::fzyx, 1);
    BlockDataID solution = field::addToStorage< ScalarField_T >(blocks, "solution", 0, field::fzyx, 1);
    BlockDataID solutionCpy = field::addCloneToStorage< ScalarField_T >(blocks, solution, "solution (copy)");
 
+   /* 1. analytical tests */
+
    // first solve neumann problem...
    WALBERLA_LOG_INFO_ON_ROOT("Run analytical test cases...")
    WALBERLA_LOG_INFO_ON_ROOT("- Solving analytical Neumann problem with Jacobi and SOR... -")
-   solve< TEST_NEUMANN > (blocks, domainAABB, solution, solutionCpy, rhs);
+   solve< TEST_NEUMANN > (blocks, domainAABB, solution, solutionCpy, rhs, maxIterations, resThres, resCheckFreq);
 
-   // ... then solve dirichlet problem
+   // ... then solve dirichlet problems
    resetRHS(blocks, rhs); // reset fields and solve anew
    resetSolution(blocks, solution, solutionCpy);
    WALBERLA_LOG_INFO_ON_ROOT("- Solving analytical Dirichlet problem (1) with Jacobi and SOR... -")
-   solve< TEST_DIRICHLET_1 > (blocks, domainAABB, solution, solutionCpy, rhs);
+   solve< TEST_DIRICHLET_1 > (blocks, domainAABB, solution, solutionCpy, rhs, maxIterations, resThres, resCheckFreq);
 
    resetRHS(blocks, rhs); // reset fields and solve anew
    resetSolution(blocks, solution, solutionCpy);
    WALBERLA_LOG_INFO_ON_ROOT("- Solving analytical Dirichlet problem (2) with Jacobi and SOR... -")
-   solve< TEST_DIRICHLET_2 > (blocks, domainAABB, solution, solutionCpy, rhs);
+   solve< TEST_DIRICHLET_2 > (blocks, domainAABB, solution, solutionCpy, rhs, maxIterations, resThres, resCheckFreq);
 
-   // ... charged particle test
+   /* 2. experimental charged particle tests */
 
    WALBERLA_LOG_INFO_ON_ROOT("Run charged particle test cases...")
    resetRHS(blocks, rhs); // reset fields and solve anew

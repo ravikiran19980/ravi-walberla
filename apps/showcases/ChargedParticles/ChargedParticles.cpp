@@ -31,7 +31,6 @@
 #include "core/debug/Debug.h"
 #include "core/grid_generator/SCIterator.h"
 #include "core/logging/all.h"
-#include "core/math/all.h"
 #include "core/mpi/Broadcast.h"
 #include "core/timing/RemainingTimeLogger.h"
 #include "core/waLBerlaBuildInfo.h"
@@ -89,9 +88,9 @@
 
 #include "AddElectrostaticInteractionKernel.h"
 #include "ChargeForce.h"
-#include "PoissonSolver.h"
+#include "poisson_solver/PoissonSolver.h"
 #include "ResetElectrostaticForceKernel.h"
-#include "Utility.h"
+#include "ChargeDensity.h"
 
 namespace charged_particles
 {
@@ -431,9 +430,9 @@ int main(int argc, char** argv)
    const real_t densityParticle_SI            = physicalSetup.getParameter< real_t >("densityParticle");
    const real_t dynamicFrictionCoefficient    = physicalSetup.getParameter< real_t >("dynamicFrictionCoefficient");
    const real_t coefficientOfRestitution      = physicalSetup.getParameter< real_t >("coefficientOfRestitution");
-   const real_t particleGenerationSpacingx_SI = physicalSetup.getParameter< real_t >("particleGenerationSpacing_x");
-   const real_t particleGenerationSpacingy_SI = physicalSetup.getParameter< real_t >("particleGenerationSpacing_y");
-   const real_t particleGenerationSpacingz_SI = physicalSetup.getParameter< real_t >("particleGenerationSpacing_z");
+   const real_t particleGenerationSpacingX_SI = physicalSetup.getParameter< real_t >("particleGenerationSpacing_x");
+   const real_t particleGenerationSpacingY_SI = physicalSetup.getParameter< real_t >("particleGenerationSpacing_y");
+   const real_t particleGenerationSpacingZ_SI = physicalSetup.getParameter< real_t >("particleGenerationSpacing_z");
 
    Config::BlockHandle numericalSetup     = cfgFile->getBlock("NumericalSetup");
    const real_t dx_SI                     = numericalSetup.getParameter< real_t >("dx");
@@ -450,7 +449,7 @@ int main(int argc, char** argv)
    const real_t vtkSpacingFluid_SI     = outputSetup.getParameter< real_t >("vtkSpacingFluid");
    const std::string vtkFolder         = outputSetup.getParameter< std::string >("vtkFolder");
 
-   // For boundaries in paramter file -> begin
+   // For boundaries in parameter file -> begin
 
    Config::BlockHandle IntegratorSchemes = cfgFile->getBlock("IntegratorSchemes");
    int on;
@@ -458,49 +457,49 @@ int main(int argc, char** argv)
    bool useIntegrator = true;
    if (on == 0) { useIntegrator = false; }
 
-   Config::BlockHandle Boundarytypes = cfgFile->getBlock("boundarytypes");
-   std::string Northboundarytype     = Boundarytypes.getParameter< std::string >("North_type");
-   std::string Southboundarytype     = Boundarytypes.getParameter< std::string >("South_type");
-   std::string Westboundarytype      = Boundarytypes.getParameter< std::string >("West_type");
-   std::string Eastboundarytype      = Boundarytypes.getParameter< std::string >("East_type");
-   std::string Topboundarytype       = Boundarytypes.getParameter< std::string >("Top_type");
-   std::string Bottomboundarytype    = Boundarytypes.getParameter< std::string >("Bottom_type");
+   Config::BlockHandle boundaryTypes = cfgFile->getBlock("BoundaryTypes");
+   std::string boundaryTypeNorth     = boundaryTypes.getParameter< std::string >("North_type");
+   std::string boundaryTypeSouth     = boundaryTypes.getParameter< std::string >("South_type");
+   std::string boundaryTypeWest      = boundaryTypes.getParameter< std::string >("West_type");
+   std::string boundaryTypeEast      = boundaryTypes.getParameter< std::string >("East_type");
+   std::string boundaryTypeTop       = boundaryTypes.getParameter< std::string >("Top_type");
+   std::string boundaryTypeBottom    = boundaryTypes.getParameter< std::string >("Bottom_type");
 
-   Config::BlockHandle ParticleCharges = cfgFile->getBlock("ParticleCharges");
-   real_t maxCharge_SI                 = ParticleCharges.getParameter< real_t >("maxCharge");
-   real_t minCharge_SI                 = ParticleCharges.getParameter< real_t >("minCharge");
+   Config::BlockHandle particleCharges = cfgFile->getBlock("ParticleCharges");
+   real_t maxCharge_SI                 = particleCharges.getParameter< real_t >("maxCharge");
+   real_t minCharge_SI                 = particleCharges.getParameter< real_t >("minCharge");
 
-   Config::BlockHandle Boundaryvalues  = cfgFile->getBlock("boundaryvalues");
-   const real_t Northboundaryvalue_SI  = Boundaryvalues.getParameter< real_t >("North_value");
-   const real_t Southboundaryvalue_SI  = Boundaryvalues.getParameter< real_t >("South_value");
-   const real_t Westboundaryvalue_SI   = Boundaryvalues.getParameter< real_t >("West_value");
-   const real_t Eastboundaryvalue_SI   = Boundaryvalues.getParameter< real_t >("East_value");
-   const real_t Topboundaryvalue_SI    = Boundaryvalues.getParameter< real_t >("Top_value");
-   const real_t Bottomboundaryvalue_SI = Boundaryvalues.getParameter< real_t >("Bottom_value");
+   Config::BlockHandle boundaryValues  = cfgFile->getBlock("BoundaryValues");
+   const real_t boundaryValueNorth_SI  = boundaryValues.getParameter< real_t >("North_value");
+   const real_t boundaryValueSouth_SI  = boundaryValues.getParameter< real_t >("South_value");
+   const real_t boundaryValueWest_SI   = boundaryValues.getParameter< real_t >("West_value");
+   const real_t boundaryValueEast_SI   = boundaryValues.getParameter< real_t >("East_value");
+   const real_t boundaryValueTop_SI    = boundaryValues.getParameter< real_t >("Top_value");
+   const real_t boundaryValueBottom_SI = boundaryValues.getParameter< real_t >("Bottom_value");
 
-   const real_t V = 1; // conversion factor for potential. Potentail in SI units = Potential in LBM units
+   const real_t V = 1; // conversion factor for potential. Potential in SI units = Potential in LBM units
 
-   const real_t Northboundaryvalue  = V * Northboundaryvalue_SI;
-   const real_t Southboundaryvalue  = V * Southboundaryvalue_SI;
-   const real_t Westboundaryvalue   = V * Westboundaryvalue_SI;
-   const real_t Eastboundaryvalue   = V * Eastboundaryvalue_SI;
-   const real_t Bottomboundaryvalue = V * Bottomboundaryvalue_SI;
-   const real_t Topboundaryvalue    = V * Topboundaryvalue_SI;
+   const real_t boundaryValueNorth  = V * boundaryValueNorth_SI;
+   const real_t boundaryValueSouth  = V * boundaryValueSouth_SI;
+   const real_t boundaryValueWest   = V * boundaryValueWest_SI;
+   const real_t boundaryValueEast   = V * boundaryValueEast_SI;
+   const real_t boundaryValueTop    = V * boundaryValueTop_SI;
+   const real_t boundaryValueBottom = V * boundaryValueBottom_SI;
 
-   BoundaryCondition north(stencil::Direction::N, Northboundarytype, Northboundaryvalue);
-   BoundaryCondition south(stencil::Direction::S, Southboundarytype, Southboundaryvalue);
-   BoundaryCondition west(stencil::Direction::W, Westboundarytype, Westboundaryvalue);
-   BoundaryCondition east(stencil::Direction::E, Eastboundarytype, Eastboundaryvalue);
-   BoundaryCondition top(stencil::Direction::T, Topboundarytype, Topboundaryvalue);
-   BoundaryCondition bottom(stencil::Direction::B, Bottomboundarytype, Bottomboundaryvalue);
+   const BoundaryCondition north(stencil::Direction::N, boundaryTypeNorth, boundaryValueNorth);
+   const BoundaryCondition south(stencil::Direction::S, boundaryTypeSouth, boundaryValueSouth);
+   const BoundaryCondition west(stencil::Direction::W, boundaryTypeWest, boundaryValueWest);
+   const BoundaryCondition east(stencil::Direction::E, boundaryTypeEast, boundaryValueEast);
+   const BoundaryCondition top(stencil::Direction::T, boundaryTypeTop, boundaryValueTop);
+   const BoundaryCondition bottom(stencil::Direction::B, boundaryTypeBottom, boundaryValueBottom);
 
-   std::vector< BoundaryCondition > boundaryconditions; // this will be passed into the poissonsolver as an argument
-   boundaryconditions.push_back(north);
-   boundaryconditions.push_back(south);
-   boundaryconditions.push_back(west);
-   boundaryconditions.push_back(east);
-   boundaryconditions.push_back(top);
-   boundaryconditions.push_back(bottom);
+   std::vector< BoundaryCondition > boundaryConditions; // this will be passed into the poisson solver as an argument
+   boundaryConditions.push_back(north);
+   boundaryConditions.push_back(south);
+   boundaryConditions.push_back(west);
+   boundaryConditions.push_back(east);
+   boundaryConditions.push_back(top);
+   boundaryConditions.push_back(bottom);
 
    // For boundaries in paramter file -> end
 
@@ -508,12 +507,9 @@ int main(int argc, char** argv)
 
    Vector3< uint_t > domainSize(uint_c((xSize_SI / dx_SI)), uint_c((ySize_SI / dx_SI)), uint_c((zSize_SI / dx_SI)));
 
-   WALBERLA_LOG_INFO_ON_ROOT("domain x size:"
-                             << " " << std::ceil(xSize_SI / dx_SI));
-   WALBERLA_LOG_INFO_ON_ROOT("domain x size without ceil:"
-                             << " " << (xSize_SI / dx_SI));
-   WALBERLA_LOG_INFO_ON_ROOT("ceil of 800 :"
-                             << " " << std::ceil(800));
+   WALBERLA_LOG_INFO_ON_ROOT("domain x size:" << " " << std::ceil(xSize_SI / dx_SI));
+   WALBERLA_LOG_INFO_ON_ROOT("domain x size without ceil:" << " " << (xSize_SI / dx_SI));
+   WALBERLA_LOG_INFO_ON_ROOT("ceil of 800 :" << " " << std::ceil(800));
 
    WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[0]) * dx_SI, xSize_SI, "domain size in x is not divisible by given dx");
    WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[1]) * dx_SI, ySize_SI, "domain size in y is not divisible by given dx");
@@ -545,9 +541,9 @@ int main(int argc, char** argv)
 
    const real_t dt_SI                       = uInflow / uInflow_SI * dx_SI;
    const real_t diameter                    = particleDiameter_SI / dx_SI;
-   const real_t particleGenerationSpacing_x = particleGenerationSpacingx_SI / dx_SI;
-   const real_t particleGenerationSpacing_y = particleGenerationSpacingy_SI / dx_SI;
-   const real_t particleGenerationSpacing_z = particleGenerationSpacingz_SI / dx_SI;
+   const real_t particleGenerationSpacing_x = particleGenerationSpacingX_SI / dx_SI;
+   const real_t particleGenerationSpacing_y = particleGenerationSpacingY_SI / dx_SI;
+   const real_t particleGenerationSpacing_z = particleGenerationSpacingZ_SI / dx_SI;
    const real_t viscosity                   = kinematicViscosityFluid_SI * dt_SI / (dx_SI * dx_SI);
    const real_t omega                       = lbm::collision_model::omegaFromViscosity(viscosity);
    const real_t gravitationalAcceleration   = gravitationalAcceleration_SI * dt_SI * dt_SI / dx_SI;
@@ -563,33 +559,34 @@ int main(int argc, char** argv)
    // dielectric permitivity = (relative_permitivity_medium)*(vacuum_permitivity)
    // relative_permitivity = 78 and vacuum_permitivity SI units ->  A2⋅s4⋅kg−1⋅m−3
 
-   const real_t vacuum_permitivity_SI = 78.5 * 8.8541878128 * pow(10, -12);
-   const real_t Ampere_unit           = ((densityFluid_SI) * (pow(dx_SI, 5))) / (pow(dt_SI, 3) * V);
+   const real_t vacuum_permitivity_SI = real_c(78.5 * 8.8541878128 * pow(10, -12));
+   const real_t Ampere_unit           = ((densityFluid_SI) * real_c(pow(dx_SI, 5))) / (real_c(pow(dt_SI, 3)) * V);
    real_t vacuum_permitivity =
-      ((densityFluid_SI * (pow(dx_SI, 3))) * (pow(dx_SI, 3))) / ((pow(dt_SI, 4)) * Ampere_unit * Ampere_unit);
+      ((densityFluid_SI * real_c(pow(dx_SI, 3))) * real_c(pow(dx_SI, 3))) / (real_c(pow(dt_SI, 4)) * Ampere_unit * Ampere_unit);
 
    vacuum_permitivity = vacuum_permitivity * (vacuum_permitivity_SI);
 
-   // now for the charge: read from the paramter file
+   // now for the charge: read from the parameter file
    const real_t elementaryCharge =
-      1.60217663 * pow(10, -19); // 1 elementary charge = 1.60217663 * pow(10, -19) coloumbs
+           real_c(1.60217663 * pow(10, -19)); // 1 elementary charge = 1.60217663 * pow(10, -19) coloumbs
    maxCharge_SI           = maxCharge_SI * elementaryCharge;
    minCharge_SI           = minCharge_SI * elementaryCharge;
-   const real_t maxCharge = ((maxCharge_SI) * (V * dt_SI * dt_SI)) / (densityFluid_SI * pow(dx_SI, 5));
-   const real_t minCharge = ((minCharge_SI) * (V * dt_SI * dt_SI)) / (densityFluid_SI * pow(dx_SI, 5));
+   const real_t maxCharge = ((maxCharge_SI) * (V * dt_SI * dt_SI)) / (densityFluid_SI * real_c(pow(dx_SI, 5)));
+   const real_t minCharge = ((minCharge_SI) * (V * dt_SI * dt_SI)) / (densityFluid_SI * real_c(pow(dx_SI, 5)));
 
-   WALBERLA_LOG_INFO_ON_ROOT("permitivity in LBM units"
-                             << " " << vacuum_permitivity);
-   WALBERLA_LOG_INFO_ON_ROOT("charge in LBM units"
-                             << " " << maxCharge);
+   WALBERLA_LOG_INFO_ON_ROOT("permitivity in LBM units" << " " << vacuum_permitivity);
+   WALBERLA_LOG_INFO_ON_ROOT("Max charge in LBM units" << " " << maxCharge);
+   WALBERLA_LOG_INFO_ON_ROOT("Min charge in LBM units" << " " << minCharge);
 
    // this is just for verification of the SI to LBM conversions is correctly done or not
-   const real_t q_unit = (densityFluid_SI * pow(dx_SI, 5)) / (V * dt_SI * dt_SI);
+   const real_t q_unit = (densityFluid_SI * real_c(pow(dx_SI, 5))) / (V * dt_SI * dt_SI);
    const real_t epsilon_unit =
-      ((pow(dt_SI, 4)) * Ampere_unit * Ampere_unit) / ((densityFluid_SI * (pow(dx_SI, 3))) * (pow(dx_SI, 3)));
-   const real_t potenial_unit = q_unit / (epsilon_unit * dx_SI);
+      (real_c(pow(dt_SI, 4)) * Ampere_unit * Ampere_unit) / ((densityFluid_SI * real_c(pow(dx_SI, 3))) * real_c(pow(dx_SI, 3)));
+   const real_t potential_unit = q_unit / (epsilon_unit * dx_SI);
 
-   // std:: cout << "Potential_unit" << " " << potenial_unit << std::endl;
+   WALBERLA_UNUSED(potential_unit);
+
+   // std:: cout << "Potential_unit" << " " << potential_unit << std::endl;
    // std::cout << "domain size" << " " << domainSize[0] << std::endl;
    // std::cout << "potential at boundary in  Lattice units"<< " "
    // <<(1/(4*3.14*vacuum_permitivity))*(maxCharge/(domainSize[0]/2)) << std::endl; std::cout << "potential at boundary
@@ -652,10 +649,11 @@ int main(int argc, char** argv)
    BlockDataID potentialFieldCopyID =
       field::addCloneToStorage< ScalarField_T >(blocks, potentialFieldID, "electric potential field (copy)");
 
+   auto boundaryHandling = CustomBoundary< ScalarField_T >(*blocks, potentialFieldID, boundaryConditions);
    auto poissonSolver = PoissonSolver< DAMPED_JACOBI >(/* src */ potentialFieldID, /* dst */ potentialFieldCopyID,
-                                                       /* rhs */ chargeDensityFieldID, /*domainAABB*/ simulationDomain,
-                                                       blocks, vacuum_permitivity, maxCharge, uint_c(1000),
-                                                       real_c(1e-16), uint_c(1000), boundaryconditions);
+                                                       /* rhs */ chargeDensityFieldID,
+                                                       blocks, boundaryHandling,
+                                                       uint_c(1000), real_c(1e-16), uint_c(1000));
    //////////////////
    // RPD COUPLING //
    //////////////////
@@ -681,7 +679,7 @@ int main(int argc, char** argv)
    auto generationDomain = simulationDomain.createFromMinMaxCorner(0, 0, 0, 200, 200, 400);
    Vector3< real_t > pointOfReference{ generationDomain.center()[0], generationDomain.center()[1],
                                        generationDomain.center()[2] };
-   WALBERLA_LOG_INFO_ON_ROOT("pointofreference is:" << pointOfReference);
+   WALBERLA_LOG_INFO_ON_ROOT("pointOfReference is:" << pointOfReference);
 
    for (auto pt : grid_generator::SCGrid(generationDomain, generationDomain.center(), Spacing))
    {
@@ -767,17 +765,20 @@ int main(int argc, char** argv)
    // note: planes are not mapped and are thus only visible to the particles, not to the fluid
    // instead, the respective boundary conditions for the fluid are explicitly set, see the boundary handling
 
-   // Here the particleAndVolumeFractionFieldID is declared becasue it has to be passed as an argument to
-   // chargeForceupdate
+   // Here the particleAndVolumeFractionFieldID is declared as it has to be passed as an argument to:
+   // - chargeForceUpdate
+   // - chargeDensityUpdate
 
    BlockDataID particleAndVolumeFractionFieldID =
       field::addToStorage< lbm_mesapd_coupling::psm::ParticleAndVolumeFractionField_T >(
          blocks, "particle and volume fraction field",
          std::vector< lbm_mesapd_coupling::psm::ParticleAndVolumeFraction_T >(), field::fzyx, 0);
 
-   auto chargeForceUpdate =
-      ChargeForceUpdate(potentialFieldID, electrostaticForceFieldID, blocks, particleAndVolumeFractionFieldID,
-                        chargeDensityFieldID, accessor, vacuum_permitivity);
+   auto chargeForceUpdate = ChargeForceUpdate(blocks, potentialFieldID, electrostaticForceFieldID,
+                                  particleAndVolumeFractionFieldID, chargeDensityFieldID, accessor, vacuum_permitivity);
+
+   auto chargeDensityUpdate = ChargeDensityUpdate(blocks, particleAndVolumeFractionFieldID, chargeDensityFieldID,
+                                                  accessor, vacuum_permitivity);
 
    lbm_mesapd_coupling::psm::ParticleAndVolumeFractionMapping particleMapping(
       blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(), particleAndVolumeFractionFieldID, 3);
@@ -858,10 +859,12 @@ int main(int argc, char** argv)
                   particleAndVolumeFractionFieldID);
             ScalarField_T* BField = blockIt->getData< ScalarField_T >(BFieldID);
 
-            WALBERLA_FOR_ALL_CELLS_XYZ(particleAndVolumeFractionField, BField->get(x, y, z) = 0.0;
-                                       for (auto& e
-                                            : particleAndVolumeFractionField->get(x, y, z)) BField->get(x, y, z) +=
-                                       e.second;)
+             WALBERLA_FOR_ALL_CELLS_XYZ(particleAndVolumeFractionField,
+                                        BField->get(x, y, z) = 0.0;
+
+                                        for (auto &e: particleAndVolumeFractionField->get(x, y, z))
+                                            BField->get(x, y, z) += e.second;
+             )
          }
       });
 
@@ -936,8 +939,8 @@ int main(int argc, char** argv)
 
       reduceProperty.operator()< mesa_pd::HydrodynamicForceTorqueNotification >(*ps);
 
-      walberla::charged_particles::computeChargeDensity(blocks, particleAndVolumeFractionFieldID, chargeDensityFieldID,
-                                                        accessor, vacuum_permitivity);
+      // update charge density field from physical properties and overlapFraction field
+      chargeDensityUpdate();
 
       // Solve poisson equation to obtain electric potential
 

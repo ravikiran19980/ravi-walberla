@@ -1,0 +1,9 @@
+Setup
+{
+    numCellsPerBlock < 8, 8, 8 >;
+    numBlocks    < 2, 2, 2 >;
+
+    maxIterations 10000;
+    resThreshold 1E-16;
+    resCheckFreq 1000;
+}

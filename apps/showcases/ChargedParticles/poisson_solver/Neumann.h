@@ -60,8 +60,8 @@ class NeumannDomainBoundary
 {
  public:
    NeumannDomainBoundary(StructuredBlockStorage& blocks, const BlockDataID& fieldId,
-                         std::vector< BoundaryCondition > boundaryconditions)
-      : blocks_(blocks), fieldId_(fieldId), boundaryconditions_(boundaryconditions)
+                         const std::vector< BoundaryCondition >& boundaryConditions)
+      : blocks_(blocks), fieldId_(fieldId), boundaryconditions_(boundaryConditions)
    {
       dx_[stencil::D3Q6::idx[stencil::W]] = blocks.dx();
       dx_[stencil::D3Q6::idx[stencil::E]] = blocks.dx();
@@ -70,13 +70,13 @@ class NeumannDomainBoundary
       dx_[stencil::D3Q6::idx[stencil::B]] = blocks.dz();
       dx_[stencil::D3Q6::idx[stencil::T]] = blocks.dz();
 
-      for (auto e : boundaryconditions)
+      for (auto e : boundaryConditions)
       {
-         if (e.type == "Dirichlet") { this->excludeBoundary(e.direction); } // swap condtions
+         if (e.getType() == "Dirichlet") { this->excludeBoundary(e.getDirection()); } // swap condtions
          else
          {
-            this->includeBoundary(e.direction);
-            this->setValue(e.direction, e.value);
+            this->includeBoundary(e.getDirection());
+            this->setValue(e.getDirection(), e.getValue());
             this->setOrder(uint_t(1));
          }
       }
