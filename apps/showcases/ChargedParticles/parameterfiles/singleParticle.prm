@@ -1,5 +1,6 @@
 PhysicalSetup // all to be specified in SI units!
 {
+    simulationName potentialValidation;
     xSize 0.02; // = 0.01width
     ySize 0.02; // = 0.005depth
     zSize 0.02; // = 0.02height
@@ -53,6 +54,11 @@ IntegratorSchemes
    ON 0;  // 0 means no integrator is used. Any number other than 0, integrator is used by default
 
 }
+
+ParticleGenerationScheme{
+    extendSimulationDomain true;  // true if particle generation should happen by extending
+}
+
 
 BoundaryTypes
 {

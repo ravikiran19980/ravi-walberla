@@ -1,14 +1,17 @@
 PhysicalSetup // all to be specified in SI units!
 {
+    simulationName pivVelocityValidation;
     xSize 100e-3; // width
     ySize 100e-3; // depth 0.000564
     zSize 160e-3; // height
 
     periodicInX false;
     periodicInY false;
+    runtime 10.0;
+
     uInflow 0.12224;
     gravitationalAcceleration 9.81;
-    DynamicViscosity 58e-3;
+    kinematicViscosityFluid 6.04e-5;
     densityFluid 960;
     particleDiameter 15e-3;
     densityParticle 1120;
@@ -21,16 +24,25 @@ PhysicalSetup // all to be specified in SI units!
 
 NumericalSetup
 {
-
+    dx 0.000704;
     uInflow 0.01; // in LBM units, should be smaller than 0.1, this then determines dt
 
     // product of number of blocks should be equal to number of used processes
-    numXBlocks 5;
-    numYBlocks 5;
-    numZBlocks 12;
+    numXBlocks 2;
+    numYBlocks 2;
+    numZBlocks 2;
 
     useLubricationForces true;
     numberOfParticleSubCycles 10;
+}
+
+Output
+{
+    infoSpacing 0.01; // in s
+
+    vtkSpacingParticles 0.01; // in s
+    vtkSpacingFluid 0.01; // in s
+    vtkFolder stokes_d8;
 }
 
 
@@ -38,6 +50,10 @@ IntegratorSchemes
 {
    ON 1;  // 0 means no integrator is used. Any number other than 0, integrator is used by default
 
+}
+
+ParticleGenerationScheme{
+    extendSimulationDomain true;  // true if particle generation should happen by extending
 }
 
 BoundaryTypes

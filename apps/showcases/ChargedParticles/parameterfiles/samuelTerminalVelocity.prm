@@ -1,7 +1,8 @@
 PhysicalSetup // all to be specified in SI units!
 {
-    xSize 0.06; // = width
-    ySize 0.06; // = depth
+    simulationName stokesVelocityValidation;
+    xSize 0.02; // = width
+    ySize 0.02; // = depth
     zSize 0.2; // = height
 
     periodicInX false;
@@ -9,13 +10,13 @@ PhysicalSetup // all to be specified in SI units!
 
     runtime 10.0;
 
-    uInflow 0.02307746875;
+    uInflow 0.0461549375;
     gravitationalAcceleration 9.81;
 
     kinematicViscosityFluid 1e-4;
     densityFluid 1000.;
 
-    particleDiameter 0.0032;
+    particleDiameter 0.0016;
     densityParticle 1100.;
     dynamicFrictionCoefficient 0.15;
     coefficientOfRestitution 0.6;
@@ -28,12 +29,12 @@ PhysicalSetup // all to be specified in SI units!
 NumericalSetup
 {
     dx 0.0002; // in m
-    uInflow 0.02307746875; // in LBM units, should be smaller than 0.1, this then determines dt
+    uInflow 0.0461549375; // in LBM units, should be smaller than 0.1, this then determines dt
 
     // product of number of blocks should be equal to number of used processes
-    numXBlocks 10;
-    numYBlocks 10;
-    numZBlocks 10;
+    numXBlocks 2;
+    numYBlocks 2;
+    numZBlocks 2;
 
     useLubricationForces true;
     numberOfParticleSubCycles 10;
@@ -45,13 +46,17 @@ Output
 
     vtkSpacingParticles 0.01; // in s
     vtkSpacingFluid 0.01; // in s
-    vtkFolder stokes_d16;
+    vtkFolder stokes_d8;
 }
 
 IntegratorSchemes
 {
    ON 1;  // 0 means no integrator is used. Any number other than 0, integrator is used by default
 
+}
+
+ParticleGenerationScheme{
+    extendSimulationDomain true;  // true if particle generation should happen by extending
 }
 
 BoundaryTypes
