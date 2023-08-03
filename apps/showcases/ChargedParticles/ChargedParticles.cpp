@@ -1111,6 +1111,11 @@ int main(int argc, char** argv)
 
    WcTimingPool timeloopTiming;
    const bool useOpenMP = false;
+   uint_t numBins = uint_c(simulationDomain.zSize()/(diameter/2));
+   std::vector< real_t >  hydroForceGlobal(numBins, real_t(0));
+   std::vector< real_t >  collisionForceGlobal(numBins, real_t(0));
+   std::vector< real_t >  binCount(numBins, real_t(0));
+
 
    // time loop
    for (uint_t timeStep = 0; timeStep < numTimeSteps; ++timeStep)
@@ -1268,7 +1273,24 @@ int main(int argc, char** argv)
          }
       }
 
-   // add here to calculate norms
+      computeParticleStresses< ParticleAccessor_T >(accessor, hydroForceGlobal, collisionForceGlobal, binCount,
+                                                    gravitationalForce);
+   }
+   walberla::mpi::allReduceInplace(hydroForceGlobal, walberla::mpi::SUM);
+   walberla::mpi::allReduceInplace(binCount, walberla::mpi::SUM);
+   walberla::mpi::allReduceInplace(collisionForceGlobal, walberla::mpi::SUM);
+
+   for (uint_t i = 0; i < numBins; i++)
+   {
+      if (binCount[i] > 0)
+      {
+         hydroForceGlobal[i]     = (hydroForceGlobal[i] * diameter * diameter) / (densityFluid * viscosity*viscosity);
+         collisionForceGlobal[i] = (collisionForceGlobal[i] * diameter * diameter) / (densityFluid * viscosity*viscosity);
+         hydroForceGlobal[i] /= binCount[i];
+         collisionForceGlobal[i] /= binCount[i];
+      }
+   }
+   writeStressesToFile(hydroForceGlobal, collisionForceGlobal);
 
    timeloopTiming.logResultOnRoot();
 
