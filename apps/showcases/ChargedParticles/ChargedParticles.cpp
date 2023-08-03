@@ -91,6 +91,9 @@
 #include "poisson_solver/PoissonSolver.h"
 #include "ResetElectrostaticForceKernel.h"
 #include "ChargeDensity.h"
+#include "postProcessingUtilities.h"
+#include "./poisson_solver/PotentialValidationCustomBoundary.h"
+#include "./poisson_solver/CustomBoundary.h"
 
 namespace charged_particles
 {
@@ -416,6 +419,7 @@ int main(int argc, char** argv)
    // read all parameters from the config file
 
    Config::BlockHandle physicalSetup          = cfgFile->getBlock("PhysicalSetup");
+   const std::string simulationName           = physicalSetup.getParameter< std::string >("simulationName");
    const real_t xSize_SI                      = physicalSetup.getParameter< real_t >("xSize");
    const real_t ySize_SI                      = physicalSetup.getParameter< real_t >("ySize");
    const real_t zSize_SI                      = physicalSetup.getParameter< real_t >("zSize");
@@ -456,6 +460,9 @@ int main(int argc, char** argv)
    on                 = IntegratorSchemes.getParameter< int >("ON");
    bool useIntegrator = true;
    if (on == 0) { useIntegrator = false; }
+
+   Config::BlockHandle ParticleGenerationSchemes = cfgFile->getBlock("ParticleGenerationScheme");
+   const bool extendSimulationDomain        = ParticleGenerationSchemes.getParameter< bool >("extendSimulationDomain");
 
    Config::BlockHandle boundaryTypes = cfgFile->getBlock("BoundaryTypes");
    std::string boundaryTypeNorth     = boundaryTypes.getParameter< std::string >("North_type");
@@ -601,8 +608,6 @@ int main(int argc, char** argv)
    const uint_t vtkSpacingParticles = uint_c(std::ceil(vtkSpacingParticles_SI / dt_SI));
    const uint_t vtkSpacingFluid     = uint_c(std::ceil(vtkSpacingFluid_SI / dt_SI));
 
-   const Vector3< real_t > inflowVec(0_r, 0_r, uInflow);
-   // const Vector3< real_t > inflowVec(0_r, 0_r, 0);
 
    const real_t poissonsRatio         = real_t(0.22);
    const real_t kappa                 = real_t(2) * (real_t(1) - poissonsRatio) / (real_t(2) - poissonsRatio);
@@ -649,7 +654,18 @@ int main(int argc, char** argv)
    BlockDataID potentialFieldCopyID =
       field::addCloneToStorage< ScalarField_T >(blocks, potentialFieldID, "electric potential field (copy)");
 
-   auto boundaryHandling = CustomBoundary< ScalarField_T >(*blocks, potentialFieldID, boundaryConditions);
+   std::function< void() > boundaryHandling = {};
+
+   if (simulationName != "potentialValidation")
+   {
+      boundaryHandling = CustomBoundary< ScalarField_T >(*blocks, potentialFieldID, boundaryConditions);
+   }
+   else
+   {
+      boundaryHandling = PotentialCustomBoundary< ScalarField_T >(*blocks, potentialFieldID, boundaryConditions,
+                                                                  simulationDomain, maxCharge, vacuum_permitivity);
+   }
+
    auto poissonSolver = PoissonSolver< DAMPED_JACOBI >(/* src */ potentialFieldID, /* dst */ potentialFieldCopyID,
                                                        /* rhs */ chargeDensityFieldID,
                                                        blocks, boundaryHandling,
@@ -674,28 +690,193 @@ int main(int argc, char** argv)
    auto sphereShape = ss->create< mesa_pd::data::Sphere >(diameter * real_t(0.5));
    ss->shapes[sphereShape]->updateMassAndInertia(densityParticle);
 
-   // create spheres
-   // auto generationDomain = simulationDomain.getExtended(-Spacing * 0.5_r);
-   auto generationDomain = simulationDomain.createFromMinMaxCorner(0, 0, 0, 200, 200, 400);
-   Vector3< real_t > pointOfReference{ generationDomain.center()[0], generationDomain.center()[1],
-                                       generationDomain.center()[2] };
-   WALBERLA_LOG_INFO_ON_ROOT("pointOfReference is:" << pointOfReference);
+   math::GenericAABB< real_t > generationDomain;
+   Vector3< real_t > inflowVec;
+   bool withoutGravity = false; // for all cases except the migration velocity validations of stokes and piv cases
 
-   for (auto pt : grid_generator::SCGrid(generationDomain, generationDomain.center(), Spacing))
+   // create spheres
+   // Customization//
+
+   enum Simulation {
+      PotentialValidation              = 1,
+      ForceValidation                  = 2,
+      StokesFlow                       = 3,
+      moderateReynoldsTerminalVelocity = 4,
+      Showcase                         = 5
+   };
+
+   Simulation simulationCase = static_cast< Simulation >(0);
+
+   for (int i = 1; i < argc; ++i)
    {
-      if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
+      if (std::strcmp(argv[i], "--simulationCase") == 0)
+      {
+         simulationCase = static_cast< Simulation >(std::atof(argv[++i]));
+         continue;
+      }
+   }
+
+   if (simulationCase == 1 && simulationName != "potentialValidation")
+   {
+      WALBERLA_ABORT("SimulationCase"
+                        << " " << simulationCase << " "
+                        << "and"
+                        << " "
+                        << "simulationName"
+                        << " " << simulationName << " "
+                        << "do not correspond to each other";)
+   }
+
+   if (simulationCase == 2 && simulationName != "forceValidation")
+   {
+      WALBERLA_ABORT("SimulationCase"
+                        << " " << simulationCase << " "
+                        << "and"
+                        << " "
+                        << "simulationName"
+                        << " " << simulationName << " "
+                        << "do not correspond to each other";)
+   }
+
+   if (simulationCase == 3 && simulationName != "stokesVelocityValidation")
+   {
+      WALBERLA_ABORT("SimulationCase"
+                        << " " << simulationCase << " "
+                        << "and"
+                        << " "
+                        << "simulationName"
+                        << " " << simulationName << " "
+                        << "do not correspond to each other";)
+   }
+
+   if (simulationCase == 4 && simulationName != "pivVelocityValidation")
+   {
+      WALBERLA_ABORT("SimulationCase"
+                        << " " << simulationCase << " "
+                        << "and"
+                        << " "
+                        << "simulationName"
+                        << " " << simulationName << " "
+                        << "do not correspond to each other";)
+   }
+
+   if (simulationCase == 5 && simulationName != "chargedParticleShowcase")
+   {
+      WALBERLA_ABORT("SimulationCase"
+                        << " " << simulationCase << " "
+                        << "and"
+                        << " "
+                        << "simulationName"
+                        << " " << simulationName << " "
+                        << "do not correspond to each other";)
+   }
+
+   switch (simulationCase)
+   {
+   case PotentialValidation:
+   case ForceValidation:
+   case StokesFlow:
+   case moderateReynoldsTerminalVelocity: {
+      Vector3< real_t > particleLocation;
+
+      if (simulationCase == PotentialValidation)
+      {
+         WALBERLA_LOG_INFO_ON_ROOT("Potential Validation Test Case Simulation is Chosen");
+         particleLocation =
+            Vector3< real_t >(simulationDomain.center()[0], simulationDomain.center()[1], simulationDomain.center()[2]);
+         inflowVec = Vector3< real_t >(0_r, 0_r, 0);
+      }
+      else if (simulationCase == ForceValidation)
+      {
+         WALBERLA_LOG_INFO_ON_ROOT("Electrostatic Force Validation Test Case Simulation is Chosen");
+         particleLocation =
+            Vector3< real_t >(simulationDomain.center()[0], simulationDomain.center()[1], simulationDomain.center()[2]);
+         inflowVec = Vector3< real_t >(0_r, 0_r, 0);
+      }
+      else if (simulationCase == StokesFlow)
+      {
+         WALBERLA_LOG_INFO_ON_ROOT("Stokes Flow Validation Test Case Simulation is Chosen");
+         particleLocation = Vector3< real_t >(simulationDomain.center()[0], simulationDomain.center()[1],
+                                              2 * simulationDomain.center()[2] - 100);
+         inflowVec        = Vector3< real_t >(0_r, 0_r, 0);
+         withoutGravity   = true;
+      }
+      else if (simulationCase == moderateReynoldsTerminalVelocity)
+      {
+         WALBERLA_LOG_INFO_ON_ROOT("Moderate Reynolds Number Velocity Validation Test Case Simulation is Chosen");
+         const real_t startingGapSize_SI = real_t(120e-3) + real_t(0.25) * particleDiameter_SI;
+         WALBERLA_LOG_INFO_ON_ROOT("starting gap si"
+                                   << " " << startingGapSize_SI);
+         particleLocation = Vector3< real_t >(real_t(0.5) * real_c(domainSize[0]), real_t(0.5) * real_c(domainSize[1]),
+                                              startingGapSize_SI / dx_SI + real_t(0.5) * diameter);
+         inflowVec        = Vector3< real_t >(0_r, 0_r, 0);
+         withoutGravity   = true;
+      }
+
+      if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), particleLocation))
       {
          mesa_pd::data::Particle&& p = *ps->create();
-         p.setPosition(pt);
+         p.setPosition(particleLocation);
          p.setInteractionRadius(diameter * real_t(0.5));
          p.setOwner(mpi::MPIManager::instance()->rank());
          p.setShapeID(sphereShape);
          p.setType(0);
          // p.setLinearVelocity(0.1_r * Vector3< real_t >(math::realRandom(
-         //         -uInflow, uInflow))); // set small initial velocity to break symmetries
-         p.setLinearVelocity(Vector3(0, 0, 0));
-
+         //                                -uInflow, uInflow))); // set small initial velocity to break symmetries
          p.setCharge(maxCharge);
+      }
+   }
+   break;
+
+   case Showcase: {
+      WALBERLA_LOG_INFO_ON_ROOT("Charged Particle Showcase Simulation is Chosen");
+      generationDomain = simulationDomain.createFromMinMaxCorner(0, 0, 0, 200, 200, 800);
+      inflowVec        = Vector3< real_t >(0_r, 0_r, uInflow);
+
+      uint_t particleCount = 0;
+      for (auto pt : grid_generator::SCGrid(generationDomain, generationDomain.center(), Spacing))
+      {
+         if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
+         {
+            mesa_pd::data::Particle&& p = *ps->create();
+            p.setPosition(pt);
+            p.setInteractionRadius(diameter * real_t(0.5));
+            p.setOwner(mpi::MPIManager::instance()->rank());
+            p.setShapeID(sphereShape);
+            p.setType(0);
+            p.setLinearVelocity(Vector3(0, 0, 0));
+
+            p.setCharge(maxCharge);
+         }
+         particleCount += 1;
+         if (particleCount == 2000) { break; }
+      }
+      break;
+   }
+
+   default:
+
+      WALBERLA_LOG_INFO_ON_ROOT("Initiating User Defined Simulation");
+      if (extendSimulationDomain) { generationDomain = simulationDomain.getExtended(-0.5_r * Spacing); }
+      else { generationDomain = simulationDomain.createFromMinMaxCorner(0, 0, 0, 200, 200, 800); }
+      inflowVec = Vector3< real_t >(0_r, 0_r, uInflow);
+
+      for (auto pt : grid_generator::SCGrid(generationDomain, generationDomain.center(), Spacing))
+      {
+         if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
+         {
+            mesa_pd::data::Particle&& p = *ps->create();
+            p.setPosition(pt);
+            p.setInteractionRadius(diameter * real_t(0.5));
+            p.setOwner(mpi::MPIManager::instance()->rank());
+            p.setShapeID(sphereShape);
+            p.setType(0);
+            // p.setLinearVelocity(0.1_r * Vector3< real_t >(math::realRandom(
+            //         -uInflow, uInflow))); // set small initial velocity to break symmetries
+            p.setLinearVelocity(Vector3(0, 0, 0));
+
+            p.setCharge(maxCharge);
+         }
       }
    }
 
@@ -1031,10 +1212,12 @@ int main(int argc, char** argv)
          // add electrostatic force
          AddElectrostaticInteractionKernel addElectrostaticInteraction;
          ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, addElectrostaticInteraction,
-                             *accessor);
+                           *accessor);
 
-         ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, addGravitationalForce, *accessor);
-
+         if (withoutGravity == false)
+         {
+            ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, addGravitationalForce, *accessor);
+         }
          reduceProperty.operator()< mesa_pd::ForceTorqueNotification >(*ps);
 
          if (useIntegrator)
@@ -1050,20 +1233,40 @@ int main(int argc, char** argv)
       ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectAll(), *accessor, resetHydrodynamicForceTorque, *accessor);
 
       // TODO: write and add resetElectrostaticForce, see above   ---> completed
+      auto particleInfo = evaluateParticleInfo(*accessor);
+      auto fluidInfo = evaluateFluidInfo< BoundaryHandling_T >(blocks, pdfFieldID, boundaryHandlingID);
 
       if (timeStep % infoSpacing == 0)
       {
          timeloopTiming["Evaluate infos"].start();
-
-         auto particleInfo = evaluateParticleInfo(*accessor);
          WALBERLA_LOG_INFO_ON_ROOT(particleInfo);
-
-         auto fluidInfo = evaluateFluidInfo< BoundaryHandling_T >(blocks, pdfFieldID, boundaryHandlingID);
          WALBERLA_LOG_INFO_ON_ROOT(fluidInfo);
 
          timeloopTiming["Evaluate infos"].end();
       }
-   }
+
+      if (simulationName == "stokesVelocityValidation")
+      {
+         if (particleInfo.heightOfMass < simulationDomain.center()[2] - 200)
+         {
+            WALBERLA_LOG_INFO_ON_ROOT("Sphere reached terminal position " << particleInfo.heightOfMass << " after "
+                                                                          << timeStep << " timesteps!");
+            break;
+         }
+      }
+
+      // Solid Volume Fractions printing //
+      auto solidVolFrac = computeSolidVolumeFraction< StructuredBlockStorage, FlagField_T >(
+         blocks, flagFieldID, particleAndVolumeFractionFieldID, simulationDomain);
+
+      if (timeStep < 10)
+      {
+         if (timeStep % 1 == 0)
+         {
+            solidVolFrac(timeStep);
+            computeParticleProperties< ParticleAccessor_T >(accessor, timeStep);
+         }
+      }
 
    // add here to calculate norms
 
