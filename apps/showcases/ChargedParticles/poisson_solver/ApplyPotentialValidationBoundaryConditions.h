@@ -53,9 +53,9 @@ void applyPotentialBoundaryValue(IBlock* block, PdeField* p, const CellInterval&
 
       funcVal = real_c(0);
       if (e.getType() == "Dirichlet") {
-         real_t distance = std::sqrt(pow((boundaryCoord_x - domainAABB.center()[0]), 2) +
+         real_t distance = real_c(std::sqrt(pow((boundaryCoord_x - domainAABB.center()[0]), 2) +
                                      pow((boundaryCoord_y - domainAABB.center()[1]), 2) +
-                                     pow((boundaryCoord_z - domainAABB.center()[2]), 2));
+                                     pow((boundaryCoord_z - domainAABB.center()[2]), 2)));
          funcVal         = (charge / (4 * math::pi * epsilon * distance));
 
          p->get(x, y, z) = real_c(2) * funcVal - p->get(x + cx, y + cy, z + cz);
