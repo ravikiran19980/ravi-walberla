@@ -48,7 +48,7 @@ class computeSolidVolumeFraction
             blocks_->transformBlockLocalToGlobalCell(globalCell, *blockIt, *cell);
             for (auto& e : particleAndVolumeFractionField->get(cell->x(), cell->y(), cell->z()))
             {
-               z_SolidVolumeFraction_[globalCell.z()] += e.second;
+               z_SolidVolumeFraction_[uint_c(globalCell.z())] += e.second;
             }
          }
       }
@@ -174,7 +174,7 @@ void computeParticleStresses(const shared_ptr< ParticleAccessor_T >& ac,
       real_t hydroLubricationForce = (ac->getHydrodynamicForce(i) + gravitationForce).length();   // F'h = Fh - Vp(rhof-rhop)*g
       real_t collisionForce        = (ac->getForce(i) - (ac->getHydrodynamicForce(i) + gravitationForce)).length(); // Total_force - (F'h)
 
-      uint_t bin_index = int((ac->getPosition(i)[2]) / (diameter/2));
+      uint_t bin_index = uint_c((ac->getPosition(i)[2]) / (diameter/2));
       binCount[bin_index] +=1;
       hydroForceGlobal[bin_index] += hydroLubricationForce;
       collisionForceGlobal[bin_index] += collisionForce;
