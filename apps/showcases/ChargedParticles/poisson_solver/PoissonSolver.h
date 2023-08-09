@@ -97,6 +97,12 @@ class PoissonSolver
          sorFixedSweep_->getBlackSweep(), *residualNorm_, residualNormThreshold, residualCheckFrequency);
 
       sorIteration_->addBoundaryHandling(boundaryHandling);
+
+      // compute initial residual and print
+      boundaryHandling_();
+      (*commScheme_)();
+      initRes_ = (*residualNorm_)();
+      WALBERLA_LOG_INFO_ON_ROOT("Initial residual = " << initRes_);
    }
 
    // get approximate solution of electric potential
@@ -126,6 +132,8 @@ class PoissonSolver
 
    std::shared_ptr< pde::SORFixedStencil< Stencil_T > > sorFixedSweep_;
    std::unique_ptr< pde::RBGSIteration > sorIteration_;
+
+   real_t initRes_;
 };
 
 } // namespace walberla
