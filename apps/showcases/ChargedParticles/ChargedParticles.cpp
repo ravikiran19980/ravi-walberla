@@ -830,7 +830,7 @@ int main(int argc, char** argv)
 
    case Showcase: {
       WALBERLA_LOG_INFO_ON_ROOT("Charged Particle Showcase Simulation is Chosen");
-      generationDomain =  walberla::math::GenericAABB<double>::createFromMinMaxCorner(0, 0, 0, 200, 200, 800);
+      generationDomain = simulationDomain.createFromMinMaxCorner(0, 0, 0, 200, 200, 800);
       inflowVec        = Vector3< real_t >(0_r, 0_r, uInflow);
 
       uint_t particleCount = 0;
@@ -858,7 +858,7 @@ int main(int argc, char** argv)
 
       WALBERLA_LOG_INFO_ON_ROOT("Initiating User Defined Simulation");
       if (extendSimulationDomain) { generationDomain = simulationDomain.getExtended(-0.5_r * Spacing); }
-      else { generationDomain =  walberla::math::GenericAABB<double>::createFromMinMaxCorner(0, 0, 0, 200, 200, 800); }
+      else { generationDomain = simulationDomain.createFromMinMaxCorner(0, 0, 0, 200, 200, 800); }
       inflowVec = Vector3< real_t >(0_r, 0_r, uInflow);
 
       for (auto pt : grid_generator::SCGrid(generationDomain, generationDomain.center(), Spacing))
@@ -1219,7 +1219,7 @@ int main(int argc, char** argv)
          ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, addElectrostaticInteraction,
                            *accessor);
 
-         if (!withoutGravity)
+         if (withoutGravity == false)
          {
             ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, addGravitationalForce, *accessor);
          }
