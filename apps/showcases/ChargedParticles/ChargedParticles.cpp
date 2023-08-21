@@ -519,30 +519,32 @@ int main(int argc, char** argv)
 
    Vector3< uint_t > domainSize(uint_c((xSize_SI / dx_SI)), uint_c((ySize_SI / dx_SI)), uint_c((zSize_SI / dx_SI)));
 
-   WALBERLA_LOG_INFO_ON_ROOT("domain x size:" << " " << std::ceil(xSize_SI / dx_SI));
-   WALBERLA_LOG_INFO_ON_ROOT("domain x size without ceil:" << " " << (xSize_SI / dx_SI));
-   WALBERLA_LOG_INFO_ON_ROOT("ceil of 800 :" << " " << std::ceil(800));
-
-   WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[0]) * dx_SI, xSize_SI, "domain size in x is not divisible by given dx");
-   WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[1]) * dx_SI, ySize_SI, "domain size in y is not divisible by given dx");
-   WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[2]) * dx_SI, zSize_SI, "domain size in z is not divisible by given dx");
-
    Vector3< uint_t > cellsPerBlockPerDirection(domainSize[0] / numXBlocks, domainSize[1] / numYBlocks,
                                                domainSize[2] / numZBlocks);
 
-   WALBERLA_CHECK_EQUAL(domainSize[0], cellsPerBlockPerDirection[0] * numXBlocks,
-                        "number of cells in x of " << domainSize[0]
-                                                   << " is not divisible by given number of blocks in x direction");
-   WALBERLA_CHECK_EQUAL(domainSize[1], cellsPerBlockPerDirection[1] * numYBlocks,
-                        "number of cells in y of " << domainSize[1]
-                                                   << " is not divisible by given number of blocks in y direction");
-   WALBERLA_CHECK_EQUAL(domainSize[2], cellsPerBlockPerDirection[2] * numZBlocks,
-                        "number of cells in z of " << domainSize[2]
-                                                   << " is not divisible by given number of blocks in z direction");
+   if (simulationName != "pivVelocityValidation")
+   {
+      WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[0]) * dx_SI, xSize_SI,
+                                 "domain size in x is not divisible by given dx");
+      WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[1]) * dx_SI, ySize_SI,
+                                 "domain size in y is not divisible by given dx");
+      WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[2]) * dx_SI, zSize_SI,
+                                 "domain size in z is not divisible by given dx");
 
-   WALBERLA_CHECK_GREATER(
-      particleDiameter_SI / dx_SI, 5_r,
-      "Your numerical resolution is below 5 cells per diameter and thus too small for such simulations!");
+      WALBERLA_CHECK_EQUAL(domainSize[0], cellsPerBlockPerDirection[0] * numXBlocks,
+                           "number of cells in x of " << domainSize[0]
+                                                      << " is not divisible by given number of blocks in x direction");
+      WALBERLA_CHECK_EQUAL(domainSize[1], cellsPerBlockPerDirection[1] * numYBlocks,
+                           "number of cells in y of " << domainSize[1]
+                                                      << " is not divisible by given number of blocks in y direction");
+      WALBERLA_CHECK_EQUAL(domainSize[2], cellsPerBlockPerDirection[2] * numZBlocks,
+                           "number of cells in z of " << domainSize[2]
+                                                      << " is not divisible by given number of blocks in z direction");
+
+      WALBERLA_CHECK_GREATER(
+         particleDiameter_SI / dx_SI, 5_r,
+         "Your numerical resolution is below 5 cells per diameter and thus too small for such simulations!");
+   }
 
    const real_t densityRatio           = densityParticle_SI / densityFluid_SI;
    const real_t ReynoldsNumberParticle = uInflow_SI * particleDiameter_SI / kinematicViscosityFluid_SI;
@@ -801,6 +803,7 @@ int main(int argc, char** argv)
       else if (simulationCase == StokesFlow)
       {
          WALBERLA_LOG_INFO_ON_ROOT("Stokes Flow Validation Test Case Simulation is Chosen");
+         WALBERLA_LOG_INFO_ON_ROOT("Gravitational Force is turned off for this simulation");
          particleLocation = Vector3< real_t >(simulationDomain.center()[0], simulationDomain.center()[1],
                                               2 * simulationDomain.center()[2] - 100);
          inflowVec        = Vector3< real_t >(0_r, 0_r, 0);
@@ -809,6 +812,7 @@ int main(int argc, char** argv)
       else if (simulationCase == moderateReynoldsTerminalVelocity)
       {
          WALBERLA_LOG_INFO_ON_ROOT("Moderate Reynolds Number Velocity Validation Test Case Simulation is Chosen");
+         WALBERLA_LOG_INFO_ON_ROOT("Gravitational Force is turned off for this simulation");
          const real_t startingGapSize_SI = real_t(120e-3) + real_t(0.25) * particleDiameter_SI;
          WALBERLA_LOG_INFO_ON_ROOT("starting gap si"
                                    << " " << startingGapSize_SI);
@@ -1265,6 +1269,15 @@ int main(int argc, char** argv)
                                                                           << timeStep << " timesteps!");
             break;
          }
+      }
+
+      if (simulationName == "pivVelocityValidation")
+      {
+         WALBERLA_LOG_INFO_ON_ROOT("sphere position info:"
+                                   << " " << particleInfo.heightOfMass << " "
+                                   << "velocity info is:"
+                                   << " " << particleInfo.averageVelocity << " "
+                                   << "numParticles" << particleInfo.numParticles);
       }
 
       // Solid Volume Fractions printing //
