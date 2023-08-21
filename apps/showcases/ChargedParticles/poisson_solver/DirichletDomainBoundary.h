@@ -2,6 +2,7 @@
 #define WALBERLA_DIRICHLETDOMAINBOUNDARY_H
 
 #include "BoundaryCondition.h"
+#include "stencil/D3Q6.h"
 
 namespace walberla
 {

@@ -99,10 +99,7 @@ class PoissonSolver
       sorIteration_->addBoundaryHandling(boundaryHandling);
 
       // compute initial residual and print
-      boundaryHandling_();
-      (*commScheme_)();
-      initRes_ = (*residualNorm_)();
-      WALBERLA_LOG_INFO_ON_ROOT("Initial residual = " << initRes_);
+
    }
 
    // get approximate solution of electric potential
@@ -113,6 +110,13 @@ class PoissonSolver
       } else {
          (*sorIteration_)();
       }
+   }
+   void computeInitialResidual()
+   {
+      boundaryHandling_();
+      (*commScheme_)();
+      initRes_ = (*residualNorm_)();
+      WALBERLA_LOG_INFO_ON_ROOT("Initial residual = " << initRes_);
    }
 
  private:
