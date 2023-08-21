@@ -43,10 +43,10 @@ class PoissonSolver
 
    PoissonSolver(const BlockDataID& src, const BlockDataID& dst, const BlockDataID& rhs,
                  const std::shared_ptr< StructuredBlockForest >& blocks,
-                 const std::function< void() >& boundaryHandling,
-                 uint_t iterations = uint_t(1000), real_t residualNormThreshold = real_c(1e-4), uint_t residualCheckFrequency = uint_t(100))
-      : src_(src), dst_(dst), rhs_(rhs), blocks_(blocks), boundaryHandling_(boundaryHandling) {
-
+                 const std::function< void() >& boundaryHandling, uint_t iterations = uint_t(1000),
+                 real_t residualNormThreshold = real_c(1e-4), uint_t residualCheckFrequency = uint_t(100))
+      : src_(src), dst_(dst), rhs_(rhs), blocks_(blocks), boundaryHandling_(boundaryHandling)
+   {
       // stencil weights
       laplaceWeights_                             = std::vector< real_t >(Stencil_T::Size, real_c(0));
       laplaceWeights_[Stencil_T::idx[stencil::C]] = real_t(2) / (blocks_->dx() * blocks_->dx()) +
@@ -67,7 +67,8 @@ class PoissonSolver
 
       // res norm
 
-      residualNorm_ = make_shared< pde::ResidualNorm< Stencil_T > >(blocks_->getBlockStorage(), src_, rhs_, laplaceWeights_);
+      residualNorm_ =
+         make_shared< pde::ResidualNorm< Stencil_T > >(blocks_->getBlockStorage(), src_, rhs_, laplaceWeights_);
 
       // jacobi
 
@@ -75,14 +76,15 @@ class PoissonSolver
 
       // use custom impl with damping or jacobi from waLBerla
       std::function< void(IBlock*) > jacSweep = {};
-      if (solver == DAMPED_JACOBI) {
+      if (solver == DAMPED_JACOBI)
+      {
          jacSweep = [this](IBlock* block) { dampedJacobiSweep(block); };
-      } else {
-         jacSweep = *jacobiFixedSweep_;
       }
+      else { jacSweep = *jacobiFixedSweep_; }
 
-      jacobiIteration_ = std::make_unique< pde::JacobiIteration >(blocks_->getBlockStorage(), iterations, *commScheme_,
-                                                                  jacSweep, *residualNorm_, residualNormThreshold, residualCheckFrequency);
+      jacobiIteration_ =
+         std::make_unique< pde::JacobiIteration >(blocks_->getBlockStorage(), iterations, *commScheme_, jacSweep,
+                                                  *residualNorm_, residualNormThreshold, residualCheckFrequency);
 
       jacobiIteration_->addBoundaryHandling(boundaryHandling_);
 
@@ -97,25 +99,22 @@ class PoissonSolver
          sorFixedSweep_->getBlackSweep(), *residualNorm_, residualNormThreshold, residualCheckFrequency);
 
       sorIteration_->addBoundaryHandling(boundaryHandling);
-
-      // compute initial residual and print
-
    }
 
    // get approximate solution of electric potential
    void operator()()
    {
-      if constexpr (solver != WALBERLA_SOR) {
-         (*jacobiIteration_)();
-      } else {
-         (*sorIteration_)();
-      }
+      if constexpr (solver != WALBERLA_SOR) { (*jacobiIteration_)(); }
+      else { (*sorIteration_)(); }
    }
+
    void computeInitialResidual()
    {
+      // compute initial residual and print
       boundaryHandling_();
       (*commScheme_)();
       initRes_ = (*residualNorm_)();
+
       WALBERLA_LOG_INFO_ON_ROOT("Initial residual = " << initRes_);
    }
 
