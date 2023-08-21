@@ -1180,7 +1180,7 @@ int main(int argc, char** argv)
          ps->forEachParticlePairHalf(
             useOpenMP, mesa_pd::kernel::ExcludeInfiniteInfinite(), *accessor,
             [&collisionResponse, &rpdDomain, timeStepSizeRPD, coefficientOfRestitution, particleCollisionTime, kappa,
-             timeStep, numTimeSteps, &collisionCount, &tdiff](const size_t idx1, const size_t idx2, auto& ac) {
+             timeStep, numTimeSteps, &collisionCount](const size_t idx1, const size_t idx2, auto& ac) {
                mesa_pd::collision_detection::AnalyticContactDetection acd;
                mesa_pd::kernel::DoubleCast double_cast;
                mesa_pd::mpi::ContactFilter contact_filter;
@@ -1204,7 +1204,7 @@ int main(int argc, char** argv)
          {
             ps->forEachParticle(
                useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor,
-               [&collisionStress, &diameter, numberOfParticleSubCycles](const size_t idx1, auto& ac) {
+               [&collisionStress, &diameter](const size_t idx1, auto& ac) {
                   collisionStress[0] += (abs(ac.getForce(idx1)[0])) / ((math::pi) *diameter * diameter);
                   collisionStress[1] += (abs(ac.getForce(idx1)[1])) / ((math::pi) *diameter * diameter);
                   collisionStress[2] += (abs(ac.getForce(idx1)[2])) / ((math::pi) *diameter * diameter);
@@ -1269,7 +1269,7 @@ int main(int argc, char** argv)
       {
          ps->forEachParticle(
             useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor,
-            [&hydrodynamicStress, diameter, gravitationalForce, numberOfParticleSubCycles](const size_t idx1,
+            [&hydrodynamicStress, diameter, gravitationalForce](const size_t idx1,
                                                                                            auto& ac) {
                hydrodynamicStress[0] +=
                   (abs(ac.getHydrodynamicForce(idx1)[0] + gravitationalForce[0])) / ((math::pi) *diameter * diameter);
