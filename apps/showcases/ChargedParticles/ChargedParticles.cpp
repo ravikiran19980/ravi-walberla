@@ -91,9 +91,9 @@
 #include "AddElectrostaticInteractionKernel.h"
 #include "ChargeDensity.h"
 #include "ChargeForce.h"
+#include "PostProcessingUtilities.h"
 #include "ResetElectrostaticForceKernel.h"
 #include "poisson_solver/PoissonSolver.h"
-#include "postProcessingUtilities.h"
 
 namespace charged_particles
 {
