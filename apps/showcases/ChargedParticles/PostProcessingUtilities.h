@@ -3,7 +3,7 @@
 
 #pragma once
 #include <vector>
-#include <math.h>
+#include <cmath>
 #include "core/DataTypes.h"
 #include "lbm_mesapd_coupling/DataTypes.h"
 #include "lbm/field/AddToStorage.h"
@@ -66,7 +66,7 @@ class ComputeSolidVolumeFraction
    math::GenericAABB< real_t > simulationDomain_;
    std::vector< real_t > z_SolidVolumeFraction_;
 
-   void printToSeparateFile(std::string filename)
+   void printToSeparateFile(const std::string& filename)
    {
       WALBERLA_ROOT_SECTION()
       {
@@ -105,7 +105,7 @@ template<typename ParticleAccessor_T >
 void ComputeParticleProperties(const shared_ptr< ParticleAccessor_T >& ac,
                                uint_t currentTimeStep)
 {
-   std::string filename            = "ParticleProperties_" + std::to_string(currentTimeStep) + ".txt";
+   std::string const filename      = "ParticleProperties_" + std::to_string(currentTimeStep) + ".txt";
    const std::string directoryName = "ParticleData";
 
    // Create the directory if it doesn't exist
@@ -157,7 +157,7 @@ void ComputeParticleStresses(const shared_ptr< ParticleAccessor_T >& ac,
                              std::vector< real_t >& hydroForceGlobal, std::vector< real_t >& collisionForceGlobal,
                              std::vector< real_t >& binCount, Vector3<real_t> gravitationForce)
 {
-   real_t diameter = 20;
+   real_t const diameter = real_c(20);
 
 
    for (uint_t i = 0; i < ac->size(); ++i)
@@ -180,7 +180,7 @@ void ComputeParticleStresses(const shared_ptr< ParticleAccessor_T >& ac,
 template<typename ParticleAccessor_T >
 void ComputeCollisionFrequency(const shared_ptr< ParticleAccessor_T >& ac, uint_t& collisionCount)
 {
-   real_t diameter = real_c(20);
+   real_t const diameter = real_c(20);
 
 
    for (uint_t i = 0; i < ac->size(); ++i)
@@ -207,7 +207,7 @@ void WriteStressesToFile(std::vector<real_t>& hydroStress, std::vector<real_t>& 
 
    WALBERLA_ROOT_SECTION()
    {
-      std::string filename            = "ParticleStresses.txt";
+      std::string const filename      = "ParticleStresses.txt";
       const std::string directoryName = ".";
 
       // Create the directory if it doesn't exist
