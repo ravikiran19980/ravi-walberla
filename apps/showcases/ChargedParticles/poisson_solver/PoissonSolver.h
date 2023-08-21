@@ -3,6 +3,8 @@
 
 #include "pde/all.h"
 
+#include <algorithm>
+
 #include "CustomBoundary.h"
 #include "DirichletDomainBoundary.h"
 #include "Neumann.h"
@@ -44,8 +46,10 @@ class PoissonSolver
    PoissonSolver(const BlockDataID& src, const BlockDataID& dst, const BlockDataID& rhs,
                  const std::shared_ptr< StructuredBlockForest >& blocks,
                  const std::function< void() >& boundaryHandling, uint_t iterations = uint_t(1000),
-                 real_t residualNormThreshold = real_c(1e-4), uint_t residualCheckFrequency = uint_t(100))
-      : src_(src), dst_(dst), rhs_(rhs), blocks_(blocks), boundaryHandling_(boundaryHandling)
+                 bool useAbsResNormThres = false, real_t absResNormThres = real_c(1e-10),
+                 real_t relResNormThres = real_c(1e-4), uint_t resCheckFreq = uint_t(100))
+      : src_(src), dst_(dst), rhs_(rhs), blocks_(blocks), boundaryHandling_(boundaryHandling),
+        useRelativeResidualThreshold_(!useAbsResNormThres), relativeResidualReductionFactor_(relResNormThres)
    {
       // stencil weights
       laplaceWeights_                             = std::vector< real_t >(Stencil_T::Size, real_c(0));
@@ -65,10 +69,33 @@ class PoissonSolver
       commScheme_->addPackInfo(make_shared< field::communication::PackInfo< ScalarField_T > >(src_));
       commScheme_->addPackInfo(make_shared< field::communication::PackInfo< ScalarField_T > >(rhs_));
 
-      // res norm
+      // res norm computation callback
 
       residualNorm_ =
          make_shared< pde::ResidualNorm< Stencil_T > >(blocks_->getBlockStorage(), src_, rhs_, laplaceWeights_);
+
+      // handling for absolute/relative residual thresholds
+      // if absolute res thres is used -> simply propagate ctor values for absolute res checks to Jacobi iteration
+      // else
+      //  -> only execute "residualCheckFrequency_" iterations at once and then execute logic for relative exit crit
+      //  -> repeat "numExecutions" times to perform the same amount of total iterations
+      WALBERLA_ASSERT(iterations % residualCheckFrequency == 0,
+                      "Number of iterations should be divisible by residual check frequency!")
+
+      if (useAbsResNormThres)
+      {
+         residualNormThreshold_  = absResNormThres;
+         residualCheckFrequency_ = resCheckFreq;
+         numIterPerExecution_    = iterations;
+         numExecutions_          = uint_c(1);
+      }
+      else
+      {
+         residualNormThreshold_  = real_c(0);
+         residualCheckFrequency_ = uint_c(0);
+         numIterPerExecution_    = resCheckFreq;
+         numExecutions_          = iterations / resCheckFreq;
+      }
 
       // jacobi
 
@@ -80,11 +107,13 @@ class PoissonSolver
       {
          jacSweep = [this](IBlock* block) { dampedJacobiSweep(block); };
       }
-      else { jacSweep = *jacobiFixedSweep_; }
+      else {
+         jacSweep = *jacobiFixedSweep_;
+      }
 
-      jacobiIteration_ =
-         std::make_unique< pde::JacobiIteration >(blocks_->getBlockStorage(), iterations, *commScheme_, jacSweep,
-                                                  *residualNorm_, residualNormThreshold, residualCheckFrequency);
+      jacobiIteration_ = std::make_unique< pde::JacobiIteration >(blocks_->getBlockStorage(), numIterPerExecution_,
+                                                                  *commScheme_, jacSweep, *residualNorm_,
+                                                                  residualNormThreshold_, residualCheckFrequency_);
 
       jacobiIteration_->addBoundaryHandling(boundaryHandling_);
 
@@ -95,8 +124,8 @@ class PoissonSolver
       sorFixedSweep_ = make_shared< pde::SORFixedStencil< Stencil_T > >(blocks, src_, rhs_, laplaceWeights_, omega);
 
       sorIteration_ = std::make_unique< pde::RBGSIteration >(
-         blocks_->getBlockStorage(), iterations, *commScheme_, sorFixedSweep_->getRedSweep(),
-         sorFixedSweep_->getBlackSweep(), *residualNorm_, residualNormThreshold, residualCheckFrequency);
+         blocks_->getBlockStorage(), numIterPerExecution_, *commScheme_, sorFixedSweep_->getRedSweep(),
+         sorFixedSweep_->getBlackSweep(), *residualNorm_, residualNormThreshold_, residualCheckFrequency_);
 
       sorIteration_->addBoundaryHandling(boundaryHandling);
    }
@@ -104,8 +133,33 @@ class PoissonSolver
    // get approximate solution of electric potential
    void operator()()
    {
-      if constexpr (solver != WALBERLA_SOR) { (*jacobiIteration_)(); }
-      else { (*sorIteration_)(); }
+      for (uint_t executions = 0; executions < numExecutions_; ++executions)
+      {
+         // execute solver...
+         if constexpr (solver != WALBERLA_SOR)
+            (*jacobiIteration_)();
+         else
+            (*sorIteration_)();
+
+         // .. and check if (relative) res threshold was reached
+         if (useRelativeResidualThreshold_)
+         {
+            auto curRes = (*residualNorm_)();
+
+            WALBERLA_LOG_INFO_ON_ROOT("Residual norm after " << executions * numIterPerExecution_
+                                                             << " Jacobi iterations: " << curRes);
+
+            if (curRes <= relativeResidualReductionFactor_ * initRes_)
+            {
+               WALBERLA_LOG_INFO_ON_ROOT("Aborting Jacobi iteration (residual norm threshold reached):"
+                                         "\n  residual norm thres: "
+                                         << relativeResidualReductionFactor_ * initRes_
+                                         << "\n  residual norm:           " << curRes);
+
+               break;
+            }
+         }
+      }
    }
 
    void computeInitialResidual()
@@ -136,7 +190,16 @@ class PoissonSolver
    std::shared_ptr< pde::SORFixedStencil< Stencil_T > > sorFixedSweep_;
    std::unique_ptr< pde::RBGSIteration > sorIteration_;
 
+   // general residual variables
+   real_t residualNormThreshold_;
+   uint_t residualCheckFrequency_;
+   uint_t numExecutions_;
+   uint_t numIterPerExecution_;
+
+   // variables for relative residual threshold
    real_t initRes_;
+   bool useRelativeResidualThreshold_;
+   real_t relativeResidualReductionFactor_;
 };
 
 } // namespace walberla

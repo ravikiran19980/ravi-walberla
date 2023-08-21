@@ -677,7 +677,11 @@ int main(int argc, char** argv)
 
    auto poissonSolver = PoissonSolver< DAMPED_JACOBI >(/* src */ potentialFieldID, /* dst */ potentialFieldCopyID,
                                                        /* rhs */ chargeDensityFieldID, blocks, boundaryHandling,
-                                                       uint_c(1000), real_c(1e-16), uint_c(1000));
+                                                       /* iterations */ uint_c(1000),
+                                                       /* use abs (true) or rel (false) threshold */ false,
+                                                       /* abs res threshold */ real_c(1e-16),
+                                                       /* rel res threshold */ real_c(1e-6),
+                                                       /* res check freq */ uint_c(200));
    //////////////////
    // RPD COUPLING //
    //////////////////
