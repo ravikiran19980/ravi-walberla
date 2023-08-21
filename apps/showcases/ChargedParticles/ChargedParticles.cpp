@@ -1119,12 +1119,11 @@ int main(int argc, char** argv)
    ////////////////////////
 
    WcTimingPool timeloopTiming;
-   const bool useOpenMP = false;
-   uint_t numBins = uint_c(simulationDomain.zSize()/(diameter/2));
-   std::vector< real_t >  hydroForceGlobal(numBins, real_t(0));
-   std::vector< real_t >  collisionForceGlobal(numBins, real_t(0));
-   std::vector< real_t >  binCount(numBins, real_t(0));
-
+   const bool useOpenMP  = false;
+   uint_t collisionCount = 0;
+   uint_t tdiff          = 0;
+   Vector3< real_t > collisionStress(real_t(0));
+   Vector3< real_t > hydrodynamicStress(real_t(0));
 
    // time loop
    for (uint_t timeStep = 0; timeStep < numTimeSteps; ++timeStep)
@@ -1136,6 +1135,8 @@ int main(int argc, char** argv)
 
       // update charge density field from physical properties and overlapFraction field
       chargeDensityUpdate();
+
+      // poissonSolver.computeInitialResidual();
 
       // Solve poisson equation to obtain electric potential
 
@@ -1160,6 +1161,8 @@ int main(int argc, char** argv)
       ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, averageHydrodynamicForceTorque,
                           *accessor);
 
+      if (timeStep >= uint_t(0.75 * real_c(numTimeSteps))) { tdiff += 1; }
+
       for (auto subCycle = uint_t(0); subCycle < numberOfParticleSubCycles; ++subCycle)
       {
          timeloopTiming["RPD"].start();
@@ -1169,6 +1172,42 @@ int main(int argc, char** argv)
             ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, vvIntegratorPreForce, *accessor);
          }
          syncCall();
+
+         // collision response
+         ps->forEachParticlePairHalf(
+            useOpenMP, mesa_pd::kernel::ExcludeInfiniteInfinite(), *accessor,
+            [&collisionResponse, &rpdDomain, timeStepSizeRPD, coefficientOfRestitution, particleCollisionTime, kappa,
+             timeStep, numTimeSteps, &collisionCount, &tdiff](const size_t idx1, const size_t idx2, auto& ac) {
+               mesa_pd::collision_detection::AnalyticContactDetection acd;
+               mesa_pd::kernel::DoubleCast double_cast;
+               mesa_pd::mpi::ContactFilter contact_filter;
+               if (double_cast(idx1, idx2, ac, acd, ac))
+               {
+                  if (contact_filter(acd.getIdx1(), acd.getIdx2(), ac, acd.getContactPoint(), *rpdDomain))
+                  {
+                     if (timeStep >= uint_t(0.75 * real_c(numTimeSteps))) { collisionCount += 2; }
+                     auto meff = real_t(1) / (ac.getInvMass(idx1) + ac.getInvMass(idx2));
+                     collisionResponse.setStiffnessAndDamping(0, 0, coefficientOfRestitution, particleCollisionTime,
+                                                              kappa, meff);
+                     collisionResponse(acd.getIdx1(), acd.getIdx2(), ac, acd.getContactPoint(), acd.getContactNormal(),
+                                       acd.getPenetrationDepth(), timeStepSizeRPD);
+                  }
+               }
+            },
+            *accessor);
+
+         // computing the collision stresses
+         if (timeStep >= uint_t(0.75 * real_c(numTimeSteps)) && subCycle == numberOfParticleSubCycles - 1)
+         {
+            ps->forEachParticle(
+               useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor,
+               [&collisionStress, &diameter, numberOfParticleSubCycles](const size_t idx1, auto& ac) {
+                  collisionStress[0] += (abs(ac.getForce(idx1)[0])) / ((math::pi) *diameter * diameter);
+                  collisionStress[1] += (abs(ac.getForce(idx1)[1])) / ((math::pi) *diameter * diameter);
+                  collisionStress[2] += (abs(ac.getForce(idx1)[2])) / ((math::pi) *diameter * diameter);
+               },
+               *accessor);
+         }
 
          if (useLubricationForces)
          {
@@ -1191,28 +1230,6 @@ int main(int argc, char** argv)
                },
                *accessor);
          }
-
-         // collision response
-         ps->forEachParticlePairHalf(
-            useOpenMP, mesa_pd::kernel::ExcludeInfiniteInfinite(), *accessor,
-            [&collisionResponse, &rpdDomain, timeStepSizeRPD, coefficientOfRestitution, particleCollisionTime,
-             kappa](const size_t idx1, const size_t idx2, auto& ac) {
-               mesa_pd::collision_detection::AnalyticContactDetection acd;
-               mesa_pd::kernel::DoubleCast double_cast;
-               mesa_pd::mpi::ContactFilter contact_filter;
-               if (double_cast(idx1, idx2, ac, acd, ac))
-               {
-                  if (contact_filter(acd.getIdx1(), acd.getIdx2(), ac, acd.getContactPoint(), *rpdDomain))
-                  {
-                     auto meff = real_t(1) / (ac.getInvMass(idx1) + ac.getInvMass(idx2));
-                     collisionResponse.setStiffnessAndDamping(0, 0, coefficientOfRestitution, particleCollisionTime,
-                                                              kappa, meff);
-                     collisionResponse(acd.getIdx1(), acd.getIdx2(), ac, acd.getContactPoint(), acd.getContactNormal(),
-                                       acd.getPenetrationDepth(), timeStepSizeRPD);
-                  }
-               }
-            },
-            *accessor);
 
          reduceAndSwapContactHistory(*ps);
 
@@ -1242,6 +1259,23 @@ int main(int argc, char** argv)
          syncCall();
 
          timeloopTiming["RPD"].end();
+      } // end sub cycle
+
+      // computing the hydrodynamic stresses
+      if (timeStep >= uint_t(0.75 * real_c(numTimeSteps)))
+      {
+         ps->forEachParticle(
+            useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor,
+            [&hydrodynamicStress, diameter, gravitationalForce, numberOfParticleSubCycles](const size_t idx1,
+                                                                                           auto& ac) {
+               hydrodynamicStress[0] +=
+                  (abs(ac.getHydrodynamicForce(idx1)[0] + gravitationalForce[0])) / ((math::pi) *diameter * diameter);
+               hydrodynamicStress[1] +=
+                  (abs(ac.getHydrodynamicForce(idx1)[1] + gravitationalForce[1])) / ((math::pi) *diameter * diameter);
+               hydrodynamicStress[2] +=
+                  (abs(ac.getHydrodynamicForce(idx1)[2] + gravitationalForce[2])) / ((math::pi) *diameter * diameter);
+            },
+            *accessor);
       }
 
       ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectAll(), *accessor, resetHydrodynamicForceTorque, *accessor);
@@ -1281,37 +1315,57 @@ int main(int argc, char** argv)
       }
 
       // Solid Volume Fractions printing //
-      auto solidVolFrac = computeSolidVolumeFraction< StructuredBlockStorage, FlagField_T >(
+      auto solidVolFrac = ComputeSolidVolumeFraction< StructuredBlockStorage, FlagField_T >(
          blocks, flagFieldID, particleAndVolumeFractionFieldID, simulationDomain);
 
-      if (timeStep < 10)
+      if (timeStep > 120000)
       {
-         if (timeStep % 1 == 0)
+         if (timeStep % 1000 == 0)
          {
             solidVolFrac(timeStep);
-            computeParticleProperties< ParticleAccessor_T >(accessor, timeStep);
+            ComputeParticleProperties< ParticleAccessor_T >(accessor, timeStep);
          }
       }
+   } // end time loop
 
-      computeParticleStresses< ParticleAccessor_T >(accessor, hydroForceGlobal, collisionForceGlobal, binCount,
-                                                    gravitationalForce);
-   }
-   walberla::mpi::allReduceInplace(hydroForceGlobal, walberla::mpi::SUM);
-   walberla::mpi::allReduceInplace(binCount, walberla::mpi::SUM);
-   walberla::mpi::allReduceInplace(collisionForceGlobal, walberla::mpi::SUM);
+   walberla::mpi::allReduceInplace(collisionCount, walberla::mpi::SUM);
 
-   for (uint_t i = 0; i < numBins; i++)
+   // collision frequency time and ensembled average:
+   uint_t numParticles = 2000;
+   if (simulationCase == Showcase)
    {
-      if (binCount[i] > 0)
-      {
-         hydroForceGlobal[i]     = (hydroForceGlobal[i] * diameter * diameter) / (densityFluid * viscosity*viscosity);
-         collisionForceGlobal[i] = (collisionForceGlobal[i] * diameter * diameter) / (densityFluid * viscosity*viscosity);
-         hydroForceGlobal[i] /= binCount[i];
-         collisionForceGlobal[i] /= binCount[i];
-      }
-   }
-   writeStressesToFile(hydroForceGlobal, collisionForceGlobal);
+      WALBERLA_LOG_INFO_ON_ROOT("Coliision count is:  " << collisionCount);
+      WALBERLA_LOG_INFO_ON_ROOT("tdiff is:  " << tdiff);
+      WALBERLA_LOG_INFO_ON_ROOT("num particles is:  " << numParticles);
+      WALBERLA_LOG_INFO_ON_ROOT("subcycles is:  " << numberOfParticleSubCycles);
+      real_t collisionfreq = real_c(collisionCount) / real_c((numParticles * tdiff * numberOfParticleSubCycles));
+      WALBERLA_LOG_INFO_ON_ROOT("Coliision Frequency is:  " << collisionfreq);
 
+      // collision stress reduction
+      walberla::mpi::allReduceInplace(collisionStress[0], walberla::mpi::SUM);
+      walberla::mpi::allReduceInplace(collisionStress[1], walberla::mpi::SUM);
+      walberla::mpi::allReduceInplace(collisionStress[2], walberla::mpi::SUM);
+
+      // collision stress average
+      collisionStress[0] /= real_c(numParticles * tdiff);
+      collisionStress[1] /= real_c(numParticles * tdiff);
+      collisionStress[2] /= real_c(numParticles * tdiff);
+      WALBERLA_LOG_INFO_ON_ROOT("Collision stresses average without normalization is:  "
+                                << collisionStress[0] << " " << collisionStress[1] << " " << collisionStress[2]);
+
+      // hydrodynamic stress reduction
+      walberla::mpi::allReduceInplace(hydrodynamicStress[0], walberla::mpi::SUM);
+      walberla::mpi::allReduceInplace(hydrodynamicStress[1], walberla::mpi::SUM);
+      walberla::mpi::allReduceInplace(hydrodynamicStress[2], walberla::mpi::SUM);
+
+      // hydrodynamic stress average
+      hydrodynamicStress[0] /= real_c(numParticles * tdiff);
+      hydrodynamicStress[1] /= real_c(numParticles * tdiff);
+      hydrodynamicStress[2] /= real_c(numParticles * tdiff);
+      WALBERLA_LOG_INFO_ON_ROOT("Hydrodynamic stresses average without normalization is:  "
+                                << hydrodynamicStress[0] << " " << hydrodynamicStress[1] << " "
+                                << hydrodynamicStress[2]);
+   }
    timeloopTiming.logResultOnRoot();
 
    return EXIT_SUCCESS;

@@ -11,17 +11,17 @@
 #include "core/DataTypes.h"
 #include "lbm_mesapd_coupling/DataTypes.h"
 #include "lbm/field/AddToStorage.h"
-//#include <filesystem>
+#include "fstream"
 #include <core/mpi/MPITextFile.h>
 
 namespace walberla {
 
 // class to compute the volume fractions average at each unique height along with xy spatial plane
 template< typename BlockStorage_T, typename FlagField_T >
-class computeSolidVolumeFraction
+class ComputeSolidVolumeFraction
 {
  public:
-   computeSolidVolumeFraction(const shared_ptr< BlockStorage_T >& blocks, const BlockDataID& flagFieldID,
+   ComputeSolidVolumeFraction(const shared_ptr< BlockStorage_T >& blocks, const BlockDataID& flagFieldID,
                               const BlockDataID& particleAndVolumeFractionFieldID,
                               const math::GenericAABB< real_t > simulationDomain)
       : blocks_(blocks), flagFieldID_(flagFieldID), particleAndVolumeFractionFieldID_(particleAndVolumeFractionFieldID),
@@ -77,7 +77,7 @@ class computeSolidVolumeFraction
          const std::string directoryName = "FractionData";
 
          // Create the directory if it doesn't exist
-         if (!std::filesystem::exists(directoryName)) { std::filesystem::create_directory(directoryName); }
+         if (!filesystem::exists(directoryName)) {filesystem::create_directory(directoryName); }
          const std::string filePath = directoryName + "/" + filename;
 
          // Open the file for writing
@@ -106,14 +106,14 @@ class computeSolidVolumeFraction
 // class to compute and write the particle x,y,z velocities and the unique ids into a file
 
 template<typename ParticleAccessor_T >
-void computeParticleProperties(const shared_ptr< ParticleAccessor_T >& ac,
+void ComputeParticleProperties(const shared_ptr< ParticleAccessor_T >& ac,
                                uint_t currentTimeStep)
 {
    std::string filename            = "ParticleProperties_" + std::to_string(currentTimeStep) + ".txt";
    const std::string directoryName = "ParticleData";
 
    // Create the directory if it doesn't exist
-   if (!std::filesystem::exists(directoryName)) { std::filesystem::create_directory(directoryName); }
+   if (!filesystem::exists(directoryName)) {filesystem::create_directory(directoryName); }
    const std::string filePath = directoryName + "/" + filename;
 
    // Open the file for writing using std::ostringstream
@@ -156,10 +156,8 @@ void computeParticleProperties(const shared_ptr< ParticleAccessor_T >& ac,
 }
 
 
-// class to compute and write the particle x,y,z velocities and the unique ids into a file
-
 template<typename ParticleAccessor_T >
-void computeParticleStresses(const shared_ptr< ParticleAccessor_T >& ac,
+void ComputeParticleStresses(const shared_ptr< ParticleAccessor_T >& ac,
                              std::vector< real_t >& hydroForceGlobal, std::vector< real_t >& collisionForceGlobal,
                              std::vector< real_t >& binCount, Vector3<real_t> gravitationForce)
 {
@@ -172,7 +170,7 @@ void computeParticleStresses(const shared_ptr< ParticleAccessor_T >& ac,
       if (isSet(ac->getFlags(i), walberla::mesa_pd::data::particle_flags::GLOBAL)) continue;
 
       real_t hydroLubricationForce = (ac->getHydrodynamicForce(i) + gravitationForce).length();   // F'h = Fh - Vp(rhof-rhop)*g
-      real_t collisionForce        = (ac->getForce(i) - (ac->getHydrodynamicForce(i) + gravitationForce)).length(); // Total_force - (F'h)
+      real_t collisionForce        = (ac->getForce(i)- ((ac->getHydrodynamicForce(i) + gravitationForce))).length(); // Total_force - (F'h)
 
       uint_t bin_index = uint_c((ac->getPosition(i)[2]) / (diameter/2));
       binCount[bin_index] +=1;
@@ -183,7 +181,32 @@ void computeParticleStresses(const shared_ptr< ParticleAccessor_T >& ac,
 
 }
 
-void writeStressesToFile(std::vector<real_t>& hydroStress, std::vector<real_t>& collisionStress){
+template<typename ParticleAccessor_T >
+void ComputeCollisionFrequency(const shared_ptr< ParticleAccessor_T >& ac, uint_t& collisionCount)
+{
+   real_t diameter = real_c(20);
+
+
+   for (uint_t i = 0; i < ac->size(); ++i)
+   {
+      for(uint_t j = 0; j < ac->size(); j++)
+      {
+         if (isSet(ac->getFlags(i), walberla::mesa_pd::data::particle_flags::GLOBAL)) continue;
+         if (isSet(ac->getFlags(j), walberla::mesa_pd::data::particle_flags::GLOBAL)) continue;
+         real_t distance = (ac->getPosition(i) - ac->getPosition(j)).length();
+         if(distance <= diameter){
+            collisionCount ++;
+         }
+      }
+
+   }
+
+}
+
+
+
+
+void WriteStressesToFile(std::vector<real_t>& hydroStress, std::vector<real_t>& collisionStress){
 
 
    WALBERLA_ROOT_SECTION()
@@ -192,13 +215,13 @@ void writeStressesToFile(std::vector<real_t>& hydroStress, std::vector<real_t>& 
       const std::string directoryName = ".";
 
       // Create the directory if it doesn't exist
-      if (!std::filesystem::exists(directoryName)) { std::filesystem::create_directory(directoryName); }
+      if (!filesystem::exists(directoryName)) {filesystem::create_directory(directoryName); }
       const std::string filePath = directoryName + "/" + filename;
 
       // Open the file for writing using std::ostringstream
       std::ofstream outputFile(filePath);
 
-      outputFile << "Uid"
+      outputFile << "BinId"
                  << ","
                  << "Collision_force"
                  << ","
