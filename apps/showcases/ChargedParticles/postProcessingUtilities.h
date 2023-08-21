@@ -211,6 +211,32 @@ void writeStressesToFile(std::vector<real_t>& hydroStress, std::vector<real_t>& 
    }
 }
 
+template< typename ParticleInfo >
+void WriteEnsembledVelocityToFile(const uint_t timestep, ParticleInfo info)
+{
+   WALBERLA_ROOT_SECTION()
+   {
+      std::ofstream file("ensembledVelocity.txt", std::ios_base::app);
+      if (file.is_open())
+      {
+         if (file.tellp() == 0)
+         {
+            file << "timestep"
+                 << ", "
+                 << "ensembledVelocity "
+                 << "\n";
+         }
+         file << timestep << "," << info.ensembledAverageVelocityZ << "\n";
+
+         file.close();
+      }
+      else { std::cerr << "Error opening file for writing.\n"; }
+      file.close();
+   }
+}
+
+
+
 }
 
 

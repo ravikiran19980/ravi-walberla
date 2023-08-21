@@ -278,32 +278,35 @@ void createPlaneSetup(const shared_ptr< mesa_pd::data::ParticleStorage >& ps,
 
 struct ParticleInfo
 {
-   real_t averageVelocity = 0_r;
-   real_t maximumVelocity = 0_r;
-   uint_t numParticles    = 0;
-   real_t maximumHeight   = 0_r;
-   real_t particleVolume  = 0_r;
-   real_t heightOfMass    = 0_r;
+   real_t averageVelocity           = 0_r;
+   real_t ensembledAverageVelocityZ = 0_r;
+   real_t maximumVelocity           = 0_r;
+   uint_t numParticles              = 0;
+   real_t maximumHeight             = 0_r;
+   real_t particleVolume            = 0_r;
+   real_t heightOfMass              = 0_r;
 
    void allReduce()
    {
       walberla::mpi::allReduceInplace(numParticles, walberla::mpi::SUM);
       walberla::mpi::allReduceInplace(averageVelocity, walberla::mpi::SUM);
+      walberla::mpi::allReduceInplace(ensembledAverageVelocityZ, walberla::mpi::SUM);
       walberla::mpi::allReduceInplace(maximumVelocity, walberla::mpi::MAX);
       walberla::mpi::allReduceInplace(maximumHeight, walberla::mpi::MAX);
       walberla::mpi::allReduceInplace(particleVolume, walberla::mpi::SUM);
       walberla::mpi::allReduceInplace(heightOfMass, walberla::mpi::SUM);
 
       averageVelocity /= real_c(numParticles);
+      ensembledAverageVelocityZ /= real_c(numParticles);
       heightOfMass /= particleVolume;
    }
 };
 
 std::ostream& operator<<(std::ostream& os, ParticleInfo const& m)
 {
-   return os << "Particle Info: uAvg = " << m.averageVelocity << ", uMax = " << m.maximumVelocity
-             << ", numParticles = " << m.numParticles << ", zMax = " << m.maximumHeight << ", Vp = " << m.particleVolume
-             << ", zMass = " << m.heightOfMass;
+   return os << "Ensembled Avg Z = " << m.ensembledAverageVelocityZ << ", Particle Info: uAvg = " << m.averageVelocity
+             << ", uMax = " << m.maximumVelocity << ", numParticles = " << m.numParticles
+             << ", zMax = " << m.maximumHeight << ", Vp = " << m.particleVolume << ", zMass = " << m.heightOfMass;
 }
 
 template< typename Accessor_T >
@@ -319,9 +322,11 @@ ParticleInfo evaluateParticleInfo(const Accessor_T& ac)
 
       ++info.numParticles;
       real_t velMagnitude   = ac.getLinearVelocity(i).length();
+      real_t velocityZ      = ac.getLinearVelocity(i)[2];
       real_t particleVolume = ac.getShape(i)->getVolume();
       real_t height         = ac.getPosition(i)[2];
       info.averageVelocity += velMagnitude;
+      info.ensembledAverageVelocityZ += velocityZ;
       info.maximumVelocity = std::max(info.maximumVelocity, velMagnitude);
       info.maximumHeight   = std::max(info.maximumHeight, height);
       info.particleVolume += particleVolume;
@@ -1240,6 +1245,8 @@ int main(int argc, char** argv)
       // TODO: write and add resetElectrostaticForce, see above   ---> completed
       auto particleInfo = evaluateParticleInfo(*accessor);
       auto fluidInfo = evaluateFluidInfo< BoundaryHandling_T >(blocks, pdfFieldID, boundaryHandlingID);
+
+      if (timeStep % 1000 == 0) { WriteEnsembledVelocityToFile(timeStep, particleInfo); }
 
       if (timeStep % infoSpacing == 0)
       {
