@@ -1248,7 +1248,7 @@ int main(int argc, char** argv)
          ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, addElectrostaticInteraction,
                              *accessor);
 
-         if (withoutGravity == false)
+         if (!withoutGravity)
          {
             ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, addGravitationalForce, *accessor);
          }
