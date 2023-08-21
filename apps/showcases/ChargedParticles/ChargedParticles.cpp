@@ -1269,8 +1269,7 @@ int main(int argc, char** argv)
       {
          ps->forEachParticle(
             useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor,
-            [&hydrodynamicStress, diameter, gravitationalForce](const size_t idx1,
-                                                                                           auto& ac) {
+            [&hydrodynamicStress, diameter, gravitationalForce](const size_t idx1, auto& ac) {
                hydrodynamicStress[0] +=
                   (abs(ac.getHydrodynamicForce(idx1)[0] + gravitationalForce[0])) / ((math::pi) *diameter * diameter);
                hydrodynamicStress[1] +=
