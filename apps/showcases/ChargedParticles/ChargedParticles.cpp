@@ -86,14 +86,14 @@
 
 #include "vtk/all.h"
 
-#include "AddElectrostaticInteractionKernel.h"
-#include "ChargeForce.h"
-#include "poisson_solver/PoissonSolver.h"
-#include "ResetElectrostaticForceKernel.h"
-#include "ChargeDensity.h"
-#include "postProcessingUtilities.h"
-#include "./poisson_solver/PotentialValidationCustomBoundary.h"
 #include "./poisson_solver/CustomBoundary.h"
+#include "./poisson_solver/PotentialValidationCustomBoundary.h"
+#include "AddElectrostaticInteractionKernel.h"
+#include "ChargeDensity.h"
+#include "ChargeForce.h"
+#include "ResetElectrostaticForceKernel.h"
+#include "poisson_solver/PoissonSolver.h"
+#include "postProcessingUtilities.h"
 
 namespace charged_particles
 {
@@ -467,7 +467,7 @@ int main(int argc, char** argv)
    if (on == 0) { useIntegrator = false; }
 
    Config::BlockHandle ParticleGenerationSchemes = cfgFile->getBlock("ParticleGenerationScheme");
-   const bool extendSimulationDomain        = ParticleGenerationSchemes.getParameter< bool >("extendSimulationDomain");
+   const bool extendSimulationDomain = ParticleGenerationSchemes.getParameter< bool >("extendSimulationDomain");
 
    Config::BlockHandle boundaryTypes = cfgFile->getBlock("BoundaryTypes");
    std::string boundaryTypeNorth     = boundaryTypes.getParameter< std::string >("North_type");
@@ -574,28 +574,31 @@ int main(int argc, char** argv)
    // relative_permitivity = 78 and vacuum_permitivity SI units ->  A2⋅s4⋅kg−1⋅m−3
 
    const real_t vacuum_permitivity_SI = real_c(78.5 * 8.8541878128 * pow(10, -12));
-   const real_t Ampere_unit           = ((densityFluid_SI) * real_c(pow(dx_SI, 5))) / (real_c(pow(dt_SI, 3)) * V);
-   real_t vacuum_permitivity =
-      ((densityFluid_SI * real_c(pow(dx_SI, 3))) * real_c(pow(dx_SI, 3))) / (real_c(pow(dt_SI, 4)) * Ampere_unit * Ampere_unit);
+   const real_t Ampere_unit           = ((densityFluid_SI) *real_c(pow(dx_SI, 5))) / (real_c(pow(dt_SI, 3)) * V);
+   real_t vacuum_permitivity          = ((densityFluid_SI * real_c(pow(dx_SI, 3))) * real_c(pow(dx_SI, 3))) /
+                               (real_c(pow(dt_SI, 4)) * Ampere_unit * Ampere_unit);
 
    vacuum_permitivity = vacuum_permitivity * (vacuum_permitivity_SI);
 
    // now for the charge: read from the parameter file
    const real_t elementaryCharge =
-           real_c(1.60217663 * pow(10, -19)); // 1 elementary charge = 1.60217663 * pow(10, -19) coloumbs
+      real_c(1.60217663 * pow(10, -19)); // 1 elementary charge = 1.60217663 * pow(10, -19) coloumbs
    maxCharge_SI           = maxCharge_SI * elementaryCharge;
    minCharge_SI           = minCharge_SI * elementaryCharge;
    const real_t maxCharge = ((maxCharge_SI) * (V * dt_SI * dt_SI)) / (densityFluid_SI * real_c(pow(dx_SI, 5)));
    const real_t minCharge = ((minCharge_SI) * (V * dt_SI * dt_SI)) / (densityFluid_SI * real_c(pow(dx_SI, 5)));
 
-   WALBERLA_LOG_INFO_ON_ROOT("permitivity in LBM units" << " " << vacuum_permitivity);
-   WALBERLA_LOG_INFO_ON_ROOT("Max charge in LBM units" << " " << maxCharge);
-   WALBERLA_LOG_INFO_ON_ROOT("Min charge in LBM units" << " " << minCharge);
+   WALBERLA_LOG_INFO_ON_ROOT("permitivity in LBM units"
+                             << " " << vacuum_permitivity);
+   WALBERLA_LOG_INFO_ON_ROOT("Max charge in LBM units"
+                             << " " << maxCharge);
+   WALBERLA_LOG_INFO_ON_ROOT("Min charge in LBM units"
+                             << " " << minCharge);
 
    // this is just for verification of the SI to LBM conversions is correctly done or not
-   const real_t q_unit = (densityFluid_SI * real_c(pow(dx_SI, 5))) / (V * dt_SI * dt_SI);
-   const real_t epsilon_unit =
-      (real_c(pow(dt_SI, 4)) * Ampere_unit * Ampere_unit) / ((densityFluid_SI * real_c(pow(dx_SI, 3))) * real_c(pow(dx_SI, 3)));
+   const real_t q_unit       = (densityFluid_SI * real_c(pow(dx_SI, 5))) / (V * dt_SI * dt_SI);
+   const real_t epsilon_unit = (real_c(pow(dt_SI, 4)) * Ampere_unit * Ampere_unit) /
+                               ((densityFluid_SI * real_c(pow(dx_SI, 3))) * real_c(pow(dx_SI, 3)));
    const real_t potential_unit = q_unit / (epsilon_unit * dx_SI);
 
    WALBERLA_UNUSED(potential_unit);
@@ -604,8 +607,8 @@ int main(int argc, char** argv)
    // std::cout << "domain size" << " " << domainSize[0] << std::endl;
    // std::cout << "potential at boundary in  Lattice units"<< " "
    // <<(1/(4*3.14*vacuum_permitivity))*(maxCharge/(domainSize[0]/2)) << std::endl; std::cout << "potential at boundary
-   // in  SI units"<< " " << (1/(4*3.14*vacuum_permitivity*epsilon_unit))*((maxCharge*q_unit)/(domainSize[0]/2*dx_SI)) <<
-   // std::endl; std::cout << "potential at boundary in  SI units"<< " " <<
+   // in  SI units"<< " " << (1/(4*3.14*vacuum_permitivity*epsilon_unit))*((maxCharge*q_unit)/(domainSize[0]/2*dx_SI))
+   // << std::endl; std::cout << "potential at boundary in  SI units"<< " " <<
    // (1/(4*3.14*vacuum_permitivity_SI))*((maxCharge_SI)/(domainSize[0]/2*dx_SI)) << std::endl;
 
    // verification ends here
@@ -614,7 +617,6 @@ int main(int argc, char** argv)
    const uint_t infoSpacing         = uint_c(std::ceil(infoSpacing_SI / dt_SI));
    const uint_t vtkSpacingParticles = uint_c(std::ceil(vtkSpacingParticles_SI / dt_SI));
    const uint_t vtkSpacingFluid     = uint_c(std::ceil(vtkSpacingFluid_SI / dt_SI));
-
 
    const real_t poissonsRatio         = real_t(0.22);
    const real_t kappa                 = real_t(2) * (real_t(1) - poissonsRatio) / (real_t(2) - poissonsRatio);
@@ -674,8 +676,7 @@ int main(int argc, char** argv)
    }
 
    auto poissonSolver = PoissonSolver< DAMPED_JACOBI >(/* src */ potentialFieldID, /* dst */ potentialFieldCopyID,
-                                                       /* rhs */ chargeDensityFieldID,
-                                                       blocks, boundaryHandling,
+                                                       /* rhs */ chargeDensityFieldID, blocks, boundaryHandling,
                                                        uint_c(1000), real_c(1e-16), uint_c(1000));
    //////////////////
    // RPD COUPLING //
@@ -839,7 +840,7 @@ int main(int argc, char** argv)
 
    case Showcase: {
       WALBERLA_LOG_INFO_ON_ROOT("Charged Particle Showcase Simulation is Chosen");
-      generationDomain = math::GenericAABB<real_t>::createFromMinMaxCorner(0, 0, 0, 200, 200, 800);
+      generationDomain = math::GenericAABB< real_t >::createFromMinMaxCorner(0, 0, 0, 200, 200, 800);
       inflowVec        = Vector3< real_t >(0_r, 0_r, uInflow);
 
       uint_t particleCount = 0;
@@ -867,7 +868,7 @@ int main(int argc, char** argv)
 
       WALBERLA_LOG_INFO_ON_ROOT("Initiating User Defined Simulation");
       if (extendSimulationDomain) { generationDomain = simulationDomain.getExtended(-0.5_r * Spacing); }
-      else { generationDomain = math::GenericAABB<real_t>::createFromMinMaxCorner(0, 0, 0, 200, 200, 800);}
+      else { generationDomain = math::GenericAABB< real_t >::createFromMinMaxCorner(0, 0, 0, 200, 200, 800); }
       inflowVec = Vector3< real_t >(0_r, 0_r, uInflow);
 
       for (auto pt : grid_generator::SCGrid(generationDomain, generationDomain.center(), Spacing))
@@ -964,11 +965,12 @@ int main(int argc, char** argv)
          blocks, "particle and volume fraction field",
          std::vector< lbm_mesapd_coupling::psm::ParticleAndVolumeFraction_T >(), field::fzyx, 0);
 
-   auto chargeForceUpdate = ChargeForceUpdate(blocks, potentialFieldID, electrostaticForceFieldID,
-                                  particleAndVolumeFractionFieldID, chargeDensityFieldID, accessor, vacuum_permitivity);
+   auto chargeForceUpdate =
+      ChargeForceUpdate(blocks, potentialFieldID, electrostaticForceFieldID, particleAndVolumeFractionFieldID,
+                        chargeDensityFieldID, accessor, vacuum_permitivity);
 
-   auto chargeDensityUpdate = ChargeDensityUpdate(blocks, particleAndVolumeFractionFieldID, chargeDensityFieldID,
-                                                  accessor, vacuum_permitivity);
+   auto chargeDensityUpdate =
+      ChargeDensityUpdate(blocks, particleAndVolumeFractionFieldID, chargeDensityFieldID, accessor, vacuum_permitivity);
 
    lbm_mesapd_coupling::psm::ParticleAndVolumeFractionMapping particleMapping(
       blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(), particleAndVolumeFractionFieldID, 3);
@@ -1049,12 +1051,11 @@ int main(int argc, char** argv)
                   particleAndVolumeFractionFieldID);
             ScalarField_T* BField = blockIt->getData< ScalarField_T >(BFieldID);
 
-             WALBERLA_FOR_ALL_CELLS_XYZ(particleAndVolumeFractionField,
-                                        BField->get(x, y, z) = 0.0;
+            WALBERLA_FOR_ALL_CELLS_XYZ(particleAndVolumeFractionField, BField->get(x, y, z) = 0.0;
 
-                                        for (auto &e: particleAndVolumeFractionField->get(x, y, z))
-                                            BField->get(x, y, z) += e.second;
-             )
+                                       for (auto& e
+                                            : particleAndVolumeFractionField->get(x, y, z)) BField->get(x, y, z) +=
+                                       e.second;)
          }
       });
 
@@ -1100,7 +1101,9 @@ int main(int argc, char** argv)
    }
 
    if (vtkSpacingFluid != uint_t(0) || vtkSpacingParticles != uint_t(0))
-   { vtk::writeDomainDecomposition(blocks, "domain_decomposition", vtkFolder); }
+   {
+      vtk::writeDomainDecomposition(blocks, "domain_decomposition", vtkFolder);
+   }
 
    // add LBM communication function and boundary handling sweep (does the hydro force calculations and the no-slip
    // treatment)
@@ -1243,7 +1246,7 @@ int main(int argc, char** argv)
          // add electrostatic force
          AddElectrostaticInteractionKernel addElectrostaticInteraction;
          ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, addElectrostaticInteraction,
-                           *accessor);
+                             *accessor);
 
          if (withoutGravity == false)
          {
@@ -1282,7 +1285,7 @@ int main(int argc, char** argv)
 
       // TODO: write and add resetElectrostaticForce, see above   ---> completed
       auto particleInfo = evaluateParticleInfo(*accessor);
-      auto fluidInfo = evaluateFluidInfo< BoundaryHandling_T >(blocks, pdfFieldID, boundaryHandlingID);
+      auto fluidInfo    = evaluateFluidInfo< BoundaryHandling_T >(blocks, pdfFieldID, boundaryHandlingID);
 
       if (timeStep % 1000 == 0) { WriteEnsembledVelocityToFile(timeStep, particleInfo); }
 
