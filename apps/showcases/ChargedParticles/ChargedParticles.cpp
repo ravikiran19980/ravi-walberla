@@ -979,6 +979,10 @@ int main(int argc, char** argv)
    lbm_mesapd_coupling::psm::initializeDomainForPSM< LatticeModel_T, 1 >(*blocks, pdfFieldID,
                                                                          particleAndVolumeFractionFieldID, *accessor);
 
+   // after particle-volume field setup: init RHS of PDE and compute init residual
+   chargeDensityUpdate();
+   poissonSolver.computeInitialResidual();
+
    // setup of the LBM communication for synchronizing the pdf field between neighboring blocks
    blockforest::communication::UniformBufferedScheme< Stencil_T > optimizedPDFCommunicationScheme(blocks);
    optimizedPDFCommunicationScheme.addPackInfo(
@@ -1138,8 +1142,6 @@ int main(int argc, char** argv)
 
       // update charge density field from physical properties and overlapFraction field
       chargeDensityUpdate();
-
-      // poissonSolver.computeInitialResidual();
 
       // Solve poisson equation to obtain electric potential
 
