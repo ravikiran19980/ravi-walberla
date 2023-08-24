@@ -153,6 +153,8 @@ void solveElectrostaticPoisson(const shared_ptr< StructuredBlockForest >& blocks
          })
    }
 
+   poissonSolverSOR.computeInitialResidual();
+
    for (auto block = blocks->begin(); block != blocks->end(); ++block) {
       ScalarField_T* analyticalField = block->getData< ScalarField_T >(analytical);
 
