@@ -1277,11 +1277,11 @@ int main(int argc, char** argv)
             useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor,
             [&hydrodynamicStress, diameter, gravitationalForce](const size_t idx1, auto& ac) {
                hydrodynamicStress[0] +=
-                  (abs(ac.getHydrodynamicForce(idx1)[0] + gravitationalForce[0])) / ((math::pi) *diameter * diameter);
+                  real_c(fabs(ac.getHydrodynamicForce(idx1)[0] + gravitationalForce[0])) / ((math::pi) * diameter * diameter);
                hydrodynamicStress[1] +=
-                  (abs(ac.getHydrodynamicForce(idx1)[1] + gravitationalForce[1])) / ((math::pi) *diameter * diameter);
+                  real_c(fabs(ac.getHydrodynamicForce(idx1)[1] + gravitationalForce[1])) / ((math::pi) * diameter * diameter);
                hydrodynamicStress[2] +=
-                  (abs(ac.getHydrodynamicForce(idx1)[2] + gravitationalForce[2])) / ((math::pi) *diameter * diameter);
+                  real_c(fabs(ac.getHydrodynamicForce(idx1)[2] + gravitationalForce[2])) / ((math::pi) * diameter * diameter);
             },
             *accessor);
       }
