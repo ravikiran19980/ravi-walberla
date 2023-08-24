@@ -88,6 +88,7 @@ void solveElectrostaticPoisson(const shared_ptr< StructuredBlockForest >& blocks
                                BlockDataID& analytical)
 {
    auto numIter = uint_c(100000);
+   auto useAbsResThreshold = true;
    auto resThres = real_c(1e-14);
    auto resCheckFreq = uint_c(1000);
 
@@ -119,7 +120,7 @@ void solveElectrostaticPoisson(const shared_ptr< StructuredBlockForest >& blocks
    dirichletFunction.setFunction(stencil::B, GET_POTENTIAL_BCS_LAMBDA(stencil::B));
    dirichletFunction.setFunction(stencil::T, GET_POTENTIAL_BCS_LAMBDA(stencil::T));
 
-   auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR > (solution, solutionCpy, rhs, blocks, dirichletFunction, numIter, resThres, resCheckFreq);
+   auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR > (solution, solutionCpy, rhs, blocks, dirichletFunction, numIter, useAbsResThreshold, resThres, resThres, resCheckFreq);
 
    // init rhs with two charged particles
 
