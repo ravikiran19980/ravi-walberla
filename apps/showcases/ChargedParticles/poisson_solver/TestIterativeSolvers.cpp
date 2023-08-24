@@ -115,7 +115,7 @@ void resetRHS(const shared_ptr< StructuredBlockStorage > & blocks, BlockDataID &
 template < Testcase testcase >
 void solve(const shared_ptr< StructuredBlockForest > & blocks,
            const math::AABB & domainAABB, BlockDataID & solution, BlockDataID & solutionCpy, BlockDataID & rhs,
-           const uint_t numIter, real_t resThres, uint_t resCheckFreq) {
+           const uint_t numIter, bool useAbsResThres, real_t resThres, uint_t resCheckFreq) {
 
    const bool useDirichlet = testcase == TEST_DIRICHLET_1 || testcase == TEST_DIRICHLET_2;
 
@@ -145,9 +145,9 @@ void solve(const shared_ptr< StructuredBlockForest > & blocks,
 
    // solvers: Jacobi and SOR
 
-   auto poissonSolverJacobi = PoissonSolver< WALBERLA_JACOBI > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, resThres, resCheckFreq);
-   auto poissonSolverDampedJac = PoissonSolver< DAMPED_JACOBI > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, resThres, resCheckFreq);
-   auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, resThres, resCheckFreq);
+   auto poissonSolverJacobi = PoissonSolver< WALBERLA_JACOBI > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThres, resThres, resThres, resCheckFreq);
+   auto poissonSolverDampedJac = PoissonSolver< DAMPED_JACOBI > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThres, resThres, resThres, resCheckFreq);
+   auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThres, resThres, resThres, resCheckFreq);
 
    // calc error depending on scenario
 
@@ -279,6 +279,7 @@ void solveChargedParticles(const shared_ptr< StructuredBlockForest > & blocks,
    // solvers: Jacobi and SOR
 
    auto numIter = uint_c(20000);
+   auto useAbsResThreshold = true;
    auto resThres = real_c(1e-5);
    auto resCheckFreq = uint_c(1000);
 
@@ -295,8 +296,8 @@ void solveChargedParticles(const shared_ptr< StructuredBlockForest > & blocks,
       boundaryHandling = pde::NeumannDomainBoundary< ScalarField_T >(*blocks, solution);
    }
 
-   auto poissonSolverJacobi = PoissonSolver< DAMPED_JACOBI > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, resThres, resCheckFreq);
-   auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, resThres, resCheckFreq);
+   auto poissonSolverJacobi = PoissonSolver< DAMPED_JACOBI > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThreshold, resThres, resThres, resCheckFreq);
+   auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR > (solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThreshold, resThres, resThres, resCheckFreq);
 
    // init rhs with two charged particles
 
@@ -365,6 +366,7 @@ int main(int argc, char** argv)
    const Vector3< uint_t > numBlocksPerDim     = setup.getParameter< Vector3< uint_t > >("numBlocks");
    const Vector3< uint_t > numCellsBlockPerDim = setup.getParameter< Vector3< uint_t > >("numCellsPerBlock");
    const uint_t maxIterations                  = setup.getParameter< uint_t >("maxIterations");
+   const bool useAbsResThreshold               = setup.getParameter< bool >("useAbsResThreshold");
    const real_t resThres                       = setup.getParameter< real_t >("resThreshold");
    const uint_t resCheckFreq                   = setup.getParameter< uint_t >("resCheckFreq");
 
@@ -388,18 +390,18 @@ int main(int argc, char** argv)
    // first solve neumann problem...
    WALBERLA_LOG_INFO_ON_ROOT("Run analytical test cases...")
    WALBERLA_LOG_INFO_ON_ROOT("- Solving analytical Neumann problem with Jacobi and SOR... -")
-   solve< TEST_NEUMANN > (blocks, domainAABB, solution, solutionCpy, rhs, maxIterations, resThres, resCheckFreq);
+   solve< TEST_NEUMANN > (blocks, domainAABB, solution, solutionCpy, rhs, maxIterations, useAbsResThreshold, resThres, resCheckFreq);
 
    // ... then solve dirichlet problems
    resetRHS(blocks, rhs); // reset fields and solve anew
    resetSolution(blocks, solution, solutionCpy);
    WALBERLA_LOG_INFO_ON_ROOT("- Solving analytical Dirichlet problem (1) with Jacobi and SOR... -")
-   solve< TEST_DIRICHLET_1 > (blocks, domainAABB, solution, solutionCpy, rhs, maxIterations, resThres, resCheckFreq);
+   solve< TEST_DIRICHLET_1 > (blocks, domainAABB, solution, solutionCpy, rhs, maxIterations, useAbsResThreshold, resThres, resCheckFreq);
 
    resetRHS(blocks, rhs); // reset fields and solve anew
    resetSolution(blocks, solution, solutionCpy);
    WALBERLA_LOG_INFO_ON_ROOT("- Solving analytical Dirichlet problem (2) with Jacobi and SOR... -")
-   solve< TEST_DIRICHLET_2 > (blocks, domainAABB, solution, solutionCpy, rhs, maxIterations, resThres, resCheckFreq);
+   solve< TEST_DIRICHLET_2 > (blocks, domainAABB, solution, solutionCpy, rhs, maxIterations, useAbsResThreshold, resThres, resCheckFreq);
 
    /* 2. experimental charged particle tests */
 
