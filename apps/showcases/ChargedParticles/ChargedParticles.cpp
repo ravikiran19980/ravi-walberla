@@ -1211,9 +1211,9 @@ int main(int argc, char** argv)
             ps->forEachParticle(
                useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor,
                [&collisionStress, &diameter](const size_t idx1, auto& ac) {
-                  collisionStress[0] += (abs(ac.getForce(idx1)[0])) / ((math::pi) *diameter * diameter);
-                  collisionStress[1] += (abs(ac.getForce(idx1)[1])) / ((math::pi) *diameter * diameter);
-                  collisionStress[2] += (abs(ac.getForce(idx1)[2])) / ((math::pi) *diameter * diameter);
+                  collisionStress[0] += real_c(fabs(ac.getForce(idx1)[0])) / ((math::pi) * diameter * diameter);
+                  collisionStress[1] += real_c(fabs(ac.getForce(idx1)[1])) / ((math::pi) * diameter * diameter);
+                  collisionStress[2] += real_c(fabs(ac.getForce(idx1)[2])) / ((math::pi) * diameter * diameter);
                },
                *accessor);
          }
