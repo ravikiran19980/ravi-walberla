@@ -77,9 +77,9 @@ class PoissonSolver
       // handling for absolute/relative residual thresholds
       // if absolute res thres is used -> simply propagate ctor values for absolute res checks to Jacobi iteration
       // else
-      //  -> only execute "residualCheckFrequency_" iterations at once and then execute logic for relative exit crit
+      //  -> only execute "resCheckFreq" iterations at once and then execute logic for relative exit crit
       //  -> repeat "numExecutions" times to perform the same amount of total iterations
-      WALBERLA_ASSERT(iterations % residualCheckFrequency == 0,
+      WALBERLA_ASSERT(iterations % resCheckFreq == 0,
                       "Number of iterations should be divisible by residual check frequency!")
 
       if (useAbsResNormThres)
