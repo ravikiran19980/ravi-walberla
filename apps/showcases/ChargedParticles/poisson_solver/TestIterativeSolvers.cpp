@@ -26,10 +26,13 @@ void applyDirichletFunction(const shared_ptr< StructuredBlockStorage >& blocks, 
                             const stencil::Direction& direction, IBlock* block, PdeField* p,
                             const CellInterval& interval, const cell_idx_t cx, const cell_idx_t cy, const cell_idx_t cz)
 {
-   WALBERLA_FOR_ALL_CELLS_IN_INTERVAL_XYZ(
-      interval, real_t boundaryCoord_x = 0.; real_t boundaryCoord_y = 0.; real_t boundaryCoord_z = 0.;
+   WALBERLA_FOR_ALL_CELLS_IN_INTERVAL_XYZ(interval,
+      real_t boundaryCoord_x = 0.;
+      real_t boundaryCoord_y = 0.;
+      real_t boundaryCoord_z = 0.;
 
-      const auto cellAABB = blocks->getBlockLocalCellAABB(*block, Cell(x, y, z)); auto cellCenter = cellAABB.center();
+      const auto cellAABB = blocks->getBlockLocalCellAABB(*block, Cell(x, y, z));
+      auto cellCenter = cellAABB.center();
 
       // snap cell position to actual domain position
       switch (direction) {
@@ -69,9 +72,11 @@ void applyDirichletFunction(const shared_ptr< StructuredBlockStorage >& blocks, 
 
       // use positions normalized to unit cube
       boundaryCoord_x /= domainAABB.size(0);
-      boundaryCoord_y /= domainAABB.size(1); boundaryCoord_z /= domainAABB.size(2);
+      boundaryCoord_y /= domainAABB.size(1);
+      boundaryCoord_z /= domainAABB.size(2);
 
-      auto funcVal = real_c(0); switch (testcase) {
+      auto funcVal = real_c(0);
+      switch (testcase) {
          case TEST_DIRICHLET_1:
             funcVal = (boundaryCoord_x * boundaryCoord_x) - real_c(0.5) * (boundaryCoord_y * boundaryCoord_y) -
                       real_c(0.5) * (boundaryCoord_z * boundaryCoord_z);
@@ -82,7 +87,10 @@ void applyDirichletFunction(const shared_ptr< StructuredBlockStorage >& blocks, 
             break;
          default:
             WALBERLA_ABORT("Unknown testcase");
-      } p->get(x, y, z) = real_c(2) * funcVal - p->get(x + cx, y + cy, z + cz);)
+      }
+
+      p->get(x, y, z) = real_c(2) * funcVal - p->get(x + cx, y + cy, z + cz);
+   )
 }
 
 void resetSolution(const shared_ptr< StructuredBlockStorage >& blocks, BlockDataID& solution, BlockDataID& solutionCpy)
@@ -141,7 +149,9 @@ void solve(const shared_ptr< StructuredBlockForest >& blocks, const math::AABB& 
 
       boundaryHandling = dirichletFunction;
    }
-   else { boundaryHandling = pde::NeumannDomainBoundary< ScalarField_T >(*blocks, solution); }
+   else {
+      boundaryHandling = pde::NeumannDomainBoundary< ScalarField_T >(*blocks, solution);
+   }
 
    // solvers: Jacobi and SOR
 
@@ -149,8 +159,8 @@ void solve(const shared_ptr< StructuredBlockForest >& blocks, const math::AABB& 
       solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThres, resThres, resThres, resCheckFreq);
    auto poissonSolverDampedJac = PoissonSolver< DAMPED_JACOBI >(
       solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThres, resThres, resThres, resCheckFreq);
-   auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR >(solution, solutionCpy, rhs, blocks, boundaryHandling, numIter,
-                                                         useAbsResThres, resThres, resThres, resCheckFreq);
+   auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR >(
+      solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThres, resThres, resThres, resCheckFreq);
 
    // calc error depending on scenario
 
@@ -167,34 +177,37 @@ void solve(const shared_ptr< StructuredBlockForest >& blocks, const math::AABB& 
                                     auto cellCenter = cellAABB.center();
 
                                     // use positions normalized to unit cube
-                                    real_t scaleX = real_c(1) / domainAABB.size(0);
-                                    real_t scaleY = real_c(1) / domainAABB.size(1);
-                                    real_t scaleZ = real_c(1) / domainAABB.size(2);
+                                    auto scaleX = real_c(1) / domainAABB.size(0);
+                                    auto scaleY = real_c(1) / domainAABB.size(1);
+                                    auto scaleZ = real_c(1) / domainAABB.size(2);
 
-                                    real_t posX = cellCenter[0] * scaleX;
-                                    real_t posY = cellCenter[1] * scaleY;
-                                    real_t posZ = cellCenter[2] * scaleZ;
+                                    auto posX = cellCenter[0] * scaleX;
+                                    auto posY = cellCenter[1] * scaleY;
+                                    auto posZ = cellCenter[2] * scaleZ;
 
                                     real_t analyticalSol;
 
                                     // analytical solution of problem with neumann/dirichlet boundaries
                                     switch (testcase) {
-         case TEST_DIRICHLET_1:
-            analyticalSol = (posX * posX) - real_c(0.5) * (posY * posY) - real_c(0.5) * (posZ * posZ);
-            break;
-         case TEST_DIRICHLET_2:
-            analyticalSol = real_c(sin(math::pi * posX)) * real_c(sin(math::pi * posY)) *
-                            real_c(sinh(math::root_two * math::pi * posZ));
-            break;
-         case TEST_NEUMANN:
-            analyticalSol = real_c(cos(real_c(2) * math::pi * posX)) * real_c(cos(real_c(2) * math::pi * posY)) *
-                            real_c(cos(real_c(2) * math::pi * posZ));
-            break;
-         default:
-            WALBERLA_ABORT("Unknown testcase");
+                                       case TEST_DIRICHLET_1:
+                                          analyticalSol =
+                                             (posX * posX) - real_c(0.5) * (posY * posY) - real_c(0.5) * (posZ * posZ);
+                                          break;
+                                       case TEST_DIRICHLET_2:
+                                          analyticalSol = real_c(sin(math::pi * posX)) * real_c(sin(math::pi * posY)) *
+                                                          real_c(sinh(math::root_two * math::pi * posZ));
+                                          break;
+                                       case TEST_NEUMANN:
+                                          analyticalSol =
+                                             real_c(cos(real_c(2) * math::pi * posX)) *
+                                             real_c(cos(real_c(2) * math::pi * posY)) *
+                                             real_c(cos(real_c(2) * math::pi * posZ));
+                                          break;
+                                       default:
+                                          WALBERLA_ABORT("Unknown testcase");
                                     }
 
-                                    real_t currErr = real_c(fabs(solutionField->get(x, y, z) - analyticalSol));
+                                    auto currErr = real_c(fabs(solutionField->get(x, y, z) - analyticalSol));
                                     blockResult = std::max(blockResult, currErr);
          )
          error = std::max(error, blockResult);
@@ -217,11 +230,13 @@ void solve(const shared_ptr< StructuredBlockForest >& blocks, const math::AABB& 
          auto cellCenter     = cellAABB.center();
 
          // use positions normalized to unit cube
-         real_t scaleX = real_c(1) / domainAABB.size(0);
-         real_t scaleY = real_c(1) / domainAABB.size(1); real_t scaleZ = real_c(1) / domainAABB.size(2);
+         auto scaleX = real_c(1) / domainAABB.size(0);
+         auto scaleY = real_c(1) / domainAABB.size(1);
+         auto scaleZ = real_c(1) / domainAABB.size(2);
 
-         real_t posX = cellCenter[0] * scaleX; real_t posY = cellCenter[1] * scaleY;
-         real_t posZ                                       = cellCenter[2] * scaleZ;
+         auto posX = cellCenter[0] * scaleX;
+         auto posY = cellCenter[1] * scaleY;
+         auto posZ = cellCenter[2] * scaleZ;
 
          switch (testcase) {
             case TEST_DIRICHLET_1:
@@ -321,7 +336,9 @@ void solveChargedParticles(const shared_ptr< StructuredBlockForest >& blocks, co
          const real_t z1 = domainAABB.zMin() + real_c(0.65) * domainAABB.size(2);
          const real_t r1 = real_c(0.08) * domainAABB.size(0); const real_t s1 = real_c(1);
 
-         real_t posX = cellCenter[0]; real_t posY = cellCenter[1]; real_t posZ = cellCenter[2];
+         auto posX = cellCenter[0];
+         auto posY = cellCenter[1];
+         auto posZ = cellCenter[2];
 
          if ((real_c(pow(posX - x0, 2)) + real_c(pow(posY - y0, 2)) + real_c(pow(posZ - z0, 2))) < real_c(pow(r0, 2))) {
             auto relDistPos0       = real_c(sqrt(real_c(pow((posX - x0) / r0, 2)) + real_c(pow((posY - y0) / r0, 2)) +
@@ -332,7 +349,10 @@ void solveChargedParticles(const shared_ptr< StructuredBlockForest >& blocks, co
             auto relDistPos1       = real_c(sqrt(real_c(pow((posX - x1) / r1, 2)) + real_c(pow((posY - y1) / r1, 2)) +
                                                  real_c(pow((posZ - z1) / r1, 2))));
             rhsField->get(x, y, z) = -s1 * (real_c(1) - relDistPos1);
-         } else { rhsField->get(x, y, z) = real_c(0); })
+         } else {
+            rhsField->get(x, y, z) = real_c(0);
+         }
+      )
    }
 
    // solve with jacobi
@@ -359,7 +379,7 @@ int main(int argc, char** argv)
    auto cfgFile = env.config();
    if (!cfgFile) WALBERLA_ABORT("Usage: " << argv[0] << " < path-to-configuration-file > \n");
 
-   Config::BlockHandle setup                   = cfgFile->getBlock("Setup");
+   Config::BlockHandle const setup             = cfgFile->getBlock("Setup");
    const Vector3< uint_t > numBlocksPerDim     = setup.getParameter< Vector3< uint_t > >("numBlocks");
    const Vector3< uint_t > numCellsBlockPerDim = setup.getParameter< Vector3< uint_t > >("numCellsPerBlock");
    const uint_t maxIterations                  = setup.getParameter< uint_t >("maxIterations");
@@ -371,7 +391,7 @@ int main(int argc, char** argv)
    WALBERLA_LOG_INFO_ON_ROOT("Domain sizes are: x = " << domainAABB.size(0) << ", y = " << domainAABB.size(1)
                                                       << ", z = " << domainAABB.size(2));
 
-   shared_ptr< StructuredBlockForest > blocks = blockforest::createUniformBlockGrid(
+   shared_ptr< StructuredBlockForest > const blocks = blockforest::createUniformBlockGrid(
       domainAABB, numBlocksPerDim[0], numBlocksPerDim[1], numBlocksPerDim[2], numCellsBlockPerDim[0],
       numCellsBlockPerDim[1], numCellsBlockPerDim[2], true, false, false, false, false);
 
