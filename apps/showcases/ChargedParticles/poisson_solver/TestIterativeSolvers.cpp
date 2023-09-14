@@ -153,13 +153,15 @@ void solve(const shared_ptr< StructuredBlockForest >& blocks, const math::AABB& 
       boundaryHandling = pde::NeumannDomainBoundary< ScalarField_T >(*blocks, solution);
    }
 
-   // solvers: Jacobi and SOR
+   // solvers: (damped) Jacobi, SOR and CG
 
    auto poissonSolverJacobi = PoissonSolver< WALBERLA_JACOBI >(
       solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThres, resThres, resThres, resCheckFreq);
    auto poissonSolverDampedJac = PoissonSolver< DAMPED_JACOBI >(
       solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThres, resThres, resThres, resCheckFreq);
    auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR >(
+      solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThres, resThres, resThres, resCheckFreq);
+   auto poissonSolverCG = PoissonSolver< WALBERLA_CG >(
       solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThres, resThres, resThres, resCheckFreq);
 
    // calc error depending on scenario
@@ -281,6 +283,13 @@ void solve(const shared_ptr< StructuredBlockForest >& blocks, const math::AABB& 
    poissonSolverSOR();
    auto errSOR = computeMaxError();
    WALBERLA_LOG_INFO_ON_ROOT("Error after SOR solver is: " << errSOR);
+
+   // solve with CG
+   WALBERLA_LOG_INFO_ON_ROOT("-- Solve using CG --");
+   resetSolution(blocks, solution, solutionCpy); // reset solutions and solve anew
+   poissonSolverCG();
+   auto errCG = computeMaxError();
+   WALBERLA_LOG_INFO_ON_ROOT("Error after CG solver is: " << errCG);
 }
 
 // solve two different charged particle scenarios (dirichlet scenario and neumann scenario) with different setups
@@ -288,7 +297,7 @@ template< bool useDirichlet >
 void solveChargedParticles(const shared_ptr< StructuredBlockForest >& blocks, const math::AABB& domainAABB,
                            BlockDataID& solution, BlockDataID& solutionCpy, BlockDataID& rhs)
 {
-   // solvers: Jacobi and SOR
+   // solvers: damped Jacobi, SOR and CG
 
    auto numIter            = uint_c(20000);
    auto useAbsResThreshold = true;
@@ -312,6 +321,8 @@ void solveChargedParticles(const shared_ptr< StructuredBlockForest >& blocks, co
       PoissonSolver< DAMPED_JACOBI >(solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThreshold,
                                      resThres, resThres, resCheckFreq);
    auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR >(solution, solutionCpy, rhs, blocks, boundaryHandling, numIter,
+                                                         useAbsResThreshold, resThres, resThres, resCheckFreq);
+   auto poissonSolverCG = PoissonSolver< WALBERLA_CG >(solution, solutionCpy, rhs, blocks, boundaryHandling, numIter,
                                                          useAbsResThreshold, resThres, resThres, resCheckFreq);
 
    // init rhs with two charged particles
@@ -361,6 +372,10 @@ void solveChargedParticles(const shared_ptr< StructuredBlockForest >& blocks, co
    // solve with SOR
    resetSolution(blocks, solution, solutionCpy); // reset solutions and solve anew
    poissonSolverSOR();
+
+   // solve with CG
+   resetSolution(blocks, solution, solutionCpy); // reset solutions and solve anew
+   poissonSolverCG();
 }
 
 int main(int argc, char** argv)
@@ -403,20 +418,20 @@ int main(int argc, char** argv)
 
    // first solve neumann problem...
    WALBERLA_LOG_INFO_ON_ROOT("Run analytical test cases...")
-   WALBERLA_LOG_INFO_ON_ROOT("- Solving analytical Neumann problem with Jacobi and SOR... -")
+   WALBERLA_LOG_INFO_ON_ROOT("- Solving analytical Neumann problem with (damped) Jacobi, SOR and CG... -")
    solve< TEST_NEUMANN >(blocks, domainAABB, solution, solutionCpy, rhs, maxIterations, useAbsResThreshold, resThres,
                          resCheckFreq);
 
    // ... then solve dirichlet problems
    resetRHS(blocks, rhs); // reset fields and solve anew
    resetSolution(blocks, solution, solutionCpy);
-   WALBERLA_LOG_INFO_ON_ROOT("- Solving analytical Dirichlet problem (1) with Jacobi and SOR... -")
+   WALBERLA_LOG_INFO_ON_ROOT("- Solving analytical Dirichlet problem (1) with (damped) Jacobi, SOR and CG... -")
    solve< TEST_DIRICHLET_1 >(blocks, domainAABB, solution, solutionCpy, rhs, maxIterations, useAbsResThreshold,
                              resThres, resCheckFreq);
 
    resetRHS(blocks, rhs); // reset fields and solve anew
    resetSolution(blocks, solution, solutionCpy);
-   WALBERLA_LOG_INFO_ON_ROOT("- Solving analytical Dirichlet problem (2) with Jacobi and SOR... -")
+   WALBERLA_LOG_INFO_ON_ROOT("- Solving analytical Dirichlet problem (2) with (damped) Jacobi, SOR and CG... -")
    solve< TEST_DIRICHLET_2 >(blocks, domainAABB, solution, solutionCpy, rhs, maxIterations, useAbsResThreshold,
                              resThres, resCheckFreq);
 
@@ -427,11 +442,11 @@ int main(int argc, char** argv)
    resetSolution(blocks, solution, solutionCpy);
 
    // neumann
-   WALBERLA_LOG_INFO_ON_ROOT("- Run charged particles with Neumann boundaries... -")
+   WALBERLA_LOG_INFO_ON_ROOT("- Run charged particles with Neumann boundaries with damped Jacobi, SOR and CG... -")
    solveChargedParticles< false >(blocks, domainAABB, solution, solutionCpy, rhs);
 
    // dirichlet
-   WALBERLA_LOG_INFO_ON_ROOT("- Run charged particles with Dirichlet (val = 0) boundaries... -")
+   WALBERLA_LOG_INFO_ON_ROOT("- Run charged particles with Dirichlet (val = 0) boundaries with damped Jacobi, SOR and CG... -")
    resetSolution(blocks, solution, solutionCpy); // reset solutions and solve anew
    solveChargedParticles< true >(blocks, domainAABB, solution, solutionCpy, rhs);
 

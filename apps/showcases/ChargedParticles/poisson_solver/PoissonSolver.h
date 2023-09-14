@@ -9,7 +9,7 @@
 #include "DirichletDomainBoundary.h"
 #include "Neumann.h"
 
-enum Enum { WALBERLA_JACOBI, WALBERLA_SOR, DAMPED_JACOBI };
+enum Enum { WALBERLA_JACOBI, WALBERLA_SOR, WALBERLA_CG, DAMPED_JACOBI };
 
 namespace walberla
 {
@@ -107,7 +107,7 @@ class PoissonSolver
       {
          jacSweep = [this](IBlock* block) { dampedJacobiSweep(block); };
       }
-      else {
+      else if (solver == WALBERLA_JACOBI) {
          jacSweep = *jacobiFixedSweep_;
       }
 
@@ -128,6 +128,18 @@ class PoissonSolver
          sorFixedSweep_->getBlackSweep(), *residualNorm_, residualNormThreshold_, residualCheckFrequency_);
 
       sorIteration_->addBoundaryHandling(boundaryHandling);
+
+      // CG
+
+      d_ = field::addToStorage< ScalarField_T >(blocks, "d", real_t(0), field::fzyx, uint_t(1));
+      r_ = field::addToStorage< ScalarField_T >(blocks, "r", real_t(0), field::fzyx, uint_t(1));
+      z_ = field::addToStorage< ScalarField_T >(blocks, "z", real_t(0), field::fzyx, uint_t(1));
+
+      commScheme_->addPackInfo(make_shared< field::communication::PackInfo< ScalarField_T > >(d_));
+
+      cgIteration_ = std::make_unique< pde::CGFixedStencilIteration< Stencil_T > >(
+         blocks->getBlockStorage(), src_, r_, d_, z_, rhs_, laplaceWeights_, uint_t(numIterPerExecution_), *commScheme_,
+         residualNormThreshold_);
    }
 
    // get approximate solution of electric potential
@@ -136,10 +148,18 @@ class PoissonSolver
       for (uint_t executions = 0; executions < numExecutions_; ++executions)
       {
          // execute solver...
-         if constexpr (solver != WALBERLA_SOR)
-            (*jacobiIteration_)();
-         else
+         switch (solver)
+         {
+         case WALBERLA_CG:
+            (*cgIteration_)();
+            break;
+         case WALBERLA_SOR:
             (*sorIteration_)();
+            break;
+         default:
+            (*jacobiIteration_)();
+            break;
+         }
 
          // .. and check if (relative) res threshold was reached
          if (useRelativeResidualThreshold_)
@@ -160,6 +180,13 @@ class PoissonSolver
             }
          }
       }
+
+      // print residual after solving
+      boundaryHandling_();
+      (*commScheme_)();
+      auto r = (*residualNorm_)();
+
+      WALBERLA_LOG_INFO_ON_ROOT("Residual after solving = " << r);
    }
 
    void computeInitialResidual()
@@ -176,6 +203,12 @@ class PoissonSolver
    BlockDataID src_;
    BlockDataID dst_;
    BlockDataID rhs_;
+
+   // CG fields
+   BlockDataID d_;
+   BlockDataID r_;
+   BlockDataID z_;
+
    std::vector< real_t > laplaceWeights_;
    std::shared_ptr< StructuredBlockForest > blocks_;
    std::shared_ptr< blockforest::communication::UniformBufferedScheme< Stencil_T > > commScheme_;
@@ -189,6 +222,8 @@ class PoissonSolver
 
    std::shared_ptr< pde::SORFixedStencil< Stencil_T > > sorFixedSweep_;
    std::unique_ptr< pde::RBGSIteration > sorIteration_;
+
+   std::unique_ptr< pde::CGFixedStencilIteration< Stencil_T > > cgIteration_;
 
    // general residual variables
    real_t residualNormThreshold_;
