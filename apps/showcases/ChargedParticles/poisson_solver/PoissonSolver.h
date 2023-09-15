@@ -8,6 +8,7 @@
 #include "CustomBoundary.h"
 #include "DirichletDomainBoundary.h"
 #include "Neumann.h"
+#include "ParallelCGFixedStencilIteration.h"
 
 enum Enum { WALBERLA_JACOBI, WALBERLA_SOR, WALBERLA_CG, DAMPED_JACOBI };
 
@@ -135,14 +136,31 @@ class PoissonSolver
       r_ = field::addToStorage< ScalarField_T >(blocks, "r", real_t(0), field::fzyx, uint_t(1));
       z_ = field::addToStorage< ScalarField_T >(blocks, "z", real_t(0), field::fzyx, uint_t(1));
 
-      commScheme_->addPackInfo(make_shared< field::communication::PackInfo< ScalarField_T > >(d_));
+      syncD_ = make_shared< blockforest::communication::UniformBufferedScheme< Stencil_T > >(blocks_);
+      syncD_->addPackInfo(make_shared< field::communication::PackInfo< ScalarField_T > >(d_));
 
-      cgIteration_ = std::make_unique< pde::CGFixedStencilIteration< Stencil_T > >(
-         blocks->getBlockStorage(), src_, r_, d_, z_, rhs_, laplaceWeights_, uint_t(numIterPerExecution_), *commScheme_,
+      // TODO: find out when to use which boundary handling
+      /*
+      // zero-value dirichlet BCs for CG fields: r and d
+      std::vector< BoundaryCondition > dirichletBoundaryConditions;
+      for (const auto& e : stencil::D3Q6::dir)
+         dirichletBoundaryConditions.emplace_back(e, "Dirichlet", 0_r);
+
+      applyBoundaryHandlingR_ = DirichletDomainBoundary< ScalarField_T >(*blocks, r_, dirichletBoundaryConditions);
+      applyBoundaryHandlingD_ = DirichletDomainBoundary< ScalarField_T >(*blocks, d_, dirichletBoundaryConditions);
+      */
+
+      applyBoundaryHandlingR_ = [](){};
+      applyBoundaryHandlingD_ = [](){};
+
+      cgIteration_ = std::make_unique< pde::ParallelCGFixedStencilIteration< Stencil_T > >(
+         blocks->getBlockStorage(), src_, r_, d_, z_, rhs_, laplaceWeights_, uint_t(numIterPerExecution_),
+         *commScheme_, *syncD_,
+         boundaryHandling_, applyBoundaryHandlingR_, applyBoundaryHandlingD_,
          residualNormThreshold_);
    }
 
-   // get approximate solution of electric potential
+   // get approximate solution
    void operator()()
    {
       for (uint_t executions = 0; executions < numExecutions_; ++executions)
@@ -200,15 +218,22 @@ class PoissonSolver
    }
 
  private:
+   // input fields
    BlockDataID src_;
    BlockDataID dst_;
    BlockDataID rhs_;
 
-   // CG fields
+   // specialized CG members
    BlockDataID d_;
    BlockDataID r_;
    BlockDataID z_;
 
+   std::shared_ptr< blockforest::communication::UniformBufferedScheme< Stencil_T > > syncD_;
+
+   std::function< void() > applyBoundaryHandlingR_;
+   std::function< void() > applyBoundaryHandlingD_;
+
+   // general solver members
    std::vector< real_t > laplaceWeights_;
    std::shared_ptr< StructuredBlockForest > blocks_;
    std::shared_ptr< blockforest::communication::UniformBufferedScheme< Stencil_T > > commScheme_;
@@ -217,13 +242,14 @@ class PoissonSolver
 
    std::shared_ptr< pde::ResidualNorm< Stencil_T > > residualNorm_;
 
+   // iteration schemes
    std::shared_ptr< pde::JacobiFixedStencil< Stencil_T > > jacobiFixedSweep_;
    std::unique_ptr< pde::JacobiIteration > jacobiIteration_;
 
    std::shared_ptr< pde::SORFixedStencil< Stencil_T > > sorFixedSweep_;
    std::unique_ptr< pde::RBGSIteration > sorIteration_;
 
-   std::unique_ptr< pde::CGFixedStencilIteration< Stencil_T > > cgIteration_;
+   std::unique_ptr< pde::ParallelCGFixedStencilIteration< Stencil_T > > cgIteration_;
 
    // general residual variables
    real_t residualNormThreshold_;
