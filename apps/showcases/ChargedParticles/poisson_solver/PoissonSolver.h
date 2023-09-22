@@ -210,6 +210,9 @@ class PoissonSolver
 
       WALBERLA_LOG_INFO_ON_ROOT("Initial residual = " << initRes_);
    }
+   real_t getResidualNorm(){
+      return (*residualNorm_)();
+   }
 
  private:
    // input fields

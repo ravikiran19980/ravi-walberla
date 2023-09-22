@@ -94,6 +94,7 @@
 #include "PostProcessingUtilities.h"
 #include "ResetElectrostaticForceKernel.h"
 #include "poisson_solver/PoissonSolver.h"
+#include "ErrorNorms.h"
 
 namespace charged_particles
 {
@@ -449,6 +450,8 @@ int main(int argc, char** argv)
    const uint_t numXBlocks                = numericalSetup.getParameter< uint_t >("numXBlocks");
    const uint_t numYBlocks                = numericalSetup.getParameter< uint_t >("numYBlocks");
    const uint_t numZBlocks                = numericalSetup.getParameter< uint_t >("numZBlocks");
+   const real_t absResThreshold           = numericalSetup.getParameter< real_t >("absResThreshold");
+   const uint_t jacobiIterations          = numericalSetup.getParameter< uint_t >("jacobiIterations");
    const bool useLubricationForces        = numericalSetup.getParameter< bool >("useLubricationForces");
    const uint_t numberOfParticleSubCycles = numericalSetup.getParameter< uint_t >("numberOfParticleSubCycles");
 
@@ -679,11 +682,11 @@ int main(int argc, char** argv)
                                                        /* rhs */ chargeDensityFieldID,
                                                        /* blockforest */blocks,
                                                        /* boundary conditions */ boundaryHandling, boundaryConditions,
-                                                       /* iterations */ uint_c(1000),
-                                                       /* use abs (true) or rel (false) threshold */ false,
-                                                       /* abs res threshold */ real_c(1e-16),
+                                                       /* iterations */ uint_c(jacobiIterations),
+                                                       /* use abs (true) or rel (false) threshold */ true,
+                                                       /* abs res threshold */ real_c(absResThreshold),
                                                        /* rel res threshold */ real_c(1e-6),
-                                                       /* res check freq */ uint_c(200));
+                                                       /* res check freq */ uint_c(1000));
    //////////////////
    // RPD COUPLING //
    //////////////////
@@ -1159,8 +1162,8 @@ int main(int argc, char** argv)
 
       // Compute electrostatic force field from electric potential (using finite differences)
       chargeForceUpdate();
-
       reduceProperty.operator()< mesa_pd::ElectrostaticForceNotification >(*ps);
+      WriteElectrostaticForces< ParticleAccessor_T >(accessor, timeStep);
 
       if (timeStep == 0)
       {
