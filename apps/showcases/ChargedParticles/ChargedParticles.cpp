@@ -1163,7 +1163,7 @@ int main(int argc, char** argv)
       // Compute electrostatic force field from electric potential (using finite differences)
       chargeForceUpdate();
       reduceProperty.operator()< mesa_pd::ElectrostaticForceNotification >(*ps);
-      WriteElectrostaticForces< ParticleAccessor_T >(accessor, timeStep);
+      //WriteElectrostaticForces< ParticleAccessor_T >(accessor, timeStep);
 
       if (timeStep == 0)
       {
