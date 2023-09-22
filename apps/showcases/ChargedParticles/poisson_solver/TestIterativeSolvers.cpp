@@ -128,10 +128,14 @@ void solve(const shared_ptr< StructuredBlockForest >& blocks, const math::AABB& 
 
    // set boundary handling depending on scenario
    std::function< void() > boundaryHandling = {};
+   std::vector< BoundaryCondition > boundaryConditions;
 
    if constexpr (useDirichlet)
    {
       // set dirichlet function per domain face
+      for (const auto& cond : stencil::D3Q6::dir)
+         boundaryConditions.emplace_back(cond, "Dirichlet", 0_r); // dummy value, unused
+
       auto dirichletFunction = DirichletFunctionDomainBoundary< ScalarField_T >(*blocks, solution);
 
 #define GET_BOUNDARY_LAMBDA(dir) \
@@ -149,20 +153,29 @@ void solve(const shared_ptr< StructuredBlockForest >& blocks, const math::AABB& 
 
       boundaryHandling = dirichletFunction;
    }
-   else {
-      boundaryHandling = pde::NeumannDomainBoundary< ScalarField_T >(*blocks, solution);
+   else
+   {
+      // set neumann bcs per domain face
+      for (const auto& cond : stencil::D3Q6::dir)
+         boundaryConditions.emplace_back(cond, "Neumann", 0_r); // dummy value, unused
+
+      boundaryHandling = NeumannDomainBoundary< ScalarField_T >(*blocks, solution, boundaryConditions);
    }
 
    // solvers: (damped) Jacobi, SOR and CG
 
-   auto poissonSolverJacobi = PoissonSolver< WALBERLA_JACOBI >(
-      solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThres, resThres, resThres, resCheckFreq);
-   auto poissonSolverDampedJac = PoissonSolver< DAMPED_JACOBI >(
-      solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThres, resThres, resThres, resCheckFreq);
-   auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR >(
-      solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThres, resThres, resThres, resCheckFreq);
-   auto poissonSolverCG = PoissonSolver< WALBERLA_CG >(
-      solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThres, resThres, resThres, resCheckFreq);
+   auto poissonSolverJacobi =
+      PoissonSolver< WALBERLA_JACOBI >(solution, solutionCpy, rhs, blocks, boundaryHandling, boundaryConditions,
+                                       numIter, useAbsResThres, resThres, resThres, resCheckFreq);
+   auto poissonSolverDampedJac =
+      PoissonSolver< DAMPED_JACOBI >(solution, solutionCpy, rhs, blocks, boundaryHandling, boundaryConditions, numIter,
+                                     useAbsResThres, resThres, resThres, resCheckFreq);
+   auto poissonSolverSOR =
+      PoissonSolver< WALBERLA_SOR >(solution, solutionCpy, rhs, blocks, boundaryHandling, boundaryConditions, numIter,
+                                    useAbsResThres, resThres, resThres, resCheckFreq);
+   auto poissonSolverCG =
+      PoissonSolver< WALBERLA_CG >(solution, solutionCpy, rhs, blocks, boundaryHandling, boundaryConditions, numIter,
+                                   useAbsResThres, resThres, resThres, resCheckFreq);
 
    // calc error depending on scenario
 
@@ -315,15 +328,22 @@ void solveChargedParticles(const shared_ptr< StructuredBlockForest >& blocks, co
 
       boundaryHandling = DirichletDomainBoundary< ScalarField_T >(*blocks, solution, boundaryConditions);
    }
-   else { boundaryHandling = pde::NeumannDomainBoundary< ScalarField_T >(*blocks, solution); }
+   else {
+      for (const auto& e : stencil::D3Q6::dir)
+         boundaryConditions.emplace_back(e, "Neumann", 0_r);
+
+      boundaryHandling = NeumannDomainBoundary< ScalarField_T >(*blocks, solution, boundaryConditions);
+   }
 
    auto poissonSolverJacobi =
-      PoissonSolver< DAMPED_JACOBI >(solution, solutionCpy, rhs, blocks, boundaryHandling, numIter, useAbsResThreshold,
-                                     resThres, resThres, resCheckFreq);
-   auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR >(solution, solutionCpy, rhs, blocks, boundaryHandling, numIter,
-                                                         useAbsResThreshold, resThres, resThres, resCheckFreq);
-   auto poissonSolverCG = PoissonSolver< WALBERLA_CG >(solution, solutionCpy, rhs, blocks, boundaryHandling, numIter,
-                                                         useAbsResThreshold, resThres, resThres, resCheckFreq);
+      PoissonSolver< DAMPED_JACOBI >(solution, solutionCpy, rhs, blocks, boundaryHandling, boundaryConditions, numIter,
+                                     useAbsResThreshold, resThres, resThres, resCheckFreq);
+   auto poissonSolverSOR =
+      PoissonSolver< WALBERLA_SOR >(solution, solutionCpy, rhs, blocks, boundaryHandling, boundaryConditions, numIter,
+                                    useAbsResThreshold, resThres, resThres, resCheckFreq);
+   auto poissonSolverCG =
+      PoissonSolver< WALBERLA_CG >(solution, solutionCpy, rhs, blocks, boundaryHandling, boundaryConditions, numIter,
+                                   useAbsResThreshold, resThres, resThres, resCheckFreq);
 
    // init rhs with two charged particles
 

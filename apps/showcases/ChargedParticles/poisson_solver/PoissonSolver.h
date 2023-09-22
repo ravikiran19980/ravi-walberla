@@ -46,11 +46,13 @@ class PoissonSolver
 
    PoissonSolver(const BlockDataID& src, const BlockDataID& dst, const BlockDataID& rhs,
                  const std::shared_ptr< StructuredBlockForest >& blocks,
-                 const std::function< void() >& boundaryHandling, uint_t iterations = uint_t(1000),
+                 const std::function< void() >& boundaryHandling,
+                 const std::vector< BoundaryCondition >& boundaryConditions, uint_t iterations = uint_t(1000),
                  bool useAbsResNormThres = false, real_t absResNormThres = real_c(1e-10),
                  real_t relResNormThres = real_c(1e-4), uint_t resCheckFreq = uint_t(100))
       : src_(src), dst_(dst), rhs_(rhs), blocks_(blocks), boundaryHandling_(boundaryHandling),
-        useRelativeResidualThreshold_(!useAbsResNormThres), relativeResidualReductionFactor_(relResNormThres)
+        boundaryConditions_(boundaryConditions), useRelativeResidualThreshold_(!useAbsResNormThres),
+        relativeResidualReductionFactor_(relResNormThres)
    {
       // stencil weights
       laplaceWeights_                             = std::vector< real_t >(Stencil_T::Size, real_c(0));
@@ -139,25 +141,17 @@ class PoissonSolver
       syncD_ = make_shared< blockforest::communication::UniformBufferedScheme< Stencil_T > >(blocks_);
       syncD_->addPackInfo(make_shared< field::communication::PackInfo< ScalarField_T > >(d_));
 
-      // TODO: find out when to use which boundary handling
-      /*
-      // zero-value dirichlet BCs for CG fields: r and d
-      std::vector< BoundaryCondition > dirichletBoundaryConditions;
-      for (const auto& e : stencil::D3Q6::dir)
-         dirichletBoundaryConditions.emplace_back(e, "Dirichlet", 0_r);
+      // zero-value dirichlet/neumann BCs for CG fields: r and d
+      std::vector< BoundaryCondition > cgBoundaryConditions;
+      for (auto &cond : boundaryConditions_)
+         cgBoundaryConditions.emplace_back(cond.getDirection(), cond.getType(), 0_r);
 
-      applyBoundaryHandlingR_ = DirichletDomainBoundary< ScalarField_T >(*blocks, r_, dirichletBoundaryConditions);
-      applyBoundaryHandlingD_ = DirichletDomainBoundary< ScalarField_T >(*blocks, d_, dirichletBoundaryConditions);
-      */
-
-      applyBoundaryHandlingR_ = [](){};
-      applyBoundaryHandlingD_ = [](){};
+      applyBoundaryHandlingR_ = CustomBoundary< ScalarField_T >(*blocks, r_, cgBoundaryConditions);
+      applyBoundaryHandlingD_ = CustomBoundary< ScalarField_T >(*blocks, d_, cgBoundaryConditions);
 
       cgIteration_ = std::make_unique< pde::ParallelCGFixedStencilIteration< Stencil_T > >(
-         blocks->getBlockStorage(), src_, r_, d_, z_, rhs_, laplaceWeights_, uint_t(numIterPerExecution_),
-         *commScheme_, *syncD_,
-         boundaryHandling_, applyBoundaryHandlingR_, applyBoundaryHandlingD_,
-         residualNormThreshold_);
+         blocks->getBlockStorage(), src_, r_, d_, z_, rhs_, laplaceWeights_, uint_t(numIterPerExecution_), *commScheme_,
+         *syncD_, boundaryHandling_, applyBoundaryHandlingR_, applyBoundaryHandlingD_, residualNormThreshold_);
    }
 
    // get approximate solution
@@ -239,6 +233,7 @@ class PoissonSolver
    std::shared_ptr< blockforest::communication::UniformBufferedScheme< Stencil_T > > commScheme_;
 
    std::function< void() > boundaryHandling_;
+   std::vector< BoundaryCondition > boundaryConditions_;
 
    std::shared_ptr< pde::ResidualNorm< Stencil_T > > residualNorm_;
 

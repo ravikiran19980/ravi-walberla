@@ -676,7 +676,9 @@ int main(int argc, char** argv)
    }
 
    auto poissonSolver = PoissonSolver< DAMPED_JACOBI >(/* src */ potentialFieldID, /* dst */ potentialFieldCopyID,
-                                                       /* rhs */ chargeDensityFieldID, blocks, boundaryHandling,
+                                                       /* rhs */ chargeDensityFieldID,
+                                                       /* blockforest */blocks,
+                                                       /* boundary conditions */ boundaryHandling, boundaryConditions,
                                                        /* iterations */ uint_c(1000),
                                                        /* use abs (true) or rel (false) threshold */ false,
                                                        /* abs res threshold */ real_c(1e-16),

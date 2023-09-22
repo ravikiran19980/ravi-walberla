@@ -104,6 +104,10 @@ void solveElectrostaticPoisson(const shared_ptr< StructuredBlockForest >& blocks
    geometry::Sphere const sphere(position, R_L);
 
    // set dirichlet function per domain face
+   std::vector< BoundaryCondition > dirichletBoundaryConditions;
+   for (const auto& cond : stencil::D3Q6::dir)
+      dirichletBoundaryConditions.emplace_back(cond, "Dirichlet", 0_r); // dummy value, unused
+
    auto dirichletFunction = DirichletFunctionDomainBoundary< ScalarField_T >(*blocks, solution);
 
 #define GET_POTENTIAL_BCS_LAMBDA(dir) \
@@ -120,9 +124,11 @@ void solveElectrostaticPoisson(const shared_ptr< StructuredBlockForest >& blocks
    dirichletFunction.setFunction(stencil::B, GET_POTENTIAL_BCS_LAMBDA(stencil::B));
    dirichletFunction.setFunction(stencil::T, GET_POTENTIAL_BCS_LAMBDA(stencil::T));
 
-   auto poissonSolverSOR = PoissonSolver< WALBERLA_SOR > (solution, solutionCpy, rhs, blocks, dirichletFunction, numIter, useAbsResThreshold, resThres, resThres, resCheckFreq);
+   auto poissonSolverSOR = PoissonSolver< WALBERLA_CG > (solution, solutionCpy, rhs, blocks,
+                                                        dirichletFunction, dirichletBoundaryConditions,
+                                                        numIter, useAbsResThreshold, resThres, resThres, resCheckFreq);
 
-   // init rhs with two charged particles
+   // init rhs with one charged particle
 
    for (auto block = blocks->begin(); block != blocks->end(); ++block) {
       ScalarField_T* rhsField = block->getData< ScalarField_T >(rhs);
@@ -204,8 +210,7 @@ void solveElectrostaticPoisson(const shared_ptr< StructuredBlockForest >& blocks
       }
       mpi::allReduceInplace( error, mpi::SUM );
 
-      return std::sqrt( error / real_c(cells));
-
+      return std::sqrt(error / real_c(cells));
    };
 
    // solve with SOR
@@ -249,7 +254,7 @@ int main(int argc, char** argv)
    BlockDataID solutionCpy = field::addCloneToStorage< ScalarField_T >(blocks, solution, "solution (copy)");
    BlockDataID analytical = field::addCloneToStorage< ScalarField_T >(blocks, solution, "analytical");
 
-   solveElectrostaticPoisson (blocks, dx, radiusScaleFactor, domainAABB, useOverlapFraction, solution, solutionCpy, rhs, analytical);
+   solveElectrostaticPoisson(blocks, dx, radiusScaleFactor, domainAABB, useOverlapFraction, solution, solutionCpy, rhs, analytical);
 
    auto vtkWriter = vtk::createVTKOutput_BlockData(*blocks, "block_data", uint_c(1), uint_c(0), true, "VTK" );
    vtkWriter->addCellDataWriter(make_shared<field::VTKWriter<ScalarField_T> >(solution, "solution"));
