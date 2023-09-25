@@ -20,7 +20,7 @@ real_t computeErrorMax(const shared_ptr< StructuredBlockForest >& blocks, BlockD
 
       real_t blockResult            = real_t(0);
       real_t blockResult_analytical = real_t(0);
-            WALBERLA_FOR_ALL_CELLS_XYZ_OMP(solutionField, omp parallel for schedule(static) reduction(max: blockResult, max: blockResult_analytical),
+            WALBERLA_FOR_ALL_CELLS_XYZ_OMP(solutionField, omp parallel for schedule(static) reduction(max: blockResult, blockResult_analytical),
                                            const auto cellAABB = blocks->getBlockLocalCellAABB(*block, Cell(x,y,z));
                                                    auto cellCenter = cellAABB.center();
 
@@ -77,7 +77,7 @@ real_t computeErrorL2(const shared_ptr< StructuredBlockForest >& blocks, BlockDa
             real_t blockResult            = real_t(0);
             real_t blockResult_analytical = real_t(0);
             real_t block_local_cells      = real_t(0);
-            WALBERLA_FOR_ALL_CELLS_XYZ_OMP(solutionField, omp parallel for schedule(static) reduction(+: blockResult, +: blockResult_analytical, +: block_local_cells),
+            WALBERLA_FOR_ALL_CELLS_XYZ_OMP(solutionField, omp parallel for schedule(static) reduction(+: blockResult, blockResult_analytical, block_local_cells),
                                            const auto cellAABB = blocks->getBlockLocalCellAABB(*block, Cell(x,y,z));
                                                    auto cellCenter = cellAABB.center();
 
