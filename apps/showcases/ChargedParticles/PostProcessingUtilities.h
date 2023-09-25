@@ -1,27 +1,28 @@
-//
-// Created by avnss on 7/13/2023.
-//
-
 #ifndef WALBERLA_POSTPROCESSINGUTILITIES_H
 #define WALBERLA_POSTPROCESSINGUTILITIES_H
 
 #pragma once
-#include <vector>
-#include <math.h>
 #include "core/DataTypes.h"
-#include "lbm_mesapd_coupling/DataTypes.h"
-#include "lbm/field/AddToStorage.h"
-#include <filesystem>
-#include <core/mpi/MPITextFile.h>
 
-namespace walberla {
+#include "lbm/field/AddToStorage.h"
+
+#include "lbm_mesapd_coupling/DataTypes.h"
+
+#include <cmath>
+#include <core/mpi/MPITextFile.h>
+#include <vector>
+
+#include "fstream"
+
+namespace walberla
+{
 
 // class to compute the volume fractions average at each unique height along with xy spatial plane
 template< typename BlockStorage_T, typename FlagField_T >
-class computeSolidVolumeFraction
+class ComputeSolidVolumeFraction
 {
  public:
-   computeSolidVolumeFraction(const shared_ptr< BlockStorage_T >& blocks, const BlockDataID& flagFieldID,
+   ComputeSolidVolumeFraction(const shared_ptr< BlockStorage_T >& blocks, const BlockDataID& flagFieldID,
                               const BlockDataID& particleAndVolumeFractionFieldID,
                               const math::GenericAABB< real_t > simulationDomain)
       : blocks_(blocks), flagFieldID_(flagFieldID), particleAndVolumeFractionFieldID_(particleAndVolumeFractionFieldID),
@@ -70,14 +71,14 @@ class computeSolidVolumeFraction
    math::GenericAABB< real_t > simulationDomain_;
    std::vector< real_t > z_SolidVolumeFraction_;
 
-   void printToSeparateFile(std::string filename)
+   void printToSeparateFile(const std::string& filename)
    {
       WALBERLA_ROOT_SECTION()
       {
          const std::string directoryName = "FractionData";
 
          // Create the directory if it doesn't exist
-         if (!std::filesystem::exists(directoryName)) { std::filesystem::create_directory(directoryName); }
+         if (!filesystem::exists(directoryName)) { filesystem::create_directory(directoryName); }
          const std::string filePath = directoryName + "/" + filename;
 
          // Open the file for writing
@@ -105,15 +106,14 @@ class computeSolidVolumeFraction
 
 // class to compute and write the particle x,y,z velocities and the unique ids into a file
 
-template<typename ParticleAccessor_T >
-void computeParticleProperties(const shared_ptr< ParticleAccessor_T >& ac,
-                               uint_t currentTimeStep)
+template< typename ParticleAccessor_T >
+void ComputeParticleProperties(const shared_ptr< ParticleAccessor_T >& ac, uint_t currentTimeStep)
 {
-   std::string filename            = "ParticleProperties_" + std::to_string(currentTimeStep) + ".txt";
+   std::string const filename      = "ParticleProperties_" + std::to_string(currentTimeStep) + ".txt";
    const std::string directoryName = "ParticleData";
 
    // Create the directory if it doesn't exist
-   if (!std::filesystem::exists(directoryName)) { std::filesystem::create_directory(directoryName); }
+   if (!filesystem::exists(directoryName)) { filesystem::create_directory(directoryName); }
    const std::string filePath = directoryName + "/" + filename;
 
    // Open the file for writing using std::ostringstream
@@ -121,7 +121,6 @@ void computeParticleProperties(const shared_ptr< ParticleAccessor_T >& ac,
 
    WALBERLA_ROOT_SECTION()
    {
-
       outputFile << "Uid"
                  << ","
                  << "Velocity_X"
@@ -155,65 +154,99 @@ void computeParticleProperties(const shared_ptr< ParticleAccessor_T >& ac,
    walberla::mpi::writeMPITextFile(filePath, outputFile.str());
 }
 
-
-// class to compute and write the particle x,y,z velocities and the unique ids into a file
-
-template<typename ParticleAccessor_T >
-void computeParticleStresses(const shared_ptr< ParticleAccessor_T >& ac,
-                             std::vector< real_t >& hydroForceGlobal, std::vector< real_t >& collisionForceGlobal,
-                             std::vector< real_t >& binCount, Vector3<real_t> gravitationForce)
+template< typename ParticleAccessor_T >
+void ComputeParticleStresses(const shared_ptr< ParticleAccessor_T >& ac, std::vector< real_t >& hydroForceGlobal,
+                             std::vector< real_t >& collisionForceGlobal, std::vector< real_t >& binCount,
+                             Vector3< real_t > gravitationForce)
 {
-   real_t diameter = 20;
-
+   real_t const diameter = real_c(20);
 
    for (uint_t i = 0; i < ac->size(); ++i)
    {
       if (isSet(ac->getFlags(i), walberla::mesa_pd::data::particle_flags::GHOST)) continue;
       if (isSet(ac->getFlags(i), walberla::mesa_pd::data::particle_flags::GLOBAL)) continue;
 
-      real_t hydroLubricationForce = (ac->getHydrodynamicForce(i) + gravitationForce).length();   // F'h = Fh - Vp(rhof-rhop)*g
-      real_t collisionForce        = (ac->getForce(i) - (ac->getHydrodynamicForce(i) + gravitationForce)).length(); // Total_force - (F'h)
+      real_t hydroLubricationForce =
+         (ac->getHydrodynamicForce(i) + gravitationForce).length(); // F'h = Fh - Vp(rhof-rhop)*g
+      real_t collisionForce =
+         (ac->getForce(i) - ((ac->getHydrodynamicForce(i) + gravitationForce))).length(); // Total_force - (F'h)
 
-      uint_t bin_index = uint_c((ac->getPosition(i)[2]) / (diameter/2));
-      binCount[bin_index] +=1;
+      uint_t bin_index = uint_c((ac->getPosition(i)[2]) / (diameter / 2));
+      binCount[bin_index] += 1;
       hydroForceGlobal[bin_index] += hydroLubricationForce;
       collisionForceGlobal[bin_index] += collisionForce;
-
    }
-
 }
 
-void writeStressesToFile(std::vector<real_t>& hydroStress, std::vector<real_t>& collisionStress){
+template< typename ParticleAccessor_T >
+void ComputeCollisionFrequency(const shared_ptr< ParticleAccessor_T >& ac, uint_t& collisionCount)
+{
+   real_t const diameter = real_c(20);
 
+   for (uint_t i = 0; i < ac->size(); ++i)
+   {
+      for (uint_t j = 0; j < ac->size(); j++)
+      {
+         if (isSet(ac->getFlags(i), walberla::mesa_pd::data::particle_flags::GLOBAL)) continue;
+         if (isSet(ac->getFlags(j), walberla::mesa_pd::data::particle_flags::GLOBAL)) continue;
+         real_t distance = (ac->getPosition(i) - ac->getPosition(j)).length();
+         if (distance <= diameter) { collisionCount++; }
+      }
+   }
+}
 
+void WriteStressesToFile(std::vector< real_t >& hydroStress, std::vector< real_t >& collisionStress)
+{
    WALBERLA_ROOT_SECTION()
    {
-      std::string filename            = "ParticleStresses.txt";
+      std::string const filename      = "ParticleStresses.txt";
       const std::string directoryName = ".";
 
       // Create the directory if it doesn't exist
-      if (!std::filesystem::exists(directoryName)) { std::filesystem::create_directory(directoryName); }
+      if (!filesystem::exists(directoryName)) { filesystem::create_directory(directoryName); }
       const std::string filePath = directoryName + "/" + filename;
 
       // Open the file for writing using std::ostringstream
       std::ofstream outputFile(filePath);
 
-      outputFile << "Uid"
+      outputFile << "BinId"
                  << ","
                  << "Collision_force"
                  << ","
                  << "Hydro_lub_force" << '\n';
 
-      for (size_t i = 0; i < hydroStress.size(); i++) {
+      for (size_t i = 0; i < hydroStress.size(); i++)
+      {
          outputFile << i << "," << collisionStress[i] << "," << hydroStress[i] << '\n';
       }
       outputFile.close();
    }
 }
 
+template< typename ParticleInfo >
+void WriteEnsembledVelocityToFile(const uint_t timestep, ParticleInfo info)
+{
+   WALBERLA_ROOT_SECTION()
+   {
+      std::ofstream file("ensembledVelocity.txt", std::ios_base::app);
+      if (file.is_open())
+      {
+         if (file.tellp() == 0)
+         {
+            file << "timestep"
+                 << ", "
+                 << "ensembledVelocity "
+                 << "\n";
+         }
+         file << timestep << "," << info.ensembledAverageVelocityZ << "\n";
+
+         file.close();
+      }
+      else { std::cerr << "Error opening file for writing.\n"; }
+      file.close();
+   }
 }
 
+} // namespace walberla
 
-
-
-#endif //WALBERLA_POSTPROCESSINGUTILITIES_H
+#endif // WALBERLA_POSTPROCESSINGUTILITIES_H

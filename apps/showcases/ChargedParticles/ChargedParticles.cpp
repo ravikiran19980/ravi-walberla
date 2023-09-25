@@ -86,14 +86,15 @@
 
 #include "vtk/all.h"
 
-#include "AddElectrostaticInteractionKernel.h"
-#include "ChargeForce.h"
-#include "poisson_solver/PoissonSolver.h"
-#include "ResetElectrostaticForceKernel.h"
-#include "ChargeDensity.h"
-#include "postProcessingUtilities.h"
-#include "./poisson_solver/PotentialValidationCustomBoundary.h"
 #include "./poisson_solver/CustomBoundary.h"
+#include "./poisson_solver/PotentialValidationCustomBoundary.h"
+#include "AddElectrostaticInteractionKernel.h"
+#include "ChargeDensity.h"
+#include "ChargeForce.h"
+#include "PostProcessingUtilities.h"
+#include "ResetElectrostaticForceKernel.h"
+#include "poisson_solver/PoissonSolver.h"
+#include "ErrorNorms.h"
 
 namespace charged_particles
 {
@@ -278,32 +279,35 @@ void createPlaneSetup(const shared_ptr< mesa_pd::data::ParticleStorage >& ps,
 
 struct ParticleInfo
 {
-   real_t averageVelocity = 0_r;
-   real_t maximumVelocity = 0_r;
-   uint_t numParticles    = 0;
-   real_t maximumHeight   = 0_r;
-   real_t particleVolume  = 0_r;
-   real_t heightOfMass    = 0_r;
+   real_t averageVelocity           = 0_r;
+   real_t ensembledAverageVelocityZ = 0_r;
+   real_t maximumVelocity           = 0_r;
+   uint_t numParticles              = 0;
+   real_t maximumHeight             = 0_r;
+   real_t particleVolume            = 0_r;
+   real_t heightOfMass              = 0_r;
 
    void allReduce()
    {
       walberla::mpi::allReduceInplace(numParticles, walberla::mpi::SUM);
       walberla::mpi::allReduceInplace(averageVelocity, walberla::mpi::SUM);
+      walberla::mpi::allReduceInplace(ensembledAverageVelocityZ, walberla::mpi::SUM);
       walberla::mpi::allReduceInplace(maximumVelocity, walberla::mpi::MAX);
       walberla::mpi::allReduceInplace(maximumHeight, walberla::mpi::MAX);
       walberla::mpi::allReduceInplace(particleVolume, walberla::mpi::SUM);
       walberla::mpi::allReduceInplace(heightOfMass, walberla::mpi::SUM);
 
       averageVelocity /= real_c(numParticles);
+      ensembledAverageVelocityZ /= real_c(numParticles);
       heightOfMass /= particleVolume;
    }
 };
 
 std::ostream& operator<<(std::ostream& os, ParticleInfo const& m)
 {
-   return os << "Particle Info: uAvg = " << m.averageVelocity << ", uMax = " << m.maximumVelocity
-             << ", numParticles = " << m.numParticles << ", zMax = " << m.maximumHeight << ", Vp = " << m.particleVolume
-             << ", zMass = " << m.heightOfMass;
+   return os << "Ensembled Avg Z = " << m.ensembledAverageVelocityZ << ", Particle Info: uAvg = " << m.averageVelocity
+             << ", uMax = " << m.maximumVelocity << ", numParticles = " << m.numParticles
+             << ", zMax = " << m.maximumHeight << ", Vp = " << m.particleVolume << ", zMass = " << m.heightOfMass;
 }
 
 template< typename Accessor_T >
@@ -319,9 +323,11 @@ ParticleInfo evaluateParticleInfo(const Accessor_T& ac)
 
       ++info.numParticles;
       real_t velMagnitude   = ac.getLinearVelocity(i).length();
+      real_t velocityZ      = ac.getLinearVelocity(i)[2];
       real_t particleVolume = ac.getShape(i)->getVolume();
       real_t height         = ac.getPosition(i)[2];
       info.averageVelocity += velMagnitude;
+      info.ensembledAverageVelocityZ += velocityZ;
       info.maximumVelocity = std::max(info.maximumVelocity, velMagnitude);
       info.maximumHeight   = std::max(info.maximumHeight, height);
       info.particleVolume += particleVolume;
@@ -444,6 +450,8 @@ int main(int argc, char** argv)
    const uint_t numXBlocks                = numericalSetup.getParameter< uint_t >("numXBlocks");
    const uint_t numYBlocks                = numericalSetup.getParameter< uint_t >("numYBlocks");
    const uint_t numZBlocks                = numericalSetup.getParameter< uint_t >("numZBlocks");
+   const real_t absResThreshold           = numericalSetup.getParameter< real_t >("absResThreshold");
+   const uint_t jacobiIterations          = numericalSetup.getParameter< uint_t >("jacobiIterations");
    const bool useLubricationForces        = numericalSetup.getParameter< bool >("useLubricationForces");
    const uint_t numberOfParticleSubCycles = numericalSetup.getParameter< uint_t >("numberOfParticleSubCycles");
 
@@ -462,7 +470,7 @@ int main(int argc, char** argv)
    if (on == 0) { useIntegrator = false; }
 
    Config::BlockHandle ParticleGenerationSchemes = cfgFile->getBlock("ParticleGenerationScheme");
-   const bool extendSimulationDomain        = ParticleGenerationSchemes.getParameter< bool >("extendSimulationDomain");
+   const bool extendSimulationDomain = ParticleGenerationSchemes.getParameter< bool >("extendSimulationDomain");
 
    Config::BlockHandle boundaryTypes = cfgFile->getBlock("BoundaryTypes");
    std::string boundaryTypeNorth     = boundaryTypes.getParameter< std::string >("North_type");
@@ -514,30 +522,32 @@ int main(int argc, char** argv)
 
    Vector3< uint_t > domainSize(uint_c((xSize_SI / dx_SI)), uint_c((ySize_SI / dx_SI)), uint_c((zSize_SI / dx_SI)));
 
-   WALBERLA_LOG_INFO_ON_ROOT("domain x size:" << " " << std::ceil(xSize_SI / dx_SI));
-   WALBERLA_LOG_INFO_ON_ROOT("domain x size without ceil:" << " " << (xSize_SI / dx_SI));
-   WALBERLA_LOG_INFO_ON_ROOT("ceil of 800 :" << " " << std::ceil(800));
-
-   WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[0]) * dx_SI, xSize_SI, "domain size in x is not divisible by given dx");
-   WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[1]) * dx_SI, ySize_SI, "domain size in y is not divisible by given dx");
-   WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[2]) * dx_SI, zSize_SI, "domain size in z is not divisible by given dx");
-
    Vector3< uint_t > cellsPerBlockPerDirection(domainSize[0] / numXBlocks, domainSize[1] / numYBlocks,
                                                domainSize[2] / numZBlocks);
 
-   WALBERLA_CHECK_EQUAL(domainSize[0], cellsPerBlockPerDirection[0] * numXBlocks,
-                        "number of cells in x of " << domainSize[0]
-                                                   << " is not divisible by given number of blocks in x direction");
-   WALBERLA_CHECK_EQUAL(domainSize[1], cellsPerBlockPerDirection[1] * numYBlocks,
-                        "number of cells in y of " << domainSize[1]
-                                                   << " is not divisible by given number of blocks in y direction");
-   WALBERLA_CHECK_EQUAL(domainSize[2], cellsPerBlockPerDirection[2] * numZBlocks,
-                        "number of cells in z of " << domainSize[2]
-                                                   << " is not divisible by given number of blocks in z direction");
+   if (simulationName != "pivVelocityValidation")
+   {
+      WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[0]) * dx_SI, xSize_SI,
+                                 "domain size in x is not divisible by given dx");
+      WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[1]) * dx_SI, ySize_SI,
+                                 "domain size in y is not divisible by given dx");
+      WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[2]) * dx_SI, zSize_SI,
+                                 "domain size in z is not divisible by given dx");
 
-   WALBERLA_CHECK_GREATER(
-      particleDiameter_SI / dx_SI, 5_r,
-      "Your numerical resolution is below 5 cells per diameter and thus too small for such simulations!");
+      WALBERLA_CHECK_EQUAL(domainSize[0], cellsPerBlockPerDirection[0] * numXBlocks,
+                           "number of cells in x of " << domainSize[0]
+                                                      << " is not divisible by given number of blocks in x direction");
+      WALBERLA_CHECK_EQUAL(domainSize[1], cellsPerBlockPerDirection[1] * numYBlocks,
+                           "number of cells in y of " << domainSize[1]
+                                                      << " is not divisible by given number of blocks in y direction");
+      WALBERLA_CHECK_EQUAL(domainSize[2], cellsPerBlockPerDirection[2] * numZBlocks,
+                           "number of cells in z of " << domainSize[2]
+                                                      << " is not divisible by given number of blocks in z direction");
+
+      WALBERLA_CHECK_GREATER(
+         particleDiameter_SI / dx_SI, 5_r,
+         "Your numerical resolution is below 5 cells per diameter and thus too small for such simulations!");
+   }
 
    const real_t densityRatio           = densityParticle_SI / densityFluid_SI;
    const real_t ReynoldsNumberParticle = uInflow_SI * particleDiameter_SI / kinematicViscosityFluid_SI;
@@ -567,28 +577,31 @@ int main(int argc, char** argv)
    // relative_permitivity = 78 and vacuum_permitivity SI units ->  A2⋅s4⋅kg−1⋅m−3
 
    const real_t vacuum_permitivity_SI = real_c(78.5 * 8.8541878128 * pow(10, -12));
-   const real_t Ampere_unit           = ((densityFluid_SI) * real_c(pow(dx_SI, 5))) / (real_c(pow(dt_SI, 3)) * V);
-   real_t vacuum_permitivity =
-      ((densityFluid_SI * real_c(pow(dx_SI, 3))) * real_c(pow(dx_SI, 3))) / (real_c(pow(dt_SI, 4)) * Ampere_unit * Ampere_unit);
+   const real_t Ampere_unit           = ((densityFluid_SI) *real_c(pow(dx_SI, 5))) / (real_c(pow(dt_SI, 3)) * V);
+   real_t vacuum_permitivity          = ((densityFluid_SI * real_c(pow(dx_SI, 3))) * real_c(pow(dx_SI, 3))) /
+                               (real_c(pow(dt_SI, 4)) * Ampere_unit * Ampere_unit);
 
    vacuum_permitivity = vacuum_permitivity * (vacuum_permitivity_SI);
 
    // now for the charge: read from the parameter file
    const real_t elementaryCharge =
-           real_c(1.60217663 * pow(10, -19)); // 1 elementary charge = 1.60217663 * pow(10, -19) coloumbs
+      real_c(1.60217663 * pow(10, -19)); // 1 elementary charge = 1.60217663 * pow(10, -19) coloumbs
    maxCharge_SI           = maxCharge_SI * elementaryCharge;
    minCharge_SI           = minCharge_SI * elementaryCharge;
    const real_t maxCharge = ((maxCharge_SI) * (V * dt_SI * dt_SI)) / (densityFluid_SI * real_c(pow(dx_SI, 5)));
    const real_t minCharge = ((minCharge_SI) * (V * dt_SI * dt_SI)) / (densityFluid_SI * real_c(pow(dx_SI, 5)));
 
-   WALBERLA_LOG_INFO_ON_ROOT("permitivity in LBM units" << " " << vacuum_permitivity);
-   WALBERLA_LOG_INFO_ON_ROOT("Max charge in LBM units" << " " << maxCharge);
-   WALBERLA_LOG_INFO_ON_ROOT("Min charge in LBM units" << " " << minCharge);
+   WALBERLA_LOG_INFO_ON_ROOT("permitivity in LBM units"
+                             << " " << vacuum_permitivity);
+   WALBERLA_LOG_INFO_ON_ROOT("Max charge in LBM units"
+                             << " " << maxCharge);
+   WALBERLA_LOG_INFO_ON_ROOT("Min charge in LBM units"
+                             << " " << minCharge);
 
    // this is just for verification of the SI to LBM conversions is correctly done or not
-   const real_t q_unit = (densityFluid_SI * real_c(pow(dx_SI, 5))) / (V * dt_SI * dt_SI);
-   const real_t epsilon_unit =
-      (real_c(pow(dt_SI, 4)) * Ampere_unit * Ampere_unit) / ((densityFluid_SI * real_c(pow(dx_SI, 3))) * real_c(pow(dx_SI, 3)));
+   const real_t q_unit       = (densityFluid_SI * real_c(pow(dx_SI, 5))) / (V * dt_SI * dt_SI);
+   const real_t epsilon_unit = (real_c(pow(dt_SI, 4)) * Ampere_unit * Ampere_unit) /
+                               ((densityFluid_SI * real_c(pow(dx_SI, 3))) * real_c(pow(dx_SI, 3)));
    const real_t potential_unit = q_unit / (epsilon_unit * dx_SI);
 
    WALBERLA_UNUSED(potential_unit);
@@ -597,8 +610,8 @@ int main(int argc, char** argv)
    // std::cout << "domain size" << " " << domainSize[0] << std::endl;
    // std::cout << "potential at boundary in  Lattice units"<< " "
    // <<(1/(4*3.14*vacuum_permitivity))*(maxCharge/(domainSize[0]/2)) << std::endl; std::cout << "potential at boundary
-   // in  SI units"<< " " << (1/(4*3.14*vacuum_permitivity*epsilon_unit))*((maxCharge*q_unit)/(domainSize[0]/2*dx_SI)) <<
-   // std::endl; std::cout << "potential at boundary in  SI units"<< " " <<
+   // in  SI units"<< " " << (1/(4*3.14*vacuum_permitivity*epsilon_unit))*((maxCharge*q_unit)/(domainSize[0]/2*dx_SI))
+   // << std::endl; std::cout << "potential at boundary in  SI units"<< " " <<
    // (1/(4*3.14*vacuum_permitivity_SI))*((maxCharge_SI)/(domainSize[0]/2*dx_SI)) << std::endl;
 
    // verification ends here
@@ -607,7 +620,6 @@ int main(int argc, char** argv)
    const uint_t infoSpacing         = uint_c(std::ceil(infoSpacing_SI / dt_SI));
    const uint_t vtkSpacingParticles = uint_c(std::ceil(vtkSpacingParticles_SI / dt_SI));
    const uint_t vtkSpacingFluid     = uint_c(std::ceil(vtkSpacingFluid_SI / dt_SI));
-
 
    const real_t poissonsRatio         = real_t(0.22);
    const real_t kappa                 = real_t(2) * (real_t(1) - poissonsRatio) / (real_t(2) - poissonsRatio);
@@ -668,8 +680,13 @@ int main(int argc, char** argv)
 
    auto poissonSolver = PoissonSolver< DAMPED_JACOBI >(/* src */ potentialFieldID, /* dst */ potentialFieldCopyID,
                                                        /* rhs */ chargeDensityFieldID,
-                                                       blocks, boundaryHandling,
-                                                       uint_c(1000), real_c(1e-16), uint_c(1000));
+                                                       /* blockforest */blocks,
+                                                       /* boundary conditions */ boundaryHandling, boundaryConditions,
+                                                       /* iterations */ uint_c(jacobiIterations),
+                                                       /* use abs (true) or rel (false) threshold */ true,
+                                                       /* abs res threshold */ real_c(absResThreshold),
+                                                       /* rel res threshold */ real_c(1e-6),
+                                                       /* res check freq */ uint_c(1000));
    //////////////////
    // RPD COUPLING //
    //////////////////
@@ -796,6 +813,7 @@ int main(int argc, char** argv)
       else if (simulationCase == StokesFlow)
       {
          WALBERLA_LOG_INFO_ON_ROOT("Stokes Flow Validation Test Case Simulation is Chosen");
+         WALBERLA_LOG_INFO_ON_ROOT("Gravitational Force is turned off for this simulation");
          particleLocation = Vector3< real_t >(simulationDomain.center()[0], simulationDomain.center()[1],
                                               2 * simulationDomain.center()[2] - 100);
          inflowVec        = Vector3< real_t >(0_r, 0_r, 0);
@@ -804,6 +822,7 @@ int main(int argc, char** argv)
       else if (simulationCase == moderateReynoldsTerminalVelocity)
       {
          WALBERLA_LOG_INFO_ON_ROOT("Moderate Reynolds Number Velocity Validation Test Case Simulation is Chosen");
+         WALBERLA_LOG_INFO_ON_ROOT("Gravitational Force is turned off for this simulation");
          const real_t startingGapSize_SI = real_t(120e-3) + real_t(0.25) * particleDiameter_SI;
          WALBERLA_LOG_INFO_ON_ROOT("starting gap si"
                                    << " " << startingGapSize_SI);
@@ -830,7 +849,7 @@ int main(int argc, char** argv)
 
    case Showcase: {
       WALBERLA_LOG_INFO_ON_ROOT("Charged Particle Showcase Simulation is Chosen");
-      generationDomain = simulationDomain.createFromMinMaxCorner(0, 0, 0, 200, 200, 800);
+      generationDomain = math::GenericAABB< real_t >::createFromMinMaxCorner(0, 0, 0, 200, 200, 800);
       inflowVec        = Vector3< real_t >(0_r, 0_r, uInflow);
 
       uint_t particleCount = 0;
@@ -858,7 +877,7 @@ int main(int argc, char** argv)
 
       WALBERLA_LOG_INFO_ON_ROOT("Initiating User Defined Simulation");
       if (extendSimulationDomain) { generationDomain = simulationDomain.getExtended(-0.5_r * Spacing); }
-      else { generationDomain = simulationDomain.createFromMinMaxCorner(0, 0, 0, 200, 200, 800); }
+      else { generationDomain = math::GenericAABB< real_t >::createFromMinMaxCorner(0, 0, 0, 200, 200, 800); }
       inflowVec = Vector3< real_t >(0_r, 0_r, uInflow);
 
       for (auto pt : grid_generator::SCGrid(generationDomain, generationDomain.center(), Spacing))
@@ -955,11 +974,12 @@ int main(int argc, char** argv)
          blocks, "particle and volume fraction field",
          std::vector< lbm_mesapd_coupling::psm::ParticleAndVolumeFraction_T >(), field::fzyx, 0);
 
-   auto chargeForceUpdate = ChargeForceUpdate(blocks, potentialFieldID, electrostaticForceFieldID,
-                                  particleAndVolumeFractionFieldID, chargeDensityFieldID, accessor, vacuum_permitivity);
+   auto chargeForceUpdate =
+      ChargeForceUpdate(blocks, potentialFieldID, electrostaticForceFieldID, particleAndVolumeFractionFieldID,
+                        chargeDensityFieldID, accessor, vacuum_permitivity);
 
-   auto chargeDensityUpdate = ChargeDensityUpdate(blocks, particleAndVolumeFractionFieldID, chargeDensityFieldID,
-                                                  accessor, vacuum_permitivity);
+   auto chargeDensityUpdate =
+      ChargeDensityUpdate(blocks, particleAndVolumeFractionFieldID, chargeDensityFieldID, accessor, vacuum_permitivity);
 
    lbm_mesapd_coupling::psm::ParticleAndVolumeFractionMapping particleMapping(
       blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(), particleAndVolumeFractionFieldID, 3);
@@ -967,6 +987,10 @@ int main(int argc, char** argv)
 
    lbm_mesapd_coupling::psm::initializeDomainForPSM< LatticeModel_T, 1 >(*blocks, pdfFieldID,
                                                                          particleAndVolumeFractionFieldID, *accessor);
+
+   // after particle-volume field setup: init RHS of PDE and compute init residual
+   chargeDensityUpdate();
+   poissonSolver.computeInitialResidual();
 
    // setup of the LBM communication for synchronizing the pdf field between neighboring blocks
    blockforest::communication::UniformBufferedScheme< Stencil_T > optimizedPDFCommunicationScheme(blocks);
@@ -1040,12 +1064,11 @@ int main(int argc, char** argv)
                   particleAndVolumeFractionFieldID);
             ScalarField_T* BField = blockIt->getData< ScalarField_T >(BFieldID);
 
-             WALBERLA_FOR_ALL_CELLS_XYZ(particleAndVolumeFractionField,
-                                        BField->get(x, y, z) = 0.0;
+            WALBERLA_FOR_ALL_CELLS_XYZ(particleAndVolumeFractionField, BField->get(x, y, z) = 0.0;
 
-                                        for (auto &e: particleAndVolumeFractionField->get(x, y, z))
-                                            BField->get(x, y, z) += e.second;
-             )
+                                       for (auto& e
+                                            : particleAndVolumeFractionField->get(x, y, z)) BField->get(x, y, z) +=
+                                       e.second;)
          }
       });
 
@@ -1091,7 +1114,9 @@ int main(int argc, char** argv)
    }
 
    if (vtkSpacingFluid != uint_t(0) || vtkSpacingParticles != uint_t(0))
-   { vtk::writeDomainDecomposition(blocks, "domain_decomposition", vtkFolder); }
+   {
+      vtk::writeDomainDecomposition(blocks, "domain_decomposition", vtkFolder);
+   }
 
    // add LBM communication function and boundary handling sweep (does the hydro force calculations and the no-slip
    // treatment)
@@ -1110,12 +1135,11 @@ int main(int argc, char** argv)
    ////////////////////////
 
    WcTimingPool timeloopTiming;
-   const bool useOpenMP = false;
-   uint_t numBins = uint_c(simulationDomain.zSize()/(diameter/2));
-   std::vector< real_t >  hydroForceGlobal(numBins, real_t(0));
-   std::vector< real_t >  collisionForceGlobal(numBins, real_t(0));
-   std::vector< real_t >  binCount(numBins, real_t(0));
-
+   const bool useOpenMP  = false;
+   uint_t collisionCount = 0;
+   uint_t tdiff          = 0;
+   Vector3< real_t > collisionStress(real_t(0));
+   Vector3< real_t > hydrodynamicStress(real_t(0));
 
    // time loop
    for (uint_t timeStep = 0; timeStep < numTimeSteps; ++timeStep)
@@ -1138,8 +1162,8 @@ int main(int argc, char** argv)
 
       // Compute electrostatic force field from electric potential (using finite differences)
       chargeForceUpdate();
-
       reduceProperty.operator()< mesa_pd::ElectrostaticForceNotification >(*ps);
+      //WriteElectrostaticForces< ParticleAccessor_T >(accessor, timeStep);
 
       if (timeStep == 0)
       {
@@ -1151,6 +1175,8 @@ int main(int argc, char** argv)
       ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, averageHydrodynamicForceTorque,
                           *accessor);
 
+      if (timeStep >= uint_t(0.75 * real_c(numTimeSteps))) { tdiff += 1; }
+
       for (auto subCycle = uint_t(0); subCycle < numberOfParticleSubCycles; ++subCycle)
       {
          timeloopTiming["RPD"].start();
@@ -1160,6 +1186,42 @@ int main(int argc, char** argv)
             ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, vvIntegratorPreForce, *accessor);
          }
          syncCall();
+
+         // collision response
+         ps->forEachParticlePairHalf(
+            useOpenMP, mesa_pd::kernel::ExcludeInfiniteInfinite(), *accessor,
+            [&collisionResponse, &rpdDomain, timeStepSizeRPD, coefficientOfRestitution, particleCollisionTime, kappa,
+             timeStep, numTimeSteps, &collisionCount](const size_t idx1, const size_t idx2, auto& ac) {
+               mesa_pd::collision_detection::AnalyticContactDetection acd;
+               mesa_pd::kernel::DoubleCast double_cast;
+               mesa_pd::mpi::ContactFilter contact_filter;
+               if (double_cast(idx1, idx2, ac, acd, ac))
+               {
+                  if (contact_filter(acd.getIdx1(), acd.getIdx2(), ac, acd.getContactPoint(), *rpdDomain))
+                  {
+                     if (timeStep >= uint_t(0.75 * real_c(numTimeSteps))) { collisionCount += 2; }
+                     auto meff = real_t(1) / (ac.getInvMass(idx1) + ac.getInvMass(idx2));
+                     collisionResponse.setStiffnessAndDamping(0, 0, coefficientOfRestitution, particleCollisionTime,
+                                                              kappa, meff);
+                     collisionResponse(acd.getIdx1(), acd.getIdx2(), ac, acd.getContactPoint(), acd.getContactNormal(),
+                                       acd.getPenetrationDepth(), timeStepSizeRPD);
+                  }
+               }
+            },
+            *accessor);
+
+         // computing the collision stresses
+         if (timeStep >= uint_t(0.75 * real_c(numTimeSteps)) && subCycle == numberOfParticleSubCycles - 1)
+         {
+            ps->forEachParticle(
+               useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor,
+               [&collisionStress, &diameter](const size_t idx1, auto& ac) {
+                  collisionStress[0] += real_c(fabs(ac.getForce(idx1)[0])) / ((math::pi) * diameter * diameter);
+                  collisionStress[1] += real_c(fabs(ac.getForce(idx1)[1])) / ((math::pi) * diameter * diameter);
+                  collisionStress[2] += real_c(fabs(ac.getForce(idx1)[2])) / ((math::pi) * diameter * diameter);
+               },
+               *accessor);
+         }
 
          if (useLubricationForces)
          {
@@ -1183,28 +1245,6 @@ int main(int argc, char** argv)
                *accessor);
          }
 
-         // collision response
-         ps->forEachParticlePairHalf(
-            useOpenMP, mesa_pd::kernel::ExcludeInfiniteInfinite(), *accessor,
-            [&collisionResponse, &rpdDomain, timeStepSizeRPD, coefficientOfRestitution, particleCollisionTime,
-             kappa](const size_t idx1, const size_t idx2, auto& ac) {
-               mesa_pd::collision_detection::AnalyticContactDetection acd;
-               mesa_pd::kernel::DoubleCast double_cast;
-               mesa_pd::mpi::ContactFilter contact_filter;
-               if (double_cast(idx1, idx2, ac, acd, ac))
-               {
-                  if (contact_filter(acd.getIdx1(), acd.getIdx2(), ac, acd.getContactPoint(), *rpdDomain))
-                  {
-                     auto meff = real_t(1) / (ac.getInvMass(idx1) + ac.getInvMass(idx2));
-                     collisionResponse.setStiffnessAndDamping(0, 0, coefficientOfRestitution, particleCollisionTime,
-                                                              kappa, meff);
-                     collisionResponse(acd.getIdx1(), acd.getIdx2(), ac, acd.getContactPoint(), acd.getContactNormal(),
-                                       acd.getPenetrationDepth(), timeStepSizeRPD);
-                  }
-               }
-            },
-            *accessor);
-
          reduceAndSwapContactHistory(*ps);
 
          // add hydrodynamic force
@@ -1217,9 +1257,9 @@ int main(int argc, char** argv)
          // add electrostatic force
          AddElectrostaticInteractionKernel addElectrostaticInteraction;
          ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, addElectrostaticInteraction,
-                           *accessor);
+                             *accessor);
 
-         if (withoutGravity == false)
+         if (!withoutGravity)
          {
             ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, addGravitationalForce, *accessor);
          }
@@ -1233,13 +1273,31 @@ int main(int argc, char** argv)
          syncCall();
 
          timeloopTiming["RPD"].end();
+      } // end sub cycle
+
+      // computing the hydrodynamic stresses
+      if (timeStep >= uint_t(0.75 * real_c(numTimeSteps)))
+      {
+         ps->forEachParticle(
+            useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor,
+            [&hydrodynamicStress, diameter, gravitationalForce](const size_t idx1, auto& ac) {
+               hydrodynamicStress[0] +=
+                  real_c(fabs(ac.getHydrodynamicForce(idx1)[0] + gravitationalForce[0])) / ((math::pi) * diameter * diameter);
+               hydrodynamicStress[1] +=
+                  real_c(fabs(ac.getHydrodynamicForce(idx1)[1] + gravitationalForce[1])) / ((math::pi) * diameter * diameter);
+               hydrodynamicStress[2] +=
+                  real_c(fabs(ac.getHydrodynamicForce(idx1)[2] + gravitationalForce[2])) / ((math::pi) * diameter * diameter);
+            },
+            *accessor);
       }
 
       ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectAll(), *accessor, resetHydrodynamicForceTorque, *accessor);
 
       // TODO: write and add resetElectrostaticForce, see above   ---> completed
       auto particleInfo = evaluateParticleInfo(*accessor);
-      auto fluidInfo = evaluateFluidInfo< BoundaryHandling_T >(blocks, pdfFieldID, boundaryHandlingID);
+      auto fluidInfo    = evaluateFluidInfo< BoundaryHandling_T >(blocks, pdfFieldID, boundaryHandlingID);
+
+      if (timeStep % 1000 == 0) { WriteEnsembledVelocityToFile(timeStep, particleInfo); }
 
       if (timeStep % infoSpacing == 0)
       {
@@ -1260,38 +1318,67 @@ int main(int argc, char** argv)
          }
       }
 
+      if (simulationName == "pivVelocityValidation")
+      {
+         WALBERLA_LOG_INFO_ON_ROOT("sphere position info:"
+                                   << " " << particleInfo.heightOfMass << " "
+                                   << "velocity info is:"
+                                   << " " << particleInfo.averageVelocity << " "
+                                   << "numParticles" << particleInfo.numParticles);
+      }
+
       // Solid Volume Fractions printing //
-      auto solidVolFrac = computeSolidVolumeFraction< StructuredBlockStorage, FlagField_T >(
+      auto solidVolFrac = ComputeSolidVolumeFraction< StructuredBlockStorage, FlagField_T >(
          blocks, flagFieldID, particleAndVolumeFractionFieldID, simulationDomain);
 
-      if (timeStep < 10)
+      if (timeStep > 120000)
       {
-         if (timeStep % 1 == 0)
+         if (timeStep % 1000 == 0)
          {
             solidVolFrac(timeStep);
-            computeParticleProperties< ParticleAccessor_T >(accessor, timeStep);
+            ComputeParticleProperties< ParticleAccessor_T >(accessor, timeStep);
          }
       }
+   } // end time loop
 
-      computeParticleStresses< ParticleAccessor_T >(accessor, hydroForceGlobal, collisionForceGlobal, binCount,
-                                                    gravitationalForce);
-   }
-   walberla::mpi::allReduceInplace(hydroForceGlobal, walberla::mpi::SUM);
-   walberla::mpi::allReduceInplace(binCount, walberla::mpi::SUM);
-   walberla::mpi::allReduceInplace(collisionForceGlobal, walberla::mpi::SUM);
+   walberla::mpi::allReduceInplace(collisionCount, walberla::mpi::SUM);
 
-   for (uint_t i = 0; i < numBins; i++)
+   // collision frequency time and ensembled average:
+   uint_t numParticles = 2000;
+   if (simulationCase == Showcase)
    {
-      if (binCount[i] > 0)
-      {
-         hydroForceGlobal[i]     = (hydroForceGlobal[i] * diameter * diameter) / (densityFluid * viscosity*viscosity);
-         collisionForceGlobal[i] = (collisionForceGlobal[i] * diameter * diameter) / (densityFluid * viscosity*viscosity);
-         hydroForceGlobal[i] /= binCount[i];
-         collisionForceGlobal[i] /= binCount[i];
-      }
-   }
-   writeStressesToFile(hydroForceGlobal, collisionForceGlobal);
+      WALBERLA_LOG_INFO_ON_ROOT("Coliision count is:  " << collisionCount);
+      WALBERLA_LOG_INFO_ON_ROOT("tdiff is:  " << tdiff);
+      WALBERLA_LOG_INFO_ON_ROOT("num particles is:  " << numParticles);
+      WALBERLA_LOG_INFO_ON_ROOT("subcycles is:  " << numberOfParticleSubCycles);
+      real_t collisionfreq = real_c(collisionCount) / real_c((numParticles * tdiff * numberOfParticleSubCycles));
+      WALBERLA_LOG_INFO_ON_ROOT("Coliision Frequency is:  " << collisionfreq);
 
+      // collision stress reduction
+      walberla::mpi::allReduceInplace(collisionStress[0], walberla::mpi::SUM);
+      walberla::mpi::allReduceInplace(collisionStress[1], walberla::mpi::SUM);
+      walberla::mpi::allReduceInplace(collisionStress[2], walberla::mpi::SUM);
+
+      // collision stress average
+      collisionStress[0] /= real_c(numParticles * tdiff);
+      collisionStress[1] /= real_c(numParticles * tdiff);
+      collisionStress[2] /= real_c(numParticles * tdiff);
+      WALBERLA_LOG_INFO_ON_ROOT("Collision stresses average without normalization is:  "
+                                << collisionStress[0] << " " << collisionStress[1] << " " << collisionStress[2]);
+
+      // hydrodynamic stress reduction
+      walberla::mpi::allReduceInplace(hydrodynamicStress[0], walberla::mpi::SUM);
+      walberla::mpi::allReduceInplace(hydrodynamicStress[1], walberla::mpi::SUM);
+      walberla::mpi::allReduceInplace(hydrodynamicStress[2], walberla::mpi::SUM);
+
+      // hydrodynamic stress average
+      hydrodynamicStress[0] /= real_c(numParticles * tdiff);
+      hydrodynamicStress[1] /= real_c(numParticles * tdiff);
+      hydrodynamicStress[2] /= real_c(numParticles * tdiff);
+      WALBERLA_LOG_INFO_ON_ROOT("Hydrodynamic stresses average without normalization is:  "
+                                << hydrodynamicStress[0] << " " << hydrodynamicStress[1] << " "
+                                << hydrodynamicStress[2]);
+   }
    timeloopTiming.logResultOnRoot();
 
    return EXIT_SUCCESS;
