@@ -39,7 +39,7 @@ real_t computeErrorMax(const shared_ptr< StructuredBlockForest >& blocks, BlockD
                                                        if (distance >= radius) {
          analyticalSol = (1 / (4 * math::pi * epsilon)) * (charge / distance);
                                                        } else {
-         analyticalSol = (1 / (4 * math::pi * epsilon)) * (charge / (2 * radius)) * (3 - pow((distance / radius), 2));
+         analyticalSol = (1 / (4 * math::pi * epsilon)) * (charge / (2 * radius)) * (3 - real_c(pow((distance / radius), 2)));
                                                        }
 
                                                        real_t currErr = real_c(
@@ -96,7 +96,7 @@ real_t computeErrorL2(const shared_ptr< StructuredBlockForest >& blocks, BlockDa
                                                        if (distance >= radius) {
          analyticalSol = (1 / (4 * math::pi * epsilon)) * (charge / distance);
                                                        } else {
-         analyticalSol = (1 / (4 * math::pi * epsilon)) * (charge / (2 * radius)) * (3 - pow((distance / radius), 2));
+         analyticalSol = (1 / (4 * math::pi * epsilon)) * (charge / (2 * radius)) * (3 - real_c(pow((distance / radius), 2)));
                                                        }
 
                                                        //potentialAnalyticalField->get(x, y, z) = analyticalSol;
