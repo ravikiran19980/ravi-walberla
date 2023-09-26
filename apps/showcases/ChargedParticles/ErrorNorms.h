@@ -9,7 +9,7 @@ namespace walberla
 {
 real_t computeErrorMax(const shared_ptr< StructuredBlockForest >& blocks, BlockDataID& NumericalSol,
                        const math::AABB& domainAABB, const real_t radius, const real_t epsilon, const real_t charge,
-                       const BlockDataID& potentialErrorID)
+                       const BlockDataID& /*potentialErrorID*/)
 {
    real_t error   = real_c(0);
    real_t normmax = real_c(0);
@@ -101,7 +101,7 @@ real_t computeErrorL2(const shared_ptr< StructuredBlockForest >& blocks, BlockDa
 
                                                        //potentialAnalyticalField->get(x, y, z) = analyticalSol;
                                                        real_t currErr = (solutionField->get(x, y, z) - analyticalSol);
-                                                       potentialErrorField ->get(x, y, z) = abs(currErr);
+                                                       potentialErrorField ->get(x, y, z) = real_c(fabs(currErr));
                                                        blockResult += currErr * currErr;
                                                        blockResult_analytical += analyticalSol * analyticalSol;
                                                        block_local_cells += 1;
