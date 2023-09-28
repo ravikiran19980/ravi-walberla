@@ -10,6 +10,10 @@ public:
 
    std::string getType() { return type_; }
 
+    bool isDirichletType() { return getType() == "Dirichlet"; }
+
+    bool isNeumannType() { return getType() == "Neumann"; }
+
    real_t getValue() { return value_; }
 
    BoundaryCondition(stencil::Direction direction, std::string type, real_t value)

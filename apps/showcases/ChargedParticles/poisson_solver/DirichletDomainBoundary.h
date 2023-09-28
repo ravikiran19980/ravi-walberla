@@ -18,7 +18,7 @@ class DirichletDomainBoundary
 
       for (auto e : boundaryConditions)
       {
-         if (e.getType() == "Neumann") { this->excludeBoundary(e.getDirection()); } // swap conditions
+         if (e.isNeumannType()) { this->excludeBoundary(e.getDirection()); } // swap conditions
          else
          {
             this->includeBoundary(e.getDirection());

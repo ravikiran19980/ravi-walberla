@@ -23,7 +23,7 @@ class PotentialCustomBoundary
          this->includeBoundary(e.getDirection());
          this->setValue(e.getDirection(), e.getValue());
 
-         if (e.getType() == "Neumann")
+         if (e.isNeumannType())
          {
             if (e.getDirection() == stencil::E) { dx_[stencil::D3Q6::idx[stencil::E]] = blocks.dx(); }
             else if (e.getDirection() == stencil::W) { dx_[stencil::D3Q6::idx[stencil::W]] = blocks.dx(); }
@@ -81,7 +81,7 @@ class PotentialCustomBoundary
                       const cell_idx_t cy, const cell_idx_t cz, BoundaryCondition& e, StructuredBlockStorage& blocks,
                       const math::AABB& domainAABB, const real_t charge, const real_t epsilon)
    {
-      if (e.getType() == "Neumann")
+      if (e.isNeumannType())
       {
          dx_[stencil::D3Q6::idx[stencil::E]] = blocks.dx();
          dx_[stencil::D3Q6::idx[stencil::W]] = blocks.dx();

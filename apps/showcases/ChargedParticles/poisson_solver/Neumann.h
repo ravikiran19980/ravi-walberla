@@ -72,7 +72,7 @@ class NeumannDomainBoundary
 
       for (auto e : boundaryConditions)
       {
-         if (e.getType() == "Dirichlet") { this->excludeBoundary(e.getDirection()); } // swap condtions
+         if (e.isDirichletType()) { this->excludeBoundary(e.getDirection()); } // swap condtions
          else
          {
             this->includeBoundary(e.getDirection());
