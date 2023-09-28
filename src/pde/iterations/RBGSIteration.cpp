@@ -60,6 +60,8 @@ void RBGSIteration::operator()()
          {
             if( boundary_ )
                boundary_();
+            communication_();
+
             const real_t residualNorm = residualNorm_();
             WALBERLA_CHECK( math::finite(residualNorm), "Non-finite residual norm detected during the red-black Gauss-Seidel iteration, "
                                                         "the simulation has probably diverged." );

@@ -9,7 +9,7 @@ namespace walberla
 {
 real_t computeErrorMax(const shared_ptr< StructuredBlockForest >& blocks, BlockDataID& NumericalSol,
                        const math::AABB& domainAABB, const real_t radius, const real_t epsilon, const real_t charge,
-                       const BlockDataID& potentialErrorID)
+                       const BlockDataID& /*potentialErrorID*/)
 {
    real_t error   = real_c(0);
    real_t normmax = real_c(0);
@@ -20,7 +20,7 @@ real_t computeErrorMax(const shared_ptr< StructuredBlockForest >& blocks, BlockD
 
       real_t blockResult            = real_t(0);
       real_t blockResult_analytical = real_t(0);
-            WALBERLA_FOR_ALL_CELLS_XYZ_OMP(solutionField, omp parallel for schedule(static) reduction(max: blockResult, max: blockResult_analytical),
+            WALBERLA_FOR_ALL_CELLS_XYZ_OMP(solutionField, omp parallel for schedule(static) reduction(max: blockResult, blockResult_analytical),
                                            const auto cellAABB = blocks->getBlockLocalCellAABB(*block, Cell(x,y,z));
                                                    auto cellCenter = cellAABB.center();
 
@@ -39,7 +39,7 @@ real_t computeErrorMax(const shared_ptr< StructuredBlockForest >& blocks, BlockD
                                                        if (distance >= radius) {
          analyticalSol = (1 / (4 * math::pi * epsilon)) * (charge / distance);
                                                        } else {
-         analyticalSol = (1 / (4 * math::pi * epsilon)) * (charge / (2 * radius)) * (3 - pow((distance / radius), 2));
+         analyticalSol = (1 / (4 * math::pi * epsilon)) * (charge / (2 * radius)) * (3 - real_c(pow((distance / radius), 2)));
                                                        }
 
                                                        real_t currErr = real_c(
@@ -77,7 +77,7 @@ real_t computeErrorL2(const shared_ptr< StructuredBlockForest >& blocks, BlockDa
             real_t blockResult            = real_t(0);
             real_t blockResult_analytical = real_t(0);
             real_t block_local_cells      = real_t(0);
-            WALBERLA_FOR_ALL_CELLS_XYZ_OMP(solutionField, omp parallel for schedule(static) reduction(+: blockResult, +: blockResult_analytical, +: block_local_cells),
+            WALBERLA_FOR_ALL_CELLS_XYZ_OMP(solutionField, omp parallel for schedule(static) reduction(+: blockResult, blockResult_analytical, block_local_cells),
                                            const auto cellAABB = blocks->getBlockLocalCellAABB(*block, Cell(x,y,z));
                                                    auto cellCenter = cellAABB.center();
 
@@ -96,12 +96,12 @@ real_t computeErrorL2(const shared_ptr< StructuredBlockForest >& blocks, BlockDa
                                                        if (distance >= radius) {
          analyticalSol = (1 / (4 * math::pi * epsilon)) * (charge / distance);
                                                        } else {
-         analyticalSol = (1 / (4 * math::pi * epsilon)) * (charge / (2 * radius)) * (3 - pow((distance / radius), 2));
+         analyticalSol = (1 / (4 * math::pi * epsilon)) * (charge / (2 * radius)) * (3 - real_c(pow((distance / radius), 2)));
                                                        }
 
                                                        //potentialAnalyticalField->get(x, y, z) = analyticalSol;
                                                        real_t currErr = (solutionField->get(x, y, z) - analyticalSol);
-                                                       potentialErrorField ->get(x, y, z) = abs(currErr);
+                                                       potentialErrorField ->get(x, y, z) = real_c(fabs(currErr));
                                                        blockResult += currErr * currErr;
                                                        blockResult_analytical += analyticalSol * analyticalSol;
                                                        block_local_cells += 1;
