@@ -7,13 +7,13 @@
 waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_Mapping FILES mapping/ParticleMapping.cpp DEPENDS core mesa_pd lbm lbm_mesapd_coupling domain_decomposition field )
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_Mapping PROCESSES 3)
 
-waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_MEM_MovingMapping FILES momentum_exchange_method/MovingParticleMapping.cpp DEPENDS core mesa_pd lbm lbm_mesapd_coupling domain_decomposition field vtk)
+waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_MEM_MovingMapping FILES momentum_exchange_method/MovingParticleMappingMEM.cpp DEPENDS core mesa_pd lbm lbm_mesapd_coupling domain_decomposition field vtk)
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_MEM_MovingMapping PROCESSES 3)
 
-waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_MEM_DragForceSphere FILES momentum_exchange_method/DragForceSphere.cpp DEPENDS core mesa_pd lbm lbm_mesapd_coupling domain_decomposition field vtk )
+waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_MEM_DragForceSphere FILES momentum_exchange_method/DragForceSphereMEM.cpp DEPENDS core mesa_pd lbm lbm_mesapd_coupling domain_decomposition field vtk )
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_MEM_DragForceSphere COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_MEM_DragForceSphere> --funcTest PROCESSES 2)
 
-waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_MEM_ForceTwoStatObjs FILES momentum_exchange_method/ForceBetweenTwoStationaryObjects.cpp DEPENDS core mesa_pd lbm lbm_mesapd_coupling domain_decomposition field vtk )
+waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_MEM_ForceTwoStatObjs FILES momentum_exchange_method/ForceBetweenTwoStationaryObjectsMEM.cpp DEPENDS core mesa_pd lbm lbm_mesapd_coupling domain_decomposition field vtk )
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_MEM_ForceTwoStatObjsSS1 COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_MEM_ForceTwoStatObjs> PROCESSES 1)
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_MEM_ForceTwoStatObjsSS2 COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_MEM_ForceTwoStatObjs> --useSBB PROCESSES 1)
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_MEM_ForceTwoStatObjsSS3 COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_MEM_ForceTwoStatObjs> --useCompressible PROCESSES 1)
@@ -23,13 +23,13 @@ waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_MEM_ForceTwoStatObjsSW2 COMMAND 
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_MEM_ForceTwoStatObjsSW3 COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_MEM_ForceTwoStatObjs> --useSphereWallSetup --useCompressible PROCESSES 1)
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_MEM_ForceTwoStatObjsSW4 COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_MEM_ForceTwoStatObjs> --useSphereWallSetup --systemVelocity 0.1 PROCESSES 1)
 
-waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_MEM_SettlingSphere FILES momentum_exchange_method/SettlingSphere.cpp DEPENDS core mesa_pd lbm lbm_mesapd_coupling domain_decomposition field vtk )
+waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_MEM_SettlingSphere FILES momentum_exchange_method/SettlingSphereMEM.cpp DEPENDS core mesa_pd lbm lbm_mesapd_coupling domain_decomposition field vtk )
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_MEM_SettlingSphere COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_MEM_SettlingSphere> --funcTest PROCESSES 4)
 
-waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_MEM_PdfReconstruction FILES momentum_exchange_method/PdfReconstruction.cpp DEPENDS core mesa_pd lbm lbm_mesapd_coupling domain_decomposition field vtk)
+waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_MEM_PdfReconstruction FILES momentum_exchange_method/PdfReconstructionMEM.cpp DEPENDS core mesa_pd lbm lbm_mesapd_coupling domain_decomposition field vtk)
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_MEM_PdfReconstruction PROCESSES 3)
 
-waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_MEM_UpdateParticleMapping FILES momentum_exchange_method/UpdateParticleMapping.cpp DEPENDS core mesa_pd lbm lbm_mesapd_coupling domain_decomposition field vtk)
+waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_MEM_UpdateParticleMapping FILES momentum_exchange_method/UpdateParticleMappingMEM.cpp DEPENDS core mesa_pd lbm lbm_mesapd_coupling domain_decomposition field vtk)
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_MEM_UpdateParticleMapping PROCESSES 1)
 
 waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_UTIL_LubricationCorrection FILES utility/LubricationCorrection.cpp DEPENDS mesa_pd lbm_mesapd_coupling )
@@ -47,18 +47,23 @@ waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_UTIL_HydForceMultBlocks_VVAvg CO
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_UTIL_HydForceMultBlocks_EulerNoAvg COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_UTIL_HydForceMultBlocks> --noForceAveraging PROCESSES 4 )
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_UTIL_HydForceMultBlocks_VVNoAvg COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_UTIL_HydForceMultBlocks> --noForceAveraging --useVV PROCESSES 4 )
 
-waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_PSM_BodyAndVolumeFractionMapping FILES partially_saturated_cells_method/ParticleAndVolumeFractionMapping.cpp DEPENDS blockforest boundary core field lbm_mesapd_coupling stencil mesa_pd )
-waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_PSM_BodyAndVolumeFractionMapping PROCESSES 27 )
+waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_PSM_ParticleAndVolumeFractionMapping FILES partially_saturated_cells_method/ParticleAndVolumeFractionMappingPSM.cpp DEPENDS blockforest boundary core field lbm_mesapd_coupling stencil mesa_pd )
+waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_PSM_ParticleAndVolumeFractionMapping COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_PSM_ParticleAndVolumeFractionMapping> PROCESSES 27 )
 
-waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_PSM_DragForceSphere FILES partially_saturated_cells_method/DragForceSphere.cpp DEPENDS blockforest boundary core field lbm lbm_mesapd_coupling timeloop mesa_pd )
+if( WALBERLA_BUILD_WITH_CUDA )
+    waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_PSM_ParticleAndVolumeFractionMappingGPU FILES partially_saturated_cells_method/cuda/ParticleAndVolumeFractionMappingPSMGPU.cpp DEPENDS blockforest boundary core gpu field lbm_mesapd_coupling stencil mesa_pd )
+    waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_PSM_ParticleAndVolumeFractionMappingGPU COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_PSM_ParticleAndVolumeFractionMappingGPU> PROCESSES 27 )
+endif()
+
+waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_PSM_DragForceSphere FILES partially_saturated_cells_method/DragForceSpherePSM.cpp DEPENDS blockforest boundary core field lbm lbm_mesapd_coupling timeloop mesa_pd )
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_PSM_DragForceSphereFuncTest COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_PSM_DragForceSphere> --funcTest PROCESSES 8 )
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_PSM_DragForceSphere COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_PSM_DragForceSphere> PROCESSES 8 LABELS longrun CONFIGURATIONS Release RelWithDbgInfo)
 
-waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_PSM_SettlingSphere FILES partially_saturated_cells_method/SettlingSphere.cpp DEPENDS blockforest boundary core domain_decomposition field lbm lbm_mesapd_coupling timeloop mesa_pd )
+waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_PSM_SettlingSphere FILES partially_saturated_cells_method/SettlingSpherePSM.cpp DEPENDS blockforest boundary core domain_decomposition field lbm lbm_mesapd_coupling timeloop mesa_pd )
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_PSM_SettlingSphereFuncTest COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_PSM_SettlingSphere> --funcTest PROCESSES 4 )
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_PSM_SettlingSphere COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_PSM_SettlingSphere> --resolution 70 PROCESSES 4 LABELS longrun CONFIGURATIONS Release RelWithDbgInfo )
 
-waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_PSM_TorqueSphere FILES partially_saturated_cells_method/TorqueSphere.cpp DEPENDS blockforest boundary core domain_decomposition field lbm stencil timeloop )
+waLBerla_compile_test( NAME LBM_MESAPD_COUPLING_PSM_TorqueSphere FILES partially_saturated_cells_method/TorqueSpherePSM.cpp DEPENDS blockforest boundary core domain_decomposition field lbm stencil timeloop )
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_PSM_TorqueSphereSC1W1FuncTest     COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_PSM_TorqueSphere> --funcTest --SC1W1   PROCESSES 1 )
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_PSM_TorqueSphereSC1W1SingleTest   COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_PSM_TorqueSphere> --SC1W1              PROCESSES 1 LABELS longrun     CONFIGURATIONS Release RelWithDbgInfo )
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_PSM_TorqueSphereSC1W1ParallelTest COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_PSM_TorqueSphere> --SC1W1              PROCESSES 8 LABELS verylongrun CONFIGURATIONS Release RelWithDbgInfo )
@@ -72,3 +77,29 @@ waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_PSM_TorqueSphereSC2W2FuncTest   
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_PSM_TorqueSphereSC2W2SingleTest   COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_PSM_TorqueSphere> --SC2W2              PROCESSES 1 LABELS longrun     CONFIGURATIONS Release RelWithDbgInfo )
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_PSM_TorqueSphereSC3W2FuncTest     COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_PSM_TorqueSphere> --funcTest --SC3W2   PROCESSES 1 )
 waLBerla_execute_test( NAME LBM_MESAPD_COUPLING_PSM_TorqueSphereSC3W2SingleTest   COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_PSM_TorqueSphere> --SC3W2              PROCESSES 1 LABELS longrun     CONFIGURATIONS Release RelWithDbgInfo )
+
+
+if (WALBERLA_BUILD_WITH_CUDA AND WALBERLA_BUILD_WITH_CODEGEN AND CMAKE_CUDA_ARCHITECTURES GREATER_EQUAL 60)
+    waLBerla_compile_test(NAME LBM_MESAPD_COUPLING_PSM_DragForceSphereGPU FILES partially_saturated_cells_method/cuda/DragForceSpherePSMGPU.cpp DEPENDS blockforest core gpu field lbm lbm_mesapd_coupling mesa_pd timeloop PSMCodegenPython_srt_sc1_s0)
+    waLBerla_execute_test(NAME LBM_MESAPD_COUPLING_PSM_DragForceSphereGPU COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_PSM_DragForceSphereGPU> PROCESSES 1)
+
+    foreach (collision_setup srt trt)
+        foreach (solid_collision 1 2 3)
+            foreach (weighting 1 2)
+                foreach (split 0 1)
+                    set(config ${collision_setup}_sc${solid_collision}_w${weighting}_s${split})
+                    waLBerla_compile_test(NAME LBM_MESAPD_COUPLING_PSM_TorqueSphereGPU_${config} FILES partially_saturated_cells_method/cuda/TorqueSpherePSMGPU.cpp DEPENDS blockforest boundary core gpu field lbm lbm_mesapd_coupling timeloop mesa_pd PSMCodegenPython_${collision_setup}_sc${solid_collision}_s${split})
+                    waLBerla_execute_test(NAME LBM_MESAPD_COUPLING_PSM_TorqueSphereGPU_${config} COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_PSM_TorqueSphereGPU_${config}> PROCESSES 1)
+                    target_compile_definitions(LBM_MESAPD_COUPLING_PSM_TorqueSphereGPU_${config} PRIVATE SC=${solid_collision})
+                    target_compile_definitions(LBM_MESAPD_COUPLING_PSM_TorqueSphereGPU_${config} PRIVATE Weighting=${weighting})
+                endforeach ()
+            endforeach ()
+        endforeach ()
+    endforeach ()
+
+    waLBerla_compile_test(NAME LBM_MESAPD_COUPLING_PSM_SettlingSphereGPU FILES partially_saturated_cells_method/cuda/SettlingSpherePSMGPU.cpp DEPENDS blockforest core gpu field lbm lbm_mesapd_coupling mesa_pd timeloop vtk PSMCodegenPython_srt_sc1_s0)
+    waLBerla_execute_test(NAME LBM_MESAPD_COUPLING_PSM_SettlingSphereGPUFuncTest COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_PSM_SettlingSphereGPU> --funcTest PROCESSES 4)
+    waLBerla_execute_test(NAME LBM_MESAPD_COUPLING_PSM_SettlingSphereGPU COMMAND $<TARGET_FILE:LBM_MESAPD_COUPLING_PSM_SettlingSphereGPU> PROCESSES 4 LABELS longrun CONFIGURATIONS Release RelWithDbgInfo)
+endif ()
+
+add_subdirectory(partially_saturated_cells_method)

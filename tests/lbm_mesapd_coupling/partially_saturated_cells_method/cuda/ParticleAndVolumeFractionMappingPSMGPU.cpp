@@ -27,7 +27,11 @@
 
 #include "field/AddToStorage.h"
 
-#include "lbm_mesapd_coupling/partially_saturated_cells_method/ParticleAndVolumeFractionMapping.h"
+#include "gpu/DeviceSelectMPI.h"
+#include "gpu/FieldCopy.h"
+#include "gpu/GPUField.h"
+
+#include "lbm_mesapd_coupling/partially_saturated_cells_method/cuda/PSMSweepCollectionGPU.h"
 #include "lbm_mesapd_coupling/utility/ParticleSelector.h"
 
 #include "mesa_pd/data/ParticleAccessorWithShape.h"
@@ -40,8 +44,6 @@
 #include <functional>
 #include <memory>
 
-#include "Utility.h"
-
 namespace particle_volume_fraction_check
 {
 
@@ -50,8 +52,61 @@ namespace particle_volume_fraction_check
 ///////////
 
 using namespace walberla;
-using walberla::uint_t;
-using namespace lbm_mesapd_coupling;
+using namespace walberla::lbm_mesapd_coupling::psm::gpu;
+
+//*******************************************************************************************************************
+/*!\brief Calculating the sum over all fraction values. This can be used as a sanity check since it has to be roughly
+ * equal to the volume of all particles.
+ *
+ */
+//*******************************************************************************************************************
+class FractionFieldSum
+{
+ public:
+   FractionFieldSum(const shared_ptr< StructuredBlockStorage >& blockStorage,
+                    const BlockDataID& nOverlappingParticlesFieldID, const BlockDataID& BsFieldID)
+      : blockStorage_(blockStorage), nOverlappingParticlesFieldID_(nOverlappingParticlesFieldID), BsFieldID_(BsFieldID)
+   {}
+
+   real_t operator()()
+   {
+      real_t sum = 0.0;
+
+      for (auto blockIt = blockStorage_->begin(); blockIt != blockStorage_->end(); ++blockIt)
+      {
+         auto nOverlappingParticlesField =
+            blockIt->getData< nOverlappingParticlesField_T >(nOverlappingParticlesFieldID_);
+         auto BsField = blockIt->getData< BsField_T >(BsFieldID_);
+
+         const cell_idx_t xSize = cell_idx_c(BsField->xSize());
+         const cell_idx_t ySize = cell_idx_c(BsField->ySize());
+         const cell_idx_t zSize = cell_idx_c(BsField->zSize());
+
+         for (cell_idx_t z = 0; z < zSize; ++z)
+         {
+            for (cell_idx_t y = 0; y < ySize; ++y)
+            {
+               for (cell_idx_t x = 0; x < xSize; ++x)
+               {
+                  for (uint_t n = 0; n < nOverlappingParticlesField->get(x, y, z); ++n)
+                  {
+                     sum += BsField->get(x, y, z, n);
+                  }
+               }
+            }
+         }
+      }
+
+      WALBERLA_MPI_SECTION() { mpi::allReduceInplace(sum, mpi::SUM); }
+
+      return sum;
+   }
+
+ private:
+   shared_ptr< StructuredBlockStorage > blockStorage_;
+   BlockDataID nOverlappingParticlesFieldID_;
+   BlockDataID BsFieldID_;
+};
 
 ////////////////
 // Parameters //
@@ -94,6 +149,7 @@ int main(int argc, char** argv)
    debug::enterTestMode();
 
    mpi::Environment env(argc, argv);
+   gpu::selectDeviceBasedOnMpiRank();
 
    auto processes = MPIManager::instance()->numProcesses();
 
@@ -146,9 +202,8 @@ int main(int argc, char** argv)
 
    // set up synchronization
    std::function< void(void) > syncCall = [&]() {
-      const real_t overlap = real_t(1.5) * dx;
       mesa_pd::mpi::SyncNextNeighbors syncNextNeighborFunc;
-      syncNextNeighborFunc(*ps, *mesapdDomain, overlap);
+      syncNextNeighborFunc(*ps, *mesapdDomain);
    };
 
    // add the sphere in the center of the domain
@@ -169,39 +224,74 @@ int main(int argc, char** argv)
       sphereParticle->setInteractionRadius(sphereRadius);
    }
 
+   Vector3< real_t > position2(real_c(0.0), real_c(0.0), real_c(0.0));
+   Vector3< real_t > velocity2(real_c(0.1), real_c(0.1), real_c(0.1));
+
+   if (mesapdDomain->isContainedInProcessSubdomain(uint_c(walberla::mpi::MPIManager::instance()->rank()), position2))
+   {
+      auto sphereParticle = ps->create();
+
+      sphereParticle->setShapeID(sphereShape);
+      sphereParticle->setType(0);
+      sphereParticle->setPosition(position2);
+      sphereParticle->setLinearVelocity(velocity2);
+      sphereParticle->setOwner(walberla::MPIManager::instance()->rank());
+      sphereParticle->setInteractionRadius(sphereRadius);
+   }
+
    syncCall();
 
    ///////////////////////
    // ADD DATA TO BLOCKS //
    ////////////////////////
 
-   // add particle and volume fraction field (needed for the PSM)
-   BlockDataID particleAndVolumeFractionFieldID =
-      field::addToStorage< lbm_mesapd_coupling::psm::ParticleAndVolumeFractionField_T >(
-         blocks, "particle and volume fraction field",
-         std::vector< lbm_mesapd_coupling::psm::ParticleAndVolumeFraction_T >(), field::fzyx, 0);
+   // add particle and volume fraction fields (needed for the PSM)
+   // TODO: do we need to add a cuda::HostFieldAllocator as in the cuda tutorial?
+   BlockDataID nOverlappingParticlesFieldID = field::addToStorage< nOverlappingParticlesField_T >(
+      blocks, "number of overlapping particles field CPU", 0, field::fzyx, 1);
+   BlockDataID BsFieldID = field::addToStorage< BsField_T >(blocks, "Bs field CPU", 0, field::fzyx, 1);
+
+   // dummy value for omega since it is not use because Weighting_T == 1
+   real_t omega = real_t(42.0);
+   ParticleAndVolumeFractionSoA_T< 1 > particleAndVolumeFractionSoA(blocks, omega);
 
    // calculate fraction
-   lbm_mesapd_coupling::psm::ParticleAndVolumeFractionMapping particleMapping(
-      blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(), particleAndVolumeFractionFieldID, 4);
-   particleMapping();
+   PSMSweepCollectionGPU psmSweepCollection(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
+                                            particleAndVolumeFractionSoA, 4);
+   for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
+   {
+      psmSweepCollection.particleMappingSweep(&(*blockIt));
+   }
 
-   FractionFieldSum fractionFieldSum(blocks, particleAndVolumeFractionFieldID);
+   FractionFieldSum fractionFieldSum(blocks, nOverlappingParticlesFieldID, BsFieldID);
    auto selector = mesa_pd::kernel::SelectMaster();
    mesa_pd::kernel::SemiImplicitEuler particleIntegration(1.0);
 
    for (uint_t i = 0; i < setup.timesteps; ++i)
    {
+      // copy data back to perform the check on CPU
+      for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
+      {
+         gpu::fieldCpySweepFunction< nOverlappingParticlesField_T, nOverlappingParticlesFieldGPU_T >(
+            nOverlappingParticlesFieldID, particleAndVolumeFractionSoA.nOverlappingParticlesFieldID, &(*blockIt));
+         gpu::fieldCpySweepFunction< BsField_T, BsFieldGPU_T >(BsFieldID, particleAndVolumeFractionSoA.BsFieldID,
+                                                               &(*blockIt));
+      }
+
       // check that the sum over all fractions is roughly the volume of the sphere
       real_t sum = fractionFieldSum();
-      WALBERLA_CHECK_LESS(std::fabs(4.0 / 3.0 * math::pi * sphereRadius * sphereRadius * sphereRadius - sum),
-                          real_c(1.0));
+      WALBERLA_CHECK_LESS(std::fabs(4.0 / 3.0 * math::pi * sphereRadius * sphereRadius * sphereRadius * 2 - sum),
+                          real_c(5));
 
       // update position
       ps->forEachParticle(false, selector, *accessor, particleIntegration, *accessor);
       syncCall();
-      // update fraction mapping
-      particleMapping();
+
+      // map particles into field
+      for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
+      {
+         psmSweepCollection.particleMappingSweep(&(*blockIt));
+      }
    }
 
    return EXIT_SUCCESS;

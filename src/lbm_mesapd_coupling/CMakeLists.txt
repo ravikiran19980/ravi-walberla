@@ -11,9 +11,16 @@ target_sources( lbm_mesapd_coupling
       PRIVATE
       DataTypes.h
       )
+if( WALBERLA_BUILD_WITH_CUDA )
+    target_sources( lbm_mesapd_coupling
+            PRIVATE
+            DataTypesGPU.h
+            )
+endif()
 
 add_subdirectory( amr )
 add_subdirectory( momentum_exchange_method )
+add_subdirectory( overlapping )
 add_subdirectory( partially_saturated_cells_method )
 add_subdirectory( utility )
 add_subdirectory( mapping )
