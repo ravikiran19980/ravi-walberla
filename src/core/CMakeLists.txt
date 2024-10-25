@@ -29,7 +29,17 @@ add_library( core )
 if( MPI_FOUND )
    target_link_libraries( core PUBLIC MPI::MPI_CXX )
 endif()
+
+if ( WALBERLA_BUILD_WITH_HALF_PRECISION_SUPPORT )
+    # Actual support for float16 is available only since C++23
+    #   before is_arithmetic and is_floating_point evaluated to false,
+    #   also many STL functions are compatible with float16 only since C++23.
+    # Which features are actually supported depend on the compiler
+    target_compile_features(core PUBLIC cxx_std_23)
+endif ()
+
 target_link_libraries( core PUBLIC ${SERVICE_LIBS} )
+target_include_directories( core PUBLIC ${walberla_SOURCE_DIR}/src/ ${walberla_BINARY_DIR}/src/ )
 target_sources( core
       PRIVATE
          Abort.cpp
@@ -52,6 +62,7 @@ target_sources( core
          EndianIndependentSerialization.h
          Environment.h
          Filesystem.h
+         Format.hpp
          FunctionTraits.h
          GetPID.h
          Hostname.h

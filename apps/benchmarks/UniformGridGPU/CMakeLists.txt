@@ -3,13 +3,16 @@ waLBerla_link_files_to_builddir( "*.py" )
 waLBerla_link_files_to_builddir( "simulation_setup" )
 
 
-foreach(streaming_pattern pull push aa esotwist)
+foreach(streaming_pattern pull push aa esotwist esopull esopush)
     foreach(stencil d3q19 d3q27)
-        foreach (collision_setup srt trt mrt mrt-overrelax central central-overrelax cumulant cumulant-overrelax entropic smagorinsky)
+        foreach (collision_setup srt trt mrt mrt-overrelax central central-overrelax cumulant cumulant-overrelax cumulant-K17 entropic smagorinsky qr)
 	    # KBC methods only for D2Q9 and D3Q27 defined
 	    if (${collision_setup} STREQUAL "entropic" AND ${stencil} STREQUAL "d3q19")
 		    continue()
-	    endif (${collision_setup} STREQUAL "entropic" AND ${stencil} STREQUAL "d3q19")
+        endif (${collision_setup} STREQUAL "entropic" AND ${stencil} STREQUAL "d3q19")
+        if (${collision_setup} STREQUAL "cumulant-K17" AND ${stencil} STREQUAL "d3q19")
+            continue()
+        endif (${collision_setup} STREQUAL "cumulant-K17" AND ${stencil} STREQUAL "d3q19")
             set(config ${stencil}_${streaming_pattern}_${collision_setup})
             waLBerla_generate_target_from_python(NAME UniformGridGPUGenerated_${config}
                     FILE UniformGridGPU.py
@@ -25,7 +28,7 @@ foreach(streaming_pattern pull push aa esotwist)
 
             waLBerla_add_executable(NAME UniformGridGPU_${config}
                     FILES UniformGridGPU.cpp
-                    DEPENDS blockforest boundary core gpu domain_decomposition field geometry python_coupling timeloop vtk UniformGridGPUGenerated_${config})
+                    DEPENDS blockforest boundary core gpu domain_decomposition field geometry lbm_generated python_coupling timeloop vtk UniformGridGPUGenerated_${config})
 
             # all configs are excluded from all except for pull d3q27.
             if (${streaming_pattern} STREQUAL "pull" AND ${stencil} STREQUAL "d3q27")

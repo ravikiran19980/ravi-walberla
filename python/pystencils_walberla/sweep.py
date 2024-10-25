@@ -1,10 +1,11 @@
+from collections.abc import Iterable
 from typing import Callable, Sequence
-
 from jinja2 import Environment, PackageLoader, StrictUndefined
 
 from pystencils import Target, Assignment
 from pystencils import Field, create_kernel, create_staggered_kernel
 from pystencils.astnodes import KernelFunction
+from pystencils.typing import numpy_name_to_c
 
 from pystencils_walberla.cmake_integration import CodeGenerationContext
 from pystencils_walberla.jinja_filters import add_pystencils_filters_to_jinja_env
@@ -12,10 +13,11 @@ from pystencils_walberla.kernel_selection import KernelCallNode, KernelFamily, H
 from pystencils_walberla.utility import config_from_context
 
 
-def generate_sweep(ctx: CodeGenerationContext, class_name: str, assignments: Sequence[Assignment],
+def generate_sweep(generation_context: CodeGenerationContext, class_name: str, assignments: Sequence[Assignment],
                    namespace: str = 'pystencils', field_swaps=(), staggered=False, varying_parameters=(),
                    inner_outer_split=False, ghost_layers_to_include=0,
                    target=Target.CPU, data_type=None, cpu_openmp=None, cpu_vectorize_info=None, max_threads=None,
+                   block_offset=False,
                    **create_kernel_params):
     """Generates a waLBerla sweep from a pystencils representation.
 
@@ -23,7 +25,7 @@ def generate_sweep(ctx: CodeGenerationContext, class_name: str, assignments: Seq
     Fields have to passed using BlockDataID's pointing to walberla fields
 
     Args:
-        ctx: build system context filled with information from waLBerla's CMake. The context for example
+        generation_context: build system context filled with information from waLBerla's CMake. The context for example
                             defines where to write generated files, if OpenMP is available or which SIMD instruction
                             set should be used. See waLBerla examples on how to get a context.
         class_name: name of the generated sweep class
@@ -46,12 +48,14 @@ def generate_sweep(ctx: CodeGenerationContext, class_name: str, assignments: Seq
         cpu_openmp: if loops should use openMP or not.
         cpu_vectorize_info: dictionary containing necessary information for the usage of a SIMD instruction set.
         max_threads: only relevant for GPU kernels. Will be argument of `__launch_bounds__`
+        block_offset: A tuple of TypedSymbols that will function as internal variable to store
+                      storage.getBlockCellBB(block).min())
         **create_kernel_params: remaining keyword arguments are passed to `pystencils.create_kernel`
     """
     if staggered:
         assert 'omp_single_loop' not in create_kernel_params
         create_kernel_params['omp_single_loop'] = False
-    config = config_from_context(ctx, target=target, data_type=data_type, cpu_openmp=cpu_openmp,
+    config = config_from_context(generation_context, target=target, data_type=data_type, cpu_openmp=cpu_openmp,
                                  cpu_vectorize_info=cpu_vectorize_info, **create_kernel_params)
 
     if isinstance(assignments, KernelFunction):
@@ -66,22 +70,22 @@ def generate_sweep(ctx: CodeGenerationContext, class_name: str, assignments: Seq
     ast.function_name = class_name.lower()
 
     selection_tree = KernelCallNode(ast)
-    generate_selective_sweep(ctx, class_name, selection_tree, target=target, namespace=namespace,
+    generate_selective_sweep(generation_context, class_name, selection_tree, target=target, namespace=namespace,
                              field_swaps=field_swaps, varying_parameters=varying_parameters,
                              inner_outer_split=inner_outer_split, ghost_layers_to_include=ghost_layers_to_include,
                              cpu_vectorize_info=config.cpu_vectorize_info,
-                             cpu_openmp=config.cpu_openmp, max_threads=max_threads)
+                             cpu_openmp=config.cpu_openmp, max_threads=max_threads, block_offset=block_offset)
 
 
-def generate_selective_sweep(ctx, class_name, selection_tree, interface_mappings=(), target=None,
+def generate_selective_sweep(generation_context, class_name, selection_tree, interface_mappings=(), target=None,
                              namespace='pystencils', field_swaps=(), varying_parameters=(),
                              inner_outer_split=False, ghost_layers_to_include=0,
-                             cpu_vectorize_info=None, cpu_openmp=False, max_threads=None):
+                             cpu_vectorize_info=None, cpu_openmp=False, max_threads=None, block_offset=False):
     """Generates a selective sweep from a kernel selection tree. A kernel selection tree consolidates multiple
     pystencils ASTs in a tree-like structure. See also module `pystencils_walberla.kernel_selection`.
 
     Args:
-        ctx: see documentation of `generate_sweep`
+        generation_context: see documentation of `generate_sweep`
         class_name: name of the generated sweep class
         selection_tree: Instance of `AbstractKernelSelectionNode`, root of the selection tree
         interface_mappings: sequence of `AbstractInterfaceArgumentMapping` instances for selection arguments of
@@ -94,7 +98,10 @@ def generate_selective_sweep(ctx, class_name, selection_tree, interface_mappings
         ghost_layers_to_include: see documentation of `generate_sweep`
         cpu_vectorize_info: Dictionary containing information about CPU vectorization applied to the kernels
         cpu_openmp: Whether or not CPU kernels use OpenMP parallelization
-        max_threads: only relevant for GPU kernels. Will be argument of `__launch_bounds__`
+        max_threads: only relevant for GPU kernels. Will be argument of `__launch_bounds__
+        block_offset: A tuple of TypedSymbols that will function as internal variable to store
+                      storage.getBlockCellBB(block).min())
+`
     """
     def to_name(f):
         return f.name if isinstance(f, Field) else f
@@ -110,7 +117,7 @@ def generate_selective_sweep(ctx, class_name, selection_tree, interface_mappings
     elif target != kernel_family.get_ast_attr('target'):
         raise ValueError('Mismatch between target parameter and AST targets.')
 
-    if not ctx.gpu and target == Target.GPU:
+    if not generation_context.gpu and target == Target.GPU:
         return
 
     representative_field = {p.field_name for p in kernel_family.parameters if p.is_field_parameter}
@@ -120,6 +127,11 @@ def generate_selective_sweep(ctx, class_name, selection_tree, interface_mappings
     add_pystencils_filters_to_jinja_env(env)
 
     interface_spec = HighLevelInterfaceSpec(kernel_family.kernel_selection_parameters, interface_mappings)
+
+    parameters_to_ignore = None
+    if isinstance(block_offset, Iterable):
+        parameters_to_ignore = [b.name for b in block_offset]
+        block_offset = tuple((b.name, numpy_name_to_c(b.dtype.numpy_dtype.name)) for b in block_offset)
 
     jinja_context = {
         'kernel': kernel_family,
@@ -133,17 +145,20 @@ def generate_selective_sweep(ctx, class_name, selection_tree, interface_mappings
         'generate_functor': True,
         'cpu_vectorize_info': cpu_vectorize_info,
         'cpu_openmp': cpu_openmp,
-        'max_threads': max_threads
+        'max_threads': max_threads,
+        'block_offset': block_offset,
+        'parameters_to_ignore': parameters_to_ignore
     }
     header = env.get_template("Sweep.tmpl.h").render(**jinja_context)
     source = env.get_template("Sweep.tmpl.cpp").render(**jinja_context)
 
-    source_extension = "cpp" if target == Target.CPU else "cu"
-    ctx.write_file(f"{class_name}.h", header)
-    ctx.write_file(f"{class_name}.{source_extension}", source)
+    source_extension = "cu" if target == Target.GPU and generation_context.cuda else "cpp"
+    generation_context.write_file(f"{class_name}.h", header)
+    generation_context.write_file(f"{class_name}.{source_extension}", source)
 
 
-def generate_sweep_collection(ctx, class_name: str, function_generators: Sequence[Callable], parameter_scaling=None):
+def generate_sweep_collection(generation_context: CodeGenerationContext, class_name: str,
+                              function_generators: Sequence[Callable], parameter_scaling=None):
     """Generates a sweep collection
     """
 
@@ -194,6 +209,6 @@ def generate_sweep_collection(ctx, class_name: str, function_generators: Sequenc
     header = env.get_template("SweepCollection.tmpl.h").render(**jinja_context)
     source = env.get_template("SweepCollection.tmpl.cpp").render(**jinja_context)
 
-    source_extension = "cpp" if target == Target.CPU else "cu"
-    ctx.write_file(f"{class_name}.h", header)
-    ctx.write_file(f"{class_name}.{source_extension}", source)
+    source_extension = "cu" if target == Target.GPU and generation_context.cuda else "cpp"
+    generation_context.write_file(f"{class_name}.h", header)
+    generation_context.write_file(f"{class_name}.{source_extension}", source)

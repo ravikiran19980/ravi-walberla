@@ -18,7 +18,6 @@
 //! \author Martin Bauer <martin.bauer@fau.de>
 //
 //======================================================================================================================
-
 #pragma once
 
 #include "blockforest/StructuredBlockForest.h"
@@ -32,9 +31,7 @@
 
 #include <thread>
 
-#include "gpu/GPURAII.h"
 #include "gpu/GPUWrapper.h"
-#include "gpu/ParallelStreams.h"
 #include "gpu/communication/CustomMemoryBuffer.h"
 #include "gpu/communication/GeneratedGPUPackInfo.h"
 
@@ -45,33 +42,69 @@ namespace communication {
 
 
 
+/**
+ * \brief Communication scheme for buffered communication in uniform block grids.
+ *
+ * Synchronize a set of \ref GPUField between GPU devices.
+ * Communication between fields on the same process: use direct copy
+ * via \ref GeneratedGPUPackInfo::communicateLocal.
+ * Communication between different processes: use a buffered communication scheme;
+ * when multiple fields have been changed they can be synchronized at once,
+ * using one MPI message per communication partner.
+ *
+ *   \code
+ *      UniformGPUScheme<stencil::D3Q19> scheme;  // the stencil defines the communication neighbors
+ *      scheme.addPackInfo( make_shared<gpu::communication::MemcpyPackInfo<FieldType> >( idOfFirstField ) );
+ *      scheme.addPackInfo( make_shared<gpu::communication::MemcpyPackInfo<FieldType> >( idOfSecondField ) );
+ *
+ *      // either synchronous communication...
+ *      scheme();
+ *
+ *      // .. or asynchronous:
+ *      scheme.startCommunication();
+ *      functionWhichDoesNotNeedCommunicatedValues();
+ *      scheme.wait();
+ *   \endcode
+ *
+ * This scheme sends one message per communication step and neighbor device.
+ * Therefore all contents that have to be sent are packed into a single buffer.
+ * Multiple \ref GeneratedGPUPackInfo can be registered to send their contents in a single step.
+ *
+ * When running multiple \ref UniformGPUScheme concurrently, different MPI tags
+ * have to be used for the schemes: the tag can be passed in the constructor.
+ */
    template<typename Stencil>
    class UniformGPUScheme
    {
    public:
-       explicit UniformGPUScheme( weak_ptr<StructuredBlockForest> bf,
-                                  bool sendDirectlyFromGPU = false,
-                                  bool useLocalCommunication = true,
+       explicit UniformGPUScheme( const weak_ptr< StructuredBlockForest >& bf,
+                                  const bool sendDirectlyFromGPU = false,
+                                  const bool useLocalCommunication = true,
                                   const int tag = 5432 );
 
-       explicit UniformGPUScheme( weak_ptr<StructuredBlockForest> bf,
-                                 const Set<SUID> & requiredBlockSelectors,
-                                 const Set<SUID> & incompatibleBlockSelectors,
-                                 bool sendDirectlyFromGPU = false,
-                                 bool useLocalCommunication = true,
-                                 const int tag = 5432 );
+       explicit UniformGPUScheme( const weak_ptr< StructuredBlockForest >& bf,
+                                  const Set<SUID> & requiredBlockSelectors,
+                                  const Set<SUID> & incompatibleBlockSelectors,
+                                  const bool sendDirectlyFromGPU = false,
+                                  const bool useLocalCommunication = true,
+                                  const int tag = 5432 );
+       ~UniformGPUScheme()
+       {
+          for (uint_t i = 0; i < Stencil::Q; ++i)
+             WALBERLA_GPU_CHECK(gpuStreamDestroy(streams_[i]))
+       }
 
        void addPackInfo( const shared_ptr<GeneratedGPUPackInfo> &pi );
 
-       void startCommunication( gpuStream_t stream = nullptr);
-       void wait( gpuStream_t stream = nullptr);
+       void startCommunication();
+       void wait();
 
-       void operator()( gpuStream_t stream = nullptr )         { communicate( stream ); }
-       inline void communicate( gpuStream_t stream = nullptr ) { startCommunication(stream); wait(stream); }
+       void operator()()         { communicate( ); }
+       inline void communicate() { startCommunication(); wait(); }
 
-       std::function<void()> getCommunicateFunctor( gpuStream_t stream = nullptr );
-       std::function<void()> getStartCommunicateFunctor( gpuStream_t stream = nullptr );
-       std::function<void()> getWaitFunctor( gpuStream_t stream = nullptr );
+       std::function<void()> getCommunicateFunctor();
+       std::function<void()> getStartCommunicateFunctor();
+       std::function<void()> getWaitFunctor();
 
    private:
        void setupCommunication();
@@ -81,8 +114,8 @@ namespace communication {
 
        bool setupBeforeNextCommunication_;
        bool communicationInProgress_;
-       bool sendFromGPU_;
-       bool useLocalCommunication_;
+       const bool sendFromGPU_;
+       const bool useLocalCommunication_;
 
        using CpuBuffer_T = gpu::communication::PinnedMemoryBuffer;
        using GpuBuffer_T = gpu::communication::GPUMemoryBuffer;
@@ -91,8 +124,6 @@ namespace communication {
        mpi::GenericBufferSystem<GpuBuffer_T, GpuBuffer_T> bufferSystemGPU_;
 
        std::vector<shared_ptr<GeneratedGPUPackInfo> > packInfos_;
-
-       ParallelStreams parallelSectionManager_;
 
        struct Header
        {
@@ -103,6 +134,8 @@ namespace communication {
 
        Set<SUID> requiredBlockSelectors_;
        Set<SUID> incompatibleBlockSelectors_;
+
+       gpuStream_t streams_[Stencil::Q];
    };
 
 

@@ -64,9 +64,15 @@ using SweepCollection_T = lbm::UniformGridCPUSweepCollection;
 
 using blockforest::communication::UniformBufferedScheme;
 
+using macroFieldType = VelocityField_T::value_type;
+using pdfFieldType = PdfField_T::value_type;
+
 int main(int argc, char** argv)
 {
    const mpi::Environment env(argc, argv);
+
+   const std::string input_filename(argv[1]);
+   const bool inputIsPython = string_ends_with(input_filename, ".py");
 
    for (auto cfg = python_coupling::configBegin(argc, argv); cfg != python_coupling::configEnd(); ++cfg)
    {
@@ -84,10 +90,10 @@ int main(int argc, char** argv)
 
       // Creating fields
       const StorageSpecification_T StorageSpec = StorageSpecification_T();
-      auto fieldAllocator = make_shared< field::AllocateAligned< real_t, 64 > >();
+      auto fieldAllocator = make_shared< field::AllocateAligned< pdfFieldType, 64 > >();
       const BlockDataID pdfFieldId  = lbm_generated::addPdfFieldToStorage(blocks, "pdfs", StorageSpec, field::fzyx, fieldAllocator);
-      const BlockDataID velFieldId = field::addToStorage< VelocityField_T >(blocks, "vel", real_c(0.0), field::fzyx);
-      const BlockDataID densityFieldId = field::addToStorage< ScalarField_T >(blocks, "density", real_c(1.0), field::fzyx);
+      const BlockDataID velFieldId = field::addToStorage< VelocityField_T >(blocks, "vel", macroFieldType(0.0), field::fzyx);
+      const BlockDataID densityFieldId = field::addToStorage< ScalarField_T >(blocks, "density", macroFieldType(1.0), field::fzyx);
       const BlockDataID flagFieldID = field::addFlagFieldToStorage< FlagField_T >(blocks, "Boundary Flag Field");
 
       // Initialize velocity on cpu
@@ -157,7 +163,7 @@ int main(int argc, char** argv)
       } else if (timeStepStrategy == "kernelOnly") {
          timeLoop.add() << Sweep(sweepCollection.streamCollide(SweepCollection_T::ALL), "LBM StreamCollide");
       } else if (timeStepStrategy == "StreamOnly") {
-         timeLoop.add() << Sweep(StreamOnlyKernel, "LBM Stream Only");
+         timeLoop.add() << Sweep(sweepCollection.stream(SweepCollection_T::ALL), "LBM Stream-Only");
       } else {
          WALBERLA_ABORT_NO_DEBUG_INFO("Invalid value for 'timeStepStrategy'")
       }
@@ -171,7 +177,7 @@ int main(int argc, char** argv)
       {
          auto vtkOutput = vtk::createVTKOutput_BlockData(*blocks, "vtk", vtkWriteFrequency, 0, false, "vtk_out",
                                                          "simulation_step", false, true, true, false, 0);
-         auto velWriter = make_shared< field::VTKWriter< VelocityField_T > >(velFieldId, "vel");
+         auto velWriter = make_shared< field::VTKWriter< VelocityField_T, float32 > >(velFieldId, "vel");
          vtkOutput->addCellDataWriter(velWriter);
 
          vtkOutput->addBeforeFunction([&]() {
@@ -225,17 +231,28 @@ int main(int argc, char** argv)
 
          WALBERLA_ROOT_SECTION()
          {
-            python_coupling::PythonCallback pythonCallbackResults("results_callback");
-            if (pythonCallbackResults.isCallable())
-            {
-               pythonCallbackResults.data().exposeValue("mlupsPerProcess", performance.mlupsPerProcess(timesteps, time));
-               pythonCallbackResults.data().exposeValue("stencil", infoStencil);
-               pythonCallbackResults.data().exposeValue("streamingPattern", infoStreamingPattern);
-               pythonCallbackResults.data().exposeValue("collisionSetup", infoCollisionSetup);
-               pythonCallbackResults.data().exposeValue("cse_global", infoCseGlobal);
-               pythonCallbackResults.data().exposeValue("cse_pdfs", infoCsePdfs);
-               // Call Python function to report results
-               pythonCallbackResults();
+            if(inputIsPython){
+               python_coupling::PythonCallback pythonCallbackResults("results_callback");
+               if (pythonCallbackResults.isCallable())
+               {
+                  pythonCallbackResults.data().exposeValue("numProcesses", performance.processes());
+                  pythonCallbackResults.data().exposeValue("numThreads", performance.threads());
+                  pythonCallbackResults.data().exposeValue("numCores", performance.cores());
+                  pythonCallbackResults.data().exposeValue("numberOfCells", performance.numberOfCells());
+                  pythonCallbackResults.data().exposeValue("numberOfFluidCells", performance.numberOfFluidCells());
+                  pythonCallbackResults.data().exposeValue("mlups", performance.mlups(timesteps, time));
+                  pythonCallbackResults.data().exposeValue("mlupsPerCore", performance.mlupsPerCore(timesteps, time));
+                  pythonCallbackResults.data().exposeValue("mlupsPerProcess", performance.mlupsPerProcess(timesteps, time));
+                  pythonCallbackResults.data().exposeValue("stencil", infoStencil);
+                  pythonCallbackResults.data().exposeValue("streamingPattern", infoStreamingPattern);
+                  pythonCallbackResults.data().exposeValue("collisionSetup", infoCollisionSetup);
+                  pythonCallbackResults.data().exposeValue("vectorised", vectorised);
+                  pythonCallbackResults.data().exposeValue("nontemporal", nontemporal);
+                  pythonCallbackResults.data().exposeValue("cse_global", infoCseGlobal);
+                  pythonCallbackResults.data().exposeValue("cse_pdfs", infoCsePdfs);
+                  // Call Python function to report results
+                  pythonCallbackResults();
+               }
             }
          }
       }

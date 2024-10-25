@@ -32,12 +32,19 @@ class KernelInfo:
         all_headers = [list(get_headers(self.ast))]
         return reduce(merge_sorted_lists, all_headers)
 
-    def generate_kernel_invocation_code(self, **kwargs):
+    def generate_kernel_invocation_code(self, plain_kernel_call=False, **kwargs):
         ast = self.ast
         ast_params = self.parameters
         fnc_name = ast.function_name
         is_cpu = self.ast.target == Target.CPU
         call_parameters = ", ".join([p.symbol.name for p in ast_params])
+
+        if plain_kernel_call:
+            if is_cpu:
+                return f"internal_{fnc_name}::{fnc_name}({call_parameters});"
+            else:
+                stream = kwargs.get('stream', '0')
+                return f"internal_{fnc_name}::{fnc_name}<<<_grid, _block, 0, {stream}>>>({call_parameters});"
 
         if not is_cpu:
             stream = kwargs.get('stream', '0')
@@ -58,8 +65,8 @@ class KernelInfo:
             grid = tuple(sp_printer_c.doprint(e) for e in indexing_dict['grid'])
 
             kernel_call_lines = [
-                f"dim3 _block(uint64_c({block[0]}), uint64_c({block[1]}), uint64_c({block[2]}));",
-                f"dim3 _grid(uint64_c({grid[0]}), uint64_c({grid[1]}), uint64_c({grid[2]}));",
+                f"dim3 _block(uint32_c({block[0]}), uint32_c({block[1]}), uint32_c({block[2]}));",
+                f"dim3 _grid(uint32_c({grid[0]}), uint32_c({grid[1]}), uint32_c({grid[2]}));",
                 f"internal_{fnc_name}::{fnc_name}<<<_grid, _block, 0, {stream}>>>({call_parameters});"
             ]
 

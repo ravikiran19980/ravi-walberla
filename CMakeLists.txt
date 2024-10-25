@@ -99,6 +99,7 @@ option ( WALBERLA_PROFILE_USE               "Uses Profile to optimize"          
 option ( WALBERLA_OPTIMIZE_FOR_LOCALHOST    "Enable compiler optimizations spcific to localhost" )
 
 option ( WALBERLA_LOG_SKIPPED               "Log skipped cmake targets"                      ON  )
+option ( WALBERLA_DEPS_ERROR                "Fail if module dependencies are not met"        OFF )
 
 option ( WALBERLA_GIT_SUBMODULE_AUTO        "Check submodules during cmake run"               ON )
 
@@ -215,7 +216,7 @@ endif()
 mark_as_advanced ( WALBERLA_CXX_COMPILER_IS_IBM )
 
 # Check for NEC SX compiler
-if( CMAKE_CXX_COMPILER MATCHES "sxc" OR CMAKE_CXX_COMPILER_ARG1 MATCHES "sxc" OR CMAKE_CXX_COMPILER MATCHES "sxmpic" OR CMAKE_CXX_COMPILER_ARG1 MATCHES "sxmpic" )
+if( CMAKE_CXX_COMPILER MATCHES "/sxc" OR CMAKE_CXX_COMPILER_ARG1 MATCHES "/sxc" OR CMAKE_CXX_COMPILER MATCHES "/sxmpic" OR CMAKE_CXX_COMPILER_ARG1 MATCHES "/sxmpic" )
     option ( WALBERLA_CXX_COMPILER_IS_NEC "Use NEC compiler" ON  )
 else()
     option ( WALBERLA_CXX_COMPILER_IS_NEC "Use NEC compiler" OFF  )
@@ -243,6 +244,14 @@ else()
     option ( WALBERLA_CXX_COMPILER_IS_PGI "Use PGI compiler" OFF  )
 endif()
 mark_as_advanced ( WALBERLA_CXX_COMPILER_IS_PGI )
+
+# Check for Fujitsu compiler
+if( CMAKE_CXX_COMPILER_ID MATCHES FujitsuClang )
+    option ( WALBERLA_CXX_COMPILER_IS_FUJITSUCLANG "Use FujitsuClang compiler" ON  )
+else()
+    option ( WALBERLA_CXX_COMPILER_IS_FUJITSUCLANG "Use FujitsuClang compiler" OFF  )
+endif()
+mark_as_advanced ( WALBERLA_CXX_COMPILER_IS_FUJITSUCLANG )
 
 # Check for MPI wrapper
 get_filename_component( CXX_COMPILER_WITHOUT_PATH ${CMAKE_CXX_COMPILER} NAME )
@@ -395,6 +404,8 @@ if( WALBERLA_CXX_COMPILER_IS_INTEL )
    # system headers are also supported by intel, but cmake does not recognize that
    set( CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem " )
    add_flag ( CMAKE_CXX_FLAGS "-wd2928,2504,2259,1682,597" )
+   # disable icc/icpc deprecation warning
+   add_flag ( CMAKE_CXX_FLAGS "-diag-disable=10441" )
 elseif( WALBERLA_CXX_COMPILER_IS_GNU )
    add_flag ( CMAKE_CXX_FLAGS "-Wfloat-equal -Wextra" )
 elseif( WALBERLA_CXX_COMPILER_IS_NEC )
@@ -415,9 +426,10 @@ if( NOT WARNING_DEPRECATED)
 endif()
 
 
-if ( WALBERLA_CXX_COMPILER_IS_CLANG )
+if ( WALBERLA_CXX_COMPILER_IS_CLANG OR WALBERLA_CXX_COMPILER_IS_FUJITSUCLANG )
     add_flag ( CMAKE_CXX_FLAGS "-Wall -Wconversion -Wshadow -Wno-c++11-extensions -Qunused-arguments" )
 endif ( )
+
 
 if( WALBERLA_CXX_COMPILER_IS_GNU OR WALBERLA_CXX_COMPILER_IS_INTEL OR WALBERLA_CXX_COMPILER_IS_CLANG )
     if ( WALBERLA_STL_BOUNDS_CHECKS )
@@ -607,7 +619,7 @@ endif ()
 ##
 #############################################################################################################################
 if ( WALBERLA_BUILD_WITH_CODEGEN )
-   set(LBMPY_MIN_VERSION 1.2)
+   set(LBMPY_MIN_VERSION 1.3.6)
    execute_process(COMMAND ${Python_EXECUTABLE} -c "import lbmpy; print(lbmpy.__version__)"
          RESULT_VARIABLE LBMPY_FOUND OUTPUT_VARIABLE LBMPY_VERSION)
     if(NOT LBMPY_FOUND EQUAL 0)
@@ -916,7 +928,7 @@ if( (NOT DEFINED WALBERLA_BUILD_WITH_OPENMESH) OR WALBERLA_BUILD_WITH_OPENMESH )
          add_definitions(-D_USE_MATH_DEFINES )
       endif()
    else()
-      message("   If OpenMesh required, set OPENMESH_DIR to the OpenMesh directory.")
+      message("   If OpenMesh required, set OPENMESH_LIBRARY_DIR to the OpenMesh directory.")
       set( WALBERLA_BUILD_WITH_OPENMESH OFF CACHE BOOL "Build with OpenMesh support" FORCE )
    endif()
 endif()
@@ -942,7 +954,11 @@ if ( WALBERLA_CXX_COMPILER_IS_MSVC )
     string(REPLACE "/Od" "/O2"   CMAKE_CXX_FLAGS_DEBUGOPTIMIZED ${CMAKE_CXX_FLAGS_DEBUGOPTIMIZED})
     string(REPLACE "/Ob0" "/Ob2" CMAKE_CXX_FLAGS_DEBUGOPTIMIZED ${CMAKE_CXX_FLAGS_DEBUGOPTIMIZED})
     string(REPLACE "/RTC1" ""    CMAKE_CXX_FLAGS_DEBUGOPTIMIZED ${CMAKE_CXX_FLAGS_DEBUGOPTIMIZED})
-elseif( WALBERLA_CXX_COMPILER_IS_GNU OR WALBERLA_CXX_COMPILER_IS_INTEL OR WALBERLA_CXX_COMPILER_IS_CLANG )
+elseif(    WALBERLA_CXX_COMPILER_IS_GNU
+        OR WALBERLA_CXX_COMPILER_IS_INTEL
+        OR WALBERLA_CXX_COMPILER_IS_CLANG
+        OR WALBERLA_CXX_COMPILER_IS_INTELLLVM
+        OR WALBERLA_CXX_COMPILER_IS_FUJITSUCLANG )
    set( CMAKE_C_FLAGS_DEBUGOPTIMIZED   "${CMAKE_C_FLAGS_DEBUGOPTIMIZED} -O3" )
    set( CMAKE_CXX_FLAGS_DEBUGOPTIMIZED "${CMAKE_CXX_FLAGS_DEBUGOPTIMIZED} -O3" )
 endif()
@@ -1163,11 +1179,20 @@ if ( WALBERLA_BUILD_WITH_LIKWID_MARKERS )
     find_library( LIKWID_LIB likwid HINTS $ENV{LIKWID_LIBDIR} $ENV{LIKWID_ROOT}/lib )
     find_path( LIKWID_INCLUDE_DIR likwid.h HINTS $ENV{LIKWID_INCDIR} $ENV{LIKWID_ROOT}/include )
 
+    # For some reason, these turned out to be necessary when building with likwid on Fugaku
+    if ( WALBERLA_CXX_COMPILER_IS_FUJITSUCLANG )
+        find_library( LIKWIDLUA_LIB NAMES likwid-lua HINTS $ENV{LIKWID_LIBDIR} $ENV{LIKWID_ROOT}/lib )
+        find_library( LIKWIDHWLOC_LIB NAMES likwid-hwloc HINTS $ENV{LIKWID_LIBDIR} $ENV{LIKWID_ROOT}/lib )
+    endif()
+
     if ( LIKWID_LIB AND LIKWID_INCLUDE_DIR)
         set( LIKWID_FOUND 1)
         include_directories( ${LIKWID_INCLUDE_DIR})
         add_definitions ( "-DLIKWID_PERFMON" )
         list ( APPEND SERVICE_LIBS ${LIKWID_LIB} )
+        if( WALBERLA_CXX_COMPILER_IS_FUJITSUCLANG )
+            list ( APPEND SERVICE_LIBS ${LIKWIDLUA_LIB} ${LIKWIDHWLOC_LIB} )
+        endif()
     else()
         message(WARNING "likwid marker library not found. Set environment variable LIKWID_ROOT")
         set ( WALBERLA_BUILD_WITH_LIKWID_MARKERS OFF CACHE BOOL "Compile in markers for likwid-perfctr" FORCE )
@@ -1231,28 +1256,28 @@ endif()
 ##  Half precision
 ##
 ############################################################################################################################
-if (WALBERLA_BUILD_WITH_HALF_PRECISION_SUPPORT)
-    if (WALBERLA_CXX_COMPILER_IS_GNU OR WALBERLA_CXX_COMPILER_IS_CLANG)
-        message(STATUS "Configuring with *experimental* half precision (float16) support. You better know what you are doing.")
-        if (WALBERLA_CXX_COMPILER_IS_GNU AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 12.0.0)
-            message(WARNING "[WALBERLA_BUILD_WITH_HALF_PRECISION_SUPPORT] "
-                    "Half precision support for gcc has only been tested with version >= 12. "
-                    "You are using a previous version - it may not work correctly.")
-        endif ()
-        if (WALBERLA_CXX_COMPILER_IS_CLANG AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 15.0.0)
-            message(WARNING "[WALBERLA_BUILD_WITH_HALF_PRECISION_SUPPORT] "
-                    "Half precision support for clang has only been tested with version >= 15. "
-                    "You are using a previous version - it may not work correctly.")
-        endif ()
-        if (NOT WALBERLA_OPTIMIZE_FOR_LOCALHOST)
-            message(WARNING "[WALBERLA_BUILD_WITH_HALF_PRECISION_SUPPORT] "
-                    "You are not optimizing for localhost. You may encounter linker errors, or WORSE: silent incorrect fp16 arithmetic! Consider also enabling WALBERLA_OPTIMIZE_FOR_LOCALHOST!")
-        endif ()
-    else ()
-        message(FATAL_ERROR "[WALBERLA_BUILD_WITH_HALF_PRECISION_SUPPORT] "
-                "Half precision support is currently only available for gcc and clang.")
-    endif ()
-endif ()
+if ( WALBERLA_BUILD_WITH_HALF_PRECISION_SUPPORT )
+   ### Compiler requirements:
+   ### Within this project, there are several checks to ensure that the template parameter 'ValueType'
+   ### is a floating point number. The check is_floating_point<ValueType> is done primarily in our MPI implementation.
+   ### The IEE 754 floating type format _Float16, evaluates to true only if your compiler supports the
+   ### open C++23 standard P1467R9 (Extended floating-point types and standard names).
+   ### Compare:
+   ###  https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p1467r9.html
+   ###
+   ### Right now (18.12.2023) this is the case only for gcc13.
+   ### For more information see:
+   ###   https://gcc.gnu.org/projects/cxx-status.html#:~:text=Extended%20floating%2Dpoint%20types%20and%20standard%20names
+   ###   https://clang.llvm.org/cxx_status.html#:~:text=Extended%20floating%2Dpoint%20types%20and%20standard%20names
+
+   try_compile( WALBERLA_SUPPORT_HALF_PRECISION "${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/TestFloat16.cpp"
+         CXX_STANDARD 23 OUTPUT_VARIABLE TRY_COMPILE_OUTPUT )
+   ## message( STATUS ${TRY_COMPILE_OUTPUT} )
+   if ( NOT WALBERLA_SUPPORT_HALF_PRECISION )
+      message( FATAL_ERROR "Compiler: ${CMAKE_CXX_COMPILER} Version: ${CMAKE_CXX_COMPILER_VERSION} does not support half precision" )
+   endif ()
+
+endif () # Check if WALBERLA_BUILD_WITH_HALF_PRECISION_SUPPORT is set
 
 ############################################################################################################################
 # Documentation Generation

@@ -145,7 +145,7 @@ int main(int argc, char** argv)
    auto domainSetup = walberlaEnv.config()->getOneBlock("DomainSetup");
    auto parameters  = walberlaEnv.config()->getOneBlock("Parameters");
 
-   auto omega           = parameters.getParameter< real_t >("omega", real_c(1.4));
+   real_t omega           = parameters.getParameter< real_t >("omega", real_c(1.4));
    auto timesteps       = parameters.getParameter< uint_t >("timesteps", uint_c(10)) + uint_c(1);
    auto refinementDepth = parameters.getParameter< uint_t >("refinementDepth", uint_c(1));
 
@@ -177,14 +177,14 @@ int main(int argc, char** argv)
 
    StorageSpecification_T StorageSpec = StorageSpecification_T();
    BlockDataID pdfFieldId = lbm_generated::addPdfFieldToStorage(blocks, "pdf field", StorageSpec, uint_c(2));
-   BlockDataID velFieldId = field::addToStorage< VectorField_T >(blocks, "Velocity", real_c(0.0), field::fzyx);
+   BlockDataID velFieldId = field::addToStorage< VectorField_T >(blocks, "Velocity", real_c(0.0), field::fzyx, uint_c(2));
 
    BlockDataID flagFieldId = field::addFlagFieldToStorage< FlagField_T >(blocks, "flag field", uint_c(3));
 
    SweepCollection_T sweepCollection(blocks, pdfFieldId, velFieldId, omega);
    for (auto& block : *blocks)
    {
-      sweepCollection.initialise(&block);
+      sweepCollection.initialise(&block, cell_idx_c(1));
    }
 
    const FlagUID fluidFlagUID("Fluid");

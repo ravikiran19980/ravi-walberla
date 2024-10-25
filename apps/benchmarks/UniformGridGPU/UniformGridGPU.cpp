@@ -73,6 +73,8 @@ using SweepCollection_T = lbm::UniformGridGPUSweepCollection;
 
 using gpu::communication::UniformGPUScheme;
 
+using macroFieldType = VelocityField_T::value_type;
+
 int main(int argc, char** argv)
 {
    mpi::Environment const env(argc, argv);
@@ -103,9 +105,9 @@ int main(int argc, char** argv)
       const StorageSpecification_T StorageSpec = StorageSpecification_T();
       const BlockDataID pdfFieldCpuID  = lbm_generated::addPdfFieldToStorage(blocks, "pdfs", StorageSpec, uint_c(1), field::fzyx);
 
-      auto allocator = make_shared< gpu::HostFieldAllocator<real_t> >(); // use pinned memory allocator for faster CPU-GPU memory transfers
-      const BlockDataID velFieldCpuID = field::addToStorage< VelocityField_T >(blocks, "vel", real_c(0.0), field::fzyx, uint_c(1), allocator);
-      const BlockDataID densityFieldCpuID = field::addToStorage< ScalarField_T >(blocks, "density", real_c(1.0), field::fzyx, uint_c(1), allocator);
+      auto allocator = make_shared< gpu::HostFieldAllocator<macroFieldType> >(); // use pinned memory allocator for faster CPU-GPU memory transfers
+      const BlockDataID velFieldCpuID = field::addToStorage< VelocityField_T >(blocks, "vel", macroFieldType(0.0), field::fzyx, uint_c(1), allocator);
+      const BlockDataID densityFieldCpuID = field::addToStorage< ScalarField_T >(blocks, "density", macroFieldType(1.0), field::fzyx, uint_c(1), allocator);
       const BlockDataID flagFieldID = field::addFlagFieldToStorage< FlagField_T >(blocks, "Boundary Flag Field");
 
       // Initialize velocity on cpu
@@ -136,7 +138,7 @@ int main(int argc, char** argv)
       //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
       ///                                      LB SWEEPS AND BOUNDARY HANDLING                                       ///
       //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-      const pystencils::UniformGridGPU_StreamOnlyKernel StreamOnlyKernel(pdfFieldGpuID, gpuBlockSize[0], gpuBlockSize[1], gpuBlockSize[2]);
+      const pystencils::UniformGridGPU_StreamOnlyKernel StreamOnlyKernel(pdfFieldGpuID);
 
       // Boundaries
       const FlagUID fluidFlagUID("Fluid");
@@ -167,22 +169,22 @@ int main(int argc, char** argv)
 
       if (timeStepStrategy == "noOverlap") {
          if (boundariesConfig){
-            timeLoop.add() << BeforeFunction(communication.getCommunicateFunctor(defaultStream), "communication")
+            timeLoop.add() << BeforeFunction(communication.getCommunicateFunctor(), "communication")
                            << Sweep(boundaryCollection.getSweep(BoundaryCollection_T::ALL, defaultStream), "Boundary Conditions");
             timeLoop.add() << Sweep(sweepCollection.streamCollide(SweepCollection_T::ALL, defaultStream), "LBM StreamCollide");
          }else {
-            timeLoop.add() << BeforeFunction(communication.getCommunicateFunctor(defaultStream), "communication")
+            timeLoop.add() << BeforeFunction(communication.getCommunicateFunctor(), "communication")
                            << Sweep(sweepCollection.streamCollide(SweepCollection_T::ALL, defaultStream), "LBM StreamCollide");}
 
       } else if (timeStepStrategy == "simpleOverlap") {
          if (boundariesConfig){
-            timeLoop.add() << BeforeFunction(communication.getStartCommunicateFunctor(defaultStream), "Start Communication")
+            timeLoop.add() << BeforeFunction(communication.getStartCommunicateFunctor(), "Start Communication")
                            << Sweep(boundaryCollection.getSweep(BoundaryCollection_T::ALL, defaultStream), "Boundary Conditions");
             timeLoop.add() << Sweep(sweepCollection.streamCollide(SweepCollection_T::INNER, defaultStream), "LBM StreamCollide Inner Frame");
             timeLoop.add() << BeforeFunction(communication.getWaitFunctor(), "Wait for Communication")
                            << Sweep(sweepCollection.streamCollide(SweepCollection_T::OUTER, defaultStream), "LBM StreamCollide Outer Frame");
          }else{
-            timeLoop.add() << BeforeFunction(communication.getStartCommunicateFunctor(defaultStream), "Start Communication")
+            timeLoop.add() << BeforeFunction(communication.getStartCommunicateFunctor(), "Start Communication")
                            << Sweep(sweepCollection.streamCollide(SweepCollection_T::INNER, defaultStream), "LBM StreamCollide Inner Frame");
             timeLoop.add() << BeforeFunction(communication.getWaitFunctor(), "Wait for Communication")
                            << Sweep(sweepCollection.streamCollide(SweepCollection_T::OUTER,defaultStream), "LBM StreamCollide Outer Frame");}
@@ -205,13 +207,13 @@ int main(int argc, char** argv)
       {
          auto vtkOutput = vtk::createVTKOutput_BlockData(*blocks, "vtk", vtkWriteFrequency, 0, false, "vtk_out",
                                                          "simulation_step", false, true, true, false, 0);
-         auto velWriter = make_shared< field::VTKWriter< VelocityField_T > >(velFieldCpuID, "vel");
+         auto velWriter = make_shared< field::VTKWriter< VelocityField_T, float32 > >(velFieldCpuID, "vel");
          vtkOutput->addCellDataWriter(velWriter);
 
          vtkOutput->addBeforeFunction([&]() {
             for (auto& block : *blocks)
                sweepCollection.calculateMacroscopicParameters(&block);
-            gpu::fieldCpy< VelocityField_T, gpu::GPUField< real_t > >(blocks, velFieldCpuID, velFieldGpuID);
+            gpu::fieldCpy< VelocityField_T, gpu::GPUField< VelocityField_T::value_type > >(blocks, velFieldCpuID, velFieldGpuID);
          });
          timeLoop.addFuncAfterTimeStep(vtk::writeFiles(vtkOutput), "VTK Output");
       }
@@ -240,14 +242,14 @@ int main(int argc, char** argv)
          WALBERLA_GPU_CHECK(gpuPeekAtLastError())
 
          timeLoop.setCurrentTimeStepToZero();
-         WcTimingPool const timeloopTiming;
+         WcTimingPool timeloopTiming;
          WcTimer simTimer;
 
          WALBERLA_GPU_CHECK( gpuDeviceSynchronize() )
          WALBERLA_GPU_CHECK( gpuPeekAtLastError() )
          WALBERLA_LOG_INFO_ON_ROOT("Starting simulation with " << timesteps << " time steps")
          simTimer.start();
-         timeLoop.run();
+         timeLoop.run(timeloopTiming);
          WALBERLA_GPU_CHECK( gpuDeviceSynchronize() )
          simTimer.end();
 
@@ -264,6 +266,13 @@ int main(int argc, char** argv)
             python_coupling::PythonCallback pythonCallbackResults("results_callback");
             if (pythonCallbackResults.isCallable())
             {
+               pythonCallbackResults.data().exposeValue("numProcesses", performance.processes());
+               pythonCallbackResults.data().exposeValue("numThreads", performance.threads());
+               pythonCallbackResults.data().exposeValue("numCores", performance.cores());
+               pythonCallbackResults.data().exposeValue("numberOfCells", performance.numberOfCells());
+               pythonCallbackResults.data().exposeValue("numberOfFluidCells", performance.numberOfFluidCells());
+               pythonCallbackResults.data().exposeValue("mlups", performance.mlups(timesteps, time));
+               pythonCallbackResults.data().exposeValue("mlupsPerCore", performance.mlupsPerCore(timesteps, time));
                pythonCallbackResults.data().exposeValue("mlupsPerProcess", performance.mlupsPerProcess(timesteps, time));
                pythonCallbackResults.data().exposeValue("stencil", infoStencil);
                pythonCallbackResults.data().exposeValue("streamingPattern", infoStreamingPattern);

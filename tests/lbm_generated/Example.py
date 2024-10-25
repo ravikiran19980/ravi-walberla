@@ -23,13 +23,14 @@ with CodeGeneration() as ctx:
     omega = sp.symbols("omega")
 
     stencil = LBStencil(Stencil.D3Q19)
-    pdfs, vel_field = fields(f"pdfs({stencil.Q}), velocity({stencil.D}): {data_type}[{stencil.D}D]", layout='fzyx')
-
+    pdfs, vel_field = fields(f"pdfs({stencil.Q}), velocity({stencil.D}): {data_type}[{stencil.D}D]",
+                             layout='fzyx')
+ 
     macroscopic_fields = {'velocity': vel_field}
 
     lbm_config = LBMConfig(stencil=stencil, method=Method.SRT, relaxation_rate=omega,
                            streaming_pattern=streaming_pattern)
-    lbm_opt = LBMOptimisation(cse_global=False, field_layout='fzyx')
+    lbm_opt = LBMOptimisation(cse_global=False, symbolic_field=pdfs, field_layout='fzyx')
 
     method = create_lb_method(lbm_config=lbm_config)
     collision_rule = create_lb_collision_rule(lbm_config=lbm_config, lbm_optimisation=lbm_opt)

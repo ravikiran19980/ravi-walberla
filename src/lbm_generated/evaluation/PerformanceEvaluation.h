@@ -24,6 +24,7 @@
 #include "core/DataTypes.h"
 #include "core/Hostname.h"
 #include "core/Set.h"
+#include "core/OpenMP.h"
 #include "core/waLBerlaBuildInfo.h"
 #include "core/debug/CheckFunctions.h"
 #include "core/logging/Logging.h"
@@ -89,6 +90,16 @@ public:
       for( uint_t i = uint_t(0); i < levels_; ++i )
          c += cells_.numberOfCells(i) * uint64_c( math::uintPow8( levels_ - uint_t(1) - i ) );
       return c;
+   }
+
+   uint64_t numberOfCells() const
+   {
+      return cells_.numberOfCells();
+   }
+
+   uint64_t numberOfFluidCells() const
+   {
+      return fluidCells_.numberOfCells();
    }
 
    double mlups( const uint_t timeSteps, const double time ) const
@@ -223,10 +234,17 @@ PerformanceEvaluationBase< CellCounter_T, FluidCellCounter_T >::PerformanceEvalu
      fluidCells_( fluidCellCounter )
 {
 #ifdef _OPENMP
-   if( std::getenv( "OMP_NUM_THREADS" ) == NULL )
-      WALBERLA_ABORT( "If you are using a version of the program that was compiled with OpenMP you have to "
-                      "specify the environment variable \'OMP_NUM_THREADS\' accordingly!" );
-   threadsPerProcess_ = std::atoi( std::getenv( "OMP_NUM_THREADS" ) );
+   if( std::getenv( "OMP_NUM_THREADS" ) )
+   {
+      threadsPerProcess_ = std::atoi( std::getenv( "OMP_NUM_THREADS" ) );
+   }
+   else
+   {
+      WALBERLA_LOG_WARNING( "You are using a version of the program that was compiled with OpenMP and the environment "
+                           "variable \'OMP_NUM_THREADS\' was not set!\nThe number of threads will now determined with "
+                           "\'omp_get_max_threads\'.\nIf this not correct in your case please set \'OMP_NUM_THREADS\'" );
+      threadsPerProcess_ =  omp_get_max_threads();
+   }
 #endif
 
    if( std::getenv( "THREADS_PER_CORE" ) )
@@ -256,7 +274,7 @@ std::string PerformanceEvaluationBase< CellCounter_T, FluidCellCounter_T >::logg
 {
    std::ostringstream oss;
 
-   std::string na( "n/a *)" );
+   const std::string na( "n/a *)" );
 
    std::ostringstream threadsPerCoreString;
    threadsPerCoreString << threadsPerCore_;
