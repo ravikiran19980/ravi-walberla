@@ -155,6 +155,8 @@ void ParseMessage::operator()(int sender,
       pIt->setOldHydrodynamicForce(objparam.oldHydrodynamicForce_);
       pIt->setOldHydrodynamicTorque(objparam.oldHydrodynamicTorque_);
       pIt->setElectrostaticForce(objparam.electrostaticForce_);
+      pIt->setTotalDisplacement(objparam.totalDisplacement_);
+      pIt->setCollisionForceNorm(objparam.collisionForceNorm_);
       pIt->setVirtualMass(objparam.virtualMass_);
       pIt->setInvMassIncludingVirtual(objparam.invMassIncludingVirtual_);
       pIt->setOldLinearAcceleration(objparam.oldLinearAcceleration_);
