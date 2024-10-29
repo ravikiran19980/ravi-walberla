@@ -35,7 +35,6 @@
 
     #define gpuMalloc cudaMalloc
     #define gpuMallocHost cudaMallocHost
-    #define gpuMallocManaged cudaMallocManaged
     #define gpuHostAllocDefault cudaHostAllocDefault
     #define gpuHostAlloc cudaHostAlloc
     #define gpuMemcpyHostToDevice cudaMemcpyHostToDevice
@@ -46,7 +45,6 @@
     #define gpuMemcpy3D cudaMemcpy3D
     #define gpuMemcpy3DParms cudaMemcpy3DParms
     #define gpuMemcpy3DAsync cudaMemcpy3DAsync
-    #define gpuMemset cudaMemset
 
     #define gpuMemset cudaMemset
     #define gpuMemsetAsync cudaMemsetAsync
@@ -101,7 +99,6 @@
 
     #define gpuMalloc hipMalloc
     #define gpuMallocHost hipHostMalloc
-    #define gpuMallocManaged hipMallocManaged
     #define gpuHostAllocDefault hipHostMallocDefault
     // warning: 'hipHostAlloc' is deprecated: use hipHostMalloc insteadwarning: 'hipHostAlloc' is deprecated: use hipHostMalloc instead
     #define gpuHostAlloc hipHostMalloc
@@ -113,7 +110,6 @@
     #define gpuMemcpy3D hipMemcpy3D
     #define gpuMemcpy3DParms hipMemcpy3DParms
     #define gpuMemcpy3DAsync hipMemcpy3DAsync
-    #define gpuMemset hipMemset
 
     #define gpuMemset hipMemset
     #define gpuMemsetAsync hipMemsetAsync
@@ -148,7 +144,7 @@
 
     #define gpuGetDeviceCount hipGetDeviceCount
     #define gpuSetDevice hipSetDevice
-    #define gpuDeviceProp hipDeviceProp_t
+    #define gpuDeviceProp hipDeviceProp
     #define gpuGetDeviceProperties hipGetDeviceProperties
 
     #define gpuLaunchKernel hipLaunchKernel

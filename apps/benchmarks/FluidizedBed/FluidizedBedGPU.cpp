@@ -44,8 +44,8 @@
 #include "lbm/PerformanceLogger.h"
 #include "lbm/vtk/all.h"
 
-#include "lbm_mesapd_coupling/DataTypesCodegen.h"
-#include "lbm_mesapd_coupling/partially_saturated_cells_method/codegen/PSMSweepCollection.h"
+#include "lbm_mesapd_coupling/DataTypesGPU.h"
+#include "lbm_mesapd_coupling/partially_saturated_cells_method/cuda/PSMSweepCollectionGPU.h"
 #include "lbm_mesapd_coupling/utility/AddForceOnParticlesKernel.h"
 #include "lbm_mesapd_coupling/utility/AddHydrodynamicInteractionKernel.h"
 #include "lbm_mesapd_coupling/utility/AverageHydrodynamicForceTorqueKernel.h"
@@ -328,8 +328,8 @@ int main(int argc, char** argv)
    }
    const bool useLubricationForces        = numericalSetup.getParameter< bool >("useLubricationForces");
    const uint_t numberOfParticleSubCycles = numericalSetup.getParameter< uint_t >("numberOfParticleSubCycles");
-   const Vector3< uint_t > particleSubBlockSize =
-      numericalSetup.getParameter< Vector3< uint_t > >("particleSubBlockSize");
+   const uint_t numberOfParticleSubBlocksPerDim =
+      numericalSetup.getParameter< uint_t >("numberOfParticleSubBlocksPerDim");
    const real_t linkedCellWidthRation = numericalSetup.getParameter< real_t >("linkedCellWidthRation");
    const bool particleBarriers        = numericalSetup.getParameter< bool >("particleBarriers");
 
@@ -563,8 +563,8 @@ int main(int argc, char** argv)
    // note: planes are not mapped and are thus only visible to the particles, not to the fluid
    // instead, the respective boundary conditions for the fluid are explicitly set, see the boundary handling
    ParticleAndVolumeFractionSoA_T< 1 > particleAndVolumeFractionSoA(blocks, omega);
-   PSMSweepCollection psmSweepCollection(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
-                                            particleAndVolumeFractionSoA, particleSubBlockSize);
+   PSMSweepCollectionGPU psmSweepCollection(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
+                                            particleAndVolumeFractionSoA, numberOfParticleSubBlocksPerDim);
    for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
    {
       psmSweepCollection.particleMappingSweep(&(*blockIt));
@@ -585,7 +585,7 @@ int main(int argc, char** argv)
    // setup of the LBM communication for synchronizing the pdf field between neighboring blocks
    gpu::communication::UniformGPUScheme< Stencil_T > com(blocks, true, false);
    com.addPackInfo(make_shared< PackInfo_T >(pdfFieldGPUID));
-   auto communication = std::function< void() >([&]() { com.communicate(); });
+   auto communication = std::function< void() >([&]() { com.communicate(nullptr); });
 
    // create the timeloop
    SweepTimeloop commTimeloop(blocks->getBlockStorage(), numTimeSteps);
@@ -593,7 +593,7 @@ int main(int argc, char** argv)
 
    timeloop.addFuncBeforeTimeStep(RemainingTimeLogger(timeloop.getNrOfTimeSteps()), "Remaining Time Logger");
 
-   pystencils::PSM_MacroGetter getterSweep(BFieldID, densityFieldID, pdfFieldID, velFieldID, real_t(0.0), real_t(0.0),
+   pystencils::PSM_MacroGetter getterSweep(densityFieldID, pdfFieldID, velFieldID, real_t(0.0), real_t(0.0),
                                            real_t(0.0));
    // vtk output
    if (vtkSpacingParticles != uint_t(0))

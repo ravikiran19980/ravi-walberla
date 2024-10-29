@@ -5,4 +5,6 @@ target_sources( lbm_mesapd_coupling
     PSMUtility.h
     )
 
-add_subdirectory(codegen)
+if( WALBERLA_BUILD_WITH_CUDA )
+    add_subdirectory(cuda)
+endif()

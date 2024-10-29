@@ -99,18 +99,16 @@ IncludeCategories:
     Priority:        21
   - Regex:           '^"simd/'
     Priority:        22
-  - Regex:           '^"sqlite/'
-    Priority:        23
   - Regex:           '^"stencil/'
-    Priority:        24
+    Priority:        23
   - Regex:           '^"timeloop/'
-    Priority:        25
+    Priority:        24
   - Regex:           '^"vtk/'
-    Priority:        26
+    Priority:        25
   - Regex:           '^<boost/'
-    Priority:        27
+    Priority:        26
   - Regex:           '^<'
-    Priority:        28
+    Priority:        27
 IndentCaseLabels: false
 IndentPPDirectives: AfterHash
 IndentWidth: 3

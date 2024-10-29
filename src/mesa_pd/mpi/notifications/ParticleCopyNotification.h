@@ -72,8 +72,6 @@ public:
       walberla::mesa_pd::Vec3 oldHydrodynamicForce {real_t(0)};
       walberla::mesa_pd::Vec3 oldHydrodynamicTorque {real_t(0)};
       walberla::mesa_pd::Vec3 electrostaticForce {real_t(0)};
-      walberla::real_t totalDisplacement {real_t(0)};
-      walberla::real_t collisionForceNorm {real_t(0)};
       walberla::real_t virtualMass {real_t(0)};
       walberla::real_t invMassIncludingVirtual {real_t(0)};
       walberla::mesa_pd::Vec3 oldLinearAcceleration {real_t(0)};
@@ -118,8 +116,6 @@ inline data::ParticleStorage::iterator createNewParticle(data::ParticleStorage& 
    pIt->setOldHydrodynamicForce(data.oldHydrodynamicForce);
    pIt->setOldHydrodynamicTorque(data.oldHydrodynamicTorque);
    pIt->setElectrostaticForce(data.electrostaticForce);
-   pIt->setTotalDisplacement(data.totalDisplacement);
-   pIt->setCollisionForceNorm(data.collisionForceNorm);
    pIt->setVirtualMass(data.virtualMass);
    pIt->setInvMassIncludingVirtual(data.invMassIncludingVirtual);
    pIt->setOldLinearAcceleration(data.oldLinearAcceleration);
@@ -179,8 +175,6 @@ mpi::GenericSendBuffer<T,G>& operator<<( mpi::GenericSendBuffer<T,G> & buf, cons
    buf << obj.particle_.getOldHydrodynamicForce();
    buf << obj.particle_.getOldHydrodynamicTorque();
    buf << obj.particle_.getElectrostaticForce();
-   buf << obj.particle_.getTotalDisplacement();
-   buf << obj.particle_.getCollisionForceNorm();
    buf << obj.particle_.getVirtualMass();
    buf << obj.particle_.getInvMassIncludingVirtual();
    buf << obj.particle_.getOldLinearAcceleration();
@@ -221,8 +215,6 @@ mpi::GenericRecvBuffer<T>& operator>>( mpi::GenericRecvBuffer<T> & buf, mesa_pd:
    buf >> objparam.oldHydrodynamicForce;
    buf >> objparam.oldHydrodynamicTorque;
    buf >> objparam.electrostaticForce;
-   buf >> objparam.totalDisplacement;
-   buf >> objparam.collisionForceNorm;
    buf >> objparam.virtualMass;
    buf >> objparam.invMassIncludingVirtual;
    buf >> objparam.oldLinearAcceleration;
