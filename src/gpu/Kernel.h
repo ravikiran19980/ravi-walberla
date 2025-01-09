@@ -241,8 +241,8 @@ namespace gpu
 
       // register all parameters
       std::vector<void*> args;
-      for( auto paramIt = params_.begin(); paramIt != params_.end(); ++paramIt )  {
-         args.push_back( const_cast<char*>(paramIt->data()) );
+      for(const auto & param : params_)  {
+         args.push_back( const_cast<char*>(param.data()) );
       }
 
       // .. and launch the kernel
