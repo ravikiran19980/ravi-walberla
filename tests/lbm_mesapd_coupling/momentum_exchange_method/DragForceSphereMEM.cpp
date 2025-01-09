@@ -187,8 +187,7 @@ public:
                        const shared_ptr<ParticleAccessor_T>& ac, walberla::id_t sphereID )
 :     timeloop_( timeloop ), setup_( setup ), blocks_( blocks ),
       flagFieldID_( flagFieldID ), pdfFieldID_( pdfFieldID ),
-      ac_( ac ), sphereID_( sphereID ),
-      ,
+      ac_( ac ), sphereID_( sphereID )
    {
       // calculate the analytical drag force value based on the series expansion of chi
       // see also Sangani - Slow flow through a periodic array of spheres, IJMF 1982. Eq. 60 and Table 1
