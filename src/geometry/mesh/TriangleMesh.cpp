@@ -423,7 +423,7 @@ math::AABB TriangleMesh::getAABB() const
    if( vertices_.empty() )
       WALBERLA_ABORT( "You are trying to compute the bounding box of an empty mesh!" );
 
-   return math::AABB( vertices_.begin(), vertices_.end() );
+   return { vertices_.begin(), vertices_.end() };
 }
 
 void TriangleMesh::translate( const Vector3<real_t> & offset )

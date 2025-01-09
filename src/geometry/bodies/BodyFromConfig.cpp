@@ -102,7 +102,7 @@ AABB AABBFromConfig( const Config::BlockHandle & block )
    Vector3<real_t> min = block.getParameter<Vector3<real_t> > ( "min" );
    Vector3<real_t> max = block.getParameter<Vector3<real_t> > ( "max" );
 
-   return AABB( min[0], min[1], min[2], max[0], max[1], max[2] );
+   return { min[0], min[1], min[2], max[0], max[1], max[2] };
 }
 
 
