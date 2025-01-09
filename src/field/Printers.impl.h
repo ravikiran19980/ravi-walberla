@@ -46,8 +46,8 @@ namespace field {
       Cell coord = size.min();
       std::array<const char *, 3> coordNames = { "x", "y", "z" };
 
-      int const innerCoord = (sliceCoord + 1) % 3;
-      int const outerCoord = (sliceCoord + 2) % 3;
+      uint_t const innerCoord = static_cast< const uint_t >((sliceCoord + 1) % 3);
+      uint_t const outerCoord = static_cast< const uint_t >((sliceCoord + 2) % 3);
 
       size.min()[uint_c(sliceCoord)] = sliceValue;
       size.max()[uint_c(sliceCoord)] = sliceValue;
@@ -101,8 +101,8 @@ namespace field {
 
       std::array<const char *, 3> coordNames = { "x", "y", "z" };
 
-      int const innerCoord = (sliceCoord + 1) % 3;
-      int const outerCoord = (sliceCoord + 2) % 3;
+      uint_t const innerCoord = static_cast< const uint_t >((sliceCoord + 1) % 3);
+      uint_t const outerCoord = static_cast< const uint_t >((sliceCoord + 2) % 3);
 
       CellInterval sliceInterval = field.xyzSize();
 
@@ -173,8 +173,8 @@ namespace field {
 
       std::array<const char *, 3> coordNames = { "x", "y", "z" };
 
-      int const innerCoord = (sliceCoord + 1) % 3;
-      int const outerCoord = (sliceCoord + 2) % 3;
+      uint_t const innerCoord = static_cast< const uint_t >((sliceCoord + 1) % 3);
+      uint_t const outerCoord = static_cast< const uint_t >((sliceCoord + 2) % 3);
 
       CellInterval sliceInterval = field.xyzSize();
 
