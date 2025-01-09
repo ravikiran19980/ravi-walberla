@@ -25,6 +25,7 @@
 // Includes
 //*************************************************************************************************
 
+#include <array>
 #include "mesh_common/TriangleMeshes.h"
 #include "mesh/pe/Types.h"
 
@@ -133,7 +134,7 @@ protected:
 
    TriangleMesh mesh_;
    real_t boundingSphereRadius_;
-   TriangleMesh::VertexHandle octandVertices_[8];
+   std::array<TriangleMesh::VertexHandle, 8> octandVertices_;
 private:
    static id_t staticTypeID_;  //< type id of ConvexPolyhedron, will be set by SetBodyTypeIDs
    static void setStaticTypeID(id_t typeID) {staticTypeID_ = typeID;}
