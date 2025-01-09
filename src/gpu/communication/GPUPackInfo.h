@@ -74,7 +74,7 @@ template<typename GPUField_T>
 class GPUPackInfo : public walberla::communication::UniformPackInfo
 {
 public:
-   typedef typename GPUField_T::value_type FieldType;
+   using FieldType = typename GPUField_T::value_type;
 
    GPUPackInfo( const BlockDataID & bdId )
    : bdId_( bdId ), communicateAllGhostLayers_( true ), numberOfGhostLayers_( 0 ),
