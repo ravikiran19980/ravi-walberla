@@ -34,7 +34,7 @@ namespace sqlite {
 
 
 SQLiteDB::SQLiteDB( const string & dbFile, const int busyTimeout )
-   : valid_(true), dbHandle_(nullptr), file_( dbFile )
+   : file_( dbFile )
 {
    static const char * CREATE_RUN_TABLE =
          "CREATE TABLE IF NOT EXISTS runs ("
