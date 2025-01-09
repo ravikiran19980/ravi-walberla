@@ -297,7 +297,7 @@ void SQLiteDB::storeTimingPool ( uint_t runId,
 {
    sqlite3_exec( dbHandle_, "BEGIN;",nullptr,nullptr,nullptr );
 
-   assert ( timingPoolName.length() > 0 && timingPoolName.length() < 255 );
+   assert ( !timingPoolName.empty() && timingPoolName.length() < 255 );
 
    static const char * CREATE_TIMINGPOOL_TABLE =
          "CREATE TABLE IF NOT EXISTS timingPool ("
@@ -369,7 +369,7 @@ void SQLiteDB::storeTimingTree ( uint_t runId,
 {
    sqlite3_exec( dbHandle_, "BEGIN;",nullptr,nullptr,nullptr );
 
-   assert ( timingTreeName.length() > 0 && timingTreeName.length() < 255 );
+   assert ( !timingTreeName.empty() && timingTreeName.length() < 255 );
 
    static const char * CREATE_TIMINGTREE_TABLE =
          "CREATE TABLE IF NOT EXISTS timingTree ("
