@@ -25,6 +25,7 @@ misc-*,
 -misc-header-include-cycle,
 -misc-use-internal-linkage,
 -misc-use-anonymous-namespace,
+-misc-const-correctness,
 
 modernize-*,
 -modernize-use-auto,

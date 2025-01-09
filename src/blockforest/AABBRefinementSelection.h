@@ -111,7 +111,7 @@ public:
       for(auto & minTargetLevel : minTargetLevels)
       {
          const uint_t currentLevelOfBlock = minTargetLevel.first->getLevel();
-         const uint_t targetLevelOfBlock = currentLevelOfBlock;
+         uint_t targetLevelOfBlock = currentLevelOfBlock;
 
          for(auto & aabb : aabbs)
          {
