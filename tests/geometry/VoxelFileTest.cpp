@@ -31,7 +31,7 @@
 
 #include <random>
 
-typedef std::mersenne_twister_engine< walberla::uint32_t, 32, 351, 175, 19, 0xccab8ee7, 11, 0xffffffff, 7, 0x31b6ab00, 15, 0xffe50000, 17, 0xa37d3c92 > mt11213b;
+using mt11213b = std::mersenne_twister_engine<walberla::uint32_t, 32, 351, 175, 19, 3433795303U, 11, 4294967295U, 7, 834054912, 15, 4293197824U, 17, 2742893714U>;
 
 /// randomize the memory underlying the vector up the maximal size (== capacity)
 template<typename T>
@@ -133,7 +133,7 @@ int main(int argc, char** argv)
 
    for(std::vector<size_t>::const_iterator xSize = sizes.begin(); xSize != sizes.end(); ++xSize)
       for(std::vector<size_t>::const_iterator ySize = sizes.begin(); ySize != sizes.end(); ++ySize)
-         for(unsigned long size : sizes)
+         for(unsigned long const size : sizes)
          {
             std::stringstream ss;
             ss << "geometry_testfile_" << *xSize << "_" << *ySize << "_" << size << ".dat";
@@ -301,7 +301,7 @@ void runTests(const std::string & filename, size_t xSize, size_t ySize, size_t z
    if( zSize > size_t( 1 ) )
       blockSizesZ.push_back(std::max(zSize / 2 - 1, size_t(1)));
 
-   for(unsigned long blockSizeX : blockSizesX) { for(unsigned long blockSizeY : blockSizesY) { for(unsigned long blockSizeZ : blockSizesZ) { for(size_t zz = 0; zz <= (zSize - 1) / blockSizeZ; ++zz) {
+   for(unsigned long const blockSizeX : blockSizesX) { for(unsigned long const blockSizeY : blockSizesY) { for(unsigned long const blockSizeZ : blockSizesZ) { for(size_t zz = 0; zz <= (zSize - 1) / blockSizeZ; ++zz) {
                for(size_t yy = 0; yy <= (ySize - 1) / blockSizeY; ++yy) {
                   for(size_t xx = 0; xx <= (xSize - 1) / blockSizeX; ++xx)
                   {
@@ -349,7 +349,7 @@ void runTests(const std::string & filename, size_t xSize, size_t ySize, size_t z
 
    geometryFile.create(filename, xSize, ySize, zSize);
 
-   for(unsigned long blockSizeX : blockSizesX) { for(unsigned long blockSizeY : blockSizesY) { for(unsigned long blockSizeZ : blockSizesZ) { for(size_t zz = 0; zz <= (zSize - 1) / blockSizeZ; ++zz) {
+   for(unsigned long const blockSizeX : blockSizesX) { for(unsigned long const blockSizeY : blockSizesY) { for(unsigned long const blockSizeZ : blockSizesZ) { for(size_t zz = 0; zz <= (zSize - 1) / blockSizeZ; ++zz) {
                for(size_t yy = 0; yy <= (ySize - 1) / blockSizeY; ++yy) {
                   for(size_t xx = 0; xx <= (xSize - 1) / blockSizeX; ++xx)
                   {
