@@ -50,24 +50,24 @@ public:
    BranchNode( const shared_ptr< TriangleDistance<MeshType> > & triDistance, InputIterator beginFh, InputIterator endFh,
                uint_t maxDepth, uint_t minNumTriangles );
 
-   virtual ~BranchNode() { for( int i = 0; i < 8; ++i ) delete children_[i]; }
+   ~BranchNode() override { for( int i = 0; i < 8; ++i ) delete children_[i]; }
 
 
-   virtual Scalar sqSignedDistance( const Point & p ) const;
-   virtual Scalar sqSignedDistance( const Point & p, FaceHandle & closestTriangle ) const;
-   virtual Scalar sqSignedDistance( const Point & p, Point & closestPoint ) const ;
-   virtual Scalar sqSignedDistance( const Point & p, Point & closestPoint, Normal & normal ) const;
+   Scalar sqSignedDistance( const Point & p ) const override;
+   Scalar sqSignedDistance( const Point & p, FaceHandle & closestTriangle ) const override;
+   Scalar sqSignedDistance( const Point & p, Point & closestPoint ) const override ;
+   Scalar sqSignedDistance( const Point & p, Point & closestPoint, Normal & normal ) const override;
 
-   virtual Scalar sqDistance( const Point & p ) const;
-   virtual Scalar sqDistance( const Point & p, FaceHandle & closestTriangle ) const;
-   virtual Scalar sqDistance( const Point & p, Point & closestPoint ) const;
-   virtual Scalar sqDistance( const Point & p, Point & closestPoint, Normal & normal ) const;
+   Scalar sqDistance( const Point & p ) const override;
+   Scalar sqDistance( const Point & p, FaceHandle & closestTriangle ) const override;
+   Scalar sqDistance( const Point & p, Point & closestPoint ) const override;
+   Scalar sqDistance( const Point & p, Point & closestPoint, Normal & normal ) const override;
 
-   inline uint_t numTriangles() const;
-   void numTrianglesToStream( std::ostream & os, const uint_t level ) const;
-   inline virtual uint_t height() const;
-   virtual uint_t numChildren() const { return uint_t(8); };
-   virtual const Node<MeshType> * getChild( const uint_t idx ) const { WALBERLA_ASSERT_LESS( idx, 8 ); return children_[idx]; };
+   inline uint_t numTriangles() const override;
+   void numTrianglesToStream( std::ostream & os, const uint_t level ) const override;
+   inline uint_t height() const override;
+   uint_t numChildren() const override { return uint_t(8); };
+   const Node<MeshType> * getChild( const uint_t idx ) const override { WALBERLA_ASSERT_LESS( idx, 8 ); return children_[idx]; };
 
 private:
    BranchNode( const BranchNode & other ) = delete;

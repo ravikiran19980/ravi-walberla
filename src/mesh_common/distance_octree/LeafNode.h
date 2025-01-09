@@ -42,21 +42,21 @@ public:
    LeafNode( const shared_ptr< TriangleDistance<MeshType> > & triDistance, const std::vector<FaceHandle> & triangles )
       : Node<MeshType>( triDistance->getMesh(), triangles.begin(), triangles.end() ), triangles_( triangles ), triDistance_( triDistance ) { }
 
-   virtual Scalar sqSignedDistance( const Point & p ) const;
-   virtual Scalar sqSignedDistance( const Point & p, FaceHandle & closestTriangle ) const;
-   virtual Scalar sqSignedDistance( const Point & p, Point & closestPoint ) const;
-   virtual Scalar sqSignedDistance( const Point & p, Point & closestPoint, Normal & normal ) const;
+   Scalar sqSignedDistance( const Point & p ) const override;
+   Scalar sqSignedDistance( const Point & p, FaceHandle & closestTriangle ) const override;
+   Scalar sqSignedDistance( const Point & p, Point & closestPoint ) const override;
+   Scalar sqSignedDistance( const Point & p, Point & closestPoint, Normal & normal ) const override;
 
-   virtual Scalar sqDistance( const Point & p ) const;
-   virtual Scalar sqDistance( const Point & p, FaceHandle & closestTriangle ) const;
-   virtual Scalar sqDistance( const Point & p, Point & closestPoint ) const;
-   virtual Scalar sqDistance( const Point & p, Point & closestPoint, Normal & normal ) const;
+   Scalar sqDistance( const Point & p ) const override;
+   Scalar sqDistance( const Point & p, FaceHandle & closestTriangle ) const override;
+   Scalar sqDistance( const Point & p, Point & closestPoint ) const override;
+   Scalar sqDistance( const Point & p, Point & closestPoint, Normal & normal ) const override;
 
-   uint_t numTriangles() const { return uint_c( triangles_.size() ); }
-   void numTrianglesToStream( std::ostream & os, const uint_t level ) const;
-   virtual uint_t height() const { return 0; }
-   virtual uint_t numChildren() const { return 0; };
-   virtual const Node<MeshType> * getChild( const uint_t /*idx*/ ) const { WALBERLA_ABORT("DistanceOctree: You are requesting access to children of a Leaf Node!"); return 0; }
+   uint_t numTriangles() const override { return uint_c( triangles_.size() ); }
+   void numTrianglesToStream( std::ostream & os, const uint_t level ) const override;
+   uint_t height() const override { return 0; }
+   uint_t numChildren() const override { return 0; };
+   const Node<MeshType> * getChild( const uint_t /*idx*/ ) const override { WALBERLA_ABORT("DistanceOctree: You are requesting access to children of a Leaf Node!"); return 0; }
    
 protected:
    std::vector<FaceHandle> triangles_;
