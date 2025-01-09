@@ -253,7 +253,7 @@ void QHull<MeshType>::iteration()
    });
 
    // Remove the point from the remaining points
-   Point p = *it;
+   Point const p = *it;
    visiblePoints_[fh].erase(it);
 
    // Delete all faces visible by p
@@ -323,7 +323,7 @@ void QHull<MeshType>::createInitialSimplex()
       }
 
    // find the most distant point in ep to the previously found line
-   Point dir = base0 - base1;
+   Point const dir = base0 - base1;
    Scalar maxDist = Scalar(0);
    Point base2;
 
@@ -338,8 +338,8 @@ void QHull<MeshType>::createInitialSimplex()
    }
 
    // find the most distant point in the cloud to the previously found triangle
-   Point basePlaneNormal = (base0 - base2) % (base1 - base2);
-   Scalar basePlaneOffset = base0 | basePlaneNormal;
+   Point const basePlaneNormal = (base0 - base2) % (base1 - base2);
+   Scalar const basePlaneOffset = base0 | basePlaneNormal;
 
    Point tip;
    Scalar maxDistanceToBasePlane =  Scalar(0);
@@ -417,7 +417,7 @@ void QHull<MeshType>::deleteVisibleFaces( const FaceHandle startFaceHandle, cons
    // Move the horizon farther outwards
    while(!q.empty())
    {
-      HalfedgeHandle heh = q.front();
+      HalfedgeHandle const heh = q.front();
       q.pop();
 
       // If the face belonging to the half edge  has already been removed just go on with the next half edge
@@ -451,13 +451,13 @@ void QHull<MeshType>::addNewFaces( const Point & p )
 {
    newFaces_.clear();
 
-   VertexHandle v0h = mesh_->add_vertex(p);
+   VertexHandle const v0h = mesh_->add_vertex(p);
    for(const auto heh : horizon_)
    {
-      VertexHandle v1h = mesh_->to_vertex_handle(heh);
-      VertexHandle v2h = mesh_->from_vertex_handle(heh);
+      VertexHandle const v1h = mesh_->to_vertex_handle(heh);
+      VertexHandle const v2h = mesh_->from_vertex_handle(heh);
 
-      FaceHandle fh = mesh_->add_face( v0h, v1h, v2h );
+      FaceHandle const fh = mesh_->add_face( v0h, v1h, v2h );
       mesh_->update_normal(fh);
       newFaces_.push_back(fh);         
    }

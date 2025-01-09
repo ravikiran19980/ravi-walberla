@@ -272,7 +272,7 @@ void DistanceOctree<MeshType>::writeVTKOutput( const std::string & filestem ) co
    while( !nodeQueue.empty() )
    {
       const Node<MeshType> * frontNode = nodeQueue.front();
-      uint8_t depth = depthQueue.front();
+      uint8_t const depth = depthQueue.front();
       nodeQueue.pop();
       depthQueue.pop();
 

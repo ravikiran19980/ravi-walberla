@@ -141,7 +141,7 @@ BranchNode<MeshType>::BranchNode( const shared_ptr< TriangleDistance<MeshType> >
 
    uint_t theNumTriangles = uint_c( std::distance( beginFh, endFh ) );
 
-   std::vector<bool> triangleUsed( theNumTriangles, false );
+   std::vector<bool> const triangleUsed( theNumTriangles, false );
    std::vector<FaceHandle> childTriangles[8];
 
    for( auto fhIt = beginFh; fhIt != endFh; ++fhIt )

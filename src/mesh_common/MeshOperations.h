@@ -274,7 +274,7 @@ typename MeshType::Point computeCentroid( const MeshType & mesh )
    for( auto fIt = mesh.faces_begin(); fIt != mesh.faces_end(); ++fIt )
    {
       getVertexPositions( mesh, *fIt, v0, v1, v2 );
-      Scalar tetraVolume = ( v0 | ( v1 % v2 ) ) / Scalar(6);
+      Scalar const tetraVolume = ( v0 | ( v1 % v2 ) ) / Scalar(6);
       // v0 + v1 + v2 + 0 / 4 is the tetraeder centroid
       centroid += tetraVolume * (v0 + v1 + v2);
       volume += tetraVolume;
@@ -309,7 +309,7 @@ Matrix3<typename MeshType::Scalar> computeInertiaTensor( const MeshType & mesh )
    for( auto fIt = mesh.faces_begin(); fIt != mesh.faces_end(); ++fIt )
    {
       getVertexPositions( mesh, *fIt, v0, v1, v2 );
-      Scalar tetraVolume = ( v0 | ( v1 % v2 ) );
+      Scalar const tetraVolume = ( v0 | ( v1 % v2 ) );
       p00 += tetraVolume * deltaP_jk(0,0);
       p01 += tetraVolume * deltaP_jk(0,1);
       p02 += tetraVolume * deltaP_jk(0,2);
