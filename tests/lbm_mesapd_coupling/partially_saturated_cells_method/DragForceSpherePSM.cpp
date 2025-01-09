@@ -106,8 +106,7 @@ class DragForceEvaluator
                       const BlockDataID& pdfFieldID, const BlockDataID& particleAndVolumeFractionFieldID,
                       const shared_ptr< ParticleAccessor_T >& ac, walberla::id_t sphereID)
       : timeloop_(timeloop), setup_(setup), blocks_(blocks), pdfFieldID_(pdfFieldID),
-        particleAndVolumeFractionFieldID_(particleAndVolumeFractionFieldID), ac_(ac), sphereID_(sphereID),
-        normalizedDragOld_(0.0), normalizedDragNew_(0.0)
+        particleAndVolumeFractionFieldID_(particleAndVolumeFractionFieldID), ac_(ac), sphereID_(sphereID)
    {
       // calculate the analytical drag force value based on the series expansion of chi
       // see also Sangani - Slow flow through a periodic array of spheres, IJMF 1982. Eq. 60 and Table 1
@@ -231,8 +230,8 @@ class DragForceEvaluator
    const walberla::id_t sphereID_;
 
    // drag coefficient
-   real_t normalizedDragOld_;
-   real_t normalizedDragNew_;
+   real_t normalizedDragOld_{0.0};
+   real_t normalizedDragNew_{0.0};
 };
 
 //////////
