@@ -93,19 +93,19 @@ inline void accuracyEvaluationLinePlotIO( std::ofstream & file, const std::vecto
 {
    file << "# position [1] [2] [3], simulation [4] [5] [6], exact solution [7] [8] [9], "
            "|| u - u_exact || / || u_exact || (rel. error) [10], || u - u_exact || (abs. error) [11]\n";
-   for( auto point = points.begin(); point != points.end(); ++point )
+   for(const auto & point : points)
    {
-      Vector3< real_t > diff = point->value - point->solution;
-      file << point->center[0] << " "
-           << point->center[1] << " "
-           << point->center[2] << " "
-           << point->value[0] << " "
-           << point->value[1] << " "
-           << point->value[2] << " "
-           << point->solution[0] << " "
-           << point->solution[1] << " "
-           << point->solution[2] << " "
-           << ( diff.length() / point->solution.length() ) << " "
+      Vector3< real_t > diff = point.value - point.solution;
+      file << point.center[0] << " "
+           << point.center[1] << " "
+           << point.center[2] << " "
+           << point.value[0] << " "
+           << point.value[1] << " "
+           << point.value[2] << " "
+           << point.solution[0] << " "
+           << point.solution[1] << " "
+           << point.solution[2] << " "
+           << ( diff.length() / point.solution.length() ) << " "
            << diff.length() << "\n";
    }
 }

@@ -257,8 +257,8 @@ void AccuracyEvaluation< Field_T, SolutionFunction_T, Filter_T >::operator()()
          )
       }
 
-      for( auto v = lmax.begin(); v != lmax.end(); ++v )
-         _Lmax = std::max( _Lmax, *v );
+      for(double v : lmax)
+         _Lmax = std::max( _Lmax, v );
 
 #else
 

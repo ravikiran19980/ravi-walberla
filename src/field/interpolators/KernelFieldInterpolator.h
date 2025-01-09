@@ -224,9 +224,9 @@ public:
 
       const real_t scalingFactor = real_t(1) + sumOfWeightsUnavailable / sumOfWeights;
 
-      for( auto weightIt = weights.begin(); weightIt != weights.end(); ++weightIt )
+      for(auto & weight : weights)
       {
-         *weightIt *= scalingFactor;
+         weight *= scalingFactor;
       }
 
       // interpolate value to interpolation position using the previously calculated weights

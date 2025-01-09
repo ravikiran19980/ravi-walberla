@@ -198,8 +198,8 @@ void CellCounter< FlagField_T >::operator()()
          else
          {
             typename FlagField_T::flag_t mask = 0;
-            for( auto flag = cellsToCount_.begin(); flag != cellsToCount_.end(); ++flag )
-               mask = static_cast< typename FlagField_T::flag_t >( mask | flagField->getFlag( *flag ) );
+            for(const auto & flag : cellsToCount_)
+               mask = static_cast< typename FlagField_T::flag_t >( mask | flagField->getFlag( flag ) );
 
             bool blockHasCell = false;
             if( allFlagsMustBeSet_ )
