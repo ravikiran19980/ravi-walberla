@@ -124,7 +124,7 @@ namespace gpu
       //** Type checking of parameters **********************************************************************************
       /*! \name Type checking of parameters  */
       //@{
-      using FuncType = typename std::remove_pointer<FuncPtr>::type;
+      using FuncType = std::remove_pointer_t<FuncPtr>;
 
       #define CHECK_PARAMETER_FUNC( Number ) \
       template<typename T> \
