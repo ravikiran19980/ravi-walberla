@@ -230,10 +230,10 @@ protected:
 
 
 
-   static_assert( (std::is_same<T,uint8_t >::value ||
-                   std::is_same<T,uint16_t>::value ||
-                   std::is_same<T,uint32_t>::value ||
-                   std::is_same<T,uint64_t>::value),
+   static_assert( (std::is_same_v<T,uint8_t > ||
+                   std::is_same_v<T,uint16_t> ||
+                   std::is_same_v<T,uint32_t> ||
+                   std::is_same_v<T,uint64_t>),
                   "Only unsigned types of various lengths are allowed as type of FlagFields");
 
 
@@ -252,7 +252,7 @@ protected:
    friend bool isFlagInNeighborhood( const FieldPtrOrIterator & i, typename FieldPtrOrIterator::value_t mask);
 
    template <class Stencil, typename FieldPtrOrIterator>
-   friend typename std::remove_const<typename FieldPtrOrIterator::value_type>::type
+   friend std::remove_const_t<typename FieldPtrOrIterator::value_type>
       getOredNeighborhood(const FieldPtrOrIterator & i);
 
    //@}
