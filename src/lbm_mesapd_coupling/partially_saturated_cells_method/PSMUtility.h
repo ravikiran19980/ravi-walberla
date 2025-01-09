@@ -120,7 +120,7 @@ void initializeDomainForPSM(StructuredBlockStorage& blockStorage, const BlockDat
          const real_t ralaxationTime =
             real_c(1) / pdfField->latticeModel().collisionModel().omega(cell.x(), cell.y(), cell.z());
 
-         Vector3< real_t > weightedAverageParticleVelocityInCell(real_t(0));
+         Vector3< real_t > const weightedAverageParticleVelocityInCell(real_t(0));
          real_t totalSolidWeightingInCell = real_t(0);
 
          for (auto particleFracIt = particleAndVolumeFractionField->get(cell).begin();

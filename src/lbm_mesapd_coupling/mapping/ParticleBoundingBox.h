@@ -49,7 +49,7 @@ inline CellInterval getCellBBFromAABB( const math::AABB & aabb, bool AABBIsInfin
       const real_t dx = blockStorage.dx(level);
       const real_t dy = blockStorage.dy(level);
       const real_t dz = blockStorage.dz(level);
-      Vector3<real_t> aabbExtensionByGhostLayers(real_c(numberOfGhostLayersToInclude) * dx,
+      Vector3<real_t> const aabbExtensionByGhostLayers(real_c(numberOfGhostLayersToInclude) * dx,
                                                  real_c(numberOfGhostLayersToInclude) * dy,
                                                  real_c(numberOfGhostLayersToInclude) * dz);
       auto extendedBlockAABB = blockStorage.getAABB(block.getId()).getExtended( aabbExtensionByGhostLayers );
@@ -73,7 +73,7 @@ inline CellInterval getCellBBFromAABB( const math::AABB & aabb, bool AABBIsInfin
 
    CellInterval blockBB = blockStorage.getBlockCellBB( block );
 
-   cell_idx_t layers = cell_idx_c( numberOfGhostLayersToInclude );
+   cell_idx_t const layers = cell_idx_c( numberOfGhostLayersToInclude );
 
    blockBB.xMin() -= layers; blockBB.yMin() -= layers; blockBB.zMin() -= layers;
    blockBB.xMax() += layers; blockBB.yMax() += layers; blockBB.zMax() += layers;

@@ -75,7 +75,7 @@ class SetParticleVelocitiesSweep
 
       if (numMappedParticles == uint_t(0)) return;
 
-      size_t arraySizes = numMappedParticles * sizeof(real_t) * 3;
+      size_t const arraySizes = numMappedParticles * sizeof(real_t) * 3;
 
       // Allocate unified memory for the particle information required for computing the velocity at a WF point (used in
       // the solid collision operator)
@@ -172,7 +172,7 @@ class ReduceParticleForcesSweep
 
       if (numMappedParticles == uint_t(0)) return;
 
-      size_t arraySizes = numMappedParticles * sizeof(real_t) * 3;
+      size_t const arraySizes = numMappedParticles * sizeof(real_t) * 3;
 
       // Allocate memory for the reduction of the particle forces and torques
       real_t* hydrodynamicForces = (real_t*) malloc(arraySizes);
