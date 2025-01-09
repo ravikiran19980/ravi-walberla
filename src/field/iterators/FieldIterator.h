@@ -174,13 +174,13 @@ namespace field {
       /// In the following vectors [0] is the slowest and [3] the fastest coordinate
       /// Current values of the coordinates, forth coordinate implicitly stored in linePtr_
       /// and if needed written to fastestCoord_
-      std::array<cell_idx_t, 3> cur_;
+      cell_idx_t cur_[3];
 
       /// Number of elements to skip when coordinate wraps around
-      std::array<uint_t, 4>  skips_;
+      uint_t  skips_[4];
 
       /// Size of each coordinate
-      std::array<uint_t, 4>  sizes_;
+      uint_t  sizes_[4];
 
       /// Field where iterator belongs to
       const FieldType * f_;

@@ -92,7 +92,7 @@ void GradientRefinement< VectorField_T, Filter_T, Pseudo2D >::operator()( std::v
       Cell expand( cell_idx_t(-1), cell_idx_t(-1), Pseudo2D ? cell_idx_t(0) : cell_idx_t(-1) );
       innerInterval.expand( expand );
 
-      const size_t gradients = Pseudo2D ? 12 : 18;
+      const int gradients = Pseudo2D ? 12 : 18;
 
       const cell_idx_t one( cell_idx_t(1) );
 
@@ -107,7 +107,7 @@ void GradientRefinement< VectorField_T, Filter_T, Pseudo2D >::operator()( std::v
          {
             const Vector3< real_t > & v = u->get(x,y,z);
 
-            std::array<real_t, gradients> gradient;
+            real_t gradient[gradients];
             for( int i = 0; i < gradients; ++i )
                gradient[i] = real_t(0);
 
