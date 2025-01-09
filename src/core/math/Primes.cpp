@@ -72,7 +72,7 @@ bool isPrime( const uint_t n )
 std::vector<uint_t> getPrimes( const uint_t n )
 {
    if( n < 2 )
-      return std::vector<uint_t>();
+      return {};
 
    std::vector<bool> markers( n+1, false );
    std::vector<uint_t> primes;
@@ -147,7 +147,7 @@ std::vector<uint_t> getPrimeFactors( const uint_t n )
 std::set<uint_t> getDevisors( const uint_t n )
 {
    if( n == uint_t(0) )
-      return std::set<uint_t>();
+      return {};
 
    std::vector<uint_t> factors = getPrimeFactors( n );
 

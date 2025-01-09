@@ -538,7 +538,7 @@ Config::BlockHandle Config::Block::getBlock( const std::string& key ) const {
    Blocks blocks;
    getBlocks( key, blocks, 0, 1 );
    if( blocks.empty() )
-      return BlockHandle();
+      return {};
    return blocks[0];
 }
 

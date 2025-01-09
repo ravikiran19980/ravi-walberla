@@ -71,7 +71,7 @@ std::vector< std::string > gatherv( const std::vector< std::string > & values, i
       return result;
    }
 
-   return std::vector< std::string >();
+   return {};
 }
 
 template<>

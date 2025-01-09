@@ -106,9 +106,9 @@ public:
    HCPIterator begin()  const {return HCPIterator(domain_, pointOfReference_, spacing_);}
    HCPIterator cbegin() const {return HCPIterator(domain_, pointOfReference_, spacing_);}
 
-   HCPIterator end() {return HCPIterator();}
-   HCPIterator end()  const {return HCPIterator();}
-   HCPIterator cend() const {return HCPIterator();}
+   HCPIterator end() {return {};}
+   HCPIterator end()  const {return {};}
+   HCPIterator cend() const {return {};}
 
 private:
    AABB domain_;

@@ -623,7 +623,7 @@ inline void Config::getBlocks( Blocks& blocks ) const
  */
 inline Config::BlockHandle Config::getGlobalBlock() const
 {
-   return BlockHandle( &block_ );
+   return { &block_ };
 }
 //*******************************************************
 
