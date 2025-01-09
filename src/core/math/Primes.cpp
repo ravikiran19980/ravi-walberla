@@ -115,14 +115,14 @@ std::vector<uint_t> getPrimeFactors( const uint_t n )
    std::vector<uint_t> primeFactors;
 
    uint_t n_rest = n;
-   for(auto primeIt = primes.begin(); primeIt != primes.end(); ++primeIt)
+   for(unsigned long & prime : primes)
    {
-      if( *primeIt * *primeIt > n )
+      if( prime * prime > n )
          break;
-      while( n_rest % *primeIt == 0)
+      while( n_rest % prime == 0)
       {
-         n_rest /= *primeIt;
-         primeFactors.push_back(*primeIt);
+         n_rest /= prime;
+         primeFactors.push_back(prime);
       }
    }
 
@@ -157,12 +157,12 @@ std::set<uint_t> getDevisors( const uint_t n )
    devisors.insert( uint_t(1) );
    tmpDevisors.reserve( ( size_t(1) << factors.size() ) - size_t(1) );
 
-   for( auto fIt = factors.begin(); fIt != factors.end(); ++fIt )
+   for(unsigned long & factor : factors)
    {
       tmpDevisors.clear();
-      for(auto pIt = devisors.begin(); pIt != devisors.end(); ++pIt)
+      for(unsigned long devisor : devisors)
       {
-         tmpDevisors.push_back( *pIt * *fIt );
+         tmpDevisors.push_back( devisor * factor );
       }
       devisors.insert( tmpDevisors.begin(), tmpDevisors.end() );
    }

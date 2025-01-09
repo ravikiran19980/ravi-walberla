@@ -64,8 +64,8 @@ std::vector< std::string > gatherv( const std::vector< std::string > & values, i
       {
          std::vector< std::string > tmp;
          rb >> tmp;
-         for( auto it = tmp.begin(); it != tmp.end(); ++it )
-            result.push_back( *it );
+         for(auto & it : tmp)
+            result.push_back( it );
       }
 
       return result;
