@@ -6,6 +6,7 @@
 
 stages:
    - pretest
+   - "Code Quality"
    - test
    - deploy
    - benchmark
@@ -2037,6 +2038,8 @@ doc:
 
 clang-tidy:
    image: i10git.cs.fau.de:5005/walberla/buildenvs/clang-17
+   stage: "Code Quality"
+   needs: []
    script:
       - $CXX --version
       - clang-tidy -version
