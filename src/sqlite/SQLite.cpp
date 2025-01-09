@@ -43,7 +43,7 @@ SQLiteDB::SQLiteDB( const string & dbFile, const int busyTimeout )
          " uuid      STRING );" ;
 
    // Create tables if it does not exist
-   int retVal = sqlite3_open( file_.c_str(), &dbHandle_ );
+   int const retVal = sqlite3_open( file_.c_str(), &dbHandle_ );
    if ( retVal != SQLITE_OK ) {
       WALBERLA_LOG_WARNING( "Failed to open sqlite3 file." << dbFile );
       valid_ = false;
@@ -101,7 +101,7 @@ uint_t storeRunImpl( sqlite3 * dbHandle, std::string & filename,
    {
       insertRunCommand += "," + i->first;
       values  << ", " << i->second;
-      string command = "ALTER TABLE runs ADD COLUMN " + i->first + " INTEGER ";
+      string const command = "ALTER TABLE runs ADD COLUMN " + i->first + " INTEGER ";
       sqlite3_exec ( dbHandle, command.c_str(), nullptr,nullptr,nullptr ); // ignore errors (column can exist already)
    }
 
@@ -110,7 +110,7 @@ uint_t storeRunImpl( sqlite3 * dbHandle, std::string & filename,
    {
       insertRunCommand += "," + i->first;
       values << ", " << "\"" << i->second << "\"";
-      string command = "ALTER TABLE runs ADD COLUMN " + i->first + " TEXT ";
+      string const command = "ALTER TABLE runs ADD COLUMN " + i->first + " TEXT ";
       sqlite3_exec ( dbHandle, command.c_str(), nullptr,nullptr,nullptr ); // ignore errors (column can exist already)
 
    }
@@ -122,7 +122,7 @@ uint_t storeRunImpl( sqlite3 * dbHandle, std::string & filename,
       {
          insertRunCommand += "," + i->first;
          values << ", " << i->second;
-         string command = "ALTER TABLE runs ADD COLUMN " + i->first + " DOUBLE ";
+         string const command = "ALTER TABLE runs ADD COLUMN " + i->first + " DOUBLE ";
          sqlite3_exec( dbHandle, command.c_str(), nullptr, nullptr, nullptr ); // ignore errors (column can exist already)
       }
       else
@@ -138,7 +138,7 @@ uint_t storeRunImpl( sqlite3 * dbHandle, std::string & filename,
       insertRunCommand += "," + i->getIdentifier();
       values << " ,1";
       // no boolean in sqlite3, use integer instead
-      string command = "ALTER TABLE runs ADD COLUMN " + i->getIdentifier() + " INTEGER ";
+      string const command = "ALTER TABLE runs ADD COLUMN " + i->getIdentifier() + " INTEGER ";
       sqlite3_exec ( dbHandle, command.c_str(), nullptr,nullptr,nullptr ); // ignore errors (column can exist already)
    }
 
@@ -146,11 +146,11 @@ uint_t storeRunImpl( sqlite3 * dbHandle, std::string & filename,
    values << "); ";
    insertRunCommand += values.str();
 
-   int ret = sqlite3_exec ( dbHandle, insertRunCommand.c_str(), nullptr, nullptr, nullptr );
+   int const ret = sqlite3_exec ( dbHandle, insertRunCommand.c_str(), nullptr, nullptr, nullptr );
    if ( ret != SQLITE_OK) {
       WALBERLA_LOG_WARNING( "Failed to insert a row into run table of sqlite3 database: " << sqlite3_errmsg(dbHandle) << "\n sql command: " << insertRunCommand.c_str() );
    }
-   uint_t generatedPrimaryKey = uint_c ( sqlite3_last_insert_rowid( dbHandle ) );
+   uint_t const generatedPrimaryKey = uint_c ( sqlite3_last_insert_rowid( dbHandle ) );
 
    sqlite3_exec( dbHandle, "END TRANSACTION;",nullptr,nullptr,nullptr );
 
@@ -175,7 +175,7 @@ void storeAdditionalRunInfoImpl( sqlite3 * dbHandle,
                                  const map<string, double > & realProperties )
 {
    sqlite3_exec( dbHandle, "BEGIN;",nullptr,nullptr,nullptr );
-   std::string CREATE_TABLE =
+   std::string const CREATE_TABLE =
          "CREATE TABLE IF NOT EXISTS " + tableName +
          " (runId     INTEGER, "
          " FOREIGN KEY (runId) REFERENCES runs(runId) "
@@ -191,7 +191,7 @@ void storeAdditionalRunInfoImpl( sqlite3 * dbHandle,
    {
       insertRunCommand += "," + i->first;
       values  << ", " << i->second;
-      string command = "ALTER TABLE " + tableName + " ADD COLUMN " + i->first + " INTEGER ";
+      string const command = "ALTER TABLE " + tableName + " ADD COLUMN " + i->first + " INTEGER ";
       sqlite3_exec ( dbHandle, command.c_str(), nullptr,nullptr,nullptr ); // ignore errors (column can exist already)
    }
 
@@ -200,7 +200,7 @@ void storeAdditionalRunInfoImpl( sqlite3 * dbHandle,
    {
       insertRunCommand += "," + i->first;
       values << ", " << "\"" << i->second << "\"";
-      string command = "ALTER TABLE " + tableName + " ADD COLUMN " + i->first + " TEXT ";
+      string const command = "ALTER TABLE " + tableName + " ADD COLUMN " + i->first + " TEXT ";
       sqlite3_exec ( dbHandle, command.c_str(), nullptr,nullptr,nullptr ); // ignore errors (column can exist already)
 
    }
@@ -210,7 +210,7 @@ void storeAdditionalRunInfoImpl( sqlite3 * dbHandle,
    {
       insertRunCommand += "," + i->first;
       values << ", " << i->second ;
-      string command = "ALTER TABLE " + tableName + " ADD COLUMN " + i->first + " DOUBLE ";
+      string const command = "ALTER TABLE " + tableName + " ADD COLUMN " + i->first + " DOUBLE ";
       sqlite3_exec ( dbHandle, command.c_str(), nullptr,nullptr,nullptr ); // ignore errors (column can exist already)
    }
 
@@ -218,7 +218,7 @@ void storeAdditionalRunInfoImpl( sqlite3 * dbHandle,
    values << "); ";
    insertRunCommand += values.str();
 
-   int ret = sqlite3_exec ( dbHandle, insertRunCommand.c_str(), nullptr, nullptr, nullptr );
+   int const ret = sqlite3_exec ( dbHandle, insertRunCommand.c_str(), nullptr, nullptr, nullptr );
    if ( ret != SQLITE_OK) {
       WALBERLA_LOG_WARNING( "Failed to insert a row into run table of sqlite3 database: " << sqlite3_errmsg(dbHandle) << "\n sql command: " << insertRunCommand.c_str() );
    }
@@ -442,7 +442,7 @@ void SQLiteDB::storeTimingNode ( const uint_t runId,
    sqlite3_reset ( stmt ); // undo binding
    sqlite3_finalize( stmt ); // free prepared statement
 
-   int currentId = int_c( sqlite3_last_insert_rowid( dbHandle_ ) );
+   int const currentId = int_c( sqlite3_last_insert_rowid( dbHandle_ ) );
 
    for ( auto i = tn.tree_.begin(); i != tn.tree_.end(); ++i )
    {
