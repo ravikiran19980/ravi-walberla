@@ -47,7 +47,7 @@ class PointCloudDataSource : public vtk::PointDataSource
 public:
    PointCloudDataSource( const std::vector<Vector3<real_t>> & pointCloud ) : pointCloud_( pointCloud ) {}
 
-   std::vector< Attributes > getAttributes() const override { return std::vector< Attributes >(); }
+   std::vector< Attributes > getAttributes() const override { return {}; }
    std::vector< Vector3< real_t > > getPoints() override { return pointCloud_; }
    void configure() override {};
 
