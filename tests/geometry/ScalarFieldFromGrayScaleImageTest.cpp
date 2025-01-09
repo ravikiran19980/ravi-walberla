@@ -41,8 +41,8 @@
 namespace walberla {
 using namespace geometry;
 
-const std::array<uint_t, 3> confBlockCount = { 1 };
-const std::array<uint_t, 3> confCells      = { 30 };
+const std::array<uint_t, 3> confBlockCount = { 1, 1, 1 };
+const std::array<uint_t, 3> confCells      = { 30, 30, 30 };
 
 const bool   useGui = false;
 
