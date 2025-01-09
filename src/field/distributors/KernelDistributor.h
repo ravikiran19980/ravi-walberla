@@ -88,7 +88,7 @@ public:
       
       const uint_t neighborhoodSize = cell_idx_t(1);
 
-      CellInterval cellNeighborhood( centerCell[0] - cell_idx_c(neighborhoodSize), centerCell[1] - cell_idx_c(neighborhoodSize), centerCell[2] - cell_idx_c(neighborhoodSize),
+      CellInterval const cellNeighborhood( centerCell[0] - cell_idx_c(neighborhoodSize), centerCell[1] - cell_idx_c(neighborhoodSize), centerCell[2] - cell_idx_c(neighborhoodSize),
                                      centerCell[0] + cell_idx_c(neighborhoodSize), centerCell[1] + cell_idx_c(neighborhoodSize), centerCell[2] + cell_idx_c(neighborhoodSize) );
 
       const uint_t kernelSizeOneDirection = uint_t(2) * neighborhoodSize + uint_t(1);

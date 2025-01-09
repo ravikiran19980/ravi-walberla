@@ -46,8 +46,8 @@ namespace field {
       Cell coord = size.min();
       const char * coordNames [3] = { "x", "y", "z" };
 
-      int innerCoord = (sliceCoord + 1) % 3;
-      int outerCoord = (sliceCoord + 2) % 3;
+      int const innerCoord = (sliceCoord + 1) % 3;
+      int const outerCoord = (sliceCoord + 2) % 3;
 
       size.min()[uint_c(sliceCoord)] = sliceValue;
       size.max()[uint_c(sliceCoord)] = sliceValue;
@@ -101,8 +101,8 @@ namespace field {
 
       const char * coordNames [3] = { "x", "y", "z" };
 
-      int innerCoord = (sliceCoord + 1) % 3;
-      int outerCoord = (sliceCoord + 2) % 3;
+      int const innerCoord = (sliceCoord + 1) % 3;
+      int const outerCoord = (sliceCoord + 2) % 3;
 
       CellInterval sliceInterval = field.xyzSize();
 
@@ -173,8 +173,8 @@ namespace field {
 
       const char * coordNames [3] = { "x", "y", "z" };
 
-      int innerCoord = (sliceCoord + 1) % 3;
-      int outerCoord = (sliceCoord + 2) % 3;
+      int const innerCoord = (sliceCoord + 1) % 3;
+      int const outerCoord = (sliceCoord + 2) % 3;
 
       CellInterval sliceInterval = field.xyzSize();
 

@@ -177,7 +177,7 @@ MPI_Datatype mpiDatatypeSliceXYZ( const Field_T & field, const CellInterval & in
       MPI_Datatype tmpType = MPI_DATATYPE_NULL;
       MPI_Type_create_subarray( 3, sizes, subsizes, starts, MPI_ORDER_C, MPITrait<T>::type(), &tmpType );
 
-      int count = int_c( fs.size() );
+      int const count = int_c( fs.size() );
       std::vector<int> displacements( std::max( fs.size(), size_t( 1 ) ) ); // if "fs" is empty create a dummy vector from so that we can take an address to the first element
       std::transform( fs.begin(), fs.end(), displacements.begin(), int_c<cell_idx_t> );
       

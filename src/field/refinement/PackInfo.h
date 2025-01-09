@@ -513,7 +513,7 @@ inline Vector3< cell_idx_t > PackInfo< Field_T, Stencil >::getNeighborShift( con
 {
    Vector3< cell_idx_t > shift;
 
-   uint_t branchId = smallBlock.getBranchId();
+   uint_t const branchId = smallBlock.getBranchId();
 
    shift[0] = ( stencil::cx[dir] == 0 ) ? ( ( ( branchId & uint_t(1) ) == uint_t(0) ) ? cell_idx_t(-1) : cell_idx_t(1) ) : cell_idx_t(0);
    shift[1] = ( stencil::cy[dir] == 0 ) ? ( ( ( branchId & uint_t(2) ) == uint_t(0) ) ? cell_idx_t(-1) : cell_idx_t(1) ) : cell_idx_t(0);
