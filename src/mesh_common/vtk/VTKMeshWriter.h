@@ -298,7 +298,7 @@ void VTKMeshWriter<MeshType>::writePiece( std::ostream & os ) const
 
    os << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"binary\">\n";
    os << "          ";
-   for(int  const& offset : offsets)
+   for(auto const& offset : offsets)
    {
       b64 << offset;
    }
