@@ -127,13 +127,13 @@ void boxTest( StructuredBlockStorage & storage,
 
    manager.init( cfg.getBlock("Geometry") );
 
-   real_t volumeFromFileInit = getVolume( storage, fieldID );
+   real_t const volumeFromFileInit = getVolume( storage, fieldID );
 
    resetField( storage, fieldID );
 
    // Manual initialization
    initializer.init( AABB(min[0], min[1], min[2], max[0],max[1], max[2] ), false );
-   real_t volumeFromManualInit = getVolume( storage, fieldID );
+   real_t const volumeFromManualInit = getVolume( storage, fieldID );
 
 
    WALBERLA_LOG_RESULT("Box initialization test (Manual,File,Expected): ("
@@ -180,14 +180,14 @@ void ellipsoidTest( StructuredBlockStorage & storage,
 
    manager.init( cfg.getBlock("Geometry") );
 
-   real_t volumeFromFileInit = getVolume( storage, fieldID );
+   real_t const volumeFromFileInit = getVolume( storage, fieldID );
 
    resetField( storage, fieldID );
 
    // Manual initialization
 
    initializer.init( Ellipsoid( midpoint, axis1, axis2, radii ), false );
-   real_t volumeFromManualInit = getVolume( storage, fieldID );
+   real_t const volumeFromManualInit = getVolume( storage, fieldID );
 
 
    WALBERLA_LOG_RESULT("Ellipsoid initialization test (Manual,File,Expected): ("
@@ -225,7 +225,7 @@ void sphereTest( StructuredBlockStorage & storage,
 
    manager.init( cfg.getBlock("Geometry") );
 
-   real_t volumeFromFileInit = getVolume( storage, fieldID );
+   real_t const volumeFromFileInit = getVolume( storage, fieldID );
 
    resetField( storage, fieldID );
 
@@ -233,7 +233,7 @@ void sphereTest( StructuredBlockStorage & storage,
    // Manual initialization
 
    initializer.init( Sphere( midpoint, radius), false );
-   real_t volumeFromManualInit = getVolume( storage, fieldID );
+   real_t const volumeFromManualInit = getVolume( storage, fieldID );
 
 
    WALBERLA_LOG_RESULT("Sphere initialization test (Manual,File,Expected): ("

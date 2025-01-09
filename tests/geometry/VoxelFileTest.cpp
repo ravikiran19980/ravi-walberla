@@ -42,7 +42,7 @@ void randomizeVector( std::vector<T> & v )
    mt11213b rng;
    std::uniform_int_distribution<T> dist( std::numeric_limits<T>::min(), std::numeric_limits<T>::max() );
 
-   size_t oldSize = v.size();
+   size_t const oldSize = v.size();
    v.resize( v.capacity() );
    for(typename std::vector<T>::iterator it = v.begin(); it != v.end(); ++it)
       *it = dist(rng);
@@ -55,7 +55,7 @@ void randomizeVector( std::vector<unsigned char> & v )
    mt11213b rng;
    std::uniform_int_distribution<walberla::int16_t> dist( std::numeric_limits<unsigned char>::min(), std::numeric_limits<unsigned char>::max() );
 
-   size_t oldSize = v.size();
+   size_t const oldSize = v.size();
    v.resize( v.capacity() );
    for(typename std::vector<unsigned char>::iterator it = v.begin(); it != v.end(); ++it)
       *it = static_cast<unsigned char>( dist(rng) );
@@ -68,7 +68,7 @@ void randomizeVector( std::vector<char> & v )
    mt11213b rng;
    std::uniform_int_distribution<int16_t> dist( std::numeric_limits<char>::min(), std::numeric_limits<char>::max() );
 
-   size_t oldSize = v.size();
+   size_t const oldSize = v.size();
    v.resize( v.capacity() );
    for(typename std::vector<char>::iterator it = v.begin(); it != v.end(); ++it)
       *it = static_cast<char>( dist(rng) );
@@ -119,7 +119,7 @@ int main(int argc, char** argv)
 
    WALBERLA_LOG_INFO("Starting test!");
 
-   bool longrun = std::find(argv, argv + argc, std::string("--longrun")) != argv + argc;
+   bool const longrun = std::find(argv, argv + argc, std::string("--longrun")) != argv + argc;
 
    std::vector<size_t> sizes;
    if(longrun)
@@ -138,7 +138,7 @@ int main(int argc, char** argv)
             std::stringstream ss;
             ss << "geometry_testfile_" << *xSize << "_" << *ySize << "_" << *zSize << ".dat";
 
-            std::string filename = ss.str();
+            std::string const filename = ss.str();
 
             runTests<unsigned char>(filename, *xSize, *ySize, *zSize);
 
@@ -166,13 +166,13 @@ void runTests(const std::string & filename, size_t xSize, size_t ySize, size_t z
 
    WALBERLA_LOG_INFO( "Running Test with size " << xSize << "x" << ySize << "x" << zSize << " T = " << typeid(T).name() );
 
-   filesystem::path path(filename);
+   filesystem::path const path(filename);
 
    if( filesystem::exists( path ) )
       filesystem::remove( path );
 
-   CellInterval aabb(0, 0, 0, cell_idx_c(xSize - 1), cell_idx_c(ySize - 1), cell_idx_c(zSize - 1));
-   uint_t numCells = aabb.numCells();
+   CellInterval const aabb(0, 0, 0, cell_idx_c(xSize - 1), cell_idx_c(ySize - 1), cell_idx_c(zSize - 1));
+   uint_t const numCells = aabb.numCells();
 
    VoxelFileReader<T> geometryFile(filename, xSize, ySize, zSize);
 
@@ -462,7 +462,7 @@ void modifyHeader(std::string inputFilename, std::string outputFilename,
    {
       char buffer[1024];
       is.read(buffer, 1024);
-      std::streamsize bytesRead = is.gcount();
+      std::streamsize const bytesRead = is.gcount();
       os.write( buffer, bytesRead );
       WALBERLA_CHECK( is.eof() || !is.fail() );
       WALBERLA_CHECK( !os.fail() );
