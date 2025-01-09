@@ -520,7 +520,7 @@ protected:
 
 
    AABB domain_;      ///< axis-aligned bounding box for the entire simulation space/domain
-   bool periodic_[3]; ///< periodicity flags
+   std::array< bool, 3 > periodic_; ///< periodicity flags
    
    std::vector< internal::BlockDataItem > blockDataItem_;
 
