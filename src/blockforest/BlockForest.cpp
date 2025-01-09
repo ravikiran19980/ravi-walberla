@@ -1877,10 +1877,10 @@ bool BlockForest::determineBlockTargetLevels( bool & additionalRefreshCycleRequi
 
       WALBERLA_LOG_PROGRESS( "BlockForest refresh:   + tell neighbors about blocks that can get merged" );
 
-      for( auto rank = ranksToRecvFrom.begin(); rank != ranksToRecvFrom.end(); ++rank )
+      for( auto rank: ranksToRecvFrom )
       {
-         WALBERLA_ASSERT_UNEQUAL( *rank, process_ );
-         mergeBufferSystem.sendBuffer( *rank ) << intentToMerge[ process_ ];
+         WALBERLA_ASSERT_UNEQUAL( rank, process_ );
+         mergeBufferSystem.sendBuffer( rank ) << intentToMerge[ process_ ];
       }
 
       mergeBufferSystem.sendAll();

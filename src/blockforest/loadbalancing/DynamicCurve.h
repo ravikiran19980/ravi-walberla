@@ -177,7 +177,7 @@ private:
 
    bool weightedBlocks() const
    {
-      return ! std::is_same< PhantomData_T, NoPhantomData >::value;
+      return ! std::is_same_v< PhantomData_T, NoPhantomData >;
    }
    
    template< typename T >

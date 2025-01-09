@@ -699,7 +699,7 @@ void SetupBlockForest::init( const AABB& domain, const uint_t xSize, const uint_
 
    if( !forest_.empty() ) {
       for(auto & coarseBlock : forest_) {
-         if(coarseBlock != nullptr ) delete coarseBlock;
+         delete coarseBlock;
       }
       forest_.clear();
    }

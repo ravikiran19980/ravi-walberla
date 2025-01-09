@@ -422,7 +422,7 @@ inline SetupBlockForest::~SetupBlockForest() {
 
    for(auto & coarseBlock : forest_)
    {
-      if(coarseBlock != nullptr ) delete coarseBlock;
+      delete coarseBlock;
    }
 }
 

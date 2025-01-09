@@ -63,7 +63,7 @@ shared_ptr< StructuredBlockForest > createUniformBlockGridFromConfig( const shar
       }
    }
    WALBERLA_ABORT_NO_DEBUG_INFO( "No Configuration specified" );
-   return shared_ptr<StructuredBlockForest>();
+   return {};
 }
 
 
@@ -346,7 +346,7 @@ shared_ptr<BlockForest> createBlockForest(const math::AABB& simulationDomain,
          WALBERLA_LOG_INFO_ON_ROOT( "SetupBlockForest successfully saved to file!" );
       }
 
-      return shared_ptr<BlockForest>();
+      return {};
    }
 
    WALBERLA_MPI_SECTION()

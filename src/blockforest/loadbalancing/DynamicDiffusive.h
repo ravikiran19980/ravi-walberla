@@ -116,7 +116,7 @@ private:
 
    double weight( const PhantomBlock * block ) const
    {
-      return std::is_same< PhantomData_T, NoPhantomData >::value ? 1.0 :
+      return std::is_same_v< PhantomData_T, NoPhantomData > ? 1.0 :
                numeric_cast< double >( block->template getData< PhantomData_T >().weight() );
    }
 
