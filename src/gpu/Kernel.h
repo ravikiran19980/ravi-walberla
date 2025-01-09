@@ -128,12 +128,12 @@ namespace gpu
 
       #define CHECK_PARAMETER_FUNC( Number ) \
       template<typename T> \
-      bool checkParameter##Number( typename std::enable_if< (FunctionTraits<FuncType>::arity > Number ), T >::type *  = 0 ) { \
+      bool checkParameter##Number( typename std::enable_if_t< (FunctionTraits<FuncType>::arity > Number ), T > *  = 0 ) { \
          typedef typename FunctionTraits<FuncType>::template argument<Number>::type ArgType; \
-         return std::is_same< T, ArgType >::value; \
+         return std::is_same_v< T, ArgType >; \
       } \
       template<typename T> \
-      bool checkParameter##Number( typename std::enable_if< (FunctionTraits<FuncType>::arity <= Number ),T >::type *  = 0 ) { \
+      bool checkParameter##Number( typename std::enable_if_t< (FunctionTraits<FuncType>::arity <= Number ),T > *  = 0 ) { \
          return false; \
       }
 
