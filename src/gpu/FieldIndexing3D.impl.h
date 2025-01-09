@@ -38,7 +38,7 @@ namespace gpu
 inline unsigned int iDivUp( unsigned int a, unsigned int b ) { return ( a + b - 1 ) / b; }
 
 
-dim3 FieldIndexing3DBase::preferredBlockDim_( 32, 2, 2 );
+inline dim3 FieldIndexing3DBase::preferredBlockDim_( 32, 2, 2 );
 
 
 template< typename T>
