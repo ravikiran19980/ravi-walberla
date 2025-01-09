@@ -101,7 +101,7 @@ namespace gpu
    }
 
    ParallelSection ParallelStreams::parallelSection( gpuStream_t stream ) {
-      return ParallelSection(this, stream);
+      return {this, stream};
    }
 
    void ParallelStreams::ensureSize( uint_t size ) {
