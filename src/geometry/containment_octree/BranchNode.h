@@ -59,7 +59,6 @@ public:
 
    virtual const Node<ContainmentOctreeT> * getChild( const uint_t idx ) const { WALBERLA_ASSERT_LESS( idx, 8 ); return children_[idx]; }
 
-private:
    BranchNode( const BranchNode & other ) = delete;
    BranchNode & operator=( const BranchNode & other ) = delete;
 
