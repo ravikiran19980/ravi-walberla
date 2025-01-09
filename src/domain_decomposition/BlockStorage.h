@@ -735,6 +735,7 @@ inline void BlockStorage::clearBlockData( const BlockDataID & id )
 inline std::vector< std::string > BlockStorage::getBlockDataIdentifiers() const
 {
    std::vector< std::string > identifiers;
+   identifiers.reserve(blockDataItem_.size());
 
    for(const auto & it : blockDataItem_)
       identifiers.push_back( it.getIdentifier() );
