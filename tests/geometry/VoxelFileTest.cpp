@@ -454,10 +454,10 @@ void modifyHeader(std::string inputFilename, std::string outputFilename,
 
    while(!is.eof())
    {
-      char buffer[1024];
-      is.read(buffer, 1024);
+      std::array<char, 1024> buffer;
+      is.read(buffer.data(), 1024);
       std::streamsize const bytesRead = is.gcount();
-      os.write( buffer, bytesRead );
+      os.write( buffer.data(), bytesRead );
       WALBERLA_CHECK( is.eof() || !is.fail() );
       WALBERLA_CHECK( !os.fail() );
    }
