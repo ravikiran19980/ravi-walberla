@@ -88,7 +88,7 @@ public:
    {
    }
 
-   ~GPUPackInfo() override {}
+   ~GPUPackInfo() override = default;
 
    bool constantDataExchange() const override { return mpi::BufferSizeTrait<FieldType>::constantSize; }
    bool threadsafeReceiving()  const override { return true; }
