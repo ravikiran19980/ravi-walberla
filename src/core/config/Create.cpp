@@ -212,7 +212,7 @@ namespace config {
    {
    public:
       MultipleConfigGenerator( const std::string & baseName, const std::string & extension, int numberOfDigits )
-         : baseName_( baseName ), extension_( extension ), numberOfDigits_( numberOfDigits), counter_(-1) {}
+         : baseName_( baseName ), extension_( extension ), numberOfDigits_( numberOfDigits) {}
 
       shared_ptr<Config> next() override
       {
@@ -231,7 +231,7 @@ namespace config {
       std::string baseName_;
       std::string extension_;
       int numberOfDigits_;
-      int counter_;
+      int counter_{-1};
    };
 
 
