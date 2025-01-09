@@ -76,8 +76,8 @@ struct StokesNumberBasedSphereSelector
    {
       static_assert(std::is_base_of<mesa_pd::data::IAccessor, ParticleAccessor_T>::value, "Provide a valid accessor as template");
 
-      lbm_mesapd_coupling::RegularParticlesSelector const regularParticlesSelector;
-      mesa_pd::kernel::SelectLocal const localParticlesSelector;
+      lbm_mesapd_coupling::RegularParticlesSelector regularParticlesSelector;
+      mesa_pd::kernel::SelectLocal localParticlesSelector;
 
       if(regularParticlesSelector(particleIdx, ac) && localParticlesSelector(particleIdx, ac))
       {
@@ -96,9 +96,9 @@ struct StokesNumberBasedSphereSelector
             }
 
             auto sphereShape = *static_cast< mesa_pd::data::Sphere*>(ac.getShape(particleIdx));
-            real_t const diameter = real_t(2) * sphereShape.getRadius();
+            real_t diameter = real_t(2) * sphereShape.getRadius();
 
-            real_t const St = (densityParticle_ / densityFluid_) * (maximumImpactVelocity *  diameter / kinematicViscosity_) / real_t(9);
+            real_t St = (densityParticle_ / densityFluid_) * (maximumImpactVelocity *  diameter / kinematicViscosity_) / real_t(9);
 
             if( St < StCrit_) return true;
          }

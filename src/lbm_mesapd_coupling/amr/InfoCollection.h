@@ -154,7 +154,7 @@ void getBlockInfoFromInfoCollection( const PhantomBlock * block, const shared_pt
       // we assume that the number of fluid and near boundary cells will be the average of all 8 child blocks
       // -> we can use the information of the child blocks for weight assignment
 
-      blockforest::BlockID const childIdForInit(block->getId(), 0);
+      blockforest::BlockID childIdForInit(block->getId(), 0);
       auto childForInitIt = ic->find( childIdForInit );
       WALBERLA_CHECK_UNEQUAL( childForInitIt, ic->end(), "Child block with ID " << childIdForInit << " not found in info collection!" );
       BlockInfo combinedInfo = childForInitIt->second;
@@ -162,7 +162,7 @@ void getBlockInfoFromInfoCollection( const PhantomBlock * block, const shared_pt
       uint_t numNearBoundaryCells(0);
       for (uint_t child = 0; child < 8; ++child)
       {
-         blockforest::BlockID const childId(block->getId(), child);
+         blockforest::BlockID childId(block->getId(), child);
          auto childIt = ic->find( childId );
          WALBERLA_CHECK_UNEQUAL( childIt, ic->end(), "Child block with ID " << childId << " not found in info collection!" );
          numFluidCells += childIt->second.numberOfFluidCells;

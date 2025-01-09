@@ -200,8 +200,8 @@ inline void CurvedLinear< LatticeModel_T, FlagField_T, ParticleAccessor_T >::tre
       // (if applicable) line search accuracy
       const real_t tolerance = real_t( 1e-4 ) * lengthScalingFactor_;
 
-      mesa_pd::kernel::SingleCast const singleCast;
-      mesa_pd::RayParticleIntersectionRatioFunctor const intersectionRatioFctr;
+      mesa_pd::kernel::SingleCast singleCast;
+      mesa_pd::RayParticleIntersectionRatioFunctor intersectionRatioFctr;
       delta = singleCast(particleIdx, *ac_, intersectionRatioFctr, *ac_, cellCenter, direction, tolerance );
 
       WALBERLA_ASSERT_LESS_EQUAL( delta, real_t(1));

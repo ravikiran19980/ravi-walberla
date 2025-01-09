@@ -48,7 +48,7 @@ public:
          //only change of one level is supported!
          WALBERLA_ASSERT_LESS( std::abs(int_c(block->getLevel()) - int_c(block->getSourceLevel())), 2 );
 
-         real_t const blockWeight = std::max(weightEvaluationFct_(block), blockBaseWeight_);
+         real_t blockWeight = std::max(weightEvaluationFct_(block), blockBaseWeight_);
          it.second = PhantomBlockWeight( double_c( blockWeight ) );
       }
    }
