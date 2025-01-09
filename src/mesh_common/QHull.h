@@ -164,15 +164,15 @@ public:
 
    QHullPointDataSource( const QHull<MeshType> & qhull ) : qhull_( qhull ) {}
 
-   virtual std::vector< Attributes > getAttributes() const 
+   std::vector< Attributes > getAttributes() const override 
    {
       std::vector< Attributes > attributes; 
       attributes.push_back( Attributes("Int32", "index", uint_t(1)) );
       return attributes;
    }
 
-   virtual std::vector< Vector3< real_t > > getPoints() { return points_; }
-   virtual void configure()
+   std::vector< Vector3< real_t > > getPoints() override { return points_; }
+   void configure() override
    {
       points_.clear();
       indices_.clear();
@@ -185,12 +185,12 @@ public:
       }
    };
 
-   virtual void push( std::ostream& os,  const uint_t /*data*/, const uint_t point, const uint_t /*component*/ )
+   void push( std::ostream& os,  const uint_t /*data*/, const uint_t point, const uint_t /*component*/ ) override
    {
       os << indices_[point];
    };
 
-   virtual void push( vtk::Base64Writer& b64, const uint_t /*data*/, const uint_t point, const uint_t /*component*/ )
+   void push( vtk::Base64Writer& b64, const uint_t /*data*/, const uint_t point, const uint_t /*component*/ ) override
    {
       b64 << indices_[point];
    };
