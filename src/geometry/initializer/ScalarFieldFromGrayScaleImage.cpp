@@ -24,6 +24,7 @@
 #include "core/math/Vector3.h"
 #include "field/GhostLayerField.h"
 
+#include <algorithm>
 #include <limits>
 
 
@@ -122,9 +123,9 @@ namespace initializer {
       // the blockStorage.transformGlobalToLocal would overflow
 
       cell_idx_t const maxNumberOfCells = cell_idx_c(
-                                    std::max( structuredBlockStorage_.getNumberOfXCells(),
-                                    std::max( structuredBlockStorage_.getNumberOfYCells(),
-                                              structuredBlockStorage_.getNumberOfZCells() ) ) );
+                                    std::max( {structuredBlockStorage_.getNumberOfXCells(),
+                                    structuredBlockStorage_.getNumberOfYCells(),
+                                              structuredBlockStorage_.getNumberOfZCells() } ) );
 
       if ( upperExtrusionLimit > maxNumberOfCells )
          upperExtrusionLimit = maxNumberOfCells;

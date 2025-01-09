@@ -21,6 +21,8 @@
 
 #include "Ellipsoid.h"
 
+#include <algorithm>
+
 
 namespace walberla {
 namespace geometry {
@@ -53,8 +55,8 @@ namespace geometry {
 
       mat_ = rotationMatrix_ *  diagonalMatrix * rotationMatrix_.getTranspose() ;
 
-      minRadius_ = std::min( radii_[0], std::min( radii_[1], radii_[2] ) );
-      maxRadius_ = std::max( radii_[0], std::max( radii_[1], radii_[2] ) );
+      minRadius_ = std::min( {radii_[0], radii_[1], radii_[2] } );
+      maxRadius_ = std::max( {radii_[0], radii_[1], radii_[2] } );
 
       updateBoundingBox( );
    }
