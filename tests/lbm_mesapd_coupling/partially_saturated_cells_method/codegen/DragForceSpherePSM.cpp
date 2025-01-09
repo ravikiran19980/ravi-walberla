@@ -68,7 +68,7 @@ using namespace walberla;
 using walberla::uint_t;
 using namespace lbm_mesapd_coupling::psm::gpu;
 
-typedef pystencils::PSMPackInfo PackInfo_T;
+using PackInfo_T = pystencils::PSMPackInfo;
 
 ////////////////
 // PARAMETERS //
