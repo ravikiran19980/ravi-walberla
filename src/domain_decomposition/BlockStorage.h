@@ -207,11 +207,11 @@ public:
 
    /// inserts all locally allocated blocks into vector 'blocks'
    void getBlocks( std::vector< const IBlock* >& blocks ) const
-   { for (auto blkIt = iBlocks_.begin(); blkIt != iBlocks_.end(); ++blkIt ) { blocks.push_back(blkIt->second); } }
+   { for (auto iBlock : iBlocks_) { blocks.push_back(iBlock.second); } }
 
    /// inserts all locally allocated blocks into vector 'blocks'
    void getBlocks( std::vector<       IBlock* >& blocks )
-   { for (auto blkIt = iBlocks_.begin(); blkIt != iBlocks_.end(); ++blkIt ) { blocks.push_back(blkIt->second); } }
+   { for (auto & iBlock : iBlocks_) { blocks.push_back(iBlock.second); } }
 
    //*******************************************************************************************************************
    /*!
@@ -737,8 +737,8 @@ inline std::vector< std::string > BlockStorage::getBlockDataIdentifiers() const
 {
    std::vector< std::string > identifiers;
 
-   for( auto it = blockDataItem_.begin(); it != blockDataItem_.end(); ++it )
-      identifiers.push_back( it->getIdentifier() );
+   for(const auto & it : blockDataItem_)
+      identifiers.push_back( it.getIdentifier() );
 
    return identifiers;
 }

@@ -85,8 +85,8 @@ public:
 
       mpi::allReduceInplace( numberOfBlocks_, mpi::SUM );
 
-      for( auto numberOfBlocksOnLevel = numberOfBlocks_.begin(); numberOfBlocksOnLevel != numberOfBlocks_.end(); ++numberOfBlocksOnLevel )
-         totalNumberOfBlocks_ += *numberOfBlocksOnLevel;
+      for(unsigned long & numberOfBlock : numberOfBlocks_)
+         totalNumberOfBlocks_ += numberOfBlock;
    }
 
 private:
