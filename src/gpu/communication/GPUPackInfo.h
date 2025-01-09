@@ -78,13 +78,13 @@ public:
 
    GPUPackInfo( const BlockDataID & bdId )
    : bdId_( bdId ), communicateAllGhostLayers_( true ), numberOfGhostLayers_( 0 ),
-     copyAsync_( false ), communicationStream_( 0 )
+     copyAsync_( false ), communicationStream_( nullptr )
    {
    }
 
    GPUPackInfo( const BlockDataID & bdId, const uint_t numberOfGHostLayers )
    : bdId_( bdId ), communicateAllGhostLayers_( false ), numberOfGhostLayers_(  numberOfGHostLayers ),
-     copyAsync_( false ), communicationStream_( 0 )
+     copyAsync_( false ), communicationStream_( nullptr )
    {
    }
 
@@ -99,7 +99,7 @@ public:
 
    void setCommunicationStream( gpuStream_t stream )
    {
-      if ( stream != 0 )
+      if ( stream != nullptr )
       {
          copyAsync_ = true;
          communicationStream_ = stream;
