@@ -64,7 +64,7 @@ private:
    BranchNode & operator=( const BranchNode & other ) = delete;
 
 protected:
-   const Node<ContainmentOctreeT> * children_[8];
+   const std::array< Node<ContainmentOctreeT>, 8 > * children_;
    Point center_;
 };
 
@@ -80,7 +80,7 @@ BranchNode<ContainmentOctreeT>::BranchNode( const shared_ptr<const DistanceObjec
    const auto & max = aabb.maxCorner();
    const auto & ctr = center_;
 
-   AABB childAABBs[8] = {
+   std::array<AABB, 8> childAABBs = {
       AABB::createFromMinMaxCorner( min[0], min[1], min[2], ctr[0], ctr[1], ctr[2] ),
       AABB::createFromMinMaxCorner( min[0], min[1], ctr[2], ctr[0], ctr[1], max[2] ),
       AABB::createFromMinMaxCorner( min[0], ctr[1], min[2], ctr[0], max[1], ctr[2] ),
