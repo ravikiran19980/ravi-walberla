@@ -45,8 +45,8 @@ __device__ void getVelocityAtWFPoint(real_t* __restrict__ const velocityAtWFPoin
                                      const real_t* __restrict__ const angularVelocity,
                                      const real_t* __restrict__ const position, const real_t* __restrict__ const wf_pt)
 {
-   real_t crossResult[3];
-   real_t rhs[] = { wf_pt[0] - position[0], wf_pt[1] - position[1], wf_pt[2] - position[2] };
+   real_t crossResult[3]; // NOLINT(*-avoid-c-arrays)
+   real_t rhs[] = { wf_pt[0] - position[0], wf_pt[1] - position[1], wf_pt[2] - position[2] }; // NOLINT(*-avoid-c-arrays)
    cross(crossResult, angularVelocity, rhs);
    velocityAtWFPoint[0] = linearVelocity[0] + crossResult[0];
    velocityAtWFPoint[1] = linearVelocity[1] + crossResult[1];
@@ -73,8 +73,8 @@ __device__ void addHydrodynamicForceTorqueAtWFPosAtomic(real_t* __restrict__ con
    unsafeAtomicAdd(&(particleForce[2]), f[2]);
 #endif
 
-   real_t torque[] = { 0.0, 0.0, 0.0 };
-   real_t lhs[]    = { wf_pt[0] - pos[0], wf_pt[1] - pos[1], wf_pt[2] - pos[2] };
+   real_t torque[] = { 0.0, 0.0, 0.0 }; // NOLINT(*-avoid-c-arrays)
+   real_t lhs[]    = { wf_pt[0] - pos[0], wf_pt[1] - pos[1], wf_pt[2] - pos[2] }; // NOLINT(*-avoid-c-arrays)
    cross(torque, lhs, f);
 
 #if defined(WALBERLA_BUILD_WITH_CUDA)
