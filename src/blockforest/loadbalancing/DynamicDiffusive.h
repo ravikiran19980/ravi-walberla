@@ -58,10 +58,8 @@ public:
 
    DynamicDiffusionBalance( const uint_t maxIterations, const uint_t flowIterations, const bool levelwise = true ) :
       mode_( DIFFUSION_PUSHPULL ), maxIterations_( maxIterations ),
-      defineProcessWeightLimitByMultipleOfMaxBlockWeight_( true ), checkForEarlyAbort_( true ), abortThreshold_( 1.0 ),
-      adaptOutflowWithGlobalInformation_( true ), adaptInflowWithGlobalInformation_( true ),
-      flowIterations_( flowIterations ), flowIterationsIncreaseStart_( maxIterations ), flowIterationsIncrease_( 0.0 ),
-      regardConnectivity_( true ), disregardConnectivityStart_( maxIterations ), outflowExceedFactor_( 1.0 ), inflowExceedFactor_( 1.0 ),
+      flowIterations_( flowIterations ), flowIterationsIncreaseStart_( maxIterations ),
+      disregardConnectivityStart_( maxIterations ),
       levelwise_(levelwise)
    {}
    
@@ -124,20 +122,20 @@ private:
    
    uint_t maxIterations_;
    
-   bool defineProcessWeightLimitByMultipleOfMaxBlockWeight_; // only evaluated when checkForEarlyAbort_ == true or adaptOutflowWithGlobalInformation_ == true
-   bool checkForEarlyAbort_;
-   double abortThreshold_; // only evaluated when checkForEarlyAbort_ == true
-   bool adaptOutflowWithGlobalInformation_;
-   bool adaptInflowWithGlobalInformation_;
+   bool defineProcessWeightLimitByMultipleOfMaxBlockWeight_ { true }; // only evaluated when checkForEarlyAbort_ == true or adaptOutflowWithGlobalInformation_ == true
+   bool checkForEarlyAbort_{ true };
+   double abortThreshold_{ 1.0 }; // only evaluated when checkForEarlyAbort_ == true
+   bool adaptOutflowWithGlobalInformation_{ true };
+   bool adaptInflowWithGlobalInformation_{ true };
    
    uint_t flowIterations_;
    uint_t flowIterationsIncreaseStart_;
-   double flowIterationsIncrease_;
+   double flowIterationsIncrease_{ 0.0 };
    
-   bool regardConnectivity_;
+   bool regardConnectivity_{ false };
    uint_t disregardConnectivityStart_;
-   double outflowExceedFactor_;
-   double inflowExceedFactor_;
+   double outflowExceedFactor_{ 1.0 };
+   double inflowExceedFactor_{ 1.0 };
    
    math::IntRandom< uint_t > random_;
 

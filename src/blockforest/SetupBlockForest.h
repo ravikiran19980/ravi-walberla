@@ -183,10 +183,10 @@ public:
    uint_t getNumberOfBlocks( const uint_t level ) const;
 
    inline const_iterator begin() const;
-   inline const_iterator end()   const { return const_iterator( this, nullptr ); }
+   inline const_iterator end()   const { return { this, nullptr }; }
 
    inline iterator begin();
-   inline iterator end() { return iterator( this, nullptr ); }
+   inline iterator end() { return { this, nullptr }; }
 
    const SetupBlock* getFirstBlock() const;
          SetupBlock* getFirstBlock();
@@ -435,7 +435,7 @@ inline SetupBlockForest::const_iterator SetupBlockForest::begin() const {
    if( block == nullptr )
       return end();
 
-   return SetupBlockForest::const_iterator( this, block );
+   return { this, block };
 }
 
 
@@ -447,7 +447,7 @@ inline SetupBlockForest::iterator SetupBlockForest::begin() {
    if( block == nullptr )
       return end();
 
-   return SetupBlockForest::iterator( this, block );
+   return { this, block };
 }
 
 

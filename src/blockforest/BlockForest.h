@@ -344,7 +344,7 @@ public:
 
 
    
-   internal::BlockDataHandlingAdder addBlockData( const std::string & identifier = std::string() ) { return internal::BlockDataHandlingAdder( *this, identifier ); }
+   internal::BlockDataHandlingAdder addBlockData( const std::string & identifier = std::string() ) { return { *this, identifier }; }
 
    template< typename T >
    inline BlockDataID addBlockData( const shared_ptr< T > & dataHandling,
@@ -387,7 +387,7 @@ public:
    void refresh();
 
    /// Functor that calls refresh with given frequency
-   RefreshFunctor getRefreshFunctor( const uint_t checkFrequency = uint_t(1) ) { return RefreshFunctor( *this, checkFrequency ); }
+   RefreshFunctor getRefreshFunctor( const uint_t checkFrequency = uint_t(1) ) { return { *this, checkFrequency }; }
    
    /// Modification stamp is changed when refresh moves a block or refines/coarsens at least one block
    /// however, stamp may (in rare cases) also change if block structure was not altered
@@ -470,7 +470,7 @@ public:
    void restoreSnapshot( const SnapshotRestoreFunction & processMapping, const bool rebelance = true );
 
    SnapshotCreationFunctor getSnapshotCreationFunctor( const SnapshotCreationFunction & function,
-                                                       const uint_t checkFrequency = uint_t(1) ) { return SnapshotCreationFunctor( *this, function, checkFrequency ); }
+                                                       const uint_t checkFrequency = uint_t(1) ) { return { *this, function, checkFrequency }; }
 
    inline uint_t    addCallbackFunctionAfterBlockDataIsRestored( const SnapshotRestoreCallbackFunction & f );
    inline void   removeCallbackFunctionAfterBlockDataIsRestored( const uint_t handle );
