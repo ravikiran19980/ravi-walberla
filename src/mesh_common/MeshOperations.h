@@ -387,12 +387,12 @@ void computeMassProperties(const MeshType & mesh, typename MeshType::Scalar dens
    typedef typename MeshType::Point Point;
    typedef typename MeshType::Scalar Scalar;
 
-   const Scalar mult[10] = {Scalar(1)/Scalar(6),
-                            Scalar(1)/Scalar(24), Scalar(1)/Scalar(24), Scalar(1)/Scalar(24),
-                            Scalar(1)/Scalar(60), Scalar(1)/Scalar(60), Scalar(1)/Scalar(60),
-                            Scalar(1)/Scalar(120), Scalar(1)/Scalar(120), Scalar(1)/Scalar(120)};
+   std::array<const Scalar, 10> mult {Scalar(1)/Scalar(6),
+                                      Scalar(1)/Scalar(24), Scalar(1)/Scalar(24), Scalar(1)/Scalar(24),
+                                      Scalar(1)/Scalar(60), Scalar(1)/Scalar(60), Scalar(1)/Scalar(60),
+                                      Scalar(1)/Scalar(120), Scalar(1)/Scalar(120), Scalar(1)/Scalar(120)};
 
-   Scalar intg[10] = {0,0,0,0,0,0,0,0,0,0};
+   std::array<Scalar, 10> intg{0,0,0,0,0,0,0,0,0,0};
 
    auto subExpr = [](Scalar& w0, Scalar& w1, Scalar& w2,
          Scalar& f1, Scalar& f2, Scalar& f3,

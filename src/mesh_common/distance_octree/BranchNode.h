@@ -1,15 +1,15 @@
 //======================================================================================================================
 //
-//  This file is part of waLBerla. waLBerla is free software: you can 
+//  This file is part of waLBerla. waLBerla is free software: you can
 //  redistribute it and/or modify it under the terms of the GNU General Public
-//  License as published by the Free Software Foundation, either version 3 of 
+//  License as published by the Free Software Foundation, either version 3 of
 //  the License, or (at your option) any later version.
-//  
-//  waLBerla is distributed in the hope that it will be useful, but WITHOUT 
-//  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
-//  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License 
+//
+//  waLBerla is distributed in the hope that it will be useful, but WITHOUT
+//  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+//  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 //  for more details.
-//  
+//
 //  You should have received a copy of the GNU General Public License along
 //  with waLBerla (see COPYING.txt). If not, see <http://www.gnu.org/licenses/>.
 //
@@ -42,10 +42,10 @@ class BranchNode : public Node<MeshType>
 public:
    using Point = typename Node<MeshType>::Point;
    using Normal = typename Node<MeshType>::Normal;
-   using Scalar = typename Node<MeshType>::Scalar;  
-   using FaceHandle = typename Node<MeshType>::FaceHandle; 
+   using Scalar = typename Node<MeshType>::Scalar;
+   using FaceHandle = typename Node<MeshType>::FaceHandle;
    using AABB = typename Node<MeshType>::AABB;
-   
+
    template< typename InputIterator >
    BranchNode( const shared_ptr< TriangleDistance<MeshType> > & triDistance, InputIterator beginFh, InputIterator endFh,
                uint_t maxDepth, uint_t minNumTriangles );
@@ -86,7 +86,7 @@ private:
    };
 
 protected:
-   const Node<MeshType> * children_[8];
+   std::array<const Node<MeshType> *, 8> children_;
 };
 
 
@@ -128,7 +128,7 @@ BranchNode<MeshType>::BranchNode( const shared_ptr< TriangleDistance<MeshType> >
    const auto &    max = this->aabb_.maxCorner();
    const auto   center = this->aabb_.center();
 
-   AABB childAABBs[8] = {
+   std::array<AABB, 8> childAABBs = {
       AABB::createFromMinMaxCorner(    min[0],    min[1],    min[2], center[0], center[1], center[2] ),
       AABB::createFromMinMaxCorner(    min[0],    min[1], center[2], center[0], center[1],    max[2] ),
       AABB::createFromMinMaxCorner(    min[0], center[1],    min[2], center[0],    max[1], center[2] ),
@@ -142,7 +142,7 @@ BranchNode<MeshType>::BranchNode( const shared_ptr< TriangleDistance<MeshType> >
    uint_t theNumTriangles = uint_c( std::distance( beginFh, endFh ) );
 
    std::vector<bool> const triangleUsed( theNumTriangles, false );
-   std::vector<FaceHandle> childTriangles[8];
+   std::array<std::vector<FaceHandle>, 8> childTriangles;
 
    for( auto fhIt = beginFh; fhIt != endFh; ++fhIt )
    {
@@ -175,7 +175,7 @@ BranchNode<MeshType>::BranchNode( const shared_ptr< TriangleDistance<MeshType> >
 template <typename MeshType>
 typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( const Point & p ) const
 {
-   ChildInfo childinfos[8] = {
+   std::array<ChildInfo, 8> childinfos = {
       ChildInfo( children_[0], p ), ChildInfo( children_[1], p ),
       ChildInfo( children_[2], p ), ChildInfo( children_[3], p ),
       ChildInfo( children_[4], p ), ChildInfo( children_[5], p ),
@@ -204,7 +204,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( co
 template <typename MeshType>
 typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( const Point & p, FaceHandle & closestTriangle ) const
 {
-   ChildInfo childinfos[8] = {
+   std::array<ChildInfo, 8> childinfos = {
       ChildInfo( children_[0], p ), ChildInfo( children_[1], p ),
       ChildInfo( children_[2], p ), ChildInfo( children_[3], p ),
       ChildInfo( children_[4], p ), ChildInfo( children_[5], p ),
@@ -237,7 +237,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( co
 template <typename MeshType>
 typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( const Point & p, Point & closestPoint ) const
 {
-   ChildInfo childinfos[8] = {
+   std::array<ChildInfo, 8> childinfos = {
       ChildInfo( children_[0], p ), ChildInfo( children_[1], p ),
       ChildInfo( children_[2], p ), ChildInfo( children_[3], p ),
       ChildInfo( children_[4], p ), ChildInfo( children_[5], p ),
@@ -270,7 +270,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( co
 template <typename MeshType>
 typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( const Point & p, Point & closestPoint, Normal & normal ) const
 {
-   ChildInfo childinfos[8] = {
+   std::array<ChildInfo, 8> childinfos = {
       ChildInfo( children_[0], p ), ChildInfo( children_[1], p ),
       ChildInfo( children_[2], p ), ChildInfo( children_[3], p ),
       ChildInfo( children_[4], p ), ChildInfo( children_[5], p ),
@@ -308,7 +308,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Po
 {
    //WALBERLA_ASSERT( getAABB().contains( toWalberla( p ) ) );
 
-   ChildInfo childinfos[8] = {
+   std::array<ChildInfo, 8> childinfos = {
       ChildInfo( children_[0], p ), ChildInfo( children_[1], p ),
       ChildInfo( children_[2], p ), ChildInfo( children_[3], p ),
       ChildInfo( children_[4], p ), ChildInfo( children_[5], p ),
@@ -337,7 +337,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Po
 template <typename MeshType>
 typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Point & p, FaceHandle & closestTriangle ) const
 {
-   ChildInfo childinfos[8] = {
+   std::array<ChildInfo, 8> childinfos = {
       ChildInfo( children_[0], p ), ChildInfo( children_[1], p ),
       ChildInfo( children_[2], p ), ChildInfo( children_[3], p ),
       ChildInfo( children_[4], p ), ChildInfo( children_[5], p ),
@@ -370,7 +370,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Po
 template <typename MeshType>
 typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Point & p, Point & closestPoint ) const
 {
-   ChildInfo childinfos[8] = {
+   std::array<ChildInfo, 8> childinfos = {
       ChildInfo( children_[0], p ), ChildInfo( children_[1], p ),
       ChildInfo( children_[2], p ), ChildInfo( children_[3], p ),
       ChildInfo( children_[4], p ), ChildInfo( children_[5], p ),
@@ -403,7 +403,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Po
 template <typename MeshType>
 typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Point & p, Point & closestPoint, Normal & normal ) const
 {
-   ChildInfo childinfos[8] = {
+   std::array<ChildInfo, 8> childinfos = {
       ChildInfo( children_[0], p ), ChildInfo( children_[1], p ),
       ChildInfo( children_[2], p ), ChildInfo( children_[3], p ),
       ChildInfo( children_[4], p ), ChildInfo( children_[5], p ),
