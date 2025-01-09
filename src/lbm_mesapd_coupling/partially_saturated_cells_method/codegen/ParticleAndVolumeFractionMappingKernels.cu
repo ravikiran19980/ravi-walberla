@@ -36,7 +36,7 @@ namespace gpu
 
 // Functions to calculate Bs
 template< int Weighting_T >
-__device__ void calculateWeighting(real_t* __restrict__ const weighting, const real_t& /*epsilon*/,
+__device__ void calculateWeighting(real_t* __restrict__ const  /*weighting*/, const real_t& /*epsilon*/,
                                    const real_t& /*tau*/)
 {
    WALBERLA_STATIC_ASSERT(Weighting_T == 1 || Weighting_T == 2);
