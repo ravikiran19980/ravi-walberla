@@ -68,7 +68,7 @@ class CurvedLinear : public Boundary< typename FlagField_T::flag_t >
    using Stencil_T = typename LatticeModel_T::Stencil;
    using flag_t = typename FlagField_T::flag_t;
 
-   static_assert(std::is_base_of<mesa_pd::data::IAccessor, ParticleAccessor_T>::value, "Provide a valid accessor as template");
+   static_assert(std::is_base_of_v<mesa_pd::data::IAccessor, ParticleAccessor_T>, "Provide a valid accessor as template");
 
 public:
 
@@ -200,8 +200,8 @@ inline void CurvedLinear< LatticeModel_T, FlagField_T, ParticleAccessor_T >::tre
       // (if applicable) line search accuracy
       const real_t tolerance = real_t( 1e-4 ) * lengthScalingFactor_;
 
-      mesa_pd::kernel::SingleCast singleCast;
-      mesa_pd::RayParticleIntersectionRatioFunctor intersectionRatioFctr;
+      mesa_pd::kernel::SingleCast const singleCast;
+      mesa_pd::RayParticleIntersectionRatioFunctor const intersectionRatioFctr;
       delta = singleCast(particleIdx, *ac_, intersectionRatioFctr, *ac_, cellCenter, direction, tolerance );
 
       WALBERLA_ASSERT_LESS_EQUAL( delta, real_t(1));

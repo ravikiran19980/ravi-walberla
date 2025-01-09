@@ -51,7 +51,7 @@ class ParticlePresenceLevelDetermination
    {
       for (auto& minTargetLevel : minTargetLevels)
       {
-         uint_t currentLevelOfBlock = minTargetLevel.first->getLevel();
+         uint_t const currentLevelOfBlock = minTargetLevel.first->getLevel();
 
          const uint_t numberOfParticlesInDirectNeighborhood =
             getNumberOfLocalAndShadowParticlesInNeighborhood(minTargetLevel.first);

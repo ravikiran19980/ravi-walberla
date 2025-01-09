@@ -34,8 +34,8 @@ bool CellInterval::overlaps( const CellSet& cellSet ) const {
    if( empty() )
       return false;
 
-   for( CellSet::const_iterator cell = cellSet.begin(); cell != cellSet.end(); ++cell ) {
-      if( this->contains( *cell ) )
+   for(auto cell : cellSet) {
+      if( this->contains( cell ) )
          return true;
    }
 

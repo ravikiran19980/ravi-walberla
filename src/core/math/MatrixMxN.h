@@ -89,8 +89,8 @@ class MatrixMxN
 {
    //**Compile time checks*************************************************************************
    /*! \cond internal */
-   static_assert(!std::is_const<Type>::value, "only non const Types are allowed!");
-   static_assert(!std::is_volatile<Type>::value, "only non volatile types are allowed!");
+   static_assert(!std::is_const_v<Type>, "only non const Types are allowed!");
+   static_assert(!std::is_volatile_v<Type>, "only non volatile types are allowed!");
    /*! \endcond */
    //**********************************************************************************************
 

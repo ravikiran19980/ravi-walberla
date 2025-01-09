@@ -57,12 +57,12 @@ void computeLubricationCorrectionSphereSphere( const Vector3<real_t> & interacti
 {
    WALBERLA_ASSERT_FLOAT_EQUAL(interactionNormal12.length(), real_t(1), "InteractionNormal has to be normalized!");
 
-   real_t kappa = radius2 / radius1;
-   real_t epsilon = gapSize / radius1;
+   real_t const kappa = radius2 / radius1;
+   real_t const epsilon = gapSize / radius1;
 
-   Vector3<real_t> e12 = -interactionNormal12;
-   Vector3<real_t> u12 =  u2 - u1;
-   Vector3<real_t> omega12 = omega1 + omega2;
+   Vector3<real_t> const e12 = -interactionNormal12;
+   Vector3<real_t> const u12 =  u2 - u1;
+   Vector3<real_t> const omega12 = omega1 + omega2;
 
    lubricationForce1 = Vector3<real_t>(real_t(0));
    lubricationTorque1 = Vector3<real_t>(real_t(0));
@@ -70,8 +70,8 @@ void computeLubricationCorrectionSphereSphere( const Vector3<real_t> & interacti
    if( gapSize < cutOffDistanceNormal )
    {
       // add lubrication force due to normal translation
-      real_t epsres = cutOffDistanceNormal / radius1;
-      Vector3<real_t> Fn1 = real_t(6) * walberla::math::pi * radius1 * dynamicFluidViscosity *
+      real_t const epsres = cutOffDistanceNormal / radius1;
+      Vector3<real_t> const Fn1 = real_t(6) * walberla::math::pi * radius1 * dynamicFluidViscosity *
                             ( kappa * kappa / ( ( real_t(1) + kappa ) * ( real_t(1) + kappa ) ) ) * ( real_t(1) / epsilon - real_t(1) / epsres) *
                             math::dot(u12, e12) * e12;
 
@@ -81,15 +81,15 @@ void computeLubricationCorrectionSphereSphere( const Vector3<real_t> & interacti
    if( gapSize < cutOffDistanceTangentialTranslational )
    {
       // add lubrication force and torque due to tangential translation
-      real_t epsres = cutOffDistanceTangentialTranslational / radius1;
-      real_t logEpsDivEpsres = std::log(epsilon/epsres);
-      Vector3<real_t> Ftt1 = real_t(6) * walberla::math::pi * radius1 * dynamicFluidViscosity *
+      real_t const epsres = cutOffDistanceTangentialTranslational / radius1;
+      real_t const logEpsDivEpsres = std::log(epsilon/epsres);
+      Vector3<real_t> const Ftt1 = real_t(6) * walberla::math::pi * radius1 * dynamicFluidViscosity *
                              ( - real_t(4) * kappa * (real_t(2) + kappa + real_t(2) * kappa * kappa ) / ( real_t(15) * (real_t(1) + kappa) * (real_t(1) + kappa) * (real_t(1) + kappa) ) ) * logEpsDivEpsres *
                              (u12 - math::dot(u12,e12) * e12);
 
       lubricationForce1 += Ftt1;
 
-      Vector3<real_t> Ttt1 = real_t(8) * walberla::math::pi * radius1 * radius1 * dynamicFluidViscosity *
+      Vector3<real_t> const Ttt1 = real_t(8) * walberla::math::pi * radius1 * radius1 * dynamicFluidViscosity *
                              ( - kappa * (real_t(4) + kappa) / (real_t(10) * (real_t(1)+kappa) * (real_t(1)+kappa) ) ) * logEpsDivEpsres *
                              math::cross(e12, u12);
 
@@ -99,17 +99,17 @@ void computeLubricationCorrectionSphereSphere( const Vector3<real_t> & interacti
    if( gapSize < cutOffDistanceTangentialRotational )
    {
       // add lubrication force and torque due to tangential rotation
-      real_t epsres = cutOffDistanceTangentialRotational / radius1;
-      real_t logEpsDivEpsres = std::log(epsilon/epsres);
-      Vector3<real_t> Ftr1 = real_t(6) * walberla::math::pi * radius1 * radius1 * dynamicFluidViscosity *
+      real_t const epsres = cutOffDistanceTangentialRotational / radius1;
+      real_t const logEpsDivEpsres = std::log(epsilon/epsres);
+      Vector3<real_t> const Ftr1 = real_t(6) * walberla::math::pi * radius1 * radius1 * dynamicFluidViscosity *
                              (real_t(2) * kappa * kappa / (real_t(15) * (real_t(1) + kappa) * (real_t(1) + kappa) ) ) * logEpsDivEpsres *
                              math::cross(omega12 + real_t(4) / kappa * omega1 + real_t(4) * kappa * omega2, e12);
 
       lubricationForce1 += Ftr1;
 
-      Vector3<real_t> tempOmega = omega1 + kappa * omega2 / real_t(4);
+      Vector3<real_t> const tempOmega = omega1 + kappa * omega2 / real_t(4);
 
-      Vector3<real_t> Ttr1 = real_t(8) * walberla::math::pi * radius1 * radius1 * radius1 * dynamicFluidViscosity *
+      Vector3<real_t> const Ttr1 = real_t(8) * walberla::math::pi * radius1 * radius1 * radius1 * dynamicFluidViscosity *
                              (real_t(2) * kappa / ( real_t(5) * (real_t(1) + kappa))) * logEpsDivEpsres *
                              (tempOmega - math::dot(tempOmega, e12) * e12);
 
@@ -145,11 +145,11 @@ void computeLubricationCorrectionSphereHalfSpace( const Vector3<real_t> & intera
 {
    WALBERLA_ASSERT_FLOAT_EQUAL(interactionNormal12.length(), real_t(1), "InteractionNormal has to be normalized!");
 
-   real_t epsilon = gapSize / radius1;
+   real_t const epsilon = gapSize / radius1;
 
-   Vector3<real_t> e12 = -interactionNormal12;
-   Vector3<real_t> u12 =  u2 - u1;
-   Vector3<real_t> omega12 = omega1;
+   Vector3<real_t> const e12 = -interactionNormal12;
+   Vector3<real_t> const u12 =  u2 - u1;
+   Vector3<real_t> const omega12 = omega1;
 
    lubricationForce1 = Vector3<real_t>(real_t(0));
    lubricationTorque1 = Vector3<real_t>(real_t(0));
@@ -157,8 +157,8 @@ void computeLubricationCorrectionSphereHalfSpace( const Vector3<real_t> & intera
    if( gapSize < cutOffDistanceNormal )
    {
       // add lubrication force due to normal translation
-      real_t epsres = cutOffDistanceNormal / radius1;
-      Vector3<real_t> Fn1 = real_t(6) * walberla::math::pi * radius1 * dynamicFluidViscosity *
+      real_t const epsres = cutOffDistanceNormal / radius1;
+      Vector3<real_t> const Fn1 = real_t(6) * walberla::math::pi * radius1 * dynamicFluidViscosity *
                             ( real_t(1) / epsilon - real_t(1) / epsres) *
                             math::dot(u12, e12) * e12;
 
@@ -169,15 +169,15 @@ void computeLubricationCorrectionSphereHalfSpace( const Vector3<real_t> & intera
    if( gapSize < cutOffDistanceTangentialTranslational )
    {
       // add lubrication force and torque due to tangential translation
-      real_t epsres = cutOffDistanceTangentialTranslational / radius1;
-      real_t logEpsDivEpsres = std::log(epsilon/epsres);
-      Vector3<real_t> Ftt1 = real_t(6) * walberla::math::pi * radius1 * dynamicFluidViscosity *
+      real_t const epsres = cutOffDistanceTangentialTranslational / radius1;
+      real_t const logEpsDivEpsres = std::log(epsilon/epsres);
+      Vector3<real_t> const Ftt1 = real_t(6) * walberla::math::pi * radius1 * dynamicFluidViscosity *
                              ( - real_t(8) / real_t(15) ) * logEpsDivEpsres *
                              (u12 - math::dot(u12,e12) * e12);
 
       lubricationForce1 += Ftt1;
 
-      Vector3<real_t> Ttt1 = real_t(8) * walberla::math::pi * radius1 * radius1 * dynamicFluidViscosity *
+      Vector3<real_t> const Ttt1 = real_t(8) * walberla::math::pi * radius1 * radius1 * dynamicFluidViscosity *
                              ( - real_t(1) / real_t(10) ) * logEpsDivEpsres *
                              math::cross(e12, u12);
 
@@ -187,15 +187,15 @@ void computeLubricationCorrectionSphereHalfSpace( const Vector3<real_t> & intera
    if( gapSize < cutOffDistanceTangentialRotational )
    {
       // add lubrication force and torque due to tangential rotation
-      real_t epsres = cutOffDistanceTangentialRotational / radius1;
-      real_t logEpsDivEpsres = std::log(epsilon/epsres);
-      Vector3<real_t> Ftr1 = real_t(6) * walberla::math::pi * radius1 * radius1 * dynamicFluidViscosity *
+      real_t const epsres = cutOffDistanceTangentialRotational / radius1;
+      real_t const logEpsDivEpsres = std::log(epsilon/epsres);
+      Vector3<real_t> const Ftr1 = real_t(6) * walberla::math::pi * radius1 * radius1 * dynamicFluidViscosity *
                              ( real_t(2) / real_t(15) ) * logEpsDivEpsres *
                              math::cross(omega12, e12);
 
       lubricationForce1 += Ftr1;
 
-      Vector3<real_t> Ttr1 = real_t(8) * walberla::math::pi * radius1 * radius1 * radius1 * dynamicFluidViscosity *
+      Vector3<real_t> const Ttr1 = real_t(8) * walberla::math::pi * radius1 * radius1 * radius1 * dynamicFluidViscosity *
                              ( real_t(2) / real_t(5) ) * logEpsDivEpsres *
                              (omega1 - math::dot(omega1, e12) * e12);
 
@@ -260,8 +260,8 @@ public:
 
       if( gapSize > real_t(0))
       {
-         real_t radius1 = sphere1.getRadius();
-         real_t radius2 = sphere2.getRadius();
+         real_t const radius1 = sphere1.getRadius();
+         real_t const radius2 = sphere2.getRadius();
          Vector3<real_t> u1 = ac.getLinearVelocity(idx1);
          Vector3<real_t> u2 = ac.getLinearVelocity(idx2);
          Vector3<real_t> omega1 = ac.getAngularVelocity(idx1);
@@ -303,7 +303,7 @@ public:
 
       if( gapSize > real_t(0))
       {
-         real_t radius1 = sphere.getRadius();
+         real_t const radius1 = sphere.getRadius();
          Vector3<real_t> u1 = ac.getLinearVelocity(idx1);
          Vector3<real_t> u2 = ac.getLinearVelocity(idx2);
          Vector3<real_t> omega1 = ac.getAngularVelocity(idx1);

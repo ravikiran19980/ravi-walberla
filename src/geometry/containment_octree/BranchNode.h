@@ -46,7 +46,7 @@ public:
    inline BranchNode( const shared_ptr<const DistanceObject> & distanceObject, const AABB & aabb, const Scalar epsilon,
                       const uint_t maxDepth, const Scalar minAABBVolume );
 
-   ~BranchNode() override { for( int i = 0; i < 8; ++i ) delete children_[i]; }
+   ~BranchNode() override { for(auto & i : children_) delete i; }
 
    virtual inline bool contains( const Point & p ) const;
 
@@ -59,12 +59,11 @@ public:
 
    virtual const Node<ContainmentOctreeT> * getChild( const uint_t idx ) const { WALBERLA_ASSERT_LESS( idx, 8 ); return children_[idx]; }
 
-private:
-   BranchNode( const BranchNode & other );
-   BranchNode & operator=( const BranchNode & other );
+   BranchNode( const BranchNode & other ) = delete;
+   BranchNode & operator=( const BranchNode & other ) = delete;
 
 protected:
-   const Node<ContainmentOctreeT> * children_[8];
+   const std::array< Node<ContainmentOctreeT>, 8 > * children_;
    Point center_;
 };
 
@@ -73,14 +72,14 @@ template< typename ContainmentOctreeT >
 BranchNode<ContainmentOctreeT>::BranchNode( const shared_ptr<const DistanceObject> & distanceObject, const AABB & aabb, const Scalar epsilon,
                                             const uint_t maxDepth, const Scalar minAABBVolume ) : center_( this->toPoint( aabb.center() ) )
 {
-   for( int i = 0; i < 8; ++i )
-      children_[i] = nullptr;
+   for(auto & i : children_)
+      i = nullptr;
 
    const auto & min = aabb.minCorner();
    const auto & max = aabb.maxCorner();
    const auto & ctr = center_;
 
-   AABB childAABBs[8] = {
+   std::array<AABB, 8> childAABBs = {
       AABB::createFromMinMaxCorner( min[0], min[1], min[2], ctr[0], ctr[1], ctr[2] ),
       AABB::createFromMinMaxCorner( min[0], min[1], ctr[2], ctr[0], ctr[1], max[2] ),
       AABB::createFromMinMaxCorner( min[0], ctr[1], min[2], ctr[0], max[1], ctr[2] ),
@@ -177,8 +176,8 @@ template< typename ContainmentOctreeT >
 uint_t BranchNode<ContainmentOctreeT>::numNodes() const
 {
    uint_t nodes = 1;
-   for( int i = 0; i < 8; ++i )
-      nodes += children_[i]->numNodes();
+   for(auto & i : children_)
+      nodes += i->numNodes();
 
    return nodes;
 }
@@ -188,8 +187,8 @@ template< typename ContainmentOctreeT >
 void BranchNode<ContainmentOctreeT>::numNodes( uint_t & numInside, uint_t & numOutside, uint_t & numIndeterminate, uint_t & numBranch ) const
 {
    ++numBranch;
-   for( int i = 0; i < 8; ++i )
-      children_[i]->numNodes( numInside, numOutside, numIndeterminate, numBranch );
+   for(auto & i : children_)
+      i->numNodes( numInside, numOutside, numIndeterminate, numBranch );
 }
 
 
@@ -197,8 +196,8 @@ template< typename ContainmentOctreeT >
 void BranchNode<ContainmentOctreeT>::volumes( KahanAccumulator & insideVolume, KahanAccumulator & outsideVolume, KahanAccumulator & indeterminateVolume, Scalar volume ) const
 {
    static const Scalar ONE_OVER_EIGHT = Scalar(1) / Scalar(8);
-   for( int i = 0; i < 8; ++i )
-      children_[i]->volumes( insideVolume, outsideVolume, indeterminateVolume, volume * ONE_OVER_EIGHT );
+   for(auto & i : children_)
+      i->volumes( insideVolume, outsideVolume, indeterminateVolume, volume * ONE_OVER_EIGHT );
 }
 
 

@@ -36,9 +36,9 @@ void MetisAssignmentFunctor::operator()( std::vector< std::pair< const PhantomBl
 
       for( auto con = uint_t(0); con < weightEvaluationFctVector_.size(); ++con )
       {
-         real_t vertexWeight = std::max(weightEvaluationFctVector_[con](block), blockBaseWeight_);
+         real_t const vertexWeight = std::max(weightEvaluationFctVector_[con](block), blockBaseWeight_);
 
-         int64_t metisVertexWeight = int64_c( weightMultiplicator_ * vertexWeight );
+         int64_t const metisVertexWeight = int64_c( weightMultiplicator_ * vertexWeight );
 
          WALBERLA_ASSERT_GREATER(metisVertexWeight, int64_t(0));
          metisVertexWeights[con] = metisVertexWeight;
@@ -48,14 +48,14 @@ void MetisAssignmentFunctor::operator()( std::vector< std::pair< const PhantomBl
 
       info.setVertexCoords(it.first->getAABB().center() );
 
-      real_t blockVolume = it.first->getAABB().volume();
-      real_t approximateEdgeLength = std::cbrt( blockVolume );
+      real_t const blockVolume = it.first->getAABB().volume();
+      real_t const approximateEdgeLength = std::cbrt( blockVolume );
 
-      int64_t faceNeighborWeight = int64_c(approximateEdgeLength * approximateEdgeLength ); //common face
-      int64_t edgeNeighborWeight = int64_c( approximateEdgeLength ); //common edge
-      int64_t cornerNeighborWeight = int64_c( 1 ); //common corner
+      int64_t const faceNeighborWeight = int64_c(approximateEdgeLength * approximateEdgeLength ); //common face
+      int64_t const edgeNeighborWeight = int64_c( approximateEdgeLength ); //common edge
+      int64_t const cornerNeighborWeight = int64_c( 1 ); //common corner
 
-      int64_t vertexSize = int64_c(blockVolume);
+      int64_t const vertexSize = int64_c(blockVolume);
       WALBERLA_ASSERT_GREATER(vertexSize, int64_t(0));
       info.setVertexSize( vertexSize );
 
