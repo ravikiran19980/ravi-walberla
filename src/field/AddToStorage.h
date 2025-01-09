@@ -332,9 +332,9 @@ struct Creator : public domain_decomposition::BlockDataCreator< GhostLayerField_
    Creator( const std::string & identifier = std::string(),
             const Set<SUID> & requiredSelectors = Set<SUID>::emptySet(),
             const Set<SUID> & incompatibleSelectors = Set<SUID>::emptySet(),
-            const typename GhostLayerField_T::value_type & initValue = typename GhostLayerField_T::value_type(),
-            const Layout layout = fzyx,
-            const uint_t nrOfGhostLayers = uint_t(1) ) :
+            const typename GhostLayerField_T::value_type &  /*initValue*/ = typename GhostLayerField_T::value_type(),
+            const Layout  /*layout*/ = fzyx,
+            const uint_t  /*nrOfGhostLayers*/ = uint_t(1) ) :
       domain_decomposition::BlockDataCreator< GhostLayerField_T >( shared_ptr< DefaultBlockDataHandling< GhostLayerField_T > >(),
                                                                    identifier, requiredSelectors, incompatibleSelectors )
    {
@@ -379,9 +379,9 @@ struct Creator< GhostLayerField_T,
    Creator( const std::string & identifier = std::string(),
             const Set<SUID> & requiredSelectors = Set<SUID>::emptySet(),
             const Set<SUID> & incompatibleSelectors = Set<SUID>::emptySet(),
-            const typename GhostLayerField_T::value_type & initValue = typename GhostLayerField_T::value_type(),
-            const Layout layout = fzyx,
-            const uint_t nrOfGhostLayers = uint_t(1) ) :
+            const typename GhostLayerField_T::value_type &  /*initValue*/ = typename GhostLayerField_T::value_type(),
+            const Layout  /*layout*/ = fzyx,
+            const uint_t  /*nrOfGhostLayers*/ = uint_t(1) ) :
       domain_decomposition::BlockDataCreator< GhostLayerField_T >( shared_ptr< DefaultBlockDataHandling< GhostLayerField_T > >(),
                                                                    identifier, requiredSelectors, incompatibleSelectors )
    {
@@ -424,7 +424,7 @@ struct Creator< FlagField<T> > : public domain_decomposition::BlockDataCreator< 
    Creator( const std::string & identifier = std::string(),
             const Set<SUID> & requiredSelectors = Set<SUID>::emptySet(),
             const Set<SUID> & incompatibleSelectors = Set<SUID>::emptySet(),
-            const uint_t nrOfGhostLayers = uint_t(1) ) :
+            const uint_t  /*nrOfGhostLayers*/ = uint_t(1) ) :
       domain_decomposition::BlockDataCreator< FlagField<T> >( shared_ptr< DefaultBlockDataHandling< FlagField<T> > >(),
                                                               identifier, requiredSelectors, incompatibleSelectors )
    {
