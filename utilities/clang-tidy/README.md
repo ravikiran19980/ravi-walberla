@@ -4,6 +4,35 @@ See also the [Clang-Tidy Documentation](https://clang.llvm.org/extra/clang-tidy/
 
 This document briefly explains how to run a clang-tidy analysis and (auto-)fixing pass on the waLBerla code base.
 
+## tl;dr
+
+ 1. Set up build system: `cmake --preset clang-tidy`
+ 2. Navigate to `build/clang-tidy`
+ 3. Filter the compile command database: 
+
+```bash
+python utilities/clang-tidy/filterCompileCommands.py -f compile_commands.json --exclude * --include folder1 folder2 ....
+```
+
+ 4. Run clang-tidy:
+
+```bash
+run-clang-tidy -quiet -header-filter=".*/(module1|module2|...)/.*" > tidy.txt
+```
+
+ 5. Inspect the output:
+
+```bash
+python utilities/clang-tidy/clangTidySummary.py tidy.txt 
+less tidy.txt
+```
+
+ 6. Fix the errors, if applicable use autofix:
+
+```bash
+run-clang-tidy -header-filter=".*/(module1|module2|...)/.*"  -checks=-*,<diagnostic-to-fix> -fix
+```
+
 ## Set up CMake
 
 To run clang-tidy, CMake needs to be configured to emit a compile command data base which clang-tidy
@@ -55,7 +84,9 @@ The above configuration:
    in `core` and `blockforest`, you can set `WALBERLA_BUILD_WITH_METIS` and `WALBERLA_BUILD_WITH_PARMETIS` to `false`.
  - prepares the build system also for tests, benchmarks and tutorials - if you do not wish to analyze those, you can exlude them.
 
-Copy the preset JSON code to the `CMakeUserPresets.json` file in your waLBerla root directory and run `cmake --preset clang-tidy` to set up the build system.
+This preset is contained in the `CMakePresets.json` file. To generate the build system defined by it, run `cmake --preset clang-tidy`.
+
+## Filter Translation Units to be Analyzed
 
 Next, navigate to the `build/clang-tidy` subdirectory.
 There, you will find the compile command data base `compile_commands.json`.
