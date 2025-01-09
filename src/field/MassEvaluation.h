@@ -156,7 +156,7 @@ public:
       initialMass_( real_t(0) ), minMass_( real_t(0) ), maxMass_( real_t(0) ),
       requiredSelectors_(requiredSelectors), incompatibleSelectors_( incompatibleSelectors )
    {
-      static_assert( (std::is_same< Filter_T, DefaultEvaluationFilter >::value),
+      static_assert( (std::is_same_v< Filter_T, DefaultEvaluationFilter >),
                      "This constructor is only available if DefaultEvaluationFilter is set as filter type!" );
 
       auto _blocks = blocks.lock();

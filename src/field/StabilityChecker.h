@@ -301,7 +301,7 @@ public:
                                   "With FASTMATH activated NaNs are not defined and thus the checkFunction will not work. "
                                   "To make it work provide a different checkFunction.")
 #endif
-     static_assert( (std::is_same< Filter_T, DefaultEvaluationFilter >::value),
+     static_assert( (std::is_same_v< Filter_T, DefaultEvaluationFilter >),
                    "This constructor is only available if DefaultEvaluationFilter is set as filter type!" );
   }
 
@@ -314,7 +314,7 @@ public:
    outputToStream_( outputToStream ), outputVTK_( outputVTK ),
    requiredSelectors_(requiredSelectors), incompatibleSelectors_( incompatibleSelectors )
   {
-     static_assert( (std::is_same< Filter_T, DefaultEvaluationFilter >::value),
+     static_assert( (std::is_same_v< Filter_T, DefaultEvaluationFilter >),
                    "This constructor is only available if DefaultEvaluationFilter is set as filter type!" );
   }
 

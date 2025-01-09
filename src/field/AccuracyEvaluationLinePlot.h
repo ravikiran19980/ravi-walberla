@@ -218,7 +218,7 @@ public:
       relLinePoint_( Vector3<real_t>( real_c(0.5) ) ), normalizationFactor_( real_t(1) ),
       requiredSelectors_(requiredSelectors), incompatibleSelectors_( incompatibleSelectors )
    {
-      static_assert( (std::is_same< Filter_T, DefaultEvaluationFilter >::value),
+      static_assert( (std::is_same_v< Filter_T, DefaultEvaluationFilter >),
                      "This constructor is only available if DefaultEvaluationFilter is set as filter type!" );
 
       auto _blocks = blocks_.lock();

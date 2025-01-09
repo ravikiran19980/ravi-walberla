@@ -75,7 +75,7 @@ namespace field {
       using pointer = T*;
       using reference = T&;
 
-      using FieldType = Field<typename std::remove_const<T>::type, fieldFSize>;
+      using FieldType = Field<std::remove_const_t<T>, fieldFSize>;
 
       static const uint_t F_SIZE = fieldFSize;
 
@@ -162,7 +162,7 @@ namespace field {
       //****************************************************************************************************************
 
 
-      friend class Field<typename std::remove_const<T>::type, fieldFSize>;
+      friend class Field<std::remove_const_t<T>, fieldFSize>;
 
       void incrementLine();
       void decrementLine();
@@ -220,7 +220,7 @@ namespace field {
    {
    public:
       using Parent = FieldIterator<T, fieldFSize>;
-      using FieldType = Field<typename std::remove_const<T>::type, fieldFSize>;
+      using FieldType = Field<std::remove_const_t<T>, fieldFSize>;
 
       //**Constructor/Destructor****************************************************************************************
       /*!\name Constructor/Destructor */
@@ -263,7 +263,7 @@ namespace field {
    {
    public:
        using Parent = FieldIterator<T, fieldFSize>;
-       using FieldType = Field<typename std::remove_const<T>::type, fieldFSize>;
+       using FieldType = Field<std::remove_const_t<T>, fieldFSize>;
 
       //**Constructor/Destructor****************************************************************************************
       /*!\name Constructor/Destructor */

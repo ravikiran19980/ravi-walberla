@@ -118,8 +118,8 @@ struct AddToStorage
 
 template< typename GhostLayerField_T, typename BlockStorage_T >
 struct AddToStorage< GhostLayerField_T, BlockStorage_T,
-                     typename std::enable_if< ( std::is_integral< typename GhostLayerField_T::value_type >::value || std::is_floating_point< typename GhostLayerField_T::value_type >::value ) &&
-	                                            ! std::is_same< GhostLayerField_T, FlagField< typename GhostLayerField_T::value_type > >::value >::type >
+                     std::enable_if_t< ( std::is_integral_v< typename GhostLayerField_T::value_type > || std::is_floating_point_v< typename GhostLayerField_T::value_type > ) &&
+	                                            ! std::is_same_v< GhostLayerField_T, FlagField< typename GhostLayerField_T::value_type > > > >
 {
    using Value_T = typename GhostLayerField_T::value_type;
    static BlockDataID add( const shared_ptr< BlockStorage_T > & blocks, const std::string & identifier,
@@ -345,8 +345,8 @@ struct Creator : public domain_decomposition::BlockDataCreator< GhostLayerField_
 
 template< typename GhostLayerField_T >
 struct Creator< GhostLayerField_T,
-                typename std::enable_if< std::is_integral< typename GhostLayerField_T::value_type >::value ||
-                                         std::is_floating_point< typename GhostLayerField_T::value_type >::value  >::type >
+                std::enable_if_t< std::is_integral_v< typename GhostLayerField_T::value_type > ||
+                                         std::is_floating_point_v< typename GhostLayerField_T::value_type > > >
    : public domain_decomposition::BlockDataCreator< GhostLayerField_T >
 {
    Creator( const shared_ptr< StructuredBlockStorage > & blocks,
