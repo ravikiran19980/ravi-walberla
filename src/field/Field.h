@@ -349,7 +349,7 @@ namespace field {
 
    private:
 
-      Field & operator=( const Field & );
+      Field & operator=( const Field & ) = delete;
 
       T * values_;           //!< Linearized, 1-dimensional representation of the 4D data grid.
       T * valuesWithOffset_; //!< set by setOffsets(), to allow derived classes to change the offset
