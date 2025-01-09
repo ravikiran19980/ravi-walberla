@@ -57,8 +57,8 @@ void randomizeVector( std::vector<unsigned char> & v )
 
    size_t const oldSize = v.size();
    v.resize( v.capacity() );
-   for(typename std::vector<unsigned char>::iterator it = v.begin(); it != v.end(); ++it)
-      *it = static_cast<unsigned char>( dist(rng) );
+   for(unsigned char & it : v)
+      it = static_cast<unsigned char>( dist(rng) );
    v.resize(oldSize);
 }
 
@@ -70,8 +70,8 @@ void randomizeVector( std::vector<char> & v )
 
    size_t const oldSize = v.size();
    v.resize( v.capacity() );
-   for(typename std::vector<char>::iterator it = v.begin(); it != v.end(); ++it)
-      *it = static_cast<char>( dist(rng) );
+   for(char & it : v)
+      it = static_cast<char>( dist(rng) );
    v.resize(oldSize);
 }
 
@@ -92,8 +92,8 @@ void makeRandomMultiArray( std::vector<unsigned char> & ma) {
    mt11213b rng;
    std::uniform_int_distribution<walberla::int16_t> dist(std::numeric_limits<unsigned char>::min(), std::numeric_limits<unsigned char>::max());
 
-   for (auto it = ma.begin(); it != ma.end(); ++it)
-      *it = static_cast<unsigned char>( dist(rng));
+   for (unsigned char & it : ma)
+      it = static_cast<unsigned char>( dist(rng));
 }
 
 template<>
@@ -101,8 +101,8 @@ void makeRandomMultiArray( std::vector<char> & ma)
 {
    mt11213b rng;
    std::uniform_int_distribution<int16_t> dist( std::numeric_limits<char>::min(), std::numeric_limits<char>::max() );
-   for (auto it = ma.begin(); it != ma.end(); ++it)
-      *it = static_cast<char>( dist(rng) );
+   for (char & it : ma)
+      it = static_cast<char>( dist(rng) );
 }
 
 template<typename T>
@@ -133,27 +133,27 @@ int main(int argc, char** argv)
 
    for(std::vector<size_t>::const_iterator xSize = sizes.begin(); xSize != sizes.end(); ++xSize)
       for(std::vector<size_t>::const_iterator ySize = sizes.begin(); ySize != sizes.end(); ++ySize)
-         for(std::vector<size_t>::const_iterator zSize = sizes.begin(); zSize != sizes.end(); ++zSize)
+         for(unsigned long size : sizes)
          {
             std::stringstream ss;
-            ss << "geometry_testfile_" << *xSize << "_" << *ySize << "_" << *zSize << ".dat";
+            ss << "geometry_testfile_" << *xSize << "_" << *ySize << "_" << size << ".dat";
 
             std::string const filename = ss.str();
 
-            runTests<unsigned char>(filename, *xSize, *ySize, *zSize);
+            runTests<unsigned char>(filename, *xSize, *ySize, size);
 
             if(longrun)
             {
-               runTests<char>(filename, *xSize, *ySize, *zSize);
+               runTests<char>(filename, *xSize, *ySize, size);
 
-               runTests<short>(filename, *xSize, *ySize, *zSize);
-               runTests<unsigned short>(filename, *xSize, *ySize, *zSize);
+               runTests<short>(filename, *xSize, *ySize, size);
+               runTests<unsigned short>(filename, *xSize, *ySize, size);
 
-               runTests<int>(filename, *xSize, *ySize, *zSize);
-               runTests<unsigned int>(filename, *xSize, *ySize, *zSize);
+               runTests<int>(filename, *xSize, *ySize, size);
+               runTests<unsigned int>(filename, *xSize, *ySize, size);
 
-               runTests<long>(filename, *xSize, *ySize, *zSize);
-               runTests<unsigned long>(filename, *xSize, *ySize, *zSize);
+               runTests<long>(filename, *xSize, *ySize, size);
+               runTests<unsigned long>(filename, *xSize, *ySize, size);
             }
          }
 }
@@ -301,10 +301,7 @@ void runTests(const std::string & filename, size_t xSize, size_t ySize, size_t z
    if( zSize > size_t( 1 ) )
       blockSizesZ.push_back(std::max(zSize / 2 - 1, size_t(1)));
 
-   for( auto xit = blockSizesX.begin(); xit != blockSizesX.end(); ++xit ) { size_t blockSizeX = *xit;
-      for( auto yit = blockSizesY.begin(); yit != blockSizesY.end(); ++yit ) { size_t blockSizeY = *yit;
-         for( auto zit = blockSizesZ.begin(); zit != blockSizesZ.end(); ++zit ) { size_t blockSizeZ = *zit;
-            for(size_t zz = 0; zz <= (zSize - 1) / blockSizeZ; ++zz) {
+   for(unsigned long blockSizeX : blockSizesX) { for(unsigned long blockSizeY : blockSizesY) { for(unsigned long blockSizeZ : blockSizesZ) { for(size_t zz = 0; zz <= (zSize - 1) / blockSizeZ; ++zz) {
                for(size_t yy = 0; yy <= (ySize - 1) / blockSizeY; ++yy) {
                   for(size_t xx = 0; xx <= (xSize - 1) / blockSizeX; ++xx)
                   {
@@ -352,10 +349,7 @@ void runTests(const std::string & filename, size_t xSize, size_t ySize, size_t z
 
    geometryFile.create(filename, xSize, ySize, zSize);
 
-   for( auto xit = blockSizesX.begin(); xit != blockSizesX.end(); ++xit ) { size_t blockSizeX = *xit;
-      for( auto yit = blockSizesY.begin(); yit != blockSizesY.end(); ++yit ) { size_t blockSizeY = *yit;
-         for( auto zit = blockSizesZ.begin(); zit != blockSizesZ.end(); ++zit ) { size_t blockSizeZ = *zit;
-            for(size_t zz = 0; zz <= (zSize - 1) / blockSizeZ; ++zz) {
+   for(unsigned long blockSizeX : blockSizesX) { for(unsigned long blockSizeY : blockSizesY) { for(unsigned long blockSizeZ : blockSizesZ) { for(size_t zz = 0; zz <= (zSize - 1) / blockSizeZ; ++zz) {
                for(size_t yy = 0; yy <= (ySize - 1) / blockSizeY; ++yy) {
                   for(size_t xx = 0; xx <= (xSize - 1) / blockSizeX; ++xx)
                   {
