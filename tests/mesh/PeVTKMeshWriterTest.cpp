@@ -51,7 +51,7 @@ using namespace walberla;
 using namespace walberla::pe;
 using namespace walberla::mesh::pe;
 
-typedef std::tuple<ConvexPolyhedron, Plane> BodyTuple ;
+using BodyTuple = std::tuple<ConvexPolyhedron, Plane> ;
 
 std::vector<Vector3<real_t>> generatePointCloudCube()
 {
