@@ -69,7 +69,7 @@ using namespace lbm_mesapd_coupling::psm::gpu;
 using flag_t      = walberla::uint8_t;
 using FlagField_T = FlagField< flag_t >;
 
-typedef pystencils::PSMPackInfo PackInfo_T;
+using PackInfo_T = pystencils::PSMPackInfo;
 
 ///////////
 // FLAGS //
