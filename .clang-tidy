@@ -26,6 +26,7 @@ misc-*,
 -misc-use-internal-linkage,
 -misc-use-anonymous-namespace,
 -misc-const-correctness,
+-misc-misplaced-const
 
 modernize-*,
 -modernize-use-auto,
