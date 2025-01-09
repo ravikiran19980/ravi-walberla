@@ -195,7 +195,7 @@ void VTKMeshWriter<MeshType>::writeFaceData( const T & faceDataSources, const Fa
 template< typename MeshType >
 VTKMeshWriter<MeshType>::VTKMeshWriter( const shared_ptr<const MeshType> & mesh, const std::string & identifier, const uint_t writeFrequency,
    const std::string & baseFolder )
-   : mesh_( mesh ), writeFrequency_( writeFrequency ), identifier_( identifier ), baseFolder_( baseFolder ), 
+   : mesh_( mesh ), writeFrequency_( writeFrequency ), identifier_( identifier ), baseFolder_( baseFolder )
 {
    WALBERLA_ROOT_SECTION()
    {
@@ -298,9 +298,9 @@ void VTKMeshWriter<MeshType>::writePiece( std::ostream & os ) const
 
    os << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"binary\">\n";
    os << "          ";
-   for( auto it = offsets.begin(); it != offsets.end(); ++it )
+   for(int & offset : offsets)
    {
-      b64 << *it;
+      b64 << offset;
    }
    b64.toStream( os );
 
@@ -367,10 +367,10 @@ void VTKMeshWriter<MeshType>::operator()()
       {
          std::ostringstream filePathVtp;
          filePathVtp << baseFolder_ << '/' << identifier_ << '/' << identifier_ << '_' << timestep_ << ".vtp";
-      
+
          std::ofstream ofsVtp;
          ofsVtp.open( filePathVtp.str().c_str() );
-  
+
          write( ofsVtp );
 
          std::ostringstream filePathPvd;
