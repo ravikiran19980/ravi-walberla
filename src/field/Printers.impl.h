@@ -44,7 +44,7 @@ namespace field {
       CellInterval size = field.xyzSize();
 
       Cell coord = size.min();
-      const char * coordNames [3] = { "x", "y", "z" };
+      std::array<const char *, 3> coordNames = { "x", "y", "z" };
 
       int const innerCoord = (sliceCoord + 1) % 3;
       int const outerCoord = (sliceCoord + 2) % 3;
@@ -99,7 +99,7 @@ namespace field {
       WALBERLA_ASSERT(sliceCoord >=0 && sliceCoord <3 );
       cell_idx_t glCellIdx = cell_idx_c ( field.nrOfGhostLayers() );
 
-      const char * coordNames [3] = { "x", "y", "z" };
+      std::array<const char *, 3> coordNames = { "x", "y", "z" };
 
       int const innerCoord = (sliceCoord + 1) % 3;
       int const outerCoord = (sliceCoord + 2) % 3;
@@ -171,7 +171,7 @@ namespace field {
       WALBERLA_ASSERT(sliceCoord >=0 && sliceCoord <3 );
       cell_idx_t glCellIdx = cell_idx_c ( field.nrOfGhostLayers() );
 
-      const char * coordNames [3] = { "x", "y", "z" };
+      std::array<const char *, 3> coordNames = { "x", "y", "z" };
 
       int const innerCoord = (sliceCoord + 1) % 3;
       int const outerCoord = (sliceCoord + 2) % 3;

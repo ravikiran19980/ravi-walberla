@@ -646,7 +646,7 @@ inline bool PackInfo< Field_T, Stencil >::isCornerDirection( stencil::Direction 
 template< typename Field_T, typename Stencil >
 inline bool PackInfo< Field_T, Stencil >::blocksConnectedByFaces( const Block * block, const BlockID & neighbor )
 {
-   const uint_t face[] = { uint_t(4), uint_t(10), uint_t(12), uint_t(13), uint_t(15), uint_t(21) };
+   const std::array<uint_t, 6> face = { uint_t(4), uint_t(10), uint_t(12), uint_t(13), uint_t(15), uint_t(21) };
    for(const auto & i : face)
    {
       for( uint_t n = 0; n != block->getNeighborhoodSectionSize( i ); ++n )
@@ -661,10 +661,10 @@ inline bool PackInfo< Field_T, Stencil >::blocksConnectedByFaces( const Block * 
 template< typename Field_T, typename Stencil >
 inline bool PackInfo< Field_T, Stencil >::blocksConnectedByEdges( const Block * block, const BlockID & neighbor )
 {
-   const uint_t face[] = { uint_t( 1), uint_t( 3), uint_t( 5), uint_t( 7), uint_t( 9), uint_t(11),
+   const std::array<uint_t, 12> edges = { uint_t( 1), uint_t( 3), uint_t( 5), uint_t( 7), uint_t( 9), uint_t(11),
                            uint_t(14), uint_t(16), uint_t(18), uint_t(20), uint_t(22), uint_t(24) };
 
-   for(const auto & i : face)
+   for(const auto & i : edges)
    {
       for( uint_t n = 0; n != block->getNeighborhoodSectionSize( i ); ++n )
          if( block->getNeighborId( i, n ) == neighbor )
