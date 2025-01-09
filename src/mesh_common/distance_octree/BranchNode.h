@@ -181,7 +181,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( co
       ChildInfo( children_[4], p ), ChildInfo( children_[5], p ),
       ChildInfo( children_[6], p ), ChildInfo( children_[7], p )
    };
-   std::sort( childinfos, childinfos + 8 );
+   std::sort( std::begin(childinfos), std::end(childinfos) );
 
    Scalar absMinSqSignedDistance = childinfos[0].child->sqSignedDistance( p );
    for( int i = 1; i < 8; ++i )
@@ -210,7 +210,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( co
       ChildInfo( children_[4], p ), ChildInfo( children_[5], p ),
       ChildInfo( children_[6], p ), ChildInfo( children_[7], p )
    };
-   std::sort( childinfos, childinfos + 8 );
+   std::sort( std::begin(childinfos), std::end(childinfos) );
 
    Scalar absMinSqSignedDistance = childinfos[0].child->sqSignedDistance( p, closestTriangle );
 
@@ -243,7 +243,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( co
       ChildInfo( children_[4], p ), ChildInfo( children_[5], p ),
       ChildInfo( children_[6], p ), ChildInfo( children_[7], p )
    };
-   std::sort( childinfos, childinfos + 8 );
+   std::sort( std::begin(childinfos), std::end(childinfos) );
 
    Scalar absMinSqSignedDistance = childinfos[0].child->sqSignedDistance( p, closestPoint );
 
@@ -276,7 +276,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( co
       ChildInfo( children_[4], p ), ChildInfo( children_[5], p ),
       ChildInfo( children_[6], p ), ChildInfo( children_[7], p )
    };
-   std::sort( childinfos, childinfos + 8 );
+   std::sort( std::begin(childinfos), std::end(childinfos) );
 
    Scalar absMinSqSignedDistance = childinfos[0].child->sqSignedDistance( p, closestPoint, normal );
 
@@ -314,7 +314,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Po
       ChildInfo( children_[4], p ), ChildInfo( children_[5], p ),
       ChildInfo( children_[6], p ), ChildInfo( children_[7], p )
    };
-   std::sort( childinfos, childinfos + 8 );
+   std::sort( std::begin(childinfos), std::end(childinfos) );
 
    Scalar absMinSqDistance = childinfos[0].child->sqDistance( p );
    for(int i = 1; i < 8; ++i)
@@ -343,7 +343,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Po
       ChildInfo( children_[4], p ), ChildInfo( children_[5], p ),
       ChildInfo( children_[6], p ), ChildInfo( children_[7], p )
    };
-   std::sort( childinfos, childinfos + 8 );
+   std::sort( std::begin(childinfos), std::end(childinfos) );
 
    Scalar absMinSqDistance = childinfos[0].child->sqDistance( p, closestTriangle );
 
@@ -376,7 +376,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Po
       ChildInfo( children_[4], p ), ChildInfo( children_[5], p ),
       ChildInfo( children_[6], p ), ChildInfo( children_[7], p )
    };
-   std::sort( childinfos, childinfos + 8 );
+   std::sort( std::begin(childinfos), std::end(childinfos) );
 
    Scalar absMinSqDistance = childinfos[0].child->sqDistance( p, closestPoint );
 
@@ -409,7 +409,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Po
       ChildInfo( children_[4], p ), ChildInfo( children_[5], p ),
       ChildInfo( children_[6], p ), ChildInfo( children_[7], p )
    };
-   std::sort( childinfos, childinfos + 8 );
+   std::sort( std::begin(childinfos), std::end(childinfos) );
 
    Scalar absMinSqDistance = childinfos[0].child->sqDistance( p, closestPoint, normal );
 
