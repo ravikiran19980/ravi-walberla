@@ -51,7 +51,7 @@ const uint_t confCells []           = { 30, 30, 30 };
 const bool   useGui = false;
 
 
-typedef GhostLayerField<real_t,1> ScalarField;
+using ScalarField = GhostLayerField<real_t, 1>;
 
 //======================================================================================================================
 //

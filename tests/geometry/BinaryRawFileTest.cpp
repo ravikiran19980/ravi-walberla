@@ -49,7 +49,7 @@ void test( const std::string & filename, const Vector3<uint_t> & size, const std
       real_t( 1 ), 
       uint_t( 1 ), uint_t( 1 ), uint_t( 1 ) );
 
-   typedef GhostLayerField< uint8_t, uint_t( 1 ) > ScalarField;
+   using ScalarField = GhostLayerField<uint8_t, uint_t(1)>;
 
    BlockDataID scalarFieldID = field::addToStorage<ScalarField>( blocks, "BinaryRawFile" );
 
@@ -90,7 +90,7 @@ void testScaled( const std::string & filename, const Vector3<uint_t> & size, con
 
    BinaryRawFileInterpolator const brfi( blocks->getDomain(), brf, BinaryRawFileInterpolator::NEAREST_NEIGHBOR );
 
-   typedef GhostLayerField< uint8_t, uint_t( 1 ) > ScalarField;
+   using ScalarField = GhostLayerField<uint8_t, uint_t(1)>;
 
    BlockDataID scalarFieldID = field::addToStorage<ScalarField>( blocks, "BinaryRawFile" );
 
