@@ -56,7 +56,7 @@ public:
    void numTrianglesToStream( std::ostream & os, const uint_t level ) const override;
    uint_t height() const override { return 0; }
    uint_t numChildren() const override { return 0; };
-   const Node<MeshType> * getChild( const uint_t /*idx*/ ) const override { WALBERLA_ABORT("DistanceOctree: You are requesting access to children of a Leaf Node!"); return 0; }
+   const Node<MeshType> * getChild( const uint_t /*idx*/ ) const override { WALBERLA_ABORT("DistanceOctree: You are requesting access to children of a Leaf Node!"); return nullptr; }
    
 protected:
    std::vector<FaceHandle> triangles_;
