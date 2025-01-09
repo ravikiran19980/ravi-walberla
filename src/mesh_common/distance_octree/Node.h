@@ -41,7 +41,7 @@ public:
 
    template< typename InputIterator >
    Node( const MeshType & mesh, InputIterator beginFh, InputIterator endFh ) : aabb_( computeAABBForFaces( mesh, beginFh, endFh ) ) {}
-   virtual ~Node() { }
+   virtual ~Node() = default;
 
    const AABB & getAABB() const { return aabb_; }
 
