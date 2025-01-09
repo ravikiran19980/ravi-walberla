@@ -69,9 +69,9 @@ public:
    uint_t numChildren() const override { return uint_t(8); };
    const Node<MeshType> * getChild( const uint_t idx ) const override { WALBERLA_ASSERT_LESS( idx, 8 ); return children_[idx]; };
 
-private:
    BranchNode( const BranchNode & other ) = delete;
    BranchNode & operator=( const BranchNode & other ) = delete;
+private:
 
    struct ChildInfo
    {
