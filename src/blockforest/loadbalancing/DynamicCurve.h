@@ -285,6 +285,7 @@ void DynamicCurveBalance< PhantomData_T >::allGatherNoWeight( std::vector< std::
 {
    std::vector< BlockID > localBlocks;
 
+   localBlocks.reserve(targetProcess.size());
    for(auto & processIt : targetProcess)
       localBlocks.push_back(processIt.first->getId() );
    
@@ -405,6 +406,7 @@ void DynamicCurveBalance< PhantomData_T >::masterNoWeight( std::vector< std::pai
 {
    std::vector< BlockID > localBlocks;
 
+   localBlocks.reserve(targetProcess.size());
    for(auto & processIt : targetProcess)
       localBlocks.push_back(processIt.first->getId() );
    

@@ -472,9 +472,9 @@ bool DynamicDiffusionBalance< PhantomData_T >::operator()( std::vector< std::pai
                      }
                   }
                   std::set< uint_t > assigned;
-                  for( auto type = connectionType.begin(); type != connectionType.end(); ++type )
+                  for(auto & type : connectionType)
                   {
-                     for(uint_t index : *type)
+                     for(uint_t index : type)
                      {
                         if( assigned.find(index) == assigned.end() )
                         {
@@ -750,9 +750,9 @@ bool DynamicDiffusionBalance< PhantomData_T >::operator()( std::vector< std::pai
                if( regardConnectivity_ && iteration < disregardConnectivityStart_ )
                {
                   std::set< uint_t > assigned;
-                  for( auto type = it->second[l].begin(); type != it->second[l].end(); ++type )
+                  for(auto & type : it->second[l])
                   {
-                     for(uint_t index : *type)
+                     for(uint_t index : type)
                      {
                         if( assigned.find(index) == assigned.end() )
                         {
@@ -939,10 +939,10 @@ bool DynamicDiffusionBalance< PhantomData_T >::operator()( std::vector< std::pai
       
       std::map< BlockID, std::vector< uint_t > > processToSendTo;
       
-      for( auto it = blocksToSend.begin(); it != blocksToSend.end(); ++it )
+      for(auto & it : blocksToSend)
       {
-         const uint_t p = it->first;
-         for(auto & id : it->second)
+         const uint_t p = it.first;
+         for(auto & id : it.second)
             processToSendTo[ id ].push_back( p );
       }
       

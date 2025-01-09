@@ -403,7 +403,7 @@ BlockForest::BlockForest( const uint_t process, const char* const filename, cons
 
    // domain AABB
 
-   real_t domain[6];
+   std::array< real_t, 6 > domain;
 
    for(double & i : domain) {
       i = byteArrayToReal< real_t >( buffer, offset );
@@ -832,11 +832,11 @@ std::map< uint_t, std::vector< Vector3<real_t> > > BlockForest::getNeighboringPr
       const auto & block = it.second;
       const AABB & blockAABB = block->getAABB();
 
-      const real_t eps[] = { real_c( 1.0E-6 ) * ( blockAABB.xMax() - blockAABB.xMin() ),
+      const std::array< real_t, 3 > eps = { real_c( 1.0E-6 ) * ( blockAABB.xMax() - blockAABB.xMin() ),
                              real_c( 1.0E-6 ) * ( blockAABB.yMax() - blockAABB.yMin() ),
                              real_c( 1.0E-6 ) * ( blockAABB.zMax() - blockAABB.zMin() ) };
 
-      uint_t i[] = { uint_c(0), uint_c(0), uint_c(0) };
+      std::array< uint_t, 3 > i = { uint_c(0), uint_c(0), uint_c(0) };
 
       for( i[2] = 0; i[2] != 3; ++i[2] ) {
          for( i[1] = 0; i[1] != 3; ++i[1] ) {
@@ -1492,6 +1492,7 @@ void BlockForest::constructBlockInformation( const std::vector< BlockID > & ids,
 void BlockForest::constructBlockInformation()
 {
    std::vector< std::pair< BlockID, std::pair< uint_t, Set<SUID> > > > data;
+   data.reserve(blocks_.size());
    for(auto & block : blocks_)
    {
       data.emplace_back( block.first, std::make_pair( process_, block.second->getState() ) );
@@ -1585,9 +1586,9 @@ bool BlockForest::determineBlockTargetLevels( bool & additionalRefreshCycleRequi
 
    auto it0 = minTargetLevelsCallback.begin();
    auto it1 = blocksAlreadyMarkedForRefinement.begin();
-   for( auto it = mapping.begin(); it != mapping.end(); ++it )
+   for( int m : mapping )
    {
-      if( *it == 0 )
+      if( m == 0 )
       {
          WALBERLA_CHECK( it0 != minTargetLevelsCallback.end() );
          minTargetLevelsAllBlocks.push_back( *it0 );
@@ -1595,7 +1596,7 @@ bool BlockForest::determineBlockTargetLevels( bool & additionalRefreshCycleRequi
       }
       else
       {
-         WALBERLA_ASSERT_EQUAL( *it, 1 );
+         WALBERLA_ASSERT_EQUAL( m, 1 );
          WALBERLA_CHECK( it1 != blocksAlreadyMarkedForRefinement.end() );
          WALBERLA_CHECK_NOT_NULLPTR( *it1 );
          WALBERLA_CHECK_EQUAL( (*it1)->getTargetLevel(), (*it1)->getLevel() + uint_t(1) );
@@ -2597,6 +2598,7 @@ void BlockForest::update( PhantomBlockForest & phantomForest )
    WALBERLA_LOG_PROGRESS( "BlockForest refresh: - unpacking block data from buffers" );
 
    std::vector< std::pair< Block *, std::vector< std::pair< Set<SUID>, mpi::RecvBuffer * > > > > dataToUnpack;
+   dataToUnpack.reserve(blocksToUnpack.size());
 
    for(auto & it : blocksToUnpack)
       dataToUnpack.emplace_back( it.first, it.second );

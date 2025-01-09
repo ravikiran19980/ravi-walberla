@@ -134,7 +134,7 @@ void BlockReconstruction::reconstructNeighborhood( BLOCK* block, const std::vect
    std::vector< real_t >                                      neighborhoodSectionBlockCenters;
    std::set< const NeighborhoodReconstructionBlock* >         neighborhood;
    std::map< const NeighborhoodReconstructionBlock*, uint_t > neighborhoodIndex;
-   std::vector< uint_t >                                      neighborhoodSectionBlocks[26];
+   std::array< std::vector< uint_t >, 26 >                    neighborhoodSectionBlocks;
 
    block->clearNeighborhood();
 

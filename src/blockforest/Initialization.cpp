@@ -850,9 +850,9 @@ memory_t cellWeightedCommunicationCost( const SetupBlock* const a, const SetupBl
 
 memory_t uniformFacesDominantCommunication( const SetupBlock* const a, const SetupBlock* const b ) {
 
-   uint_t faces[] = { 4, 10, 12, 13, 15, 21 };
+   std::array< uint_t, 6 > faces = { 4, 10, 12, 13, 15, 21 };
 
-   for(unsigned long face : faces) {
+   for(uint_t face : faces) {
       for( uint_t j = 0; j != a->getNeighborhoodSectionSize(face); ++j )
          if( a->getNeighbor(face,j) == b )
             return numeric_cast< memory_t >(1000);

@@ -144,7 +144,7 @@ private:
    BlockID id_;
    uint_t  level_; // 0=coarse (= block is located on the initial grid) -> 1 -> 2 -> finer
 
-   std::vector< NeighborBlock* >  neighborhoodSection_[26]; // the 26 neighborhood sections
+   std::array< std::vector< NeighborBlock* >, 26 >  neighborhoodSection_; // the 26 neighborhood sections
    std::vector< NeighborBlock  >  neighborhood_;            // all neighbor blocks
 
    uint_t targetLevel_; // | level_ - targetLevel_ | <= 1

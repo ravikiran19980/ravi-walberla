@@ -813,7 +813,7 @@ uint_t GlobalLoadBalancing::metis( const std::vector< BLOCK* >& blocks, const me
    std::vector< int64_t > part( uint_c(nvtxs) );
 
    real_t maxUbvec = metisConfig.maxUbvec();
-   real_t ubvec[]  = { real_c(1.01), maxUbvec };
+   std::array< real_t, 2 > ubvec  = { real_c(1.01), maxUbvec };
 
    // first call to METIS: always try to balance the workload as good as possible, but allow large imbalances concerning the memory (-> ubvec[1])
 
@@ -990,14 +990,14 @@ void GlobalLoadBalancing::metis2( const std::vector< BLOCK* >& blocks, const uin
    
    std::vector< int64_t > part( uint_c(nvtxs) );
    
-   int64_t options[ METIS_NOPTIONS ];
-   core::METIS_SetDefaultOptions( options );
-   options[ core::METIS_OPTION_NITER ] = 1000;
-   options[ core::METIS_OPTION_NSEPS ] = 100;
-   options[ core::METIS_OPTION_NCUTS ] = 100;
-   
+   std::array< int64_t, METIS_NOPTIONS > options;
+   core::METIS_SetDefaultOptions( options.data() );
+   options[ size_t(core::METIS_OPTION_NITER) ] = 1000;
+   options[ size_t(core::METIS_OPTION_NSEPS) ] = 100;
+   options[ size_t(core::METIS_OPTION_NCUTS) ] = 100;
+
    int ret = core::METIS_PartGraphKway( &nvtxs, &ncon, &( xadj[ 0 ] ), &( adjncy[ 0 ] ), &( vwgt[ 0 ] ), nullptr, &( adjwgt[0] ),
-                                  &nparts, nullptr, nullptr, options, &objval, &( part[ 0 ] ) );
+                                  &nparts, nullptr, nullptr, options.data(), &objval, &( part[ 0 ] ) );
 
    if( ret != core::METIS_OK ) 
    {
@@ -1053,10 +1053,10 @@ std::string GlobalLoadBalancing::metisErrorCodeToString( int errorCode )
 uint_t GlobalLoadBalancing::metisAdaptPartVector( std::vector< int64_t >& part, const uint_t numberOfProcesses )
 {
    std::vector<bool> hasBlock( numberOfProcesses, false );
-   for( uint_t i = 0; i != part.size(); ++i )
+   for( auto proc: part )
    {
-      WALBERLA_ASSERT_LESS( part[i], int_c( numberOfProcesses ) );
-      hasBlock[ uint_c(part[i]) ] = true;
+      WALBERLA_ASSERT_LESS( proc, int_c( numberOfProcesses ) );
+      hasBlock[ uint_c(proc) ] = true;
    }
 
    uint_t nProcesses = 0;

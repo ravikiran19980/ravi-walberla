@@ -150,7 +150,7 @@ private:
    // set by the user/application via callback
    walberla::any data_;
 
-   std::vector< NeighborBlock* > neighborhoodSection_[26]; // the 26 neighborhood sections (can be restored from 'neighborhood_')
+   std::array< std::vector< NeighborBlock* >, 26 > neighborhoodSection_; // the 26 neighborhood sections (can be restored from 'neighborhood_')
    std::vector< NeighborBlock  > neighborhood_;            // all neighbor blocks
 
    uint_t sourceLevel_; // | sourceLevel_ - level_ | == 1

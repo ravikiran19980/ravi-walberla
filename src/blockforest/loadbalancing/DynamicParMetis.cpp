@@ -269,11 +269,11 @@ bool DynamicParMetis::operator()( std::vector< std::pair< const PhantomBlock *, 
 
    // Determine which processes will receive a block from this process
    std::vector<uint8_t> isSendingBlockToProcess( uint_c(MPIManager::instance()->numProcesses()), uint8_t( 0 ) );
-   for( auto it = part.begin(); it != part.end(); ++it )
+   for( auto proc : part )
    {
-      WALBERLA_ASSERT_GREATER_EQUAL( *it, 0 );
-      WALBERLA_ASSERT_LESS( *it, MPIManager::instance()->numProcesses() );
-      isSendingBlockToProcess[uint_c(*it)] = uint8_t( 1 );
+      WALBERLA_ASSERT_GREATER_EQUAL( proc, 0 );
+      WALBERLA_ASSERT_LESS( proc, MPIManager::instance()->numProcesses() );
+      isSendingBlockToProcess[uint_c(proc)] = uint8_t( 1 );
    }
    isSendingBlockToProcess[uint_c(MPIManager::instance()->rank())] = uint8_t( 0 );
 

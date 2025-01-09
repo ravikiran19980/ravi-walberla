@@ -189,7 +189,7 @@ private:
 
    shared_ptr< BlockForest > blockForest_;
 
-   uint_t blockCells_[3];
+   std::array< uint_t, 3 > blockCells_;
 
 }; // class StructuredBlockForest
 

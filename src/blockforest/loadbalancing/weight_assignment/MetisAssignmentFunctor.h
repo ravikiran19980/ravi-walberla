@@ -78,7 +78,6 @@ public:
                                                                                   it.first->getNeighborAABB(nb).getExtended(dx))) );
          }
          it.second = info;
-         continue;
       }
    }
 

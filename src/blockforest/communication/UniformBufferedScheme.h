@@ -364,10 +364,10 @@ void UniformBufferedScheme<Stencil>::startCommunication()
       bufferSystem_.enforceSerialSends( false );
       bufferSystem_.enforceSerialRecvs( !threadsafeReceive );
 
-      for( auto sender = sendFunctions.begin(); sender != sendFunctions.end(); ++sender )
+      for( auto sIt : sendFunctions )
       {
-         bufferSystem_.addSendingFunction  ( int_c(sender->first), std::bind(  UniformBufferedScheme<Stencil>::send, std::placeholders::_1, sender->second ) );
-         bufferSystem_.addReceivingFunction( int_c(sender->first), std::bind( &UniformBufferedScheme<Stencil>::receive, this, std::placeholders::_1 ) );
+         bufferSystem_.addSendingFunction  ( int_c(sIt.first), std::bind(  UniformBufferedScheme<Stencil>::send, std::placeholders::_1, sIt.second ) );
+         bufferSystem_.addReceivingFunction( int_c(sIt.first), std::bind( &UniformBufferedScheme<Stencil>::receive, this, std::placeholders::_1 ) );
       }
 
       setupBeforeNextCommunication_ = false;

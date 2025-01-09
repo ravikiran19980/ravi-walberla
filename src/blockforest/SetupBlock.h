@@ -142,7 +142,7 @@ private:
    SetupBlock*                 father_;
    std::vector< SetupBlock* >  children_;
 
-   std::vector< SetupBlock* >  neighborhoodSection_[26]; // the 26 neighborhood sections
+   std::array< std::vector< SetupBlock* >, 26 >  neighborhoodSection_; // the 26 neighborhood sections
    std::vector< SetupBlock* >  neighborhood_;            // all neighbor blocks
 
    uint_t index_{ 0 }; ///< used during static load balancing with METIS

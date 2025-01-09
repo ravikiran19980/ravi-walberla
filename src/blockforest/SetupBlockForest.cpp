@@ -501,8 +501,8 @@ void SetupBlockForest::getBlocksOverlappedByAABB( std::vector< SetupBlock* >& bl
        aabb.zMin() >= domain_.zMax() || aabb.zMax() <= domain_.zMin() )
       return;
 
-   uint_t min[3];
-   uint_t max[3];
+   std::array< uint_t, 3 > min;
+   std::array< uint_t, 3 > max;
 
    mapAABBToBoundingForestCoordinates( aabb, min, max );
 
@@ -599,7 +599,7 @@ uint_t SetupBlockForest::mapPointToTreeIndex( const real_t px, const real_t py, 
 
 
 
-void SetupBlockForest::mapAABBToBoundingForestCoordinates( const AABB& aabb, uint_t (&min)[3], uint_t (&max)[3] ) const {
+void SetupBlockForest::mapAABBToBoundingForestCoordinates( const AABB& aabb, std::array< uint_t, 3 > & min, std::array< uint_t, 3 > & max ) const {
 
    // ATTENTION: min[3] incl., max[3] excl.
 
@@ -1555,8 +1555,8 @@ void SetupBlockForest::balanceLoadHelper( const TargetProcessAssignmentFunction 
       processHasBlocks[ block->getTargetProcess() ] = true;
    }
 
-   for( auto it = processHasBlocks.begin(); it != processHasBlocks.end(); ++it )
-      WALBERLA_CHECK( *it )
+   for( bool has: processHasBlocks )
+      WALBERLA_CHECK( has )
 
    // make sure that the per process memory limit is satisfied
 
@@ -2086,13 +2086,13 @@ void SetupBlockForest::toStream( std::ostream & os ) const
 
       WALBERLA_ASSERT_EQUAL( numberOfProcesses_, blockDistribution_.size() )
 
-      for( auto process = blockDistribution_.begin(); process != blockDistribution_.end(); ++process )
+      for( auto & process: blockDistribution_ )
       {
          std::vector< uint_t >     processBlocks  ( depth_ + 2, uint_t(0) );
          std::vector< memory_t >   processMemory  ( depth_ + 2, memory_t(0) );
          std::vector< workload_t > processWorkload( depth_ + 2, workload_t(0) );
 
-         for(auto block : *process)
+         for(auto block : process)
          {
             const auto level = block->getLevel();
 

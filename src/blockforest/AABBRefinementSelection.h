@@ -110,8 +110,8 @@ public:
 
       for(auto & minTargetLevel : minTargetLevels)
       {
-         uint_t currentLevelOfBlock = minTargetLevel.first->getLevel();
-         uint_t targetLevelOfBlock = currentLevelOfBlock;
+         const uint_t currentLevelOfBlock = minTargetLevel.first->getLevel();
+         const uint_t targetLevelOfBlock = currentLevelOfBlock;
 
          for(auto & aabb : aabbs)
          {
@@ -142,6 +142,7 @@ private:
    std::vector< std::pair< math::AABB, uint_t > > transformRegionsToAABBs( const math::AABB & simulationDomain ) const
    {
       std::vector< std::pair< math::AABB, uint_t > > aabbs;
+      aabbs.reserve(regions_.size());
       for(const auto & region : regions_)
       {
          aabbs.emplace_back( math::AABB( simulationDomain.xMin() + region.first.xMin() * simulationDomain.xSize(),

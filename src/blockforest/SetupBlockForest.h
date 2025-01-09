@@ -235,7 +235,7 @@ public:
 
    uint_t mapPointToTreeIndex( const real_t px, const real_t py, const real_t pz ) const;
 
-   void mapAABBToBoundingForestCoordinates( const AABB& aabb, uint_t (&min)[3], uint_t (&max)[3] ) const;
+   void mapAABBToBoundingForestCoordinates( const AABB& aabb, std::array< uint_t, 3 > & min, std::array< uint_t, 3 > & max ) const;
 
    static void getRootBlockAABB( AABB& aabb, const AABB& domain,
                                  const real_t rootBlockXSize, const real_t rootBlockYSize, const real_t rootBlockZSize,
@@ -380,9 +380,9 @@ private:
    uint_t numberOfBlocks_{ 0 };
 
    AABB   domain_;           // the simulation space/region
-   real_t rootBlockSize_[3]; // [(domain x width) / size_[0]], etc. [equivalent to the size of each root block's bounding box]
-   uint_t size_[3];          // number of coarse blocks on the initial grid (= number of octree root blocks) in each direction
-   bool   periodic_[3];
+   std::array< real_t, 3 > rootBlockSize_; // [(domain x width) / size_[0]], etc. [equivalent to the size of each root block's bounding box]
+   std::array< uint_t, 3 > size_;          // number of coarse blocks on the initial grid (= number of octree root blocks) in each direction
+   std::array< bool, 3 >   periodic_;
 
    uint_t  depth_{ 0 }; // depth := number of levels - 1
    uint_t  treeIdDigits_{ 0 };
@@ -633,6 +633,7 @@ inline void SetupBlockForest::updateNeighborhood( std::set< SetupBlock* >& block
 
    std::vector< SetupBlock* > blocks;
 
+   blocks.reserve(blocksToUpdate.size());
    for(auto it : blocksToUpdate)
       blocks.push_back( it );
 

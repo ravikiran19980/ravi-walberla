@@ -508,7 +508,7 @@ private:
    uint_t process_;
    uint_t processIdBytes_;
 
-   uint_t size_[3];     // number of coarse blocks on the initial grid (= number of octree root blocks) in each direction
+   std::array< uint_t, 3 > size_;     // number of coarse blocks on the initial grid (= number of octree root blocks) in each direction
    uint_t depth_;       // depth := number of levels - 1
    uint_t treeIdDigits_;
 

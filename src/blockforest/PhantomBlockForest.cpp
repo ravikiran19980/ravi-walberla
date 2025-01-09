@@ -238,6 +238,7 @@ void PhantomBlockForest::initialize( const BlockStateDeterminationFunction & fun
    std::vector< BlockReconstruction::NeighborhoodReconstructionBlock > neighbors;
 
    std::map< BlockID, std::pair< uint_t, Set<SUID> > > & localMap = blockNeighborhood[ process ];
+   neighbors.reserve(localMap.size());
    for(auto & it : localMap)
       neighbors.emplace_back( it.first, it.second.first, it.second.second, aabbReconstruction );
 
@@ -304,8 +305,9 @@ bool PhantomBlockForest::calculateMigrationInformation( const MigrationPreparati
       bool runAgain = function( targetProcess, processesToRecvFrom_, *this, iteration );
 
       WALBERLA_CHECK_EQUAL( targetProcess.size(), blocks_.size() );
-      for( auto it = processesToRecvFrom_.begin(); it != processesToRecvFrom_.end(); ++it )
-         WALBERLA_CHECK_LESS( *it, uint_c( MPIManager::instance()->numProcesses() ) );
+
+      for( auto rank: processesToRecvFrom_ )
+         WALBERLA_CHECK_LESS( rank, uint_c( MPIManager::instance()->numProcesses() ) );
       
       auto bit = blocks_.begin();
       for( auto it = targetProcess.begin(); it != targetProcess.end(); ++it )
