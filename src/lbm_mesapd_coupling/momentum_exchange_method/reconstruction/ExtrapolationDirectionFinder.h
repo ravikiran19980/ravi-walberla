@@ -144,7 +144,7 @@ public:
       Vector3<real_t> particleCenterPosition = ac.getPosition(particleIdx);
       WALBERLA_ASSERT( !math::isnan(particleCenterPosition) );
 
-      Vector3<real_t> particleNormal( cx - particleCenterPosition[0], cy - particleCenterPosition[1], cz - particleCenterPosition[2] );
+      Vector3<real_t> const particleNormal( cx - particleCenterPosition[0], cy - particleCenterPosition[1], cz - particleCenterPosition[2] );
 
       return findCorrespondingLatticeDirection< stencil::D3Q27 >( particleNormal );
    }
