@@ -45,7 +45,7 @@ void DistributedSample::mpiAllGather()
    max_ = -std::numeric_limits< real_t >::max();
    size_ = uint_c( data_.size() );
 
-   for(real_t & it : data_)
+   for(const real_t it : data_)
    {
       sum_ += it;
       min_ = std::min( min_, it );
