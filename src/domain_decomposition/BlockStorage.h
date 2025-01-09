@@ -170,7 +170,8 @@ public:
       Set<SUID> incompatibleSelectors_;
    };
 
-
+   /// Deleted default constructor
+   BlockStorage() = delete;
 
    const AABB& getDomain() const { return domain_; } ///< returns an axis-aligned bounding box that covers the entire simulation space/domain
 
@@ -525,8 +526,6 @@ protected:
    std::vector< internal::BlockDataItem > blockDataItem_;
 
 private:
-
-   BlockStorage(); ///< Must not be made public or protected! Derived classes must call one of the available public/protected constructors.
 
    inline void registerBlock( const std::pair<IBlockID::IDType, IBlock*>& block ); // All three functions must not be made public!
    inline void removeBlock  ( const IBlock* block );                               // All three functions are intended for internal use only.
