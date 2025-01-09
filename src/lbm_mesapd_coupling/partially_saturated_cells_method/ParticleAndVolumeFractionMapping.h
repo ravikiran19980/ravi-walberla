@@ -110,10 +110,8 @@ class ParticleAndVolumeFractionMapping
          Vector3< real_t > dxVec(blockStorage_->dx(level), blockStorage_->dy(level), blockStorage_->dz(level));
 
          // compute the overlap fraction for each cell that has to be considered and save the information
-         for (auto cellIt = cellBB.begin(); cellIt != cellBB.end(); ++cellIt)
+         for (auto cell : cellBB)
          {
-            Cell cell(*cellIt);
-
             Vector3< real_t > cellCenter;
             cellCenter = blockStorage_->getBlockLocalCellCenter(*blockIt, cell);
 
