@@ -155,7 +155,7 @@ class SphereFractionMappingSweep
             {
                const real_t radius = static_cast< mesa_pd::data::Sphere* >(ac_->getShape(idx))->getRadius();
                radii_h[idxMapped]  = radius;
-               real_t Va           = real_t(
+               real_t const Va           = real_t(
                   (1.0 / 12.0 - radius * radius) * atan((0.5 * sqrt(radius * radius - 0.5)) / (0.5 - radius * radius)) +
                   1.0 / 3.0 * sqrt(radius * radius - 0.5) +
                   (radius * radius - 1.0 / 12.0) * atan(0.5 / sqrt(radius * radius - 0.5)) -
@@ -201,7 +201,7 @@ class SphereFractionMappingSweep
                         for (size_t x = size_t(intersectionAABB.xMin() * blockScaling[0]);
                              x < size_t(ceil(intersectionAABB.xMax() * blockScaling[0])); ++x)
                         {
-                           size_t index = z * subBlocksPerDim[0] * subBlocksPerDim[1] + y * subBlocksPerDim[0] + x;
+                           size_t const index = z * subBlocksPerDim[0] * subBlocksPerDim[1] + y * subBlocksPerDim[0] + x;
                            subBlocks[index].push_back(idxMapped);
                         }
                      }
@@ -230,7 +230,7 @@ class SphereFractionMappingSweep
          {
             for (size_t x = 0; x < subBlocksPerDim[0]; ++x)
             {
-               size_t index = z * subBlocksPerDim[0] * subBlocksPerDim[1] + y * subBlocksPerDim[0] + x;
+               size_t const index = z * subBlocksPerDim[0] * subBlocksPerDim[1] + y * subBlocksPerDim[0] + x;
                numParticlesPerSubBlock_h[index] = subBlocks[index].size();
                for (size_t k = 0; k < subBlocks[index].size(); k++)
                {
