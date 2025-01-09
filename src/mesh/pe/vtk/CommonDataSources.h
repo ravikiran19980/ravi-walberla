@@ -191,9 +191,9 @@ public:
 
    virtual ~LinearVelocityFaceDataSource() = default;
 
-   virtual uint_t numComponents() { return uint_t(3); }
+   uint_t numComponents() override { return uint_t(3); }
 
-   virtual void getData( const MeshType & /*mesh*/, const Faces & faces, std::vector<value_type> & data, const BodyPointerFPropManager & bodyPointer )
+   void getData( const MeshType & /*mesh*/, const Faces & faces, std::vector<value_type> & data, const BodyPointerFPropManager & bodyPointer ) override
    {
       data.reserve( size_t(3) * faces.size() );
 
@@ -253,9 +253,9 @@ public:
 
    virtual ~AngularVelocityFaceDataSource() = default;
 
-   virtual uint_t numComponents() { return uint_t(3); }
+   uint_t numComponents() override { return uint_t(3); }
 
-   virtual void getData( const MeshType & /*mesh*/, const Faces & faces, std::vector<value_type> & data, const BodyPointerFPropManager & bodyPointer )
+   void getData( const MeshType & /*mesh*/, const Faces & faces, std::vector<value_type> & data, const BodyPointerFPropManager & bodyPointer ) override
    {
       data.reserve( size_t(3) * faces.size() );
 
@@ -285,9 +285,9 @@ public:
 
    virtual ~SurfaceVelocityVertexDataSource() = default;
 
-   virtual uint_t numComponents() { return uint_t(3); }
+   uint_t numComponents() override { return uint_t(3); }
 
-   virtual void getData( const MeshType & mesh, const Vertices & vertices, std::vector<value_type> & data, const BodyPointerVPropManager & bodyPointer )
+   void getData( const MeshType & mesh, const Vertices & vertices, std::vector<value_type> & data, const BodyPointerVPropManager & bodyPointer ) override
    {
       data.reserve( size_t(3) * vertices.size() );
 
