@@ -52,7 +52,7 @@ void BoundaryFromVoxelFile<BoundaryHandlerT>::init( BlockStorage & blockStorage,
    {
       if( configBlockIt->getKey() == "Flag" )
       {
-         uint8_t flag = uint8_c( static_cast<int>( configBlockIt->template getParameter<int>( "value" ) ) );
+         uint8_t const flag = uint8_c( static_cast<int>( configBlockIt->template getParameter<int>( "value" ) ) );
          BoundarySetter<BoundaryHandlerT> boundarySetter;
          boundarySetter.setConfigBlock( *configBlockIt );
          flags[flag] = boundarySetter;
@@ -93,7 +93,7 @@ BoundaryFromVoxelFile<BoundaryHandlerT>::getIntersectedCellIntervals( const std:
    CellInterval fileCellInterval;
    WALBERLA_ROOT_SECTION()
    {
-      VoxelFileReader <uint8_t> reader( geometryFile );
+      VoxelFileReader <uint8_t> const reader( geometryFile );
       fileCellInterval = CellInterval( cell_idx_c(0), cell_idx_c(0), cell_idx_c(0), cell_idx_c( reader.xSize() ) - 1,
          cell_idx_c( reader.ySize() ) - 1, cell_idx_c( reader.zSize() ) - 1 );
       fileCellInterval.shift(offset);

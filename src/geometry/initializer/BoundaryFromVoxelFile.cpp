@@ -67,7 +67,7 @@ CellIntervalDataMap readCellIntervalsOnRoot( const std::string & geometryFile,
 
    allToRootBs.sendAll();
 
-   VoxelFileReader<uint8_t> reader( geometryFile );
+   VoxelFileReader<uint8_t> const reader( geometryFile );
    std::vector<uint8_t> data;
 
    WALBERLA_ROOT_SECTION()
@@ -89,7 +89,7 @@ CellIntervalDataMap readCellIntervalsOnRoot( const std::string & geometryFile,
       // only root should receive messages
       WALBERLA_ASSERT_EQUAL( MPIManager::instance()->worldRank(), 0 );
 
-      int rank = it.rank();
+      int const rank = it.rank();
       auto & recvBuffer = it.buffer();
       auto & sendBuffer = rootToAllBs.sendBuffer( rank );
 

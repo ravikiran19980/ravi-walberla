@@ -396,8 +396,8 @@ void TriangleMesh::split( vector<TriangleMesh>& meshes ) const
 //*********************************************************************************************************************/
 void TriangleMesh::merge(const TriangleMesh & other, const Vector3<real_t> & offset)
 {
-   index_t oldNumVertices      = index_c( vertices_.size() );
-   index_t oldNumVertexNormals = index_c( vertexNormals_.size() );
+   index_t const oldNumVertices      = index_c( vertices_.size() );
+   index_t const oldNumVertexNormals = index_c( vertexNormals_.size() );
 
    // Add vertices
    for(index_t i=0; i < other.getNumVertices(); ++i) {
