@@ -192,14 +192,14 @@ public:
    /// iterator for traversing all locally allocated blocks
    iterator begin( const Set<SUID> & requiredSelectors     = Set<SUID>::emptySet(),
                    const Set<SUID> & incompatibleSelectors = Set<SUID>::emptySet() )
-      { return iterator( iBlocks_.begin(), iBlocks_.end(), requiredSelectors, incompatibleSelectors ); }
-   iterator   end() { return iterator( iBlocks_.end(), iBlocks_.end() ); } ///< iterator for traversing all locally allocated blocks
+      { return { iBlocks_.begin(), iBlocks_.end(), requiredSelectors, incompatibleSelectors }; }
+   iterator   end() { return { iBlocks_.end(), iBlocks_.end() }; } ///< iterator for traversing all locally allocated blocks
 
    /// iterator for traversing all locally allocated blocks
    const_iterator begin( const Set<SUID> & requiredSelectors     = Set<SUID>::emptySet(),
                          const Set<SUID> & incompatibleSelectors = Set<SUID>::emptySet() ) const
-      { return const_iterator( iBlocks_.begin(), iBlocks_.end(), requiredSelectors, incompatibleSelectors ); }
-   const_iterator   end() const { return const_iterator( iBlocks_.end(), iBlocks_.end() ); } ///< iterator for traversing all locally allocated blocks
+      { return { iBlocks_.begin(), iBlocks_.end(), requiredSelectors, incompatibleSelectors }; }
+   const_iterator   end() const { return { iBlocks_.end(), iBlocks_.end() }; } ///< iterator for traversing all locally allocated blocks
 
    uint_t getNumberOfBlocks() const { return iBlocks_.size(); } ///< number of locally allocated blocks
    uint_t size()              const { return iBlocks_.size(); } ///< number of locally allocated blocks
@@ -465,7 +465,7 @@ public:
    ///
    /// Usage: BlockDataID id = blockStorage.addBlockData( "[optional block data identifier]" ) << BlockDataCreator( ... )
    ///                                                                                         << BlockDataCreator( ... ) << ... ;
-   internal::BlockDataHandlingAdder addBlockData( const std::string & identifier = std::string() ) { return internal::BlockDataHandlingAdder( *this, identifier ); }
+   internal::BlockDataHandlingAdder addBlockData( const std::string & identifier = std::string() ) { return { *this, identifier }; }
 
    template< typename T >
    inline BlockDataID addBlockData( const shared_ptr< T > & dataHandling,

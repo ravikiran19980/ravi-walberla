@@ -412,7 +412,7 @@ public:
    /// Usage: BlockDataID id = blockStorage.addBlockData( "[optional block data identifier]" ) << StructuredBlockDataCreator( ... )
    ///                                                                                         << BlockDataCreator( ... ) << ... ;
    StructuredBlockDataAdder addStructuredBlockData( const std::string& identifier = std::string() )
-                                                                               { return StructuredBlockDataAdder( *this, identifier ); }
+                                                                               { return { *this, identifier }; }
 
    template< typename T >
    inline BlockDataID addStructuredBlockData( std::function< T* ( IBlock* const block, StructuredBlockStorage* const storage ) > function,
