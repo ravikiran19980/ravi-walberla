@@ -106,11 +106,11 @@ uint_t storeRunImpl( sqlite3 * dbHandle, std::string & filename,
    }
 
    // Add columns for string properties
-   for ( auto i = stringProperties.begin(); i != stringProperties.end(); ++i )
+   for (const auto & stringPropertie : stringProperties)
    {
-      insertRunCommand += "," + i->first;
-      values << ", " << "\"" << i->second << "\"";
-      string const command = "ALTER TABLE runs ADD COLUMN " + i->first + " TEXT ";
+      insertRunCommand += "," + stringPropertie.first;
+      values << ", " << "\"" << stringPropertie.second << "\"";
+      string const command = "ALTER TABLE runs ADD COLUMN " + stringPropertie.first + " TEXT ";
       sqlite3_exec ( dbHandle, command.c_str(), nullptr,nullptr,nullptr ); // ignore errors (column can exist already)
 
    }
@@ -133,12 +133,12 @@ uint_t storeRunImpl( sqlite3 * dbHandle, std::string & filename,
    }
 
    // Add columns for global state selectors
-   for( auto i = uid::globalState().begin(); i != uid::globalState().end(); ++i )
+   for(auto i : uid::globalState())
    {
-      insertRunCommand += "," + i->getIdentifier();
+      insertRunCommand += "," + i.getIdentifier();
       values << " ,1";
       // no boolean in sqlite3, use integer instead
-      string const command = "ALTER TABLE runs ADD COLUMN " + i->getIdentifier() + " INTEGER ";
+      string const command = "ALTER TABLE runs ADD COLUMN " + i.getIdentifier() + " INTEGER ";
       sqlite3_exec ( dbHandle, command.c_str(), nullptr,nullptr,nullptr ); // ignore errors (column can exist already)
    }
 
@@ -196,21 +196,21 @@ void storeAdditionalRunInfoImpl( sqlite3 * dbHandle,
    }
 
    // Add columns for string properties
-   for ( auto i = stringProperties.begin(); i != stringProperties.end(); ++i )
+   for (const auto & stringPropertie : stringProperties)
    {
-      insertRunCommand += "," + i->first;
-      values << ", " << "\"" << i->second << "\"";
-      string const command = "ALTER TABLE " + tableName + " ADD COLUMN " + i->first + " TEXT ";
+      insertRunCommand += "," + stringPropertie.first;
+      values << ", " << "\"" << stringPropertie.second << "\"";
+      string const command = "ALTER TABLE " + tableName + " ADD COLUMN " + stringPropertie.first + " TEXT ";
       sqlite3_exec ( dbHandle, command.c_str(), nullptr,nullptr,nullptr ); // ignore errors (column can exist already)
 
    }
 
    // Add columns for real_t properties
-   for ( auto i = realProperties.begin(); i != realProperties.end(); ++i )
+   for (const auto & realPropertie : realProperties)
    {
-      insertRunCommand += "," + i->first;
-      values << ", " << i->second ;
-      string const command = "ALTER TABLE " + tableName + " ADD COLUMN " + i->first + " DOUBLE ";
+      insertRunCommand += "," + realPropertie.first;
+      values << ", " << realPropertie.second ;
+      string const command = "ALTER TABLE " + tableName + " ADD COLUMN " + realPropertie.first + " DOUBLE ";
       sqlite3_exec ( dbHandle, command.c_str(), nullptr,nullptr,nullptr ); // ignore errors (column can exist already)
    }
 
@@ -329,21 +329,21 @@ void SQLiteDB::storeTimingPool ( uint_t runId,
 
 
    double totalTime = 0;
-   for ( auto i = tp.begin(); i != tp.end(); ++i )
-      totalTime += i->second.total();
+   for (const auto & i : tp)
+      totalTime += i.second.total();
 
 
-   for ( auto i = tp.begin(); i != tp.end(); ++i )
+   for (const auto & i : tp)
    {
       sqlite3_bind_int64 ( stmt, 1, int64_c(runId) );
       sqlite3_bind_text  ( stmt, 2, timingPoolName.c_str() , -1, SQLITE_STATIC );
-      sqlite3_bind_text  ( stmt, 3, i->first.c_str() , -1, SQLITE_STATIC );
-      sqlite3_bind_double( stmt, 4, ( ( i->second.getCounter() == uint_t(0) ) ? 0.0 : double_c( i->second.average() ) ) );
-      sqlite3_bind_double( stmt, 5, ( ( i->second.getCounter() == uint_t(0) ) ? 0.0 : double_c( i->second.min() ) ) );
-      sqlite3_bind_double( stmt, 6, ( ( i->second.getCounter() == uint_t(0) ) ? 0.0 : double_c( i->second.max() ) ) );
-      sqlite3_bind_int64 ( stmt, 7, int64_c   ( i->second.getCounter() ));
-      sqlite3_bind_double( stmt, 8, ( ( i->second.getCounter() == uint_t(0) ) ? 0.0 : double_c( i->second.variance() ) ) );
-      sqlite3_bind_double( stmt, 9, ( ( i->second.getCounter() == uint_t(0) ) ? 0.0 : double_c( i->second.total() / totalTime ) ) );
+      sqlite3_bind_text  ( stmt, 3, i.first.c_str() , -1, SQLITE_STATIC );
+      sqlite3_bind_double( stmt, 4, ( ( i.second.getCounter() == uint_t(0) ) ? 0.0 : double_c( i.second.average() ) ) );
+      sqlite3_bind_double( stmt, 5, ( ( i.second.getCounter() == uint_t(0) ) ? 0.0 : double_c( i.second.min() ) ) );
+      sqlite3_bind_double( stmt, 6, ( ( i.second.getCounter() == uint_t(0) ) ? 0.0 : double_c( i.second.max() ) ) );
+      sqlite3_bind_int64 ( stmt, 7, int64_c   ( i.second.getCounter() ));
+      sqlite3_bind_double( stmt, 8, ( ( i.second.getCounter() == uint_t(0) ) ? 0.0 : double_c( i.second.variance() ) ) );
+      sqlite3_bind_double( stmt, 9, ( ( i.second.getCounter() == uint_t(0) ) ? 0.0 : double_c( i.second.total() / totalTime ) ) );
 
       sqlite3_step ( stmt );  // execute statement
       sqlite3_reset ( stmt ); // undo binding
@@ -390,9 +390,9 @@ void SQLiteDB::storeTimingTree ( uint_t runId,
    sqlite3_exec( dbHandle_, CREATE_TIMINGTREE_TABLE, nullptr,nullptr,nullptr );
 
    double totalTime = 0.0;
-   for (auto it = tt.getRawData().tree_.begin(); it != tt.getRawData().tree_.end(); ++it)
+   for (const auto & it : tt.getRawData().tree_)
    {
-      totalTime += it->second.timer_.total();
+      totalTime += it.second.timer_.total();
    }
 
    storeTimingNode(runId, std::numeric_limits<int>::max(), tt.getRawData(), timingTreeName, "Total", totalTime);
@@ -444,9 +444,9 @@ void SQLiteDB::storeTimingNode ( const uint_t runId,
 
    int const currentId = int_c( sqlite3_last_insert_rowid( dbHandle_ ) );
 
-   for ( auto i = tn.tree_.begin(); i != tn.tree_.end(); ++i )
+   for (const auto & i : tn.tree_)
    {
-      storeTimingNode( runId, currentId, i->second, timingTreeName, i->first, totalTime);
+      storeTimingNode( runId, currentId, i.second, timingTreeName, i.first, totalTime);
    }
 }
 
