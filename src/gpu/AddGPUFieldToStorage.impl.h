@@ -85,7 +85,7 @@ namespace gpu
                                      const std::string & identifier,
                                      bool usePitchedMem )
    {
-      auto func = std::bind ( internal::createGPUFieldFromCPUField<Field_T>, std::placeholders::_1, std::placeholders::_2, cpuFieldID, usePitchedMem );
+      auto func = [cpuFieldID, usePitchedMem](auto && PH1, auto && PH2) { return internal::createGPUFieldFromCPUField<Field_T>(std::forward<decltype(PH1)>(PH1), std::forward<decltype(PH2)>(PH2), cpuFieldID, usePitchedMem); };
       return bs->addStructuredBlockData< GPUField<typename Field_T::value_type> >( func, identifier );
    }
 

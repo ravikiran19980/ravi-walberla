@@ -52,7 +52,7 @@ namespace gpu
    std::function<void()> fieldCpyFunctor( const shared_ptr< StructuredBlockStorage > & blocks,
                                             BlockDataID dstID, ConstBlockDataID srcID )
    {
-      return std::bind( fieldCpy<DstType,SrcType>, blocks, dstID, srcID );
+      return [blocks, dstID, srcID] { fieldCpy<DstType,SrcType>(blocks, dstID, srcID); };
    }
 
 
