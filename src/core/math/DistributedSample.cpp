@@ -45,11 +45,11 @@ void DistributedSample::mpiAllGather()
    max_ = -std::numeric_limits< real_t >::max();
    size_ = uint_c( data_.size() );
 
-   for( auto it = data_.begin(); it != data_.end(); ++it )
+   for(const real_t it : data_)
    {
-      sum_ += *it;
-      min_ = std::min( min_, *it );
-      max_ = std::max( max_, *it );
+      sum_ += it;
+      min_ = std::min( min_, it );
+      max_ = std::max( max_, it );
    }
 
    WALBERLA_MPI_SECTION()

@@ -386,7 +386,7 @@ uint_t GlobalLoadBalancing::balanceSorted( const std::vector< BLOCK* >& blocks, 
          minWorkload = std::max( minWorkload, sortedBlocks[l][i]->getWorkload() );
          WALBERLA_ASSERT_LESS_EQUAL( sortedBlocks[l][i]->getMemory(), memoryLimit );
       }
-      for(double i : processesWork)
+      for(workload_t i : processesWork)
          minWorkload = std::max( minWorkload, i );
 
       // check min - potentially nothing more to do
@@ -696,7 +696,7 @@ void GlobalLoadBalancing::reorderProcessesByBFS( std::vector< BLOCK* > & blocks,
 
          reorderMap[p] = process++;
 
-         for(unsigned long neighbor : processNeighbors[p]) {
+         for(uint_t neighbor : processNeighbors[p]) {
             if( !processed[neighbor] ) {
                processList.push_back( neighbor );
                processed[neighbor] = true;

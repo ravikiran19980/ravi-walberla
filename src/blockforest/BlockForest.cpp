@@ -405,8 +405,8 @@ BlockForest::BlockForest( const uint_t process, const char* const filename, cons
 
    std::array< real_t, 6 > domain;
 
-   for(double & i : domain) {
-      i = byteArrayToReal< real_t >( buffer, offset );
+   for(real_t & dom : domain) {
+      dom = byteArrayToReal< real_t >( buffer, offset );
       offset += sizeof( real_t ) + 1 + 2;
    }
 
@@ -3005,8 +3005,8 @@ void BlockForest::storeFileHeader( std::vector< uint8_t > & data, uint_t & offse
 
    // number of coarse/root blocks in each direction
 
-   for(unsigned long i : size_) {
-      uintToByteArray( i, data, offset, 4 );
+   for(uint_t s : size_) {
+      uintToByteArray( s, data, offset, 4 );
       offset += 4;
    }
 

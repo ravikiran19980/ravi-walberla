@@ -769,7 +769,7 @@ bool DynamicDiffusionBalance< PhantomData_T >::operator()( std::vector< std::pai
                         assigned.insert(index);
                      }
                   }
-                  for(unsigned long & index : allBlocks[l])
+                  for(uint_t & index : allBlocks[l])
                   {
                      if( assigned.find(index) == assigned.end() )
                      {
