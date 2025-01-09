@@ -264,7 +264,7 @@ void SelectableObject<T,A,S>::get( std::vector<T>& object, const S& selector ) c
 
    select( index, selector );
 
-   for(unsigned long & i : index) {
+   for(size_t & i : index) {
       WALBERLA_ASSERT_LESS( index[i], object_.size() );
       object.push_back( object_[ i ] );
    }
@@ -315,7 +315,7 @@ void SelectableObject<T,A,S>::get( std::vector<T>& object, std::vector< std::str
 
    select( index, selector );
 
-   for(unsigned long & i : index) {
+   for(size_t i : index) {
       WALBERLA_ASSERT_LESS( index[i], object_.size() );
       object.push_back( object_[ i ] );
       identifier.push_back( identifier_[ i ] );
