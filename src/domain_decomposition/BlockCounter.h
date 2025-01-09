@@ -85,7 +85,7 @@ public:
 
       mpi::allReduceInplace( numberOfBlocks_, mpi::SUM );
 
-      for(unsigned long & numberOfBlock : numberOfBlocks_)
+      for(const uint_t& numberOfBlock : numberOfBlocks_)
          totalNumberOfBlocks_ += numberOfBlock;
    }
 

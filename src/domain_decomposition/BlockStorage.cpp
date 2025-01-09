@@ -99,7 +99,7 @@ BlockDataID BlockStorage::addBlockData( const internal::SelectableBlockDataHandl
 {
    WALBERLA_LOG_PROGRESS( "Adding block data (\"" << identifier << "\")" );
 
-   BlockDataID id( blockDataItem_.size() );
+   const BlockDataID id( blockDataItem_.size() );
    internal::BlockDataItem item( id, identifier, dataHandling );
    blockDataItem_.push_back( item );
 
@@ -135,7 +135,7 @@ BlockDataID BlockStorage::loadBlockData( const std::string & file, const interna
 {
    WALBERLA_LOG_PROGRESS( "Adding block data (\"" << identifier << "\"), loading data from file \"" << file << "\" ..." );
    
-   BlockDataID id( blockDataItem_.size() );
+   const BlockDataID id( blockDataItem_.size() );
    internal::BlockDataItem item( id, identifier, dataHandling );
    blockDataItem_.push_back( item );
    
@@ -249,7 +249,7 @@ MPI_Comm BlockStorage::processesWithBlocksCommunicator()
    {
       if( rebuildProcessesWithBlocksCommunicator_ )
       {
-         int8_t hasBlocks = ( getNumberOfBlocks() > uint_t(0) ) ? int8_t(1) : int8_t(0);
+         const int8_t hasBlocks = ( getNumberOfBlocks() > uint_t(0) ) ? int8_t(1) : int8_t(0);
 
          std::vector<int8_t> processHasBlocks = mpi::allGather( hasBlocks );
 
