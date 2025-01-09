@@ -167,7 +167,7 @@ public:
    std::vector< Attributes > getAttributes() const override 
    {
       std::vector< Attributes > attributes; 
-      attributes.push_back( Attributes("Int32", "index", uint_t(1)) );
+      attributes.emplace_back("Int32", "index", uint_t(1) );
       return attributes;
    }
 
