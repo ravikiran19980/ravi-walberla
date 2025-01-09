@@ -52,7 +52,7 @@ namespace gpu
                                   bool usePitchedMem
                                 )
       {
-         typedef GPUField< typename Field_T::value_type> GPUField_T;
+         using GPUField_T = GPUField<typename Field_T::value_type>;
 
          const Field_T * f = block->getData<Field_T>( cpuFieldID );
          auto gpuField = new GPUField_T( f->xSize(), f->ySize(), f->zSize(), f->fSize(),
