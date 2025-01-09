@@ -151,7 +151,7 @@ public:
    inline const Matrix2       getInverse()                               const;
    inline bool                isSingular()                               const;
    inline bool                isSymmetric()                              const;
-   inline Type*               data()                                     {return v_;}
+   inline Type*               data()                                     {return v_.data();}
    //@}
    //*******************************************************************************************************************
 
@@ -160,7 +160,7 @@ private:
    //**Member variables****************************************************************************
    /*!\name Member variables */
    //@{
-   Type v_[4];  //!< The nine statically allocated matrix elements.
+   std::array< Type, 4 > v_; //!< The nine statically allocated matrix elements.
                 /*!< Access to the matrix elements is gained via the subscript or function call
                      operator. The order of the elements is
                      \f[\left(\begin{array}{*{2}{c}}

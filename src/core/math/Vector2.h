@@ -160,8 +160,8 @@ public:
    inline Length          length()                       const;
    inline Type            sqrLength()                    const;
    inline Vector2<Length> getNormalized()                const;
-   inline Type*           data()                         {return v_;}
-   inline Type const *    data()                         const {return v_;}
+   inline Type*           data()                         {return v_.data();}
+   inline Type const *    data()                         const {return v_.data();}
    //@}
    //*******************************************************************************************************************
 
@@ -178,7 +178,7 @@ public:
     * 0 & 1 \\
     * \end{array}\right)\f]
    **/
-   Type v_[2] = {Type(), Type()};
+   std::array< Type, 2 > v_ = { Type(), Type() };
    //@}
    //*******************************************************************************************************************
 };

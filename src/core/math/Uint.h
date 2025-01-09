@@ -132,7 +132,7 @@ inline UINT uintPow16( UINT exp ) {
 
 // http://graphics.stanford.edu/~seander/bithacks.html
 
-static const uint8_t msbLookupTable[256] =
+static const std::array< uint8_t, 256 > msbLookupTable =
 {
 #define msbLT(n) n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n
       0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4,
