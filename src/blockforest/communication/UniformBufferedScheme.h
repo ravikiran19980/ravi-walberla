@@ -366,8 +366,11 @@ void UniformBufferedScheme<Stencil>::startCommunication()
 
       for( auto sIt : sendFunctions )
       {
-         bufferSystem_.addSendingFunction  ( int_c(sIt.first), std::bind(  UniformBufferedScheme<Stencil>::send, std::placeholders::_1, sIt.second ) );
-         bufferSystem_.addReceivingFunction( int_c(sIt.first), std::bind( &UniformBufferedScheme<Stencil>::receive, this, std::placeholders::_1 ) );
+         auto sendingFunc = [&sfunc = sIt.second](auto & sbuf) { UniformBufferedScheme< Stencil >::send(sbuf, sfunc); };
+         bufferSystem_.addSendingFunction  (int_c(sIt.first), sendingFunc );
+
+         auto receivingFunc = [this](auto & rbuf) { this->receive(rbuf); };
+         bufferSystem_.addReceivingFunction( int_c(sIt.first), receivingFunc );
       }
 
       setupBeforeNextCommunication_ = false;

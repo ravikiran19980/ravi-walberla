@@ -631,11 +631,10 @@ createUniformBlockGrid( const AABB& domainAABB,
    const memory_t memoryLimit = ( maxBlocksPerProcess == 0 ) ? numeric_cast< memory_t >( sforest.getNumberOfBlocks() ) :
                                                                numeric_cast< memory_t >( maxBlocksPerProcess );
 
-   GlobalLoadBalancing::MetisConfiguration< SetupBlock > metisConfig( includeMetis, forceMetis,
-                                                                      std::bind( cellWeightedCommunicationCost, std::placeholders::_1, std::placeholders::_2,
-                                                                                   numberOfXCellsPerBlock,
-                                                                                   numberOfYCellsPerBlock,
-                                                                                   numberOfZCellsPerBlock ) );
+   auto commFunc = [=](const SetupBlock* const a, const SetupBlock* const b) {
+       return cellWeightedCommunicationCost(a, b, numberOfXCellsPerBlock, numberOfYCellsPerBlock, numberOfZCellsPerBlock);
+   };
+   GlobalLoadBalancing::MetisConfiguration< SetupBlock > metisConfig( includeMetis, forceMetis, commFunc );
 
    sforest.calculateProcessDistribution_Default( uint_c( MPIManager::instance()->numProcesses() ), memoryLimit, "hilbert", 10, false, metisConfig );
 

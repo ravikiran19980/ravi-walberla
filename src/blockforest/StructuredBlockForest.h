@@ -205,8 +205,12 @@ inline StructuredBlockForest::StructuredBlockForest( const shared_ptr< BlockFore
 
    blockForest_( blockForest ) {
 
+    auto resetCallback = [this]() {
+        StructuredBlockForest::resetCellDecompositionInStorage(*this);
+    };
+
    blockForest_->addRefreshCallbackFunctionBeforeBlockDataIsUnpacked(
-            BlockForest::RefreshCallbackWrappper( std::bind( resetCellDecompositionInStorage, std::ref(*this) ) ) );
+            BlockForest::RefreshCallbackWrappper( resetCallback ) );
 
    blockCells_[0] = blockXCells;
    blockCells_[1] = blockYCells;
