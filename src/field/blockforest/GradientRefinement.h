@@ -107,7 +107,7 @@ void GradientRefinement< VectorField_T, Filter_T, Pseudo2D >::operator()( std::v
          {
             const Vector3< real_t > & v = u->get(x,y,z);
 
-            real_t gradient[gradients];
+            real_t gradient[gradients]; // NOLINT(*-avoid-c-arrays)
             for( int i = 0; i < gradients; ++i )
                gradient[i] = real_t(0);
 
