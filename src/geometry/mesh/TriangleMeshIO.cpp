@@ -31,6 +31,7 @@
 #include "core/Regex.h"
 #include "core/StringUtility.h"
 
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <map>
@@ -529,7 +530,7 @@ namespace geometry {
          TriangleMesh::index_t niz = uint32_c( iz % itemsPerMesh );
 
          if ( jx != jy || jy != jz ){
-            j = std::max( std::max(jx, jy), jz );
+            j = std::max( {jx, jy, jz} );
             if( jx < j ){
                nix = meshVec[j].addVertex( mesh.getVertex(ix) );
                if( hasVertexNormals )
