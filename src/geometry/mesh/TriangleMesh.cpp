@@ -335,7 +335,7 @@ void TriangleMesh::split( vector<TriangleMesh>& meshes ) const
          vid[index][node->vOld] = vIndex;
 
          if( hasNormalIndices() ){
-            for(unsigned int & nOld : node->nOld){
+            for(unsigned int  const& nOld : node->nOld){
                if( nid[index].find(nOld) != nid[index].end() )
                   continue;
                const index_t nIndex = meshes[index].addVertexNormal( vertexNormals_[nOld] );
@@ -410,10 +410,10 @@ void TriangleMesh::merge(const TriangleMesh & other, const Vector3<real_t> & off
    std::copy(other.vertexColors_.begin(),  other.vertexColors_.end(),  std::back_inserter(vertexColors_)  );
 
    // Add faces
-   for(unsigned int vertexIndice : other.vertexIndices_)
+   for(unsigned int const vertexIndice : other.vertexIndices_)
       vertexIndices_.push_back( index_c( vertexIndice + oldNumVertices ) );
 
-   for(unsigned int normalIndice : other.normalIndices_)
+   for(unsigned int const normalIndice : other.normalIndices_)
       normalIndices_.push_back( index_c( normalIndice + oldNumVertexNormals ) );
 }
 

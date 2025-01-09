@@ -664,7 +664,7 @@ namespace geometry {
 
       os << "        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
       os << "          ";
-      for(unsigned int it : mesh.getVertexIndices())
+      for(unsigned int const it : mesh.getVertexIndices())
       {
          os << it << ' ';
       }
