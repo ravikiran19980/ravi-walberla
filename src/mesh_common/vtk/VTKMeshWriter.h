@@ -128,7 +128,7 @@ protected:
    std::string identifier_;
    std::string baseFolder_;
 
-   uint_t      timestep_;
+   uint_t      timestep_{ 0 };
 
    FaceFilterFunction faceFilter_;
 
@@ -195,7 +195,7 @@ void VTKMeshWriter<MeshType>::writeFaceData( const T & faceDataSources, const Fa
 template< typename MeshType >
 VTKMeshWriter<MeshType>::VTKMeshWriter( const shared_ptr<const MeshType> & mesh, const std::string & identifier, const uint_t writeFrequency,
    const std::string & baseFolder )
-   : mesh_( mesh ), writeFrequency_( writeFrequency ), identifier_( identifier ), baseFolder_( baseFolder ), timestep_( 0 )
+   : mesh_( mesh ), writeFrequency_( writeFrequency ), identifier_( identifier ), baseFolder_( baseFolder ), 
 {
    WALBERLA_ROOT_SECTION()
    {
