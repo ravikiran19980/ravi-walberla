@@ -341,7 +341,7 @@ inline void massEvaluationConfigParser( const Config::BlockHandle & parentBlockH
 {
    if( parentBlockHandle )
    {
-      Config::BlockHandle block = parentBlockHandle.getBlock( configBlockName );
+      Config::BlockHandle const block = parentBlockHandle.getBlock( configBlockName );
       if( block )
       {
          defaultPlotFrequency = block.getParameter< uint_t >( "plotFrequency", defaultPlotFrequency );

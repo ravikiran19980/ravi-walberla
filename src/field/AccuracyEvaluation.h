@@ -257,7 +257,7 @@ void AccuracyEvaluation< Field_T, SolutionFunction_T, Filter_T >::operator()()
          )
       }
 
-      for(double v : lmax)
+      for(double const v : lmax)
          _Lmax = std::max( _Lmax, v );
 
 #else
@@ -376,7 +376,7 @@ inline void accuracyEvaluationConfigParser( const Config::BlockHandle & parentBl
 {
    if( parentBlockHandle )
    {
-      Config::BlockHandle block = parentBlockHandle.getBlock( configBlockName );
+      Config::BlockHandle const block = parentBlockHandle.getBlock( configBlockName );
       if( block )
       {
          defaultPlotFrequency = block.getParameter< uint_t >( "plotFrequency", defaultPlotFrequency );

@@ -78,7 +78,7 @@ namespace field {
    template<typename T>
    FlagField<T>::~FlagField()
    {
-      uint_t refs = Field<T,1>::referenceCount();
+      uint_t const refs = Field<T,1>::referenceCount();
       if( refs == 1 ) // last field that uses this data
          delete data_;
    }

@@ -402,7 +402,7 @@ void StabilityChecker< Field_T, Filter_T, CheckFunction_T >::operator()()
             Cell gCell(x,y,z);
             blocks->transformBlockLocalToGlobalCell( gCell, *(block.first) );
 
-            for(int f : cell.second)
+            for(int const f : cell.second)
             {
                oss << "\n   + block local cell( " << x << ", " << y << ", " << z << " ) at index " << f <<
                       "\n     = global cell ( " << gCell.x() << ", " << gCell.y() << ", " << gCell.z() << " ) with "
@@ -627,7 +627,7 @@ inline void stabilityCheckerConfigParser( const Config::BlockHandle & parentBloc
 {
    if( parentBlockHandle )
    {
-      Config::BlockHandle block = parentBlockHandle.getBlock( configBlockName );
+      Config::BlockHandle const block = parentBlockHandle.getBlock( configBlockName );
       if( block )
       {
          defaultCheckFrequency = block.getParameter< uint_t >( "checkFrequency", defaultCheckFrequency );

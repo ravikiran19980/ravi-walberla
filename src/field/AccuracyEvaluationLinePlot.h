@@ -95,7 +95,7 @@ inline void accuracyEvaluationLinePlotIO( std::ofstream & file, const std::vecto
            "|| u - u_exact || / || u_exact || (rel. error) [10], || u - u_exact || (abs. error) [11]\n";
    for(const auto & point : points)
    {
-      Vector3< real_t > diff = point.value - point.solution;
+      Vector3< real_t > const diff = point.value - point.solution;
       file << point.center[0] << " "
            << point.center[1] << " "
            << point.center[2] << " "
@@ -444,7 +444,7 @@ inline void accuracyEvaluationLinePlotConfigParser( const Config::BlockHandle & 
 {
    if( parentBlockHandle )
    {
-      Config::BlockHandle block = parentBlockHandle.getBlock( configBlockName );
+      Config::BlockHandle const block = parentBlockHandle.getBlock( configBlockName );
       if( block )
       {
          defaultYAxis = block.getParameter< bool >( "y", defaultYAxis );
@@ -657,7 +657,7 @@ inline void accuracyEvaluationLinePlotterConfigParser( const Config::BlockHandle
 {
    if( parentBlockHandle )
    {
-      Config::BlockHandle block = parentBlockHandle.getBlock( configBlockName );
+      Config::BlockHandle const block = parentBlockHandle.getBlock( configBlockName );
       if( block )
       {
          defaultEvaluationFrequency = block.getParameter< uint_t >( "frequency", defaultEvaluationFrequency );
