@@ -74,7 +74,7 @@ public:
    //**Destructor**********************************************************************************
    /*!\name Destructor */
    //@{
-   virtual ~ConvexPolyhedron();
+   ~ConvexPolyhedron() override;
    //@}
    //**********************************************************************************************
    //**********************************************************************************************
@@ -86,7 +86,7 @@ public:
    //**Get functions*******************************************************************************
    /*!\name Get functions */
    //@{
-   virtual real_t getVolume() const;
+   real_t getVolume() const override;
    real_t getSurfaceArea() const;
    const TriangleMesh & getMesh() const { return mesh_; }
    //@}
@@ -102,15 +102,15 @@ public:
    //**Output functions****************************************************************************
    /*!\name Output functions */
    //@{
-   virtual void print( std::ostream& os, const char* tab ) const;
+   void print( std::ostream& os, const char* tab ) const override;
    //@}
    //**********************************************************************************************
 
    //**Utility functions***************************************************************************
    /*!\name Utility functions */
    //@{
-   inline virtual Vec3 support( const Vec3& d ) const;
-   inline virtual Vec3 supportContactThreshold( const Vec3& d ) const;
+   inline Vec3 support( const Vec3& d ) const override;
+   inline Vec3 supportContactThreshold( const Vec3& d ) const override;
    //@}
    //**********************************************************************************************
 
@@ -118,15 +118,15 @@ protected:
    //**Utility functions***************************************************************************
    /*!\name Utility functions */
    //@{
-   virtual bool containsRelPointImpl ( real_t px, real_t py, real_t pz ) const;
-   virtual bool isSurfaceRelPointImpl( real_t px, real_t py, real_t pz ) const;
+   bool containsRelPointImpl ( real_t px, real_t py, real_t pz ) const override;
+   bool isSurfaceRelPointImpl( real_t px, real_t py, real_t pz ) const override;
    //@}
    //**********************************************************************************************
 
    //**Utility functions***************************************************************************
    /*!\name Utility functions */
    //@{
-   virtual void calcBoundingBox();  // Calculation of the axis-aligned bounding box
+   void calcBoundingBox() override;  // Calculation of the axis-aligned bounding box
    virtual TriangleMesh::VertexHandle supportVertex( const TriangleMesh::Normal & d, const TriangleMesh::VertexHandle startVertex ) const;
    //@}
    //**********************************************************************************************
