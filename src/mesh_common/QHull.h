@@ -62,11 +62,11 @@ class QHull
 public:
    static_assert( MeshType::IsTriMesh == 1, "QHull only works on triangular meshes!" );
 
-   typedef typename MeshType::Point Point;
-   typedef typename MeshType::Scalar Scalar;
-   typedef typename MeshType::FaceHandle FaceHandle;
-   typedef typename MeshType::VertexHandle VertexHandle;
-   typedef typename MeshType::HalfedgeHandle HalfedgeHandle;
+   using Point = typename MeshType::Point;
+   using Scalar = typename MeshType::Scalar;
+   using FaceHandle = typename MeshType::FaceHandle;
+   using VertexHandle = typename MeshType::VertexHandle;
+   using HalfedgeHandle = typename MeshType::HalfedgeHandle;
 
    QHull( const std::vector< Vector3<real_t> > & pointCloud, const shared_ptr<MeshType> & mesh = make_shared< MeshType >());
    QHull( const std::vector< Point > & pointCloud, const shared_ptr<MeshType> & mesh = make_shared< MeshType >() );
@@ -108,7 +108,7 @@ private:
    
    std::vector< Point > pointCloud_; /// The initial point cloud
    shared_ptr< MeshType > mesh_; /// The generated convex mesh
-   typedef typename OpenMesh::FPropHandleT< std::vector<Point> > VisiblePointsPropertyHandle;
+   using VisiblePointsPropertyHandle = typename OpenMesh::FPropHandleT<std::vector<Point>>;
    OpenMesh::PropertyManager< VisiblePointsPropertyHandle, MeshType > visiblePoints_; /// Property storing the points of a certain face
    std::priority_queue<FaceHandle, std::vector<FaceHandle>, QHullFaceSorter<MeshType> > queue_; /// queue to prioritize faces
 
@@ -159,8 +159,8 @@ template< typename MeshType >
 class QHullPointDataSource : public vtk::PointDataSource
 {
 public:
-   typedef typename MeshType::Point Point;
-   typedef typename MeshType::Scalar Scalar;
+   using Point = typename MeshType::Point;
+   using Scalar = typename MeshType::Scalar;
 
    QHullPointDataSource( const QHull<MeshType> & qhull ) : qhull_( qhull ) {}
 

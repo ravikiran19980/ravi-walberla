@@ -40,11 +40,11 @@ template <typename MeshType>
 class BranchNode : public Node<MeshType>
 {
 public:
-   typedef typename Node<MeshType>::Point      Point;
-   typedef typename Node<MeshType>::Normal     Normal;
-   typedef typename Node<MeshType>::Scalar     Scalar;  
-   typedef typename Node<MeshType>::FaceHandle FaceHandle; 
-   typedef typename Node<MeshType>::AABB       AABB;
+   using Point = typename Node<MeshType>::Point;
+   using Normal = typename Node<MeshType>::Normal;
+   using Scalar = typename Node<MeshType>::Scalar;  
+   using FaceHandle = typename Node<MeshType>::FaceHandle; 
+   using AABB = typename Node<MeshType>::AABB;
    
    template< typename InputIterator >
    BranchNode( const shared_ptr< TriangleDistance<MeshType> > & triDistance, InputIterator beginFh, InputIterator endFh,

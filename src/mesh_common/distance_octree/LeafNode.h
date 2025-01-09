@@ -33,11 +33,11 @@ template <typename MeshType>
 class LeafNode : public Node<MeshType>
 {
 public:
-   typedef typename Node<MeshType>::Point      Point;
-   typedef typename Node<MeshType>::Normal     Normal;
-   typedef typename Node<MeshType>::Scalar     Scalar;
-   typedef typename Node<MeshType>::FaceHandle FaceHandle; 
-   typedef typename Node<MeshType>::AABB       AABB;
+   using Point = typename Node<MeshType>::Point;
+   using Normal = typename Node<MeshType>::Normal;
+   using Scalar = typename Node<MeshType>::Scalar;
+   using FaceHandle = typename Node<MeshType>::FaceHandle; 
+   using AABB = typename Node<MeshType>::AABB;
    
    LeafNode( const shared_ptr< TriangleDistance<MeshType> > & triDistance, const std::vector<FaceHandle> & triangles )
       : Node<MeshType>( triDistance->getMesh(), triangles.begin(), triangles.end() ), triangles_( triangles ), triDistance_( triDistance ) { }

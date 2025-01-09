@@ -42,10 +42,10 @@ namespace mesh {
 template< typename MeshType >
 class VTKMeshWriter {
 public:
-   typedef std::function<bool ( const MeshType &, const typename MeshType::FaceHandle & )> FaceFilterFunction;
+   using FaceFilterFunction = std::function<bool (const MeshType &, const typename MeshType::FaceHandle &)>;
 
-   typedef std::vector< typename MeshType::FaceHandle >   Faces;
-   typedef std::vector< typename MeshType::VertexHandle > Vertices;
+   using Faces = std::vector<typename MeshType::FaceHandle>;
+   using Vertices = std::vector<typename MeshType::VertexHandle>;
 
    template< typename T >
    class DataSource
@@ -53,7 +53,7 @@ public:
    public:
       DataSource( const std::string & _name ) : name_( _name ) { }
       virtual ~DataSource() = default;
-      typedef T value_type;
+      using value_type = T;
       virtual uint_t      numComponents() = 0;
       const std::string & name() { return name_; }
    protected:
@@ -64,8 +64,8 @@ public:
    class VertexDataSource : public DataSource<T>
    {
    public:
-      typedef typename DataSource<T>::value_type value_type;
-      typedef typename VTKMeshWriter::Vertices Vertices;
+      using value_type = typename DataSource<T>::value_type;
+      using Vertices = typename VTKMeshWriter::Vertices;
 
       VertexDataSource( const std::string & _name ) : DataSource<T>( _name ) { }
       virtual ~VertexDataSource() = default;
@@ -76,8 +76,8 @@ public:
    class FaceDataSource : public DataSource<T>
    {
    public:
-      typedef typename DataSource<T>::value_type value_type;
-      typedef typename VTKMeshWriter::Faces Faces;
+      using value_type = typename DataSource<T>::value_type;
+      using Faces = typename VTKMeshWriter::Faces;
 
       FaceDataSource( const std::string & _name ) : DataSource<T>( _name ) { }
       virtual ~FaceDataSource() = default;

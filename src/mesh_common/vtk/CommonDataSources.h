@@ -39,8 +39,8 @@ template< typename MeshType, typename OutputType = typename MeshType::Normal::va
 class NormalsVertexDataSource : public VTKMeshWriter<MeshType>::template VertexDataSource< OutputType >
 {
 public:
-   typedef typename VTKMeshWriter<MeshType>::Vertices Vertices;
-   typedef typename VTKMeshWriter<MeshType>::template VertexDataSource< OutputType >::value_type value_type;
+   using Vertices = typename VTKMeshWriter<MeshType>::Vertices;
+   using value_type = typename VTKMeshWriter<MeshType>::template VertexDataSource<OutputType>::value_type;
 
    NormalsVertexDataSource( const std::string & _name = "Normals" )
       : VTKMeshWriter<MeshType>::template VertexDataSource< OutputType >( _name ) { }
@@ -68,8 +68,8 @@ template< typename MeshType, typename OutputType = typename MeshType::Normal::va
 class NormalsFaceDataSource : public VTKMeshWriter<MeshType>::template FaceDataSource< OutputType >
 {
 public:
-   typedef typename VTKMeshWriter<MeshType>::Faces Faces;
-   typedef typename VTKMeshWriter<MeshType>::template FaceDataSource< OutputType >::value_type value_type;
+   using Faces = typename VTKMeshWriter<MeshType>::Faces;
+   using value_type = typename VTKMeshWriter<MeshType>::template FaceDataSource<OutputType>::value_type;
 
    NormalsFaceDataSource( const std::string & _name = "Normals" )
       : VTKMeshWriter<MeshType>::template FaceDataSource< OutputType >( _name ) { }
@@ -97,8 +97,8 @@ template< typename MeshType, typename OutputType = typename MeshType::Normal::va
 class AreaFaceDataSource : public VTKMeshWriter<MeshType>::template FaceDataSource< OutputType >
 {
 public:
-   typedef typename VTKMeshWriter<MeshType>::Faces Faces;
-   typedef typename VTKMeshWriter<MeshType>::template FaceDataSource< OutputType >::value_type value_type;
+   using Faces = typename VTKMeshWriter<MeshType>::Faces;
+   using value_type = typename VTKMeshWriter<MeshType>::template FaceDataSource<OutputType>::value_type;
 
    AreaFaceDataSource( const std::string & _name = "Area" )
       : VTKMeshWriter<MeshType>::template FaceDataSource< OutputType >( _name ) { }
@@ -123,8 +123,8 @@ template< typename MeshType >
 class StatusBitFaceDataSource : public VTKMeshWriter<MeshType>::template FaceDataSource< uint8_t >
 {
 public:
-   typedef typename VTKMeshWriter<MeshType>::Faces Faces;
-   typedef typename VTKMeshWriter<MeshType>::template FaceDataSource< uint8_t >::value_type value_type;
+   using Faces = typename VTKMeshWriter<MeshType>::Faces;
+   using value_type = typename VTKMeshWriter<MeshType>::template FaceDataSource<uint8_t>::value_type;
 
    StatusBitFaceDataSource( const OpenMesh::Attributes::StatusBits & bit, const std::string & _name )
       : VTKMeshWriter<MeshType>::template FaceDataSource< uint8_t >( _name ), bit_( bit ) {}
@@ -150,8 +150,8 @@ template< typename MeshType >
 class StatusBitVertexDataSource : public VTKMeshWriter<MeshType>::template VertexDataSource< uint8_t >
 {
 public:
-   typedef typename VTKMeshWriter<MeshType>::Vertices Vertices;
-   typedef typename VTKMeshWriter<MeshType>::template VertexDataSource< uint8_t >::value_type value_type;
+   using Vertices = typename VTKMeshWriter<MeshType>::Vertices;
+   using value_type = typename VTKMeshWriter<MeshType>::template VertexDataSource<uint8_t>::value_type;
 
    StatusBitVertexDataSource( const OpenMesh::Attributes::StatusBits & bit, const std::string & _name )
       : VTKMeshWriter<MeshType>::template VertexDataSource< uint8_t >( _name ), bit_( bit ) {}
@@ -177,8 +177,8 @@ template< typename MeshType >
 class ColorFaceDataSource : public VTKMeshWriter<MeshType>::template FaceDataSource< uint8_t >
 {
 public:
-   typedef typename VTKMeshWriter<MeshType>::Faces Faces;
-   typedef typename VTKMeshWriter<MeshType>::template FaceDataSource< uint8_t >::value_type value_type;
+   using Faces = typename VTKMeshWriter<MeshType>::Faces;
+   using value_type = typename VTKMeshWriter<MeshType>::template FaceDataSource<uint8_t>::value_type;
 
    ColorFaceDataSource( const std::string & _name = "color" )
       : VTKMeshWriter<MeshType>::template FaceDataSource< uint8_t >( _name ) {}
@@ -205,8 +205,8 @@ template< typename MeshType >
 class ColorVertexDataSource : public VTKMeshWriter<MeshType>::template VertexDataSource< uint8_t >
 {
 public:
-   typedef typename VTKMeshWriter<MeshType>::Vertices Vertices;
-   typedef typename VTKMeshWriter<MeshType>::template VertexDataSource< uint8_t >::value_type value_type;
+   using Vertices = typename VTKMeshWriter<MeshType>::Vertices;
+   using value_type = typename VTKMeshWriter<MeshType>::template VertexDataSource<uint8_t>::value_type;
 
    ColorVertexDataSource( const std::string & _name = "color" )
       : VTKMeshWriter<MeshType>::template VertexDataSource< uint8_t >( _name ) {}
@@ -231,8 +231,8 @@ template< typename MeshType >
 class IndexFaceDataSource : public VTKMeshWriter<MeshType>::template FaceDataSource< int32_t >
 {
 public:
-   typedef typename VTKMeshWriter<MeshType>::Faces Faces;
-   typedef typename VTKMeshWriter<MeshType>::template FaceDataSource< int32_t >::value_type value_type;
+   using Faces = typename VTKMeshWriter<MeshType>::Faces;
+   using value_type = typename VTKMeshWriter<MeshType>::template FaceDataSource<int32_t>::value_type;
 
    IndexFaceDataSource( const std::string & _name = "index" )
       : VTKMeshWriter<MeshType>::template FaceDataSource< int32_t >( _name ) {}
@@ -253,8 +253,8 @@ template< typename MeshType >
 class IndexVertexDataSource : public VTKMeshWriter<MeshType>::template VertexDataSource< int32_t >
 {
 public:
-   typedef typename VTKMeshWriter<MeshType>::Vertices Vertices;
-   typedef typename VTKMeshWriter<MeshType>::template VertexDataSource< int32_t >::value_type value_type;
+   using Vertices = typename VTKMeshWriter<MeshType>::Vertices;
+   using value_type = typename VTKMeshWriter<MeshType>::template VertexDataSource<int32_t>::value_type;
 
    IndexVertexDataSource( const std::string & _name = "index" )
       : VTKMeshWriter<MeshType>::template VertexDataSource< int32_t >( _name ) {}
@@ -275,8 +275,8 @@ template< typename MeshType >
 class RankFaceDataSource : public VTKMeshWriter<MeshType>::template FaceDataSource< int32_t >
 {
 public:
-   typedef typename VTKMeshWriter<MeshType>::Faces Faces;
-   typedef typename VTKMeshWriter<MeshType>::template FaceDataSource< int32_t >::value_type value_type;
+   using Faces = typename VTKMeshWriter<MeshType>::Faces;
+   using value_type = typename VTKMeshWriter<MeshType>::template FaceDataSource<int32_t>::value_type;
 
    RankFaceDataSource( const std::string & _name = "rank" )
       : VTKMeshWriter<MeshType>::template FaceDataSource< int32_t >( _name ) {}
@@ -294,8 +294,8 @@ template< typename MeshType >
 class RankVertexDataSource : public VTKMeshWriter<MeshType>::template VertexDataSource< int32_t >
 {
 public:
-   typedef typename VTKMeshWriter<MeshType>::Vertices Vertices;
-   typedef typename VTKMeshWriter<MeshType>::template VertexDataSource< int32_t >::value_type value_type;
+   using Vertices = typename VTKMeshWriter<MeshType>::Vertices;
+   using value_type = typename VTKMeshWriter<MeshType>::template VertexDataSource<int32_t>::value_type;
 
    RankVertexDataSource( const std::string & _name = "rank" )
       : VTKMeshWriter<MeshType>::template VertexDataSource< int32_t >( _name ) {}
