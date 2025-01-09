@@ -831,7 +831,7 @@ inline const Matrix2<Type> fabs( const Matrix2<Type>& m );
 // \return The scaled result matrix.
 */
 template< typename Type, typename Other >
-inline typename std::enable_if< std::is_fundamental< Other >::value, Matrix2< HIGH > >::type
+inline std::enable_if_t< std::is_fundamental_v< Other >, Matrix2< HIGH > >
 operator*(Other scalar, const Matrix2< Type >& matrix)
 {
    return matrix * scalar;
@@ -947,7 +947,7 @@ template< typename T,    // Element type of SendBuffer
 mpi::GenericSendBuffer<T,G>& operator<<( mpi::GenericSendBuffer<T,G> & buf, const Matrix2<MT> & m )
 {
    buf.addDebugMarker( "m2" );
-   static_assert ( std::is_trivially_copyable< Matrix2<MT> >::value,
+   static_assert ( std::is_trivially_copyable_v< Matrix2<MT> >,
                    "type has to be trivially copyable for the memcpy to work correctly" );
    auto pos = buf.forward(sizeof(Matrix2<MT>));
    std::memcpy(pos, &m, sizeof(Matrix2<MT>));
@@ -959,7 +959,7 @@ template< typename T,    // Element type  of RecvBuffer
 mpi::GenericRecvBuffer<T>& operator>>( mpi::GenericRecvBuffer<T> & buf, Matrix2<MT> & m )
 {
    buf.readDebugMarker( "m2" );
-   static_assert ( std::is_trivially_copyable< Matrix2<MT> >::value,
+   static_assert ( std::is_trivially_copyable_v< Matrix2<MT> >,
                    "type has to be trivially copyable for the memcpy to work correctly" );
    auto pos = buf.skip(sizeof(Matrix2<MT>));
    //suppress https://gcc.gnu.org/onlinedocs/gcc/C_002b_002b-Dialect-Options.html#index-Wclass-memaccess

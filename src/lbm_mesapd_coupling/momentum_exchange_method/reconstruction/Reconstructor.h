@@ -716,7 +716,7 @@ public:
 
       } else {
          //upwinding
-         stencil::Direction upwindingXDirection = (targetVelocity[0] > real_t(0) ) ? stencil::W : stencil::E;
+         stencil::Direction const upwindingXDirection = (targetVelocity[0] > real_t(0) ) ? stencil::W : stencil::E;
          stencil::Direction sourceXDirection = (availableStencilIndices[Stencil::idx[upwindingXDirection]]) ? upwindingXDirection
                                                                                                             : ((availableStencilIndices[Stencil::idx[stencil::inverseDir[upwindingXDirection]]]) ? stencil::inverseDir[upwindingXDirection]
                                                                                                                                                                                                  : stencil::C );
@@ -746,7 +746,7 @@ public:
          velocityGradient[5] = real_t(0.5) * (neighborVelocity1[2] - neighborVelocity2[2]); // assuming dx = 1
       } else {
          //upwinding
-         stencil::Direction upwindingYDirection = (targetVelocity[1] > real_t(0) ) ? stencil::S : stencil::N;
+         stencil::Direction const upwindingYDirection = (targetVelocity[1] > real_t(0) ) ? stencil::S : stencil::N;
          stencil::Direction sourceYDirection = (availableStencilIndices[Stencil::idx[upwindingYDirection]]) ? upwindingYDirection
                                                                                                             : ((availableStencilIndices[Stencil::idx[stencil::inverseDir[upwindingYDirection]]]) ? stencil::inverseDir[upwindingYDirection]
                                                                                                                                                                                                  : stencil::C );
@@ -779,7 +779,7 @@ public:
             velocityGradient[8] = real_t(0.5) * (neighborVelocity1[2] - neighborVelocity2[2]); // assuming dx = 1
          } else {
             //upwinding
-            stencil::Direction upwindingZDirection = (targetVelocity[2] > real_t(0)) ? stencil::B : stencil::T;
+            stencil::Direction const upwindingZDirection = (targetVelocity[2] > real_t(0)) ? stencil::B : stencil::T;
             stencil::Direction sourceZDirection = (availableStencilIndices[Stencil::idx[upwindingZDirection]]) ? upwindingZDirection
                                                                                                                : ((availableStencilIndices[Stencil::idx[stencil::inverseDir[upwindingZDirection]]]) ? stencil::inverseDir[upwindingZDirection]
                                                                                                                                                                                                     : stencil::C);

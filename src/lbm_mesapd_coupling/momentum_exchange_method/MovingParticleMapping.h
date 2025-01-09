@@ -59,7 +59,7 @@ namespace lbm_mesapd_coupling {
 template< typename PdfField_T, typename BoundaryHandling_T, typename ParticleAccessor_T, typename ParticleSelector_T>
 class MovingParticleMapping
 {
-   static_assert(std::is_base_of<mesa_pd::data::IAccessor, ParticleAccessor_T>::value, "Provide a valid accessor as template");
+   static_assert(std::is_base_of_v<mesa_pd::data::IAccessor, ParticleAccessor_T>, "Provide a valid accessor as template");
 
 public:
 
@@ -125,8 +125,8 @@ private:
 
       Vector3<real_t> startCellCenter = blockStorage_->getBlockLocalCellCenter( *block, cellBB.min() );
 
-      mesa_pd::kernel::SingleCast singleCast;
-      mesa_pd::ContainsPointFunctor containsPointFctr;
+      mesa_pd::kernel::SingleCast const singleCast;
+      mesa_pd::ContainsPointFunctor const containsPointFctr;
 
       auto particleUid = ac_->getUid(particleIdx);
 
@@ -312,8 +312,8 @@ private:
 
       if( cellBB.empty() ) return;
 
-      mesa_pd::kernel::SingleCast singleCast;
-      mesa_pd::ContainsPointFunctor containsPointFctr;
+      mesa_pd::kernel::SingleCast const singleCast;
+      mesa_pd::ContainsPointFunctor const containsPointFctr;
 
       Vector3<real_t> startCellCenter = blockStorage_->getBlockLocalCellCenter( block, cellBB.min() );
       auto blockLevel = blockStorage_->getLevel(block);

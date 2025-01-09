@@ -226,8 +226,8 @@ bool Logging::isInIgnoreCallerPaths( const std::vector< walberla::regex > & rege
       std::stringstream callerPathAndLine;
       callerPathAndLine << callerPath << ":" << line;
 
-      for( auto regex = regexes.begin(); regex != regexes.end(); ++regex )
-         if( walberla::regex_search( callerPathAndLine.str(), *regex ) )
+      for(const auto & regexe : regexes)
+         if( walberla::regex_search( callerPathAndLine.str(), regexe ) )
             return true;
    }
 

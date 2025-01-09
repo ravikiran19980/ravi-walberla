@@ -150,7 +150,7 @@ static const uint8_t msbLookupTable[256] =
 //**********************************************************************************************************************
 template< typename UINT > uint_t uintMSBPosition( UINT value )
 {
-   static_assert( std::is_unsigned< UINT >::value, "uintMSBPosition can only be used with unsigned integer types!" );
+   static_assert( std::is_unsigned_v< UINT >, "uintMSBPosition can only be used with unsigned integer types!" );
 
    switch( std::numeric_limits<UINT>::digits )
    {
