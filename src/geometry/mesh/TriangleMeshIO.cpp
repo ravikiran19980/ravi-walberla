@@ -651,9 +651,9 @@ namespace geometry {
          << "        <DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
 
       os << "          ";
-      for( auto it = mesh.getVertices().begin(); it != mesh.getVertices().end(); ++it )
+      for(const auto & it : mesh.getVertices())
       {
-         os << (*it)[0] << ' ' << (*it)[1] << ' ' << (*it)[2] << ' ';
+         os << it[0] << ' ' << it[1] << ' ' << it[2] << ' ';
       }
       os  << '\n';
 
@@ -664,9 +664,9 @@ namespace geometry {
 
       os << "        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
       os << "          ";
-      for( auto it = mesh.getVertexIndices().begin(); it != mesh.getVertexIndices().end(); ++it )
+      for(unsigned int it : mesh.getVertexIndices())
       {
-         os << *it << ' ';
+         os << it << ' ';
       }
       os << '\n';
       os << "        </DataArray>\n";
@@ -692,11 +692,11 @@ namespace geometry {
       {
          os << "        <DataArray type=\"UInt8\" Name=\"vertexColors\" NumberOfComponents=\"3\" format=\"ascii\">\n";
          os << "          ";
-         for( auto it = mesh.getVertexColors().begin(); it != mesh.getVertexColors().end(); ++it )
+         for(auto it : mesh.getVertexColors())
          {
-            os << std::lround( (*it)[0] * 255.0f ) << ' '
-               << std::lround( (*it)[1] * 255.0f ) << ' '
-               << std::lround( (*it)[2] * 255.0f ) << ' ';
+            os << std::lround( it[0] * 255.0f ) << ' '
+               << std::lround( it[1] * 255.0f ) << ' '
+               << std::lround( it[2] * 255.0f ) << ' ';
          }
          os << "        </DataArray>\n";
       }
@@ -705,9 +705,9 @@ namespace geometry {
       {
          os << "        <DataArray type=\"Float32\" Name=\"vertexNormals\" NumberOfComponents=\"3\" format=\"ascii\">\n";
          os << "          ";
-         for( auto it = mesh.getVertexNormals().begin(); it != mesh.getVertexNormals().end(); ++it )
+         for(const auto & it : mesh.getVertexNormals())
          {
-            os << (*it)[0] << ' ' << (*it)[1] << ' ' << (*it)[2] << ' ';
+            os << it[0] << ' ' << it[1] << ' ' << it[2] << ' ';
          }
          os << "        </DataArray>\n";
       }

@@ -48,13 +48,13 @@ void BoundaryFromVoxelFile<BoundaryHandlerT>::init( BlockStorage & blockStorage,
 
    std::map<uint8_t, BoundarySetter<BoundaryHandlerT> > flags;
 
-   for( auto configBlockIt = configBlocks.begin(); configBlockIt != configBlocks.end(); ++configBlockIt )
+   for(auto & configBlock : configBlocks)
    {
-      if( configBlockIt->getKey() == "Flag" )
+      if( configBlock.getKey() == "Flag" )
       {
-         uint8_t const flag = uint8_c( static_cast<int>( configBlockIt->template getParameter<int>( "value" ) ) );
+         uint8_t const flag = uint8_c( static_cast<int>( configBlock.template getParameter<int>( "value" ) ) );
          BoundarySetter<BoundaryHandlerT> boundarySetter;
-         boundarySetter.setConfigBlock( *configBlockIt );
+         boundarySetter.setConfigBlock( configBlock );
          flags[flag] = boundarySetter;
       }
    }
@@ -74,8 +74,8 @@ void BoundaryFromVoxelFile<BoundaryHandlerT>::init( BlockStorage & blockStorage,
          if( cells.empty() )
             continue;
 
-         for( auto it = cells.begin(); it != cells.end(); ++it )
-            structuredBlockStorage_.transformGlobalToBlockLocalCell( *it, *blockIt );
+         for(auto & cell : cells)
+            structuredBlockStorage_.transformGlobalToBlockLocalCell( cell, *blockIt );
 
          setterIt->second.set( cells.begin(), cells.end() );
       }

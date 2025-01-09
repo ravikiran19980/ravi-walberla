@@ -72,9 +72,8 @@ namespace initializer {
          }
       }
 
-      for ( auto it = subBlocks.begin(); it != subBlocks.end(); ++it )
+      for (auto subBlock : subBlocks)
       {
-         Config::BlockHandle subBlock = *it;
          bool addOrSubtract = true;
 
          bool const addDefined      = subBlock.isDefined( addKeyword_ );

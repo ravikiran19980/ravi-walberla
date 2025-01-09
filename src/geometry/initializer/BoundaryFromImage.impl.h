@@ -167,16 +167,16 @@ namespace initializer {
 
       BoundarySetters mapping;
 
-      for( auto mappingBlock = mappingBlocks.begin(); mappingBlock != mappingBlocks.end(); ++mappingBlock )
+      for(auto & mappingBlock : mappingBlocks)
       {
-         const std::string pixelValueStr =  mappingBlock->template getParameter<std::string> ( "value" );
+         const std::string pixelValueStr =  mappingBlock.template getParameter<std::string> ( "value" );
          auto pixelValue = Image_T::pixelValueFromString( pixelValueStr );
 
          if( mapping.find( pixelValue )  != mapping.end() )
             WALBERLA_ABORT( "BoundaryFromImage: Duplicate BoundaryValueMapping for pixel value " << pixelValue );
 
          BoundarySetter<Handling> boundarySetter;
-         boundarySetter.setConfigBlock( *mappingBlock );
+         boundarySetter.setConfigBlock( mappingBlock );
 
          mapping[pixelValue] = boundarySetter;
       }

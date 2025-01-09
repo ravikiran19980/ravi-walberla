@@ -59,8 +59,8 @@ CellIntervalDataMap readCellIntervalsOnRoot( const std::string & geometryFile,
 
       sendBuffer << uint8_t(0); // dummy byte to make sure a message is sent even if cellIntervals is empty
 
-      for( auto ciIt = cellIntervals.begin(); ciIt != cellIntervals.end(); ++ciIt )
-         sendBuffer << ciIt->second;
+      for(const auto & cellInterval : cellIntervals)
+         sendBuffer << cellInterval.second;
 
    }
 
@@ -73,12 +73,12 @@ CellIntervalDataMap readCellIntervalsOnRoot( const std::string & geometryFile,
    WALBERLA_ROOT_SECTION()
    {
       // Read root cell intervals from geometry file
-      for( auto ciIt = cellIntervals.begin(); ciIt != cellIntervals.end(); ++ciIt )
+      for(const auto & cellInterval : cellIntervals)
       {
-         CellInterval shifted = ciIt->second;
+         CellInterval shifted = cellInterval.second;
          shifted.shift( -offset );
          reader.read(shifted, data);
-         result[ ciIt->first ] = std::make_pair( ciIt->second, data );
+         result[ cellInterval.first ] = std::make_pair( cellInterval.second, data );
       }
    }
 
@@ -121,11 +121,11 @@ CellIntervalDataMap readCellIntervalsOnRoot( const std::string & geometryFile,
       uint8_t dummy;
       recvBuffer >> dummy;
 
-      for( auto ciIt = cellIntervals.begin(); ciIt != cellIntervals.end(); ++ciIt )
+      for(const auto & cellInterval : cellIntervals)
       {
          WALBERLA_ASSERT( !recvBuffer.isEmpty() );
          recvBuffer >> data;
-         result[ ciIt->first ] = std::make_pair( ciIt->second, data );
+         result[ cellInterval.first ] = std::make_pair( cellInterval.second, data );
       }
 
       WALBERLA_ASSERT( recvBuffer.isEmpty() );
