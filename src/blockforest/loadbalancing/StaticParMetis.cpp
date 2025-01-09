@@ -108,16 +108,16 @@ uint_t StaticLevelwiseParMetis::operator()( SetupBlockForest & forest, const uin
          xadj.push_back( int64_c( adjncy.size() ) );
 
 
-         for( auto nit = block.getNeighborhood().begin(); nit != block.getNeighborhood().end(); ++nit )
+         for(auto nit : block.getNeighborhood())
          {
-            if( (*nit)->getLevel() != level )
+            if( nit->getLevel() != level )
                continue; // ignore neighbor blocks on other levels
 
-            adjncy.push_back( int64_c( (*nit)->getIndex() ) );
+            adjncy.push_back( int64_c( nit->getIndex() ) );
 
             if(weightsToUse_ == PARMETIS_EDGE_WEIGHTS || weightsToUse_ == PARMETIS_BOTH_WEIGHTS)
             {
-               blockPairs.emplace_back( blocks[i], *nit );
+               blockPairs.emplace_back( blocks[i], nit );
             }
          }
 
@@ -197,9 +197,9 @@ uint_t StaticLevelwiseParMetis::operator()( SetupBlockForest & forest, const uin
 
    //count number of used processes
    std::vector<bool> processUsed( numberOfProcesses, false );
-   for(auto blockIt = forest.begin(); blockIt != forest.end(); ++blockIt)
+   for(auto & blockIt : forest)
    {
-      processUsed[ blockIt->getTargetProcess() ] = true;
+      processUsed[ blockIt.getTargetProcess() ] = true;
    }
 
    return uint_c(std::count( processUsed.begin(), processUsed.end(), true ));

@@ -300,8 +300,8 @@ inline bool PhantomBlock::neighborhoodSectionHasLargerBlock( const uint_t sectio
 inline void PhantomBlock::addNeighbor( const BlockID & id, const uint_t process, const Set<SUID> & state )
 {
 #ifndef NDEBUG
-   for( uint_t i = 0; i != neighborhood_.size(); ++i )
-      WALBERLA_ASSERT( neighborhood_[i].getId() < id || id < neighborhood_[i].getId() );
+   for(const auto & i : neighborhood_)
+      WALBERLA_ASSERT( i.getId() < id || id < i.getId() );
 #endif
 
    neighborhood_.emplace_back( phantomForest_, id, process, state );

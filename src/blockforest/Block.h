@@ -292,8 +292,8 @@ inline bool Block::neighborhoodSectionHasLargerBlock( const uint_t sectionIndex 
 inline void Block::addNeighbor( const BlockID & id, const uint_t process, const Set<SUID> & state )
 {
 #ifndef NDEBUG
-   for( uint_t i = 0; i != neighborhood_.size(); ++i )
-      WALBERLA_ASSERT( neighborhood_[i].getId() < id || id < neighborhood_[i].getId() );
+   for(const auto & neighbor : neighborhood_)
+      WALBERLA_ASSERT( neighbor.getId() < id || id < neighbor.getId() );
 #endif
 
    neighborhood_.emplace_back( forest_, id, process, state );

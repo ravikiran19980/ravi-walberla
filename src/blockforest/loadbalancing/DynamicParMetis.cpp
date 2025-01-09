@@ -64,17 +64,17 @@ std::map< blockforest::BlockID, uint_t > getBlockIdToSequenceMapping( const Phan
    std::map< blockforest::BlockID, uint_t > mapping;
 
    uint_t sequenceId = blockSequenceRange.first;
-   for( auto it = targetProcess.begin(); it != targetProcess.end(); ++it )
-      mapping.insert( std::make_pair( it->first->getId(), sequenceId++ ) );
+   for(const auto & targetProces : targetProcess)
+      mapping.insert( std::make_pair( targetProces.first->getId(), sequenceId++ ) );
    WALBERLA_ASSERT_EQUAL( sequenceId, blockSequenceRange.second );
 
    const std::vector<uint_t>& neighborProcesses = phantomForest.getNeighboringProcesses();
    
    mpi::BufferSystem bs( comm );
 
-   for( auto it = neighborProcesses.begin(); it != neighborProcesses.end(); ++it )
+   for(uint_t neighborProcesse : neighborProcesses)
    {
-      auto destRank = mpi::translateRank(mpi::MPIManager::instance()->comm(), comm, int_c(*it));
+      auto destRank = mpi::translateRank(mpi::MPIManager::instance()->comm(), comm, int_c(neighborProcesse));
       if (destRank != -1)
          bs.sendBuffer( destRank ) << mapping;
    }
@@ -88,9 +88,9 @@ std::map< blockforest::BlockID, uint_t > getBlockIdToSequenceMapping( const Phan
       std::map< blockforest::BlockID, uint_t > remoteMapping;
       it.buffer() >> remoteMapping;
 
-      for( auto remoteIt = remoteMapping.begin(); remoteIt != remoteMapping.end(); ++remoteIt )
+      for(auto & remoteIt : remoteMapping)
       {
-         auto result = mapping.insert( *remoteIt );
+         auto result = mapping.insert( remoteIt );
          WALBERLA_UNUSED( result );
          WALBERLA_ASSERT( result.second, "BlockId should be unique!" );
       }
@@ -164,14 +164,14 @@ bool DynamicParMetis::operator()( std::vector< std::pair< const PhantomBlock *, 
          switch( edgeSource_ )
          {
          case PARMETIS_EDGES_FROM_FOREST:
-            for( auto nit = block.getNeighborhood().begin(); nit != block.getNeighborhood().end(); ++nit )
+            for(const auto & nit : block.getNeighborhood())
             {
-               auto mapIt = mapping.find( nit->getId() );
+               auto mapIt = mapping.find( nit.getId() );
                WALBERLA_ASSERT_UNEQUAL( mapIt, mapping.end(), "BlockId of neighbor is not contained in sequence mapping!" );
                WALBERLA_CHECK_GREATER_EQUAL( mapIt->second, 0 );
                WALBERLA_CHECK_LESS( mapIt->second, vtxdist.back() );
                adjncy.push_back( int64_c( mapIt->second ) );
-               auto edgeWeightIt = bi.getEdgeWeights().find( nit->getId() );
+               auto edgeWeightIt = bi.getEdgeWeights().find( nit.getId() );
                WALBERLA_CHECK_GREATER_EQUAL( edgeWeightIt->second, 0 );
                adjwgt.push_back( edgeWeightIt == bi.getEdgeWeights().end() ? int64_t( 1 ) : edgeWeightIt->second );
             }

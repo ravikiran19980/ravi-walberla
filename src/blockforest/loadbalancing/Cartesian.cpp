@@ -80,11 +80,11 @@ uint_t CartesianDistribution::operator()( SetupBlockForest & forest, const uint_
 
             forest.getBlocks( partitionBlocks, indices[0][x], indices[1][y], indices[2][z], indices[0][x+1], indices[1][y+1], indices[2][z+1] );
 
-            for( auto block = partitionBlocks.begin(); block != partitionBlocks.end(); ++block )
+            for(auto & partitionBlock : partitionBlocks)
             {
                const uint_t index = z * partitions[0] * partitions[1] + y * partitions[0] + x;
 
-               (*block)->assignTargetProcess( ( !processIdMap_->empty() ) ? (*processIdMap_)[ index ] : index );
+               partitionBlock->assignTargetProcess( ( !processIdMap_->empty() ) ? (*processIdMap_)[ index ] : index );
             }
          }
       }

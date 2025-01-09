@@ -420,9 +420,9 @@ inline SetupBlockForest::SetupBlockForest() {
 
 inline SetupBlockForest::~SetupBlockForest() {
 
-   for( uint_t i = 0; i != forest_.size(); ++i )
+   for(auto & coarseBlock : forest_)
    {
-      if( forest_[i] != nullptr ) delete forest_[i];
+      if(coarseBlock != nullptr ) delete coarseBlock;
    }
 }
 
@@ -623,8 +623,8 @@ inline void SetupBlockForest::initWorkloadMemorySUID( const Set<SUID>& selector 
       WALBERLA_LOG_PROGRESS( "Initializing SetupBlockForest: Assigning workload, memory requirements, and SUIDs to blocks ..." )
    }
 
-   for( uint_t i = 0; i != workloadMemorySUIDAssignmentFunctions.size(); ++i )
-      workloadMemorySUIDAssignmentFunctions[i]( *this );
+   for(const auto & workloadMemorySUIDAssignmentFunction : workloadMemorySUIDAssignmentFunctions)
+      workloadMemorySUIDAssignmentFunction( *this );
 }
 
 
@@ -633,8 +633,8 @@ inline void SetupBlockForest::updateNeighborhood( std::set< SetupBlock* >& block
 
    std::vector< SetupBlock* > blocks;
 
-   for( auto it = blocksToUpdate.begin(); it != blocksToUpdate.end(); ++it )
-      blocks.push_back( *it );
+   for(auto it : blocksToUpdate)
+      blocks.push_back( it );
 
    updateNeighborhood( blocks );
 }
@@ -737,8 +737,8 @@ public:
 
    void operator()( SetupBlockForest & forest )
    {
-      for( auto function = function_.begin(); function != function_.end(); ++function )
-         (*function)( forest );
+      for(auto & function : function_)
+         function( forest );
    }
 
 private:

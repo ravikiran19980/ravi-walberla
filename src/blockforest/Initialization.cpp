@@ -270,10 +270,10 @@ public:
    FixedRefinementLevelSelector( const uint_t level ) : level_(level) {}
    void operator()( SetupBlockForest& forest )
    {
-      for( auto block = forest.begin(); block != forest.end(); ++block )
+      for(auto & block : forest)
       {
-         if( block->getLevel() < level_ )
-            block->setMarker( true );
+         if( block.getLevel() < level_ )
+            block.setMarker( true );
       }
    }
 private:
@@ -796,9 +796,9 @@ void uniformWorkloadAndMemoryAssignment( SetupBlockForest& forest ) {
    std::vector< SetupBlock* > blocks;
    forest.getBlocks( blocks );
 
-   for( uint_t i = 0; i != blocks.size(); ++i ) {
-      blocks[i]->setWorkload( numeric_cast< workload_t >(1) );
-      blocks[i]->setMemory( numeric_cast< memory_t >(1) );
+   for(auto & block : blocks) {
+      block->setWorkload( numeric_cast< workload_t >(1) );
+      block->setMemory( numeric_cast< memory_t >(1) );
    }
 }
 
@@ -852,9 +852,9 @@ memory_t uniformFacesDominantCommunication( const SetupBlock* const a, const Set
 
    uint_t faces[] = { 4, 10, 12, 13, 15, 21 };
 
-   for( uint_t i = 0; i != 6; ++i ) {
-      for( uint_t j = 0; j != a->getNeighborhoodSectionSize(faces[i]); ++j )
-         if( a->getNeighbor(faces[i],j) == b )
+   for(unsigned long face : faces) {
+      for( uint_t j = 0; j != a->getNeighborhoodSectionSize(face); ++j )
+         if( a->getNeighbor(face,j) == b )
             return numeric_cast< memory_t >(1000);
    }
 

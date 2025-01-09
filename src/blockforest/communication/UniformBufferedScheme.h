@@ -253,15 +253,15 @@ void UniformBufferedScheme<Stencil>::startCommunication()
 
    communicationInProgress_ = true;
 
-   for( auto packInfo = packInfos_.begin(); packInfo != packInfos_.end(); ++packInfo )
-      ( *packInfo )->beforeStartCommunication();
+   for(auto & packInfo : packInfos_)
+      packInfo->beforeStartCommunication();
 
    bool constantSizes = true;
    bool threadsafeReceive = true;
-   for( auto packInfo = packInfos_.begin(); packInfo != packInfos_.end(); ++packInfo )
+   for(auto & packInfo : packInfos_)
    {
-      if( !( *packInfo )->constantDataExchange() ) constantSizes = false;
-      if( !( *packInfo )->threadsafeReceiving()  ) threadsafeReceive = false;
+      if( !packInfo->constantDataExchange() ) constantSizes = false;
+      if( !packInfo->threadsafeReceiving()  ) threadsafeReceive = false;
    }
 
    // Redo setup if a PackInfo has changed its requirements
@@ -311,7 +311,7 @@ void UniformBufferedScheme<Stencil>::startCommunication()
                auto neighbor = dynamic_cast< Block * >( forest->getBlock(nBlockId) );
                WALBERLA_ASSERT_EQUAL( neighbor->getProcess(), block->getProcess() );
 
-               for( auto packInfo = packInfos_.begin(); packInfo != packInfos_.end(); ++packInfo )
+               for(auto & packInfo : packInfos_)
                {
                   if( localMode_ == BUFFER )
                   {
@@ -320,14 +320,14 @@ void UniformBufferedScheme<Stencil>::startCommunication()
                      const uint_t index = uint_c( localBuffers_.size() ) - uint_t(1);
 
                      VoidFunction pack = std::bind( &UniformBufferedScheme<Stencil>::localBufferPacking, this,
-                                                      index, std::cref( *packInfo ), block, *dir );
+                                                      index, std::cref( packInfo ), block, *dir );
 
                      threadsafeLocalCommunication_.push_back( pack );
 
                      VoidFunction unpack = std::bind( &UniformBufferedScheme<Stencil>::localBufferUnpacking, this,
-                                                        index, std::cref( *packInfo ), neighbor, *dir  );
+                                                        index, std::cref( packInfo ), neighbor, *dir  );
 
-                     if( (*packInfo)->threadsafeReceiving() )
+                     if( packInfo->threadsafeReceiving() )
                         threadsafeLocalCommunicationUnpack_.push_back( unpack );
                      else
                         localCommunicationUnpack_.push_back( unpack );
@@ -335,8 +335,8 @@ void UniformBufferedScheme<Stencil>::startCommunication()
                   else
                   {
                      VoidFunction localCommunicationFunction = std::bind( &walberla::communication::UniformPackInfo::communicateLocal,
-                                                                            *packInfo, block, neighbor, *dir );
-                     if( (*packInfo)->threadsafeReceiving() )
+                                                                            packInfo, block, neighbor, *dir );
+                     if( packInfo->threadsafeReceiving() )
                         threadsafeLocalCommunication_.push_back( localCommunicationFunction );
                      else
                         localCommunication_.push_back( localCommunicationFunction );
@@ -350,9 +350,9 @@ void UniformBufferedScheme<Stencil>::startCommunication()
                if( !packInfos_.empty() )
                   sendFunctions[ nProcess ].push_back( std::bind( UniformBufferedScheme<Stencil>::writeHeader, std::placeholders::_1, nBlockId, *dir ) );
 
-               for( auto packInfo = packInfos_.begin(); packInfo != packInfos_.end(); ++packInfo )
+               for(auto & packInfo : packInfos_)
                   sendFunctions[ nProcess ].push_back( std::bind( &walberla::communication::UniformPackInfo::packData,
-                                                                     *packInfo, block, *dir,  std::placeholders::_1 ) );
+                                                                     packInfo, block, *dir,  std::placeholders::_1 ) );
             }
          }
       }
@@ -382,8 +382,8 @@ void UniformBufferedScheme<Stencil>::startCommunication()
    
    if( localMode_ == START )
    {
-      for( auto function = localCommunication_.begin(); function != localCommunication_.end(); ++function )
-         (*function)();
+      for(auto & function : localCommunication_)
+         function();
 
       const int threadsafeLocalCommunicationSize = int_c( threadsafeLocalCommunication_.size() );
 #ifdef _OPENMP
@@ -402,8 +402,8 @@ void UniformBufferedScheme<Stencil>::startCommunication()
          threadsafeLocalCommunication_[uint_c(i)]();
    }
 
-   for( auto packInfo = packInfos_.begin(); packInfo != packInfos_.end(); ++packInfo )
-      ( *packInfo )->afterStartCommunication();
+   for(auto & packInfo : packInfos_)
+      packInfo->afterStartCommunication();
 }
 
 
@@ -414,15 +414,15 @@ void UniformBufferedScheme<Stencil>::wait()
    if( packInfos_.empty() || !communicationInProgress_ )
       return;
 
-   for( auto packInfo = packInfos_.begin(); packInfo != packInfos_.end(); ++packInfo )
-      (*packInfo)->beforeWait();
+   for(auto & packInfo : packInfos_)
+      packInfo->beforeWait();
 
    // LOCAL
 
    if( localMode_ == WAIT )
    {
-      for( auto function = localCommunication_.begin(); function != localCommunication_.end(); ++function )
-         (*function)();
+      for(auto & function : localCommunication_)
+         function();
 
       const int threadsafeLocalCommunicationSize = int_c( threadsafeLocalCommunication_.size() );
 #ifdef _OPENMP
@@ -433,8 +433,8 @@ void UniformBufferedScheme<Stencil>::wait()
    }
    else if( localMode_ == BUFFER )
    {
-      for( auto function = localCommunicationUnpack_.begin(); function != localCommunicationUnpack_.end(); ++function )
-         (*function)();
+      for(auto & function : localCommunicationUnpack_)
+         function();
 
       const int threadsafeLocalCommunicationUnpackSize = int_c( threadsafeLocalCommunicationUnpack_.size() );
 #ifdef _OPENMP
@@ -448,8 +448,8 @@ void UniformBufferedScheme<Stencil>::wait()
 
    bufferSystem_.wait();
 
-   for( auto packInfo = packInfos_.begin(); packInfo != packInfos_.end(); ++packInfo )
-      ( *packInfo )->afterWait();
+   for(auto & packInfo : packInfos_)
+      packInfo->afterWait();
 
    communicationInProgress_ = false;
 }
@@ -477,8 +477,8 @@ void UniformBufferedScheme<Stencil>::readHeader( RecvBuffer & buffer, BlockID & 
 template< typename Stencil >
 void UniformBufferedScheme<Stencil>::send( SendBuffer & buffer, std::vector< SendBufferFunction > & functions )
 {
-   for( auto function = functions.begin(); function != functions.end(); ++function )
-      (*function)( buffer );
+   for(auto & function : functions)
+      function( buffer );
 }
 
 
@@ -500,8 +500,8 @@ void UniformBufferedScheme<Stencil>::receive( RecvBuffer & buffer )
 
          auto block = dynamic_cast< Block * >( forest->getBlock(blockID) );
 
-         for( auto packInfo = packInfos_.begin(); packInfo != packInfos_.end(); ++packInfo )
-            (*packInfo)->unpackData( block, stencil::inverseDir[dir], buffer );
+         for(auto & packInfo : packInfos_)
+            packInfo->unpackData( block, stencil::inverseDir[dir], buffer );
       }
    }
 }

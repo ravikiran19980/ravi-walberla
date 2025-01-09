@@ -578,8 +578,8 @@ inline uint_t BlockForest::getNumberOfBlocks( const uint_t level ) const {
 
    uint_t numberOfBlocks = 0;
 
-   for( auto it = blocks_.begin(); it != blocks_.end(); ++it )
-      if( it->second->getLevel() == level ) ++numberOfBlocks;
+   for(const auto & bIt : blocks_)
+      if(bIt.second->getLevel() == level ) ++numberOfBlocks;
 
    return numberOfBlocks;
 }
@@ -588,48 +588,48 @@ inline uint_t BlockForest::getNumberOfBlocks( const uint_t level ) const {
 
 inline void BlockForest::getBlocks( std::vector< const Block* >& blocks, const uint_t level ) const {
 
-   for( auto it = blocks_.begin(); it != blocks_.end(); ++it )
-      if( it->second->getLevel() == level ) blocks.push_back( it->second.get() );
+   for(const auto & bIt : blocks_)
+      if(bIt.second->getLevel() == level ) blocks.push_back(bIt.second.get() );
 }
 
 
 
 inline void BlockForest::getBlocks( std::vector< Block* >& blocks, const uint_t level ) {
 
-   for( auto it = blocks_.begin(); it != blocks_.end(); ++it )
-      if( it->second->getLevel() == level ) blocks.push_back( it->second.get() );
+   for(auto & bIt : blocks_)
+      if(bIt.second->getLevel() == level ) blocks.push_back(bIt.second.get() );
 }
 
 
 
 inline void BlockForest::getBlocksContainedWithinAABB( std::vector< const IBlock* >& blocks, const AABB& aabb ) const {
 
-   for( auto it = blocks_.begin(); it != blocks_.end(); ++it )
-      if( aabb.contains( it->second->getAABB() ) ) blocks.push_back( it->second.get() );
+   for(const auto & bIt : blocks_)
+      if( aabb.contains(bIt.second->getAABB() ) ) blocks.push_back(bIt.second.get() );
 }
 
 
 
 inline void BlockForest::getBlocksContainedWithinAABB( std::vector< IBlock* >& blocks, const AABB& aabb ) {
 
-   for( auto it = blocks_.begin(); it != blocks_.end(); ++it )
-      if( aabb.contains( it->second->getAABB() ) ) blocks.push_back( it->second.get() );
+   for(auto & bIt : blocks_)
+      if( aabb.contains(bIt.second->getAABB() ) ) blocks.push_back(bIt.second.get() );
 }
 
 
 
 inline void BlockForest::getBlocksOverlappedByAABB( std::vector< const IBlock* >& blocks, const AABB& aabb ) const {
 
-   for( auto it = blocks_.begin(); it != blocks_.end(); ++it )
-      if( it->second->getAABB().intersects( aabb ) ) blocks.push_back( it->second.get() );
+   for(const auto & bIt : blocks_)
+      if( bIt.second->getAABB().intersects(aabb ) ) blocks.push_back(bIt.second.get() );
 }
 
 
 
 inline void BlockForest::getBlocksOverlappedByAABB( std::vector< IBlock* >& blocks, const AABB& aabb ) {
 
-   for( auto it = blocks_.begin(); it != blocks_.end(); ++it )
-      if( it->second->getAABB().intersects( aabb ) ) blocks.push_back( it->second.get() );
+   for(auto & bIt : blocks_)
+      if( bIt.second->getAABB().intersects(aabb ) ) blocks.push_back(bIt.second.get() );
 }
 
 
@@ -664,8 +664,8 @@ inline Block* BlockForest::getBlock( const IBlockID& id ) {
 
 inline const Block* BlockForest::getBlock( const real_t x, const real_t y, const real_t z ) const {
 
-   for( auto it = blocks_.begin(); it != blocks_.end(); ++it )
-      if( it->second->getAABB().contains(x,y,z) ) return it->second.get();
+   for(const auto & bIt : blocks_)
+      if( bIt.second->getAABB().contains(x, y, z) ) return bIt.second.get();
 
    return nullptr;
 }
@@ -674,8 +674,8 @@ inline const Block* BlockForest::getBlock( const real_t x, const real_t y, const
 
 inline Block* BlockForest::getBlock( const real_t x, const real_t y, const real_t z ) {
 
-   for( auto it = blocks_.begin(); it != blocks_.end(); ++it )
-      if( it->second->getAABB().contains(x,y,z) ) return it->second.get();
+   for(auto & bIt : blocks_)
+      if( bIt.second->getAABB().contains(x, y, z) ) return bIt.second.get();
 
    return nullptr;
 }
@@ -976,8 +976,8 @@ public:
                     std::vector< const Block * > & blocksAlreadyMarkedForRefinement,
                     const blockforest::BlockForest & forest )
    {
-      for( auto function = functions_.begin(); function != functions_.end(); ++function )
-         (*function)( minTargetLevels, blocksAlreadyMarkedForRefinement, forest );
+      for(auto & function : functions_)
+         function( minTargetLevels, blocksAlreadyMarkedForRefinement, forest );
    }
 
 private:
