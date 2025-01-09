@@ -21,7 +21,7 @@
 
 #include "lbm_mesapd_coupling/DataTypesCodegen.h"
 
-#include <assert.h>
+#include <cassert>
 
 #include "ParticleAndVolumeFractionMappingKernels.h"
 
