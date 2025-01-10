@@ -162,7 +162,7 @@ public:
     FctHandle addFuncAfterTimeStep (const VoidFctNoArguments & f,
                                     const std::string & identifier     = std::string(),
                                     const Set<SUID> & require          = Set<SUID>::emptySet(),
-                                    const Set<SUID> & exludingSelector = Set<SUID>::emptySet() );
+                                    const Set<SUID> & excludingSelector = Set<SUID>::emptySet() );
 
     void      addFuncAfterTimeStep (const FctHandle & fctToBindTo,
                                     const VoidFctNoArguments & f,
