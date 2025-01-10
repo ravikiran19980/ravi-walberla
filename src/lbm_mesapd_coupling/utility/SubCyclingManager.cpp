@@ -40,21 +40,21 @@ void SubCyclingManager::operator()() {
 
 SubCyclingManager::FuncHandle
 SubCyclingManager::addFuncBeforeSubCycles(const VoidVoidFunc &f, const std::string &identifier) {
-   IdentifiedFunc const idFunc(identifier, f);
+   IdentifiedFunc idFunc(identifier, f);
    beforeFunctions_.emplace_back(idFunc);
    return beforeFunctions_.size() - 1;
 }
 
 SubCyclingManager::FuncHandle
 SubCyclingManager::addFuncDuringSubCycles(const VoidVoidFunc &f, const std::string &identifier) {
-   IdentifiedFunc const idFunc(identifier, f);
+   IdentifiedFunc idFunc(identifier, f);
    duringFunctions_.emplace_back(idFunc);
    return duringFunctions_.size() - 1;
 }
 
 SubCyclingManager::FuncHandle
 SubCyclingManager::addFuncAfterSubCycles(const VoidVoidFunc &f, const std::string &identifier) {
-   IdentifiedFunc const idFunc(identifier, f);
+   IdentifiedFunc idFunc(identifier, f);
    afterFunctions_.emplace_back(idFunc);
    return afterFunctions_.size() - 1;
 }
