@@ -714,14 +714,14 @@ inline VTKOutput::Write writeFiles( const shared_ptr<VTKOutput> & vtk,
                                     const Set<SUID>& requiredStates     = Set<SUID>::emptySet(),
                                     const Set<SUID>& incompatibleStates = Set<SUID>::emptySet() )
 {
-   return VTKOutput::Write{ vtk, immediatelyWriteCollectors, simultaneousIOOperations, requiredStates, incompatibleStates };
+   return { vtk, immediatelyWriteCollectors, simultaneousIOOperations, requiredStates, incompatibleStates };
 }
 
 
 
 inline VTKOutput::WriteCollectors writeCollectorFiles( const shared_ptr<VTKOutput> & vtk, const bool barrier )
 {
-   return VTKOutput::WriteCollectors{ vtk, barrier };
+   return { vtk, barrier };
 }
 
 
