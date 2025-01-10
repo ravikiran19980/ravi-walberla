@@ -23,6 +23,7 @@
 
 #include <ostream>
 #include <vector>
+#include <array>
 
 
 namespace walberla {
@@ -74,10 +75,9 @@ public:
    void toStream( std::ostream& os );
 
 private:
-
-   void encodeblock( unsigned char const in[3], unsigned char out[4], int len )
+   void encodeblock( const std::array< unsigned char, 3 > in,  std::array< unsigned char, 4 > out, int len )
    {
-      static const unsigned char cb64[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+      std::string cb64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
       switch( len )
       {
