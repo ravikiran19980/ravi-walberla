@@ -23,6 +23,7 @@
 #include "demangle.h"
 #include "core/DataTypes.h"
 
+#include <array>
 #include <iostream>
 
 
