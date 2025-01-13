@@ -721,12 +721,12 @@ void GlobalLoadBalancing::reorderProcessesByBFS( std::vector< BLOCK* > & blocks,
    }
 #endif
 
-   const int blockssize = int_c( blocks.size() );
+   const uint_t blockssize = blocks.size();
 #ifdef _OPENMP
    #pragma omp parallel for schedule(static)
 #endif
-   for( int i = 0; i < blockssize; ++i )
-      blocks[ uint_c(i) ]->assignTargetProcess( reorderMap[ blocks[ uint_c(i) ]->getTargetProcess() ] );
+   for( uint_t i = 0; i < blockssize; ++i )
+      blocks[ i ]->assignTargetProcess( reorderMap[ blocks[ i ]->getTargetProcess() ] );
 }
 
 

@@ -85,7 +85,7 @@ MPI_Datatype mpiDatatypeSlice( const Field_T & field,
 
    WALBERLA_DEBUG_SECTION()
    {
-      for( int i = 0; i < 4; ++i )
+      for( uint_t i = 0; i < 4; ++i )
       {
          WALBERLA_ASSERT_GREATER_EQUAL( subsizes[i], 1 );
          WALBERLA_ASSERT_LESS_EQUAL( subsizes[i], sizes[i] );
@@ -163,7 +163,7 @@ MPI_Datatype mpiDatatypeSliceXYZ( const Field_T & field, const CellInterval & in
 
    WALBERLA_DEBUG_SECTION()
    {
-      for( int i = 0; i < 3; ++i )
+      for( uint_t i = 0; i < 3; ++i )
       {
          WALBERLA_ASSERT_GREATER_EQUAL( starts[i], 0 );
          WALBERLA_ASSERT_LESS_EQUAL( starts[i], sizes[i] - subsizes[i] );

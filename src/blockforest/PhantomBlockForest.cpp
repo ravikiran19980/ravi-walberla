@@ -198,7 +198,7 @@ void PhantomBlockForest::initialize( const BlockStateDeterminationFunction & fun
    mpi::BufferSystem bufferSystem( MPIManager::instance()->comm(), 1941 ); // phantomblockforest = 112 104 97 110 116 111 109 98 108 111 99 107 102 111 114 101 115 116
    bufferSystem.setReceiverInfo( ranksToRecvFrom, true ); // ATTENTION: true = the size of a message from A to B varies
 
-   for( int i = 0; i != 2; ++i )
+   for( uint_t i = 0; i != 2; ++i )
    {
       for(mpi::MPIRank rank : ranksToRecvFrom)
       {

@@ -389,7 +389,7 @@ void generateIsoSurface_internal( const Field_T & f, real_t threshold,
    RealVec3 ey (0,dx[1],0);
    RealVec3 ez (0,0,dx[2]);
 
-   int cubeIndex;      // index entry of the cube
+   uint_t cubeIndex;      // index entry of the cube
 
    // edges between which points?
    const std::array< int, 24 > mcEdges = { 0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0,
@@ -415,7 +415,7 @@ void generateIsoSurface_internal( const Field_T & f, real_t threshold,
       value[7] = real_c( i.neighbor( 0, 1, 1, fCoord ) );
 
       cubeIndex = 0;
-      for(int j=0; j< 8; ++j)
+      for(uint_t j=0; j< 8; ++j)
          if(value[j] < threshold)
             cubeIndex |= 1 << j;
 
@@ -468,10 +468,10 @@ void generateIsoSurface_internal( const Field_T & f, real_t threshold,
             // not pre-computed, then interpolate edge
             const int e1 = mcEdges[e * 2];
             const int e2 = mcEdges[e * 2 + 1];
-            const RealVec3 p1 = pos[e1];    // scalar field pos 1
-            const RealVec3 p2 = pos[e2];    // scalar field pos 2
-            const real_t valp1 = value[e1]; // scalar field val 1
-            const real_t valp2 = value[e2]; // scalar field val 2
+            const RealVec3 p1 = pos[uint_t(e1)];    // scalar field pos 1
+            const RealVec3 p2 = pos[uint_t(e2)];    // scalar field pos 2
+            const real_t valp1 = value[uint_t(e1)]; // scalar field val 1
+            const real_t valp2 = value[uint_t(e2)]; // scalar field val 2
             const real_t mu = (threshold - valp1) / (valp2 - valp1);
             TriangleMesh::vertex_t position  = p1 + (p2 - p1) * mu + posOffset;
 
@@ -498,22 +498,22 @@ void generateIsoSurface_internal( const Field_T & f, real_t threshold,
       }// for all edges
 
       // Create the triangles...
-      for (int e = 0; mcTriTable[cubeIndex][e] != -1; e += 3)
+      for (int e = 0; mcTriTable[cubeIndex][uint_t(e)] != -1; e += 3)
       {
          if ( calcNormals )
          {
-            mesh.addTriangle(triIndices[mcTriTable[cubeIndex][e + 0]],
-                             triIndices[mcTriTable[cubeIndex][e + 1]],
-                             triIndices[mcTriTable[cubeIndex][e + 2]],
-                             triIndices[mcTriTable[cubeIndex][e + 0]],
-                             triIndices[mcTriTable[cubeIndex][e + 1]],
-                             triIndices[mcTriTable[cubeIndex][e + 2]]);
+            mesh.addTriangle(triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 0)])],
+                             triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 1)])],
+                             triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 2)])],
+                             triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 0)])],
+                             triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 1)])],
+                             triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 2)])]);
          }
          else
          {
-            mesh.addTriangle(triIndices[mcTriTable[cubeIndex][e + 0]],
-                             triIndices[mcTriTable[cubeIndex][e + 1]],
-                             triIndices[mcTriTable[cubeIndex][e + 2]] );
+            mesh.addTriangle(triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 0)])],
+                             triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 1)])],
+                             triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 2)])] );
          }
       }
    }
