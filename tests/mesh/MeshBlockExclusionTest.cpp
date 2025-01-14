@@ -138,7 +138,7 @@ void run( const std::string & meshFile, const uint_t numTotalBlocks )
 }
 
 
-int main( int argc, char * argv[] )
+int main( int argc, char ** argv )
 {
    debug::enterTestMode();
    mpi::Environment mpiEnv( argc, argv );
