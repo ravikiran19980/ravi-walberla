@@ -459,9 +459,9 @@ template <typename T, uint_t fs>
 inline Cell FieldIterator<T,fs>::cell() const
 {
    fastestCoord_ = cell_idx_c( linePtr_ - lineBegin_ );
-   return Cell ( xBegin_ + *curX_,
+   return { xBegin_ + *curX_,
                  yBegin_ + *curY_,
-                 zBegin_ + *curZ_ );
+                 zBegin_ + *curZ_ };
 }
 
 
