@@ -167,8 +167,8 @@ public:
    inline Vector3<Length> getNormalizedOrZero()          const;
    inline Vector3<Length> getNormalizedIfNotZero()       const;
    inline void            reset();
-   inline Type*           data()                         {return v_;}
-   inline Type const *    data()                         const {return v_;}
+   inline Type*           data()                         {return v_.data();}
+   inline Type const *    data()                         const {return v_.data();}
    //@}
    //*******************************************************************************************************************
 
@@ -185,7 +185,7 @@ public:
     * 0 & 1 & 2 \\
     * \end{array}\right)\f]
    **/
-   Type v_[3] = {Type(), Type(), Type()};
+   std::array< Type, 3 > v_ = { Type(), Type(), Type() };
    //@}
    //*******************************************************************************************************************
 };

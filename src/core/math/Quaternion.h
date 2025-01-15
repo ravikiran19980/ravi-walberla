@@ -161,8 +161,8 @@ public:
                               inline void                       rotateZ( Type angle );
                               inline void                       swap( Quaternion& q ) /* throw() */;
                               inline const Vector3<Type>        getEulerAnglesXYZ() const;
-                              inline Type*                      data()                         {return v_;}
-                              inline Type const *               data()                         const {return v_;}
+                              inline Type*                      data()                         {return v_.data();}
+                              inline Type const *               data()                         const {return v_.data();}
    //@}
    //**********************************************************************************************
 
@@ -205,8 +205,8 @@ private:
     * 0 & 1 & 2 & 3 \\
     * \end{array}\right)\f]
    **/
-   Type v_[4] = {Type(1), Type(0), Type(0), Type(0)};
-   //@}
+  std::array< Type, 4 > v_ = { Type(1), Type(0), Type(0), Type(0) };
+  //@}
    //**********************************************************************************************
 };
 static_assert( std::is_trivially_copyable_v<Quaternion<real_t>>, "Quaternion<real_t> has to be trivially copyable!");

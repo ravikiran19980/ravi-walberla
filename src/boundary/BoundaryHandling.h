@@ -2154,8 +2154,8 @@ inline void BoundaryHandling< FlagField_T, Stencil, Boundaries... >::operator()(
 
       if( dirty_ )
       {
-         for( uint_t i = 0; i != rebuildCellDirectionPairs_.size(); ++i )
-            rebuildCellDirectionPairs_[i] = true;
+         for(auto && rebuildCellDirectionPair : rebuildCellDirectionPairs_)
+            rebuildCellDirectionPair = true;
          dirty_ = false;
       }
 
@@ -2370,8 +2370,8 @@ inline void BoundaryHandling< FlagField_T, Stencil, Boundaries... >::toStream( s
    std::vector< std::string > boundaryConditions;
    getBoundaryConditions( boundaryConditions_, boundaryConditions );
 
-   for( auto bc = boundaryConditions.begin(); bc != boundaryConditions.end(); ++bc )
-      os << "- " << *bc << "\n";
+   for(auto & boundaryCondition : boundaryConditions)
+      os << "- " << boundaryCondition << "\n";
 
    os << "\nFlags/Masks:"
       << "\n- near boundary: "; valueToStream( os, nearBoundary_ );
@@ -2425,12 +2425,12 @@ typename std::enable_if<(N!=-1), void>::type BoundaryHandling< FlagField_T, Sten
    std::vector< FlagUID > uids;
    boundaryCondition.pushFlags( uids );
 
-   for( auto uid = uids.begin(); uid != uids.end(); ++uid )
+   for(auto & uid : uids)
    {
-      if( flagField_->flagExists( *uid ) )
-         mask = static_cast<flag_t>( mask | flagField_->getFlag( *uid ) );
+      if( flagField_->flagExists( uid ) )
+         mask = static_cast<flag_t>( mask | flagField_->getFlag( uid ) );
       else
-         mask = static_cast<flag_t>( mask | flagField_->registerFlag( *uid ) );
+         mask = static_cast<flag_t>( mask | flagField_->registerFlag( uid ) );
    }
    WALBERLA_ASSERT_EQUAL( boundary_ & mask, flag_t(0) ); // every boundary condition must have a unique mask/set of FlagUIDs
 
@@ -2585,13 +2585,12 @@ inline bool BoundaryHandling< FlagField_T, Stencil, Boundaries... >::checkFlagFi
       WALBERLA_ASSERT( innerBB_.contains( cells ) );
 
       CellVector nearBoundaryCells;
-      for( auto cellDirectionPairs = cellDirectionPairs_[numberOfGhostLayersToInclude].begin();
-               cellDirectionPairs != cellDirectionPairs_[numberOfGhostLayersToInclude].end(); ++cellDirectionPairs )
-         for( auto cellDirectionPair = cellDirectionPairs->begin(); cellDirectionPair != cellDirectionPairs->end(); ++cellDirectionPair )
-            nearBoundaryCells.push_back( cellDirectionPair->first );
+      for(const auto & cellDirectionPairs : cellDirectionPairs_[numberOfGhostLayersToInclude])
+         for(const auto & cellDirectionPair : cellDirectionPairs)
+            nearBoundaryCells.push_back( cellDirectionPair.first );
 
-      for( auto cell = nearBoundaryCells.begin(); cell != nearBoundaryCells.end(); ++cell )
-         if( !flagField_->isFlagSet( cell->x(), cell->y(), cell->z(), nearBoundary_ ) )
+      for(auto & nearBoundaryCell : nearBoundaryCells)
+         if( !flagField_->isFlagSet( nearBoundaryCell.x(), nearBoundaryCell.y(), nearBoundaryCell.z(), nearBoundary_ ) )
             return false;
 
       CellSet nearBoundarySet( nearBoundaryCells );
@@ -2805,8 +2804,8 @@ inline typename std::enable_if<(N!=-1), void>::type BoundaryHandling< FlagField_
    auto & boundaryCondition = std::get<N>( boundaryConditions );
    if( ( boundaryCondition.getMask() & flag ) == flag )
    {
-      for( auto cell = cells.begin(); cell != cells.end(); ++cell )
-         addBoundary( flag, cell->x(), cell->y(), cell->z() );
+      for(auto cell : cells)
+         addBoundary( flag, cell.x(), cell.y(), cell.z() );
 
       boundaryCondition.registerCells( flag, cells.begin(), cells.end(), parameter );
    }

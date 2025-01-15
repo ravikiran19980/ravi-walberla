@@ -1110,9 +1110,7 @@ template< typename Buffer_T >
 void BoundaryHandlingCollection< FlagField_T, Handlers... >::pack( Buffer_T & buffer, stencil::Direction direction, const uint_t numberOfLayers,
                                                              const bool assumeIdenticalFlagMapping ) const
 {
-#ifdef NDEBUG
    if( !assumeIdenticalFlagMapping )
-#endif
       buffer << getFlagMapping();
 
    CellInterval interval = getPackingInterval( direction, numberOfLayers );

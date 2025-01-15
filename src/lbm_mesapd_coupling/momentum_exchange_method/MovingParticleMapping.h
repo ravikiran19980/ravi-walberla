@@ -125,8 +125,8 @@ private:
 
       Vector3<real_t> startCellCenter = blockStorage_->getBlockLocalCellCenter( *block, cellBB.min() );
 
-      mesa_pd::kernel::SingleCast const singleCast;
-      mesa_pd::ContainsPointFunctor const containsPointFctr;
+      mesa_pd::kernel::SingleCast singleCast;
+      mesa_pd::ContainsPointFunctor containsPointFctr;
 
       auto particleUid = ac_->getUid(particleIdx);
 
@@ -312,8 +312,8 @@ private:
 
       if( cellBB.empty() ) return;
 
-      mesa_pd::kernel::SingleCast const singleCast;
-      mesa_pd::ContainsPointFunctor const containsPointFctr;
+      mesa_pd::kernel::SingleCast singleCast;
+      mesa_pd::ContainsPointFunctor containsPointFctr;
 
       Vector3<real_t> startCellCenter = blockStorage_->getBlockLocalCellCenter( block, cellBB.min() );
       auto blockLevel = blockStorage_->getLevel(block);

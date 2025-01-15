@@ -1304,8 +1304,8 @@ const Vector3<Type> Matrix3<Type>::getEulerAngles( EulerRotation order ) const
 {
    WALBERLA_STATIC_ASSERT( !std::numeric_limits<Type>::is_integer );
 
-   static const uint_t eulSafe[4] = { 0, 1, 2, 0 };
-   static const uint_t eulNext[4] = { 1, 2, 0, 1 };
+   static const std::array< uint_t, 4 > eulSafe = { 0, 1, 2, 0 };
+   static const std::array< uint_t, 4 > eulNext = { 1, 2, 0, 1 };
 
    Vector3<Type> ea;
 

@@ -80,27 +80,27 @@ __global__ void superSampling(walberla::gpu::FieldAccessor< uint_t > nOverlappin
    nOverlappingParticlesField.get() = uint_t(0);
    BField.get()                     = real_t(0.0);
 
-   double3 const sampleDistance = { 1.0 / (nSamples.x + 1) * dx, 1.0 / (nSamples.y + 1) * dx, 1.0 / (nSamples.z + 1) * dx };
-   double3 const startSamplingPoint = { (blockStart.x + threadIdx.x * dx + sampleDistance.x),
+   double3 sampleDistance = { 1.0 / (nSamples.x + 1) * dx, 1.0 / (nSamples.y + 1) * dx, 1.0 / (nSamples.z + 1) * dx };
+   double3 startSamplingPoint = { (blockStart.x + threadIdx.x * dx + sampleDistance.x),
                                   (blockStart.y + blockIdx.x * dx + sampleDistance.y),
                                   (blockStart.z + blockIdx.y * dx + sampleDistance.z) };
    const ulong3 subBlockIndex = { size_t(real_t(threadIdx.x) / blockDim.x * real_t(subBlocksPerDim.x)),
                                   size_t(real_t(blockIdx.x) / gridDim.x * real_t(subBlocksPerDim.y)),
                                   size_t(real_t(blockIdx.y) / gridDim.y * real_t(subBlocksPerDim.z)) };
-   size_t const linearizedSubBlockIndex =
+   size_t linearizedSubBlockIndex =
       subBlockIndex.z * subBlocksPerDim.x * subBlocksPerDim.y + subBlockIndex.y * subBlocksPerDim.x + subBlockIndex.x;
 
    for (uint i = 0; i < numParticlesSubBlocks[linearizedSubBlockIndex]; i++)
    {
       // SoA
-      size_t const idxMapped =
+      size_t idxMapped =
          particleIDsSubBlocks[linearizedSubBlockIndex + i * subBlocksPerDim.x * subBlocksPerDim.y * subBlocksPerDim.z];
       double3 currentSamplingPoint = startSamplingPoint;
 
-      double3 const minCornerSphere = { spherePositions[idxMapped * 3] - sphereRadii[idxMapped],
+      double3 minCornerSphere = { spherePositions[idxMapped * 3] - sphereRadii[idxMapped],
                                   spherePositions[idxMapped * 3 + 1] - sphereRadii[idxMapped],
                                   spherePositions[idxMapped * 3 + 2] - sphereRadii[idxMapped] };
-      double3 const maxCornerSphere = { spherePositions[idxMapped * 3] + sphereRadii[idxMapped],
+      double3 maxCornerSphere = { spherePositions[idxMapped * 3] + sphereRadii[idxMapped],
                                   spherePositions[idxMapped * 3 + 1] + sphereRadii[idxMapped],
                                   spherePositions[idxMapped * 3 + 2] + sphereRadii[idxMapped] };
 
@@ -194,17 +194,17 @@ __global__ void
    const ulong3 subBlockIndex = { size_t(real_t(threadIdx.x) / blockDim.x * real_t(subBlocksPerDim.x)),
                                   size_t(real_t(blockIdx.x) / gridDim.x * real_t(subBlocksPerDim.y)),
                                   size_t(real_t(blockIdx.y) / gridDim.y * real_t(subBlocksPerDim.z)) };
-   size_t const linearizedSubBlockIndex =
+   size_t linearizedSubBlockIndex =
       subBlockIndex.z * subBlocksPerDim.x * subBlocksPerDim.y + subBlockIndex.y * subBlocksPerDim.x + subBlockIndex.x;
 
    for (uint i = 0; i < numParticlesSubBlocks[linearizedSubBlockIndex]; i++)
    {
-      size_t const idxMapped =
+      size_t idxMapped =
          particleIDsSubBlocks[linearizedSubBlockIndex + i * subBlocksPerDim.x * subBlocksPerDim.y * subBlocksPerDim.z];
-      double3 const minCornerSphere = { spherePositions[idxMapped * 3] - sphereRadii[idxMapped],
+      double3 minCornerSphere = { spherePositions[idxMapped * 3] - sphereRadii[idxMapped],
                                   spherePositions[idxMapped * 3 + 1] - sphereRadii[idxMapped],
                                   spherePositions[idxMapped * 3 + 2] - sphereRadii[idxMapped] };
-      double3 const maxCornerSphere = { spherePositions[idxMapped * 3] + sphereRadii[idxMapped],
+      double3 maxCornerSphere = { spherePositions[idxMapped * 3] + sphereRadii[idxMapped],
                                   spherePositions[idxMapped * 3 + 1] + sphereRadii[idxMapped],
                                   spherePositions[idxMapped * 3 + 2] + sphereRadii[idxMapped] };
       if (cellCenter.x + dx > minCornerSphere.x && cellCenter.x - dx < maxCornerSphere.x &&
