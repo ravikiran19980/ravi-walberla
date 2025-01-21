@@ -56,7 +56,7 @@ Vector3<real_t> vectorSolution( const Vector3<real_t> & )
 }
 
 
-int main( int argc, char* argv[] )
+int main( int argc, char** argv )
 {
    debug::enterTestMode();
 
