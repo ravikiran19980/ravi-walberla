@@ -29,7 +29,7 @@ namespace gpu
 
 
    ParallelSection::ParallelSection(ParallelStreams * parent, gpuStream_t mainStream)
-     : parent_( parent ), mainStream_( mainStream ), counter_( 0 )
+     : parent_( parent ), mainStream_( mainStream )
    {
       WALBERLA_DEVICE_SECTION()
       {

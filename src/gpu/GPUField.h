@@ -170,7 +170,7 @@ namespace gpu
       uint_t         fAllocSize_;
       Layout         layout_;
       bool           usePitchedMem_;
-      uint8_t        timestepCounter_;
+      uint8_t        timestepCounter_ = uint8_c(0);
    };
 
 
