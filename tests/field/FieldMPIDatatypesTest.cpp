@@ -226,17 +226,17 @@ void testIntervalCopy( const SourceField & src, TargetField & dst, const CellInt
    MPI_Type_free( &dstType );
 
    CellInterval fieldInterval = src.xyzSize();
-   for( auto it = fieldInterval.begin(); it != fieldInterval.end(); ++it )
+   for(const auto& ival : fieldInterval)
    {
-      if( interval.contains( *it ) )
+      if( interval.contains( ival ) )
       {
          for( cell_idx_t f = fBeg; f <= fEnd; ++f )
-            WALBERLA_CHECK_IDENTICAL( src.get( *it, f ), dst.get( *it, f ) );
+            WALBERLA_CHECK_IDENTICAL( src.get( ival, f ), dst.get( ival, f ) );
       }
       else
       {
          for( cell_idx_t f = fBeg; f <= fEnd; ++f )
-            WALBERLA_CHECK_IDENTICAL( dst.get( *it, f ), numeric_cast< typename SourceField::value_type >( 0 ) );
+            WALBERLA_CHECK_IDENTICAL( dst.get( ival, f ), numeric_cast< typename SourceField::value_type >( 0 ) );
       }
    }
 }

@@ -126,11 +126,11 @@ void getScalarFieldQuantities( const shared_ptr<StructuredBlockStorage> & blocks
       auto domainFlag = flagField->getFlag( Domain_Flag );
 
       CellInterval xyzSizeWithGhostLayers = field->xyzSizeWithGhostLayer();
-      for( auto cellIt = xyzSizeWithGhostLayers.begin(); cellIt != xyzSizeWithGhostLayers.end(); ++cellIt )
+      for(const auto& cellIt : xyzSizeWithGhostLayers)
       {
-         if( flagField->isFlagSet(*cellIt,domainFlag))
+         if(flagField->isFlagSet(cellIt,domainFlag))
          {
-            real_t value = field->get(*cellIt);
+            real_t value = field->get(cellIt);
             sum += value;
             min = std::min(min, value);
             max = std::max(max, value);
@@ -162,11 +162,11 @@ void getVectorFieldQuantities( const shared_ptr<StructuredBlockStorage> & blocks
       auto flagField = blockIt->getData<FlagField_T>( flagFieldID );
       auto domainFlag = flagField->getFlag( Domain_Flag );
       CellInterval xyzSizeWithGhostLayers = field->xyzSizeWithGhostLayer();
-      for( auto cellIt = xyzSizeWithGhostLayers.begin(); cellIt != xyzSizeWithGhostLayers.end(); ++cellIt )
+      for(const auto& cellIt : xyzSizeWithGhostLayers)
       {
-         if( flagField->isFlagSet(*cellIt,domainFlag))
+         if(flagField->isFlagSet(cellIt,domainFlag))
          {
-            Vector3<real_t> value = field->get(*cellIt);
+            Vector3<real_t> value = field->get(cellIt);
             sum += value;
             for (size_t i = 0; i < 3; ++i) {
                min[i] = std::min(min[i], value[i]);
@@ -202,19 +202,19 @@ void getMultiCompFieldQuantities( const shared_ptr<StructuredBlockStorage> & blo
       auto flagField = blockIt->getData<FlagField_T>( flagFieldID );
       auto domainFlag = flagField->getFlag( Domain_Flag );
       CellInterval xyzSizeWithGhostLayers = field->xyzSizeWithGhostLayer();
-      for( auto cellIt = xyzSizeWithGhostLayers.begin(); cellIt != xyzSizeWithGhostLayers.end(); ++cellIt )
+      for(const auto& cellIt : xyzSizeWithGhostLayers)
       {
-         if( flagField->isFlagSet(*cellIt,domainFlag))
+         if(flagField->isFlagSet(cellIt,domainFlag))
          {
-            real_t value0 = field->get(*cellIt, 0);
+            real_t value0 = field->get(cellIt, 0);
             sum[0] += value0;
             min[0] = std::min(min[0], value0);
             max[0] = std::max(max[0], value0);
-            real_t value1 = field->get(*cellIt, 1);
+            real_t value1 = field->get(cellIt, 1);
             sum[1] += value1;
             min[1] = std::min(min[1], value1);
             max[1] = std::max(max[1], value1);
-            real_t value2 = field->get(*cellIt, 2);
+            real_t value2 = field->get(cellIt, 2);
             sum[2] += value2;
             min[2] = std::min(min[2], value2);
             max[2] = std::max(max[2], value2);

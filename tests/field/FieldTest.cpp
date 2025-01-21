@@ -507,18 +507,18 @@ void swapableCompareTest ( )
    fieldSet.insert( new MyField(1,2,2, field::fzyx) );
    fieldSet.insert( new MyField(1,2,3, field::fzyx) );
 
-   for ( auto i = fieldSet.begin(); i != fieldSet.end(); ++i )
+   for (auto i : fieldSet)
    {
-      std::cout << "( " << (*i)->xSize()
-                << ","  << (*i)->ySize()
-                << ","  << (*i)->zSize()
-                << ","  << (*i)->layout() << ")" << std::endl;
+      std::cout << "( " << i->xSize()
+                << ","  << i->ySize()
+                << ","  << i->zSize()
+                << ","  << i->layout() << ")" << std::endl;
 
    }
 
-   for ( auto i = fieldSet.begin(); i != fieldSet.end(); ++i )
+   for (auto i : fieldSet)
    {
-      delete *i;
+      delete i;
    }
 }
 

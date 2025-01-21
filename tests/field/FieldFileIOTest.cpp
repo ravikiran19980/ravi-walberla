@@ -56,10 +56,10 @@ static void workloadMemorySUIDAssignmentFunction(SetupBlockForest& forest)
    std::vector< SetupBlock* > blocks;
    forest.getBlocks(blocks);
 
-   for (uint_t i = 0; i != blocks.size(); ++i)
+   for (auto & block : blocks)
    {
-      blocks[i]->setMemory(1.0);
-      blocks[i]->setWorkload(1.0);
+      block->setMemory(1.0);
+      block->setWorkload(1.0);
    }
 }
 

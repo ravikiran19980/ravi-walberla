@@ -49,10 +49,10 @@ void initU( const shared_ptr< StructuredBlockStorage > & blocks, const BlockData
          ScalarField_T * src = block->getData< ScalarField_T >( srcId );
          CellInterval xyz = src->xyzSizeWithGhostLayer();
          xyz.yMin() = xyz.yMax();
-         for( auto cell = xyz.begin(); cell != xyz.end(); ++cell )
+         for(const auto& cell : xyz)
          {
-            const Vector3< real_t > p = blocks->getBlockLocalCellCenter( *block, *cell );
-            src->get( *cell ) = std::sin( math::pi * p[0] ) * std::sinh( math::pi * p[1] );
+            const Vector3< real_t > p = blocks->getBlockLocalCellCenter( *block, cell );
+            src->get( cell ) = std::sin( math::pi * p[0] ) * std::sinh( math::pi * p[1] );
          }
       }
    }
@@ -65,9 +65,9 @@ void initF( const shared_ptr< StructuredBlockStorage > & blocks, const BlockData
    {
       ScalarField_T * f = block->getData< ScalarField_T >( fId );
       CellInterval xyz = f->xyzSize();
-      for( auto cell = xyz.begin(); cell != xyz.end(); ++cell )
+      for(const auto& cell : xyz)
       {
-         f->get( *cell ) = real_c(0.0);
+         f->get( cell ) = real_c(0.0);
       }
    }
 }
