@@ -41,9 +41,9 @@ const uint_t FieldGhostLayers( 1 );
 using flag_t = walberla::uint8_t;
 using FlagField_T = FlagField<flag_t>;
 
-typedef GhostLayerField< real_t, 1>          ScalarField_T;
-typedef GhostLayerField< Vector3<real_t>, 1> Vec3Field_T;
-typedef GhostLayerField< real_t, 3>          MultiComponentField_T;
+using ScalarField_T = GhostLayerField<real_t, 1>;
+using Vec3Field_T = GhostLayerField<Vector3<real_t>, 1>;
+using MultiComponentField_T = GhostLayerField<real_t, 3>;
 
 
 const FlagUID Domain_Flag ( "domain" );
@@ -237,9 +237,9 @@ void testNearestNeighborDistributor( const shared_ptr<StructuredBlockStorage> & 
                                      const BlockDataID & scalarFieldID, const BlockDataID & vectorFieldID, const BlockDataID & multiComponentFieldID )
 {
    // distributors
-   typedef field::NearestNeighborDistributor<ScalarField_T, FlagField_T>         ScalarDistributor_T;
-   typedef field::NearestNeighborDistributor<Vec3Field_T, FlagField_T>           Vec3Distributor_T;
-   typedef field::NearestNeighborDistributor<MultiComponentField_T, FlagField_T> MultiComponentDistributor_T;
+   using ScalarDistributor_T = field::NearestNeighborDistributor<ScalarField_T, FlagField_T>;
+   using Vec3Distributor_T = field::NearestNeighborDistributor<Vec3Field_T, FlagField_T>;
+   using MultiComponentDistributor_T = field::NearestNeighborDistributor<MultiComponentField_T, FlagField_T>;
    BlockDataID scalarDistributorID         = field::addDistributor< ScalarDistributor_T, FlagField_T >( blocks, scalarFieldID, flagFieldID, Domain_Flag );
    BlockDataID vectorDistributorID         = field::addDistributor< Vec3Distributor_T, FlagField_T >( blocks, vectorFieldID, flagFieldID, Domain_Flag );
    BlockDataID multiComponentDistributorID = field::addDistributor< MultiComponentDistributor_T, FlagField_T >( blocks, multiComponentFieldID, flagFieldID, Domain_Flag );
@@ -322,9 +322,9 @@ void testKernelDistributor( const shared_ptr<StructuredBlockStorage> & blocks, c
                             const BlockDataID & scalarFieldID, const BlockDataID & vectorFieldID, const BlockDataID & multiComponentFieldID )
 {
    // distributors
-   typedef field::KernelDistributor<ScalarField_T, FlagField_T>         ScalarDistributor_T;
-   typedef field::KernelDistributor<Vec3Field_T, FlagField_T>           Vec3Distributor_T;
-   typedef field::KernelDistributor<MultiComponentField_T, FlagField_T> MultiComponentDistributor_T;
+   using ScalarDistributor_T = field::KernelDistributor<ScalarField_T, FlagField_T>;
+   using Vec3Distributor_T = field::KernelDistributor<Vec3Field_T, FlagField_T>;
+   using MultiComponentDistributor_T = field::KernelDistributor<MultiComponentField_T, FlagField_T>;
    BlockDataID scalarDistributorID         = field::addDistributor< ScalarDistributor_T, FlagField_T >( blocks, scalarFieldID, flagFieldID, Domain_Flag );
    BlockDataID vectorDistributorID         = field::addDistributor< Vec3Distributor_T, FlagField_T >( blocks, vectorFieldID, flagFieldID, Domain_Flag );
    BlockDataID multiComponentDistributorID = field::addDistributor< MultiComponentDistributor_T, FlagField_T >( blocks, multiComponentFieldID, flagFieldID, Domain_Flag );
@@ -407,7 +407,7 @@ void testNearestNeighborDistributorAtBoundary( const shared_ptr<StructuredBlockS
                                                const BlockDataID & flagFieldID, const BlockDataID & scalarFieldID )
 {
    // distributor
-   typedef field::NearestNeighborDistributor<ScalarField_T, FlagField_T> ScalarDistributor_T;
+   using ScalarDistributor_T = field::NearestNeighborDistributor<ScalarField_T, FlagField_T>;
    BlockDataID scalarDistributorID = field::addDistributor<ScalarDistributor_T, FlagField_T>(blocks, scalarFieldID, flagFieldID, Domain_Flag);
 
    // check scalar interpolation close to boundary
@@ -451,7 +451,7 @@ void testKernelDistributorAtBoundary( const shared_ptr<StructuredBlockStorage> &
                                       const BlockDataID & flagFieldID, const BlockDataID & scalarFieldID )
 {
    // distributor
-   typedef field::KernelDistributor<ScalarField_T, FlagField_T> ScalarDistributor_T;
+   using ScalarDistributor_T = field::KernelDistributor<ScalarField_T, FlagField_T>;
    BlockDataID scalarDistributorID = field::addDistributor<ScalarDistributor_T, FlagField_T>(blocks, scalarFieldID, flagFieldID, Domain_Flag);
 
    // check scalar interpolation close to boundary

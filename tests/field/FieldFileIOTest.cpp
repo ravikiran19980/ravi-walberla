@@ -65,7 +65,7 @@ static void workloadMemorySUIDAssignmentFunction(SetupBlockForest& forest)
 
 void test(int argc, char* argv[])
 {
-   typedef field::GhostLayerField< double, 3 > FieldType;
+   using FieldType = field::GhostLayerField<double, 3>;
 
    std::vector< std::string > args(argv, argv + argc);
 

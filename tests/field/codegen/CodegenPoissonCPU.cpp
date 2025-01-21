@@ -37,7 +37,7 @@
 
 using namespace walberla;
 
-typedef GhostLayerField<real_t, 1> ScalarField_T;
+using ScalarField_T = GhostLayerField<real_t, 1>;
 
 // U with Dirichlet Boundary
 void initU( const shared_ptr< StructuredBlockStorage > & blocks, const BlockDataID & srcId )
@@ -98,8 +98,8 @@ void testPoisson()
    BlockDataID fId = field::addToStorage< ScalarField_T >( blocks, "f", real_c(0.0));
    initF( blocks, fId );
 
-   typedef blockforest::communication::UniformBufferedScheme<stencil::D2Q9> CommScheme;
-   typedef field::communication::PackInfo<ScalarField_T> Packing;
+   using CommScheme = blockforest::communication::UniformBufferedScheme<stencil::D2Q9>;
+   using Packing = field::communication::PackInfo<ScalarField_T>;
    CommScheme commScheme(blocks);
    commScheme.addDataToCommunicate( make_shared<Packing>(fieldID) );
 
