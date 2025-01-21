@@ -70,7 +70,7 @@ public:
                 const Set<SUID> & requiredSelectors     = Set<SUID>::emptySet(),
                 const Set<SUID> & incompatibleSelectors = Set<SUID>::emptySet() ) :
       totalNumberOfCells_( uint64_t(0) ), totalNumberOfBlocksContainingCell_( uint64_t(0) ),
-      blocks_( blocks ), allFlagsMustBeSet_( false ), cellsToCount_( cellsToCount ), flagFieldId_( flagFieldId ),
+      blocks_( blocks ), cellsToCount_( cellsToCount ), flagFieldId_( flagFieldId ),
       requiredSelectors_( requiredSelectors ), incompatibleSelectors_( incompatibleSelectors )
    {}
 
@@ -140,7 +140,7 @@ private:
 
    weak_ptr< StructuredBlockStorage > blocks_;
 
-   bool allFlagsMustBeSet_;
+   bool allFlagsMustBeSet_ = false;
    const Set< FlagUID >   cellsToCount_;
    const ConstBlockDataID flagFieldId_;
 

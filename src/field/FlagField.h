@@ -203,7 +203,7 @@ protected:
    // All Members are hold inside an extra struct, to enable shallow copies of the field
    struct RegistrationData
    {
-      RegistrationData() : usedMask(0), nextFreeBit(0) {}
+      RegistrationData() : usedMask(0) {}
       RegistrationData( const RegistrationData & o )
          : flagToUID  ( o.flagToUID   ),
            uidToFlag  ( o.uidToFlag   ),
@@ -224,7 +224,7 @@ protected:
       /// BitNumbers smaller than nextFreeBit are guaranteed to be
       /// occupied. Bits greater or equal may be occupied, when registerFlac(name,bitNr)
       /// was called.
-      uint_t nextFreeBit;
+      uint_t nextFreeBit = uint_c(0);
    };
    RegistrationData * data_;
 
