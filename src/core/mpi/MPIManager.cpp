@@ -273,7 +273,7 @@ std::string MPIManager::getMPIErrorString(int errorCode)
 
    WALBERLA_ASSERT_GREATER_EQUAL(resultLen, 0);
    WALBERLA_ASSERT_LESS_EQUAL(resultLen, numeric_cast< int >(errorString.size()));
-   return std::string(errorString.begin(), errorString.begin() + resultLen);
+   return { errorString.begin(), errorString.begin() + resultLen };
 }
 
 std::string MPIManager::getMPICommName(MPI_Comm comm)
@@ -291,7 +291,7 @@ std::string MPIManager::getMPICommName(MPI_Comm comm)
 
    WALBERLA_ASSERT_GREATER_EQUAL(resultLen, 0);
    WALBERLA_ASSERT_LESS_EQUAL(resultLen, numeric_cast< int >(commName.size()));
-   return std::string(commName.begin(), commName.begin() + resultLen);
+   return { commName.begin(), commName.begin() + resultLen };
 }
 
 } // namespace mpi
