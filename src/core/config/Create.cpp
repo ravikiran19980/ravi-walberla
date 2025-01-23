@@ -275,7 +275,7 @@ namespace config {
          auto config = make_shared<Config>();
          createFromTextFile( *config, filename );
          substituteCommandLineArgs( *config, argc, argv );
-         return config::Iterator( make_shared<SingleConfigGenerator> ( config ) );
+         return { make_shared< SingleConfigGenerator >(config) };
       }
    }
 
@@ -283,7 +283,7 @@ namespace config {
    {
       // Intel compiler complains when casting shared_ptr<MultipleConfigGenerator> to shared_ptr<ConfigGenerator>
       ConfigGenerator * cg = new MultipleConfigGenerator( basename, extension, nrOfDigits );
-      return Iterator( shared_ptr<config::ConfigGenerator>(cg) );
+      return { shared_ptr< config::ConfigGenerator >(cg) };
    }
 
 

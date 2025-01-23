@@ -136,9 +136,9 @@ public:
    , spacing_(spacing)
    {}
 
-   SCIterator begin() {return SCIterator(domain_, pointOfReference_, spacing_);}
-   SCIterator begin()  const {return SCIterator(domain_, pointOfReference_, spacing_);}
-   SCIterator cbegin() const {return SCIterator(domain_, pointOfReference_, spacing_);}
+   SCIterator begin() { return { domain_, pointOfReference_, spacing_ }; }
+   SCIterator begin() const { return { domain_, pointOfReference_, spacing_ }; }
+   SCIterator cbegin() const { return { domain_, pointOfReference_, spacing_ }; }
 
    SCIterator end() {return {};}
    SCIterator end()  const {return {};}
