@@ -1,15 +1,15 @@
 //======================================================================================================================
 //
-//  This file is part of waLBerla. waLBerla is free software: you can 
+//  This file is part of waLBerla. waLBerla is free software: you can
 //  redistribute it and/or modify it under the terms of the GNU General Public
-//  License as published by the Free Software Foundation, either version 3 of 
+//  License as published by the Free Software Foundation, either version 3 of
 //  the License, or (at your option) any later version.
-//  
-//  waLBerla is distributed in the hope that it will be useful, but WITHOUT 
-//  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
-//  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License 
+//
+//  waLBerla is distributed in the hope that it will be useful, but WITHOUT
+//  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+//  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 //  for more details.
-//  
+//
 //  You should have received a copy of the GNU General Public License along
 //  with waLBerla (see COPYING.txt). If not, see <http://www.gnu.org/licenses/>.
 //
@@ -40,9 +40,9 @@ public:
    using Scalar = typename Node<ContainmentOctreeT>::Scalar;
    using Point = typename Node<ContainmentOctreeT>::Point;
    using AABB = typename Node<ContainmentOctreeT>::AABB;
-   
+
    using KahanAccumulator = typename Node<ContainmentOctreeT>::KahanAccumulator;
-   
+
    inline BranchNode( const shared_ptr<const DistanceObject> & distanceObject, const AABB & aabb, const Scalar epsilon,
                       const uint_t maxDepth, const Scalar minAABBVolume );
 
@@ -63,7 +63,7 @@ public:
    BranchNode & operator=( const BranchNode & other ) = delete;
 
 protected:
-   const std::array< Node<ContainmentOctreeT>, 8 > * children_;
+   std::array< const Node<ContainmentOctreeT> *, 8 >  children_;
    Point center_;
 };
 
@@ -72,8 +72,8 @@ template< typename ContainmentOctreeT >
 BranchNode<ContainmentOctreeT>::BranchNode( const shared_ptr<const DistanceObject> & distanceObject, const AABB & aabb, const Scalar epsilon,
                                             const uint_t maxDepth, const Scalar minAABBVolume ) : center_( this->toPoint( aabb.center() ) )
 {
-   for(auto & i : children_)
-      i = nullptr;
+   for( uint_t i = 0; i < uint_t(8); ++i )
+      children_[i] = nullptr;
 
    const auto & min = aabb.minCorner();
    const auto & max = aabb.maxCorner();
@@ -96,8 +96,8 @@ BranchNode<ContainmentOctreeT>::BranchNode( const shared_ptr<const DistanceObjec
    halfAABBDimensions[2] += epsilon;
    Scalar maxSqDistanceCenterAABB = halfAABBDimensions.sqrLength();
 
-   auto childAABBIt = childAABBs;
-   for( auto it = children_; it != children_ + 8; ++it, ++childAABBIt )
+   auto childAABBIt = std::begin(childAABBs);
+   for( auto it = std::begin(children_); it != std::end(children_); ++it, ++childAABBIt )
    {
       const auto childAABBCenter = childAABBIt->center();
 
@@ -196,14 +196,14 @@ template< typename ContainmentOctreeT >
 void BranchNode<ContainmentOctreeT>::volumes( KahanAccumulator & insideVolume, KahanAccumulator & outsideVolume, KahanAccumulator & indeterminateVolume, Scalar volume ) const
 {
    static const Scalar ONE_OVER_EIGHT = Scalar(1) / Scalar(8);
-   for(auto & i : children_)
+   for(auto const & i : children_)
       i->volumes( insideVolume, outsideVolume, indeterminateVolume, volume * ONE_OVER_EIGHT );
 }
 
 
 
 
-   
+
 } // namespace containment_octree
 } // namespace geometry
 } // namespace walberla
