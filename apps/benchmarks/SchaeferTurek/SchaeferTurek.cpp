@@ -204,25 +204,25 @@ template< typename LatticeModel_T, class Enable = void >
 struct StencilString;
 
 template< typename LatticeModel_T >
-struct StencilString< LatticeModel_T, typename std::enable_if< std::is_same< typename LatticeModel_T::Stencil, stencil::D2Q9 >::value >::type >
+struct StencilString< LatticeModel_T, std::enable_if_t< std::is_same_v< typename LatticeModel_T::Stencil, stencil::D2Q9 > > >
 {
    static const char * str() { return "D2Q9"; }
 };
 
 template< typename LatticeModel_T >
-struct StencilString< LatticeModel_T, typename std::enable_if< std::is_same< typename LatticeModel_T::Stencil, stencil::D3Q15 >::value >::type >
+struct StencilString< LatticeModel_T, std::enable_if_t< std::is_same_v< typename LatticeModel_T::Stencil, stencil::D3Q15 > > >
 {
    static const char * str() { return "D3Q15"; }
 };
 
 template< typename LatticeModel_T >
-struct StencilString< LatticeModel_T, typename std::enable_if< std::is_same< typename LatticeModel_T::Stencil, stencil::D3Q19 >::value >::type >
+struct StencilString< LatticeModel_T, std::enable_if_t< std::is_same_v< typename LatticeModel_T::Stencil, stencil::D3Q19 > > >
 {
    static const char * str() { return "D3Q19"; }
 };
 
 template< typename LatticeModel_T >
-struct StencilString< LatticeModel_T, typename std::enable_if< std::is_same< typename LatticeModel_T::Stencil, stencil::D3Q27 >::value >::type >
+struct StencilString< LatticeModel_T, std::enable_if_t< std::is_same_v< typename LatticeModel_T::Stencil, stencil::D3Q27 > > >
 {
    static const char * str() { return "D3Q27"; }
 };
@@ -232,22 +232,22 @@ template< typename LatticeModel_T, class Enable = void >
 struct CollisionModelString;
 
 template< typename LatticeModel_T >
-struct CollisionModelString< LatticeModel_T, typename std::enable_if< std::is_same< typename LatticeModel_T::CollisionModel::tag,
-                                                                                          lbm::collision_model::SRT_tag >::value >::type >
+struct CollisionModelString< LatticeModel_T, std::enable_if_t< std::is_same_v< typename LatticeModel_T::CollisionModel::tag,
+                                                                                          lbm::collision_model::SRT_tag > > >
 {
    static const char * str() { return "SRT"; }
 };
 
 template< typename LatticeModel_T >
-struct CollisionModelString< LatticeModel_T, typename std::enable_if< std::is_same< typename LatticeModel_T::CollisionModel::tag,
-                                                                                          lbm::collision_model::TRT_tag >::value >::type >
+struct CollisionModelString< LatticeModel_T, std::enable_if_t< std::is_same_v< typename LatticeModel_T::CollisionModel::tag,
+                                                                                          lbm::collision_model::TRT_tag > > >
 {
    static const char * str() { return "TRT"; }
 };
 
 template< typename LatticeModel_T >
-struct CollisionModelString< LatticeModel_T, typename std::enable_if< std::is_same< typename LatticeModel_T::CollisionModel::tag,
-                                                                                          lbm::collision_model::MRT_tag >::value >::type >
+struct CollisionModelString< LatticeModel_T, std::enable_if_t< std::is_same_v< typename LatticeModel_T::CollisionModel::tag,
+                                                                                          lbm::collision_model::MRT_tag > > >
 {
    static const char * str() { return "MRT"; }
 };
@@ -2302,11 +2302,11 @@ struct AddRefinementTimeStep
 };
 
 template< typename LatticeModel_T  >
-struct AddRefinementTimeStep< LatticeModel_T, typename std::enable_if< std::is_same< typename LatticeModel_T::CollisionModel::tag, lbm::collision_model::MRT_tag >::value ||
-                                                                       std::is_same< typename LatticeModel_T::Stencil, stencil::D2Q9 >::value ||
-                                                                       std::is_same< typename LatticeModel_T::Stencil, stencil::D3Q15 >::value ||
-                                                                       std::is_same< typename LatticeModel_T::Stencil, stencil::D3Q27 >::value
-                                                                       >::type >
+struct AddRefinementTimeStep< LatticeModel_T, std::enable_if_t< std::is_same_v< typename LatticeModel_T::CollisionModel::tag, lbm::collision_model::MRT_tag > ||
+                                                                       std::is_same_v< typename LatticeModel_T::Stencil, stencil::D2Q9 > ||
+                                                                       std::is_same_v< typename LatticeModel_T::Stencil, stencil::D3Q15 > ||
+                                                                       std::is_same_v< typename LatticeModel_T::Stencil, stencil::D3Q27 >
+                                                                       > >
 {
    static void add( SweepTimeloop & timeloop, shared_ptr< blockforest::StructuredBlockForest > & blocks,
                     const BlockDataID & pdfFieldId, const BlockDataID & flagFieldId, const BlockDataID & boundaryHandlingId,
