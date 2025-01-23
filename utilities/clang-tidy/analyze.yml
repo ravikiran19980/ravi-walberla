@@ -1,0 +1,27 @@
+modules:
+  - core
+  - domain_decomposition
+  - blockforest
+  - boundary
+  - communication:
+      exclude-tests: true
+  - field
+  - fft
+  - geometry
+  - gpu
+  - lbm_mesapd_coupling
+  - mesh
+  - mesh_common
+  - postprocessing
+  - sqlite
+  - stencil
+  - timeloop
+  - vtk:
+      exclude-tests: true
+
+apps:
+  - "benchmarks/CouetteFlow"
+  - "benchmarks/PoiseuilleFlow"
+  - "benchmarks/UniformGridCPU"
+  - "benchmarks/NonUniformGridCPU"
+  # to be extended
