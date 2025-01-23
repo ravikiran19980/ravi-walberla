@@ -1037,9 +1037,9 @@ Set<SUID> Pseudo2DBlockStateDetermination::operator()( const std::vector< std::p
    Set<SUID> state;
    for(const auto & it : source)
    {
-      for( auto suid = it.second.begin(); suid != it.second.end(); ++suid )
-         if( *suid != state_ )
-            state += *suid;
+      for(auto suid : it.second)
+         if( suid != state_ )
+            state += suid;
    }
    
    if( markEmptyBlocks_ )
