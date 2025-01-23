@@ -521,12 +521,12 @@ public:
 
    void operator()( SetupBlockForest & forest )
    {
-      for( auto block = forest.begin(); block != forest.end(); ++block )
+      for(auto & block : forest)
       {
-         const AABB & aabb = block->getAABB();
+         const AABB & aabb = block.getAABB();
 
-         if( block->getLevel() < level_ && cylinder_.intersects( aabb, bufferDistance_ ) && !cylinder_.contains( aabb ) )
-            block->setMarker( true );
+         if( block.getLevel() < level_ && cylinder_.intersects( aabb, bufferDistance_ ) && !cylinder_.contains( aabb ) )
+            block.setMarker( true );
       }
    }
 
@@ -633,10 +633,10 @@ static void workloadMemoryAndSUIDAssignment( SetupBlockForest & forest, const me
    }
    else
    {
-      for( auto block = forest.begin(); block != forest.end(); ++block )
+      for(auto & block : forest)
       {
-         block->setWorkload( numeric_cast< workload_t >( uint_t(1) << block->getLevel() ) );
-         block->setMemory( memoryPerBlock );
+         block.setWorkload( numeric_cast< workload_t >( uint_t(1) << block.getLevel() ) );
+         block.setMemory( memoryPerBlock );
       }
    }
 }
@@ -1034,9 +1034,9 @@ Set<SUID> Pseudo2DBlockStateDetermination::operator()( const std::vector< std::p
    auto aabb = forest_.getAABBFromBlockId( destintation );
    
    Set<SUID> state;
-   for( auto it = source.begin(); it != source.end(); ++it )
+   for(const auto & it : source)
    {
-      for( auto suid = it->second.begin(); suid != it->second.end(); ++suid )
+      for( auto suid = it.second.begin(); suid != it.second.end(); ++suid )
          if( *suid != state_ )
             state += *suid;
    }
@@ -1067,13 +1067,13 @@ void keepInflowOutflowAtTheSameLevel( std::vector< std::pair< const Block *, uin
    // In addition to keeping in- and outflow blocks at the same level, this callback also
    // prevents these blocks from coarsening.
 
-   for( auto it = minTargetLevels.begin(); it != minTargetLevels.end(); ++it )
+   for(auto & minTargetLevel : minTargetLevels)
    {
-      const Block * const block = it->first;
+      const Block * const block = minTargetLevel.first;
       if( forest.atDomainXMinBorder(*block) )
       {
-         it->second = std::max( it->second, block->getLevel() );
-         maxInflowLevel = std::max( maxInflowLevel, it->second );
+         minTargetLevel.second = std::max( minTargetLevel.second, block->getLevel() );
+         maxInflowLevel = std::max( maxInflowLevel, minTargetLevel.second );
       }
       if( setup.strictlyObeyL )
       {
@@ -1083,19 +1083,18 @@ void keepInflowOutflowAtTheSameLevel( std::vector< std::pair< const Block *, uin
          p[0] = setup.L;
          if( aabb.contains(p) )
          {
-            it->second = std::max( it->second, block->getLevel() );
-            maxOutflowLevel = std::max( maxOutflowLevel, it->second );
+            minTargetLevel.second = std::max( minTargetLevel.second, block->getLevel() );
+            maxOutflowLevel = std::max( maxOutflowLevel, minTargetLevel.second );
          }
       }
       else if( forest.atDomainXMaxBorder(*block) )
       {
-         it->second = std::max( it->second, block->getLevel() );
-         maxOutflowLevel = std::max( maxOutflowLevel, it->second );
+         minTargetLevel.second = std::max( minTargetLevel.second, block->getLevel() );
+         maxOutflowLevel = std::max( maxOutflowLevel, minTargetLevel.second );
       }
    }
-   for( auto it = blocksAlreadyMarkedForRefinement.begin(); it != blocksAlreadyMarkedForRefinement.end(); ++it )
+   for(auto block : blocksAlreadyMarkedForRefinement)
    {
-      const Block * const block = *it;
       if( forest.atDomainXMinBorder(*block) )
       {
          maxInflowLevel = std::max( maxInflowLevel, block->getTargetLevel() );
@@ -1116,12 +1115,12 @@ void keepInflowOutflowAtTheSameLevel( std::vector< std::pair< const Block *, uin
    mpi::allReduceInplace( maxInflowLevel, mpi::MAX );
    mpi::allReduceInplace( maxOutflowLevel, mpi::MAX );
 
-   for( auto it = minTargetLevels.begin(); it != minTargetLevels.end(); ++it )
+   for(auto & minTargetLevel : minTargetLevels)
    {
-      const Block * const block = it->first;
+      const Block * const block = minTargetLevel.first;
       if( forest.atDomainXMinBorder(*block) )
       {
-         it->second = maxInflowLevel;
+         minTargetLevel.second = maxInflowLevel;
       }
       if( setup.strictlyObeyL )
       {
@@ -1130,10 +1129,10 @@ void keepInflowOutflowAtTheSameLevel( std::vector< std::pair< const Block *, uin
          auto p = aabb.center();
          p[0] = setup.L;
          if( aabb.contains(p) )
-            it->second = maxOutflowLevel;
+            minTargetLevel.second = maxOutflowLevel;
       }
       else if( forest.atDomainXMaxBorder(*block) )
-         it->second = maxOutflowLevel;
+         minTargetLevel.second = maxOutflowLevel;
    }
 }
 
@@ -1143,10 +1142,10 @@ void keepInflowOutflowAtTheSameLevel( std::vector< std::pair< const Block *, uin
 void pseudo2DTargetLevelCorrection( std::vector< std::pair< const Block *, uint_t > > & minTargetLevels,
                                     std::vector< const Block * > &, const blockforest::BlockForest & forest )
 {
-   for( auto it = minTargetLevels.begin(); it != minTargetLevels.end(); ++it )
+   for(auto & minTargetLevel : minTargetLevels)
    {
-      if( ! forest.atDomainZMinBorder( *(it->first ) ) )
-         it->second = uint_t(0);
+      if( ! forest.atDomainZMinBorder( *(minTargetLevel.first ) ) )
+         minTargetLevel.second = uint_t(0);
    }
 }
 
@@ -1177,12 +1176,12 @@ public:
    
    void operator()( std::vector< std::pair< const PhantomBlock *, walberla::any > > & blockData, const PhantomBlockForest & )
    {
-      for( auto it = blockData.begin(); it != blockData.end(); ++it )
+      for(auto & it : blockData)
       {
-         if( it->first->getState().contains( state_ ) )
-            it->second = Pseudo2DPhantomWeight( markEmptyBlocks_ ? uint8_t(0) : uint8_t(1) );
+         if( it.first->getState().contains( state_ ) )
+            it.second = Pseudo2DPhantomWeight( markEmptyBlocks_ ? uint8_t(0) : uint8_t(1) );
          else
-            it->second = Pseudo2DPhantomWeight( markEmptyBlocks_ ? uint8_t(1) : uint8_t(0) );
+            it.second = Pseudo2DPhantomWeight( markEmptyBlocks_ ? uint8_t(1) : uint8_t(0) );
       }
    }
 
@@ -1604,10 +1603,10 @@ void Evaluation< LatticeModel_T >::operator()( IBlock * block, const uint_t leve
       const PdfField_T * const pdfField = block->template getData< PdfField_T >( pdfFieldId_ );
 
       const auto & directions = directions_[ block ];
-      for( auto pair = directions.begin(); pair != directions.end(); ++pair )
+      for(const auto & pair : directions)
       {
-         const Cell cell( pair->first );
-         const stencil::Direction direction( pair->second );
+         const Cell cell( pair.first );
+         const stencil::Direction direction( pair.second );
 
          const real_t scaleFactor = real_t(1) / real_c( uint_t(1) << ( (Is2D< LatticeModel_T >::value ? uint_t(1) : uint_t(2)) * level ) );
 
@@ -1712,8 +1711,8 @@ void Evaluation< LatticeModel_T >::getResultsForSQLOnRoot( std::map< std::string
 {
    WALBERLA_ROOT_SECTION()
    {
-      for( auto result = sqlResults_.begin(); result != sqlResults_.end(); ++result )
-         realProperties[ result->first ] = result->second;
+      for(const auto & sqlResult : sqlResults_)
+         realProperties[ sqlResult.first ] = sqlResult.second;
          
       integerProperties[ "forceEvaluationTimeStep" ] = int_c( forceEvaluationExecutionCount_ );
       integerProperties[ "strouhalEvaluationTimeStep" ] = int_c( strouhalEvaluationExecutionCount_ );
@@ -2429,9 +2428,9 @@ void run( const shared_ptr< Config > & config, const LatticeModel_T & latticeMod
 
    if( vtkBeforeTimeStep )
    {
-      for( auto output = vtkOutputFunctions.begin(); output != vtkOutputFunctions.end(); ++output )
-         timeloop.addFuncBeforeTimeStep( output->second.outputFunction, std::string("VTK: ") + output->first,
-                                         output->second.requiredGlobalStates, output->second.incompatibleGlobalStates );
+      for(auto & output : vtkOutputFunctions)
+         timeloop.addFuncBeforeTimeStep( output.second.outputFunction, std::string("VTK: ") + output.first,
+                                        output.second.requiredGlobalStates, output.second.incompatibleGlobalStates );
    }
 
    // evaluation
@@ -2610,9 +2609,9 @@ void run( const shared_ptr< Config > & config, const LatticeModel_T & latticeMod
 
    if( !vtkBeforeTimeStep )
    {
-      for( auto output = vtkOutputFunctions.begin(); output != vtkOutputFunctions.end(); ++output )
-         timeloop.addFuncAfterTimeStep( output->second.outputFunction, std::string("VTK: ") + output->first,
-                                        output->second.requiredGlobalStates, output->second.incompatibleGlobalStates );
+      for(auto & output : vtkOutputFunctions)
+         timeloop.addFuncAfterTimeStep( output.second.outputFunction, std::string("VTK: ") + output.first,
+                                       output.second.requiredGlobalStates, output.second.incompatibleGlobalStates );
    }
 
    // stability check (non-finite values in the PDF field?)
