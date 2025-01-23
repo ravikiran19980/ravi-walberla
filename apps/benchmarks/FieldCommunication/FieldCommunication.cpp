@@ -354,8 +354,8 @@ int main( int argc, char **argv )
             auto databaseBlock = config->getBlock( "Database" );
             if ( databaseBlock )
             {
-                for ( auto it = databaseBlock.begin(); it != databaseBlock.end(); ++it )
-                    stringProperties[it->first] = it->second;
+                for (const auto & it : databaseBlock)
+                    stringProperties[it.first] = it.second;
             }
 
             realProperties["total_min"] = real_c( timingPool["totalTime"].min()) / real_c( iterations );
