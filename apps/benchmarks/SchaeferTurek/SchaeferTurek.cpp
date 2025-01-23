@@ -656,7 +656,8 @@ static shared_ptr< SetupBlockForest > createSetupBlockForest( const blockforest:
                                                              ( setup.xCells + uint_t(2) * FieldGhostLayers ) ) * memoryPerCell;
 
    forest->addRefinementSelectionFunction( refinementSelectionFunctions );
-   forest->addWorkloadMemorySUIDAssignmentFunction( std::bind( workloadMemoryAndSUIDAssignment, std::placeholders::_1, memoryPerBlock, std::cref( setup ) ) );
+   forest->addWorkloadMemorySUIDAssignmentFunction([memoryPerBlock, setup_cref = std::cref(setup)](SetupBlockForest & sbf) {
+      return workloadMemoryAndSUIDAssignment(sbf, memoryPerBlock, setup_cref); } );
 
    forest->init( AABB( real_c(0), real_c(0), real_c(0),
                        setup.H * ( real_c(setup.xBlocks) * real_c(setup.xCells) ) / ( real_c(setup.yzBlocks) * real_c(setup.yzCells) ), setup.H, setup.H ),
@@ -2489,8 +2490,8 @@ void run( const shared_ptr< Config > & config, const LatticeModel_T & latticeMod
          adaptiveRefinementLog = oss.str();
       }
 
-      minTargetLevelDeterminationFunctions.add( std::bind( keepInflowOutflowAtTheSameLevel, std::placeholders::_1, std::placeholders::_2, 
-                                                           std::placeholders::_3, std::cref(setup) ) );
+      minTargetLevelDeterminationFunctions.add([setup_cref = std::cref(setup)](auto & minTargetLevels, auto & blocksAlreadyMarkedForRefinement, auto & bf) {
+         return keepInflowOutflowAtTheSameLevel(minTargetLevels, blocksAlreadyMarkedForRefinement, bf, setup_cref); } );
 
       if( Is2D< LatticeModel_T >::value )
          minTargetLevelDeterminationFunctions.add( pseudo2DTargetLevelCorrection );
@@ -3059,7 +3060,7 @@ int main( int argc, char **argv )
       refinementSelectionFunctions.add( cylinderRefinementSelection );
    }
 
-   refinementSelectionFunctions.add( std::bind( setInflowOutflowToSameLevel, std::placeholders::_1, setup ) );
+   refinementSelectionFunctions.add([&setup](auto & bf) { return setInflowOutflowToSameLevel(bf, setup); });
 
    if( setup.pseudo2D )
       refinementSelectionFunctions.add( Pseudo2DRefinementSelectionCorrection );
