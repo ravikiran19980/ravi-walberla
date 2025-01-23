@@ -355,7 +355,7 @@ bool Cylinder::contains( const AABB & aabb ) const
 {
    if( setup_.circularCrossSection )
    {
-      Vector3< real_t > p[8];
+      std::array< Vector3< real_t >, 8 > p;
       p[0].set( aabb.xMin(), aabb.yMin(), aabb.zMin() );
       p[1].set( aabb.xMax(), aabb.yMin(), aabb.zMin() );
       p[2].set( aabb.xMin(), aabb.yMax(), aabb.zMin() );
