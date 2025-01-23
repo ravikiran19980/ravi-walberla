@@ -47,7 +47,7 @@ CellInterval makeRandomInterval(uint_t maxSize)
    cell_idx_t yMax = yMin + cell_idx_c( dist2(rng) );
    cell_idx_t zMax = zMin + cell_idx_c( dist2(rng) );
 
-   return CellInterval(xMin, yMin, zMin, xMax, yMax, zMax);
+   return { xMin, yMin, zMin, xMax, yMax, zMax };
 }
 
 CellInterval makeRandomEmptyInterval(uint_t maxSize)
@@ -78,14 +78,14 @@ CellInterval makeRandomEmptyInterval(uint_t maxSize)
    cell_idx_t yMax = yMin + ( yNegative ? - cell_idx_c( dist2(rng) ) : cell_idx_c( dist2(rng) ) );
    cell_idx_t zMax = zMin + ( zNegative ? - cell_idx_c( dist2(rng) ) : cell_idx_c( dist2(rng) ) );
 
-   return CellInterval(xMin, yMin, zMin, xMax, yMax, zMax);
+   return { xMin, yMin, zMin, xMax, yMax, zMax };
 }
 
 Cell makeRandomCell()
 {
    static mt11213b rng;
    std::uniform_int_distribution<cell_idx_t> dist( std::numeric_limits<cell_idx_t>::min(), std::numeric_limits<cell_idx_t>::max() );
-   return Cell( dist(rng), dist(rng), dist(rng) );
+   return { dist(rng), dist(rng), dist(rng) };
 }
 
 inline void testCI( const CellInterval & ci )
