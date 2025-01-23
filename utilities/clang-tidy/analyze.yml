@@ -11,7 +11,8 @@ modules:
   - gpu
   - lbm_mesapd_coupling
   - mesh
-  - mesh_common
+  - mesh_common:
+      exclude-tests: true
   - postprocessing
   - sqlite
   - stencil

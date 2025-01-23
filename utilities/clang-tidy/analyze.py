@@ -144,7 +144,7 @@ def main():
                 dir_filter = get_directory_filter(include_dirs)
             except ValueError as e:
                 print(e, file=sys.stderr)
-                return
+                return False
 
             cc_filtered = list(filter(dir_filter, database))
             for x in cc_filtered:
@@ -223,7 +223,7 @@ def main():
                     else:
                         include_paths = [apps_dir / app_name]
 
-            succ = success and run_clang_tidy(
+            succ = run_clang_tidy(
                 orig_db,
                 include_paths,
                 None,
