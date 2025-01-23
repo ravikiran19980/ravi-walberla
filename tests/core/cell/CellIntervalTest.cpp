@@ -30,7 +30,8 @@
 
 using namespace walberla;
 
-typedef std::mersenne_twister_engine< walberla::uint32_t, 32, 351, 175, 19, 0xccab8ee7, 11, 0xffffffff, 7, 0x31b6ab00, 15, 0xffe50000, 17, 0xa37d3c92 > mt11213b;
+using mt11213b = std::mersenne_twister_engine< walberla::uint32_t, 32, 351, 175, 19, 0xccab8ee7, 11, 0xffffffff, 7,
+                                               0x31b6ab00, 15, 0xffe50000, 17, 0xa37d3c92 >;
 
 CellInterval makeRandomInterval(uint_t maxSize)
 {
