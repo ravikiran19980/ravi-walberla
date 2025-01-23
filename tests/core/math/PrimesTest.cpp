@@ -52,19 +52,19 @@ void runTests( const uint_t n )
       WALBERLA_CHECK_EQUAL( n % i == 0, devisors.find( i ) != devisors.end() );
    }
 
-   for( auto it = primes.begin(); it != primes.end(); ++it )
-      WALBERLA_CHECK( math::isPrime( *it ) );
+   for(unsigned long & prime : primes)
+      WALBERLA_CHECK( math::isPrime( prime ) );
 
-   for( auto it = devisors.begin(); it != devisors.end(); ++it )
-      WALBERLA_CHECK( n % *it == 0 );
+   for(unsigned long devisor : devisors)
+      WALBERLA_CHECK( n % devisor == 0 );
 
    if( n != 0 )
    {
       auto primeFactors = math::getPrimeFactors(n);
       WALBERLA_CHECK( ::is_sorted( primeFactors.begin(), primeFactors.end() ) );
       WALBERLA_CHECK_EQUAL( n, std::accumulate( primeFactors.begin(), primeFactors.end(), uint_c(1), std::multiplies<uint_t>() ) );
-      for( auto it = primeFactors.begin(); it != primeFactors.end(); ++it )
-         WALBERLA_CHECK( math::isPrime(*it) );
+      for(unsigned long & primeFactor : primeFactors)
+         WALBERLA_CHECK( math::isPrime(primeFactor) );
    }
 }
 

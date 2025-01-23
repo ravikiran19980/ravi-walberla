@@ -40,7 +40,7 @@ std::string getHostName()
 {
    std::array< char, 255 > hostname;
    gethostname(hostname.data(), 255);
-   return std::string(hostname.data());
+   return { hostname.data() };
 }
 
 } // namespace walberla

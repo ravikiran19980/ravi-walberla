@@ -40,7 +40,7 @@ std::string format(const std::string& formatString, Args&&... args)
    std::array< char, maxBufferSize > buffer;
    int check = snprintf(buffer, maxBufferSize, formatString.c_str(), args...);
    if (check <= 0 || check > int(maxBufferSize)) { WALBERLA_ABORT("snprintf failed"); }
-   return std::string(buffer.data());
+   return { buffer.data() };
 }
 
 } // namespace walberla

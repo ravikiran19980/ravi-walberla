@@ -60,9 +60,9 @@ void testRankSet()
    WALBERLA_CHECK_EQUAL( reducedSetUnion.size(), numberOfRanks );
 
    int ctr = 0;
-   for( auto it = reducedSetUnion.begin(); it != reducedSetUnion.end(); ++it )
+   for (auto & reducedRank : reducedSetUnion)
    {
-      WALBERLA_CHECK_EQUAL( *it, ctr );
+      WALBERLA_CHECK_EQUAL( reducedRank, ctr );
       ++ctr;
    }
    
@@ -91,7 +91,7 @@ void testRankSet()
 }
 
 static const int         NUM_FRUITS = 5;
-static const std::string FRUITS[] = { "apple", "banana", "pear", "melon", "grapefruit" };
+static const std::array< std::string, 5 > FRUITS = { "apple", "banana", "pear", "melon", "grapefruit" };
 
 void testStrings()
 {
@@ -124,7 +124,7 @@ void testStrings()
    //WALBERLA_LOG_DEVEL( oss.str() );
 
    int numberOfProcesses = mpi::MPIManager::instance()->numProcesses();
-   std::vector< std::string > expectedSet( FRUITS, FRUITS + std::min( numberOfProcesses, NUM_FRUITS ) );
+   std::vector< std::string > expectedSet(FRUITS.data(), FRUITS.data() + std::min(numberOfProcesses, NUM_FRUITS));
    std::sort( expectedSet.begin(), expectedSet.end() );
 
    WALBERLA_CHECK_EQUAL( reducedValuesUnion.size(), expectedSet.size() );
