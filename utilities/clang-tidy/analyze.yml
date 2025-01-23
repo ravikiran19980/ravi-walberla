@@ -22,9 +22,11 @@ modules:
 
 apps:
   - "benchmarks/CouetteFlow"
+  - "benchmarks/FieldCommunication"
   - "benchmarks/FluidizedBed"
   - "benchmarks/Percolation"
-  - "benchmarks/PoiseuilleFlow"
+  - "benchmarks/PoiseuilleChannel"
+  - "benchmarks/ProbeVsExtraMessage"
   - "benchmarks/UniformGridCPU"
   - "benchmarks/NonUniformGridCPU"
   - "showcases/FluidizedBed"
