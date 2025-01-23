@@ -53,7 +53,7 @@ void testCell( cell_idx_t x, cell_idx_t y, cell_idx_t z )
    tmp += c;
    WALBERLA_CHECK_EQUAL( tmp, sum );
 
-   Cell difference = c - c;
+   Cell difference = c - c; // NOLINT(bugprone-self-comparison): represent zero difference
    WALBERLA_CHECK_EQUAL( difference.x(), cell_idx_t(0) );
    WALBERLA_CHECK_EQUAL( difference.y(), cell_idx_t(0) );
    WALBERLA_CHECK_EQUAL( difference.z(), cell_idx_t(0) );

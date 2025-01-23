@@ -60,9 +60,9 @@ void testRankSet()
    WALBERLA_CHECK_EQUAL( reducedSetUnion.size(), numberOfRanks );
 
    int ctr = 0;
-   for( auto it = reducedSetUnion.begin(); it != reducedSetUnion.end(); ++it )
+   for (auto & reducedRank : reducedSetUnion)
    {
-      WALBERLA_CHECK_EQUAL( *it, ctr );
+      WALBERLA_CHECK_EQUAL( reducedRank, ctr );
       ++ctr;
    }
    
