@@ -21,7 +21,11 @@ modules:
 
 apps:
   - "benchmarks/CouetteFlow"
+  - "benchmarks/FluidizedBed"
+  - "benchmarks/Percolation"
   - "benchmarks/PoiseuilleFlow"
   - "benchmarks/UniformGridCPU"
   - "benchmarks/NonUniformGridCPU"
+  - "showcases/FluidizedBed"
+  - "showcases/Piping"
   # to be extended
