@@ -34,7 +34,7 @@ template<typename Stencil_T>
 class SingleMessageBufferedScheme
 {
 public:
-    typedef Stencil_T Stencil;
+    using Stencil = Stencil_T;
 
     SingleMessageBufferedScheme( const weak_ptr< StructuredBlockForest > & bf, const int tag = 17953 )
             : blockForest_( bf ), tag_( tag ) {}
