@@ -303,7 +303,7 @@ static shared_ptr< SetupBlockForest > createSetupBlockForest( const blockforest:
                                                              ( setup.zCells + uint_t(2) * FieldGhostLayers ) ) * memoryPerCell;
 
    forest->addRefinementSelectionFunction( refinementSelectionFunctions );
-   forest->addWorkloadMemorySUIDAssignmentFunction( std::bind( workloadAndMemoryAssignment, std::placeholders::_1, memoryPerBlock ) );
+   forest->addWorkloadMemorySUIDAssignmentFunction( [memoryPerBlock](auto & bForest) { return workloadAndMemoryAssignment(bForest, memoryPerBlock); } );
 
    forest->init( AABB( real_c(0), real_c(0), real_c(0), real_c( setup.xBlocks * setup.xCells ),
                                                         real_c( setup.yBlocks * setup.yCells ),
@@ -844,13 +844,15 @@ void run( const shared_ptr< Config > & config, const LatticeModel_T & latticeMod
    timeloop.addFuncBeforeTimeStep( makeSharedFunctor(ts), "LBM refinement time step" );
                                                  
    // evaluation 
-   
-   const auto exactSolutionFunction = setup.circularProfile ? std::bind( exactPipeVelocity, std::placeholders::_1, blocks, setup ) :
-                                                              std::bind( exactPlatesVelocity, std::placeholders::_1, blocks, setup );
+   using FlowRateVelocitySolution_T = std::function<Vector3<real_t> (const Vector3<real_t> &)>;
+   const FlowRateVelocitySolution_T exactPipeFunction = [&blocks, &setup](const Vector3<real_t> &p) { return exactPipeVelocity(p, blocks, setup); };
+   const FlowRateVelocitySolution_T exactPlateFunction = [&blocks, &setup](const Vector3<real_t> &p) { return exactPlatesVelocity(p, blocks, setup); };
+
+   const auto exactSolutionFunction = setup.circularProfile ? exactPipeFunction : exactPlateFunction;
 
    auto volumetricFlowRate = field::makeVolumetricFlowRateEvaluation< VelocityAdaptor_T, FlagField_T >( configBlock, blocks, velocityAdaptorId,
                                                                                                         flagFieldId, Fluid_Flag,
-                                                                                                        std::bind( exactFlowRate, setup.flowRate_L ),
+                                                                                                        [flowRate = setup.flowRate_L] { return exactFlowRate(flowRate); },
                                                                                                         exactSolutionFunction );
    volumetricFlowRate->setNormalizationFactor( real_t(1) / setup.maxVelocity_L );
    volumetricFlowRate->setDomainNormalization( Vector3<real_t>( real_t(1) ) );
