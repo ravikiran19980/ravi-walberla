@@ -241,10 +241,10 @@ private:
       if( setup_.circularProfile )
       {
          auto corners = block.getAABB().corners();
-         for( auto p = corners.begin(); p != corners.end(); ++p )
+         for(auto & corner : corners)
          {
-            const real_t dy = (*p)[1] - forest.getDomain().center()[1];
-            const real_t dz = (*p)[2] - forest.getDomain().center()[2];
+            const real_t dy = corner[1] - forest.getDomain().center()[1];
+            const real_t dz = corner[2] - forest.getDomain().center()[2];
             const real_t r = setup_.radius_L - bufferDistance_;
             if( (dy * dy + dz * dz) >= (r * r) )
                return false;
@@ -281,10 +281,10 @@ private:
 
 static void workloadAndMemoryAssignment( SetupBlockForest& forest, const memory_t memoryPerBlock )
 {
-   for( auto block = forest.begin(); block != forest.end(); ++block )
+   for(auto & block : forest)
    {
-      block->setWorkload( numeric_cast< workload_t >( uint_t(1) << block->getLevel() ) );
-      block->setMemory( memoryPerBlock );
+      block.setWorkload( numeric_cast< workload_t >( uint_t(1) << block.getLevel() ) );
+      block.setMemory( memoryPerBlock );
    }
 }
 
@@ -822,9 +822,9 @@ void run( const shared_ptr< Config > & config, const LatticeModel_T & latticeMod
 
    if( vtkBeforeTimeStep )
    {
-      for( auto output = vtkOutputFunctions.begin(); output != vtkOutputFunctions.end(); ++output )
-         timeloop.addFuncBeforeTimeStep( output->second.outputFunction, std::string("VTK: ") + output->first,
-                                         output->second.requiredGlobalStates, output->second.incompatibleGlobalStates );
+      for(auto & output : vtkOutputFunctions)
+         timeloop.addFuncBeforeTimeStep( output.second.outputFunction, std::string("VTK: ") + output.first,
+                                        output.second.requiredGlobalStates, output.second.incompatibleGlobalStates );
    }
 
    // add 'refinement' LB time step to time loop
@@ -883,9 +883,9 @@ void run( const shared_ptr< Config > & config, const LatticeModel_T & latticeMod
 
    if( !vtkBeforeTimeStep )
    {
-      for( auto output = vtkOutputFunctions.begin(); output != vtkOutputFunctions.end(); ++output )
-         timeloop.addFuncAfterTimeStep( output->second.outputFunction, std::string("VTK: ") + output->first,
-                                        output->second.requiredGlobalStates, output->second.incompatibleGlobalStates );
+      for(auto & output : vtkOutputFunctions)
+         timeloop.addFuncAfterTimeStep( output.second.outputFunction, std::string("VTK: ") + output.first,
+                                       output.second.requiredGlobalStates, output.second.incompatibleGlobalStates );
    }
 
    // remaining time logger
