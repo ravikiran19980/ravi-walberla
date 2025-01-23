@@ -34,9 +34,9 @@ bool CellInterval::overlaps( const CellSet& cellSet ) const {
    if( empty() )
       return false;
 
-   for(auto cell : cellSet) {
-      if( this->contains( cell ) )
-         return true;
+   if (std::any_of(cellSet.begin(), cellSet.end(), [this](const auto& cell) { return this->contains(cell); }))
+   {
+      return true;
    }
 
    return false;

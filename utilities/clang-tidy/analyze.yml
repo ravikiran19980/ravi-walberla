@@ -1,0 +1,34 @@
+modules:
+  - core
+  - domain_decomposition
+  - blockforest
+  - boundary
+  - communication:
+      exclude-tests: true
+  - field
+  - fft
+  - geometry
+  - gpu
+  - lbm_mesapd_coupling
+  - mesh
+  - mesh_common:
+      exclude-tests: true
+  - postprocessing
+  - sqlite
+  - stencil
+  - timeloop
+  - vtk:
+      exclude-tests: true
+
+apps:
+  - "benchmarks/CouetteFlow"
+  - "benchmarks/FieldCommunication"
+  - "benchmarks/FluidizedBed"
+  - "benchmarks/Percolation"
+  - "benchmarks/PoiseuilleChannel"
+  - "benchmarks/ProbeVsExtraMessage"
+  - "benchmarks/UniformGridCPU"
+  - "benchmarks/NonUniformGridCPU"
+  - "showcases/FluidizedBed"
+  - "showcases/Piping"
+  # to be extended
