@@ -41,7 +41,7 @@ std::vector< std::string > gatherv( const std::vector< std::string > & values, i
 {
    WALBERLA_NON_MPI_SECTION()
    {
-      return std::vector< std::string >( values );
+      return { values };
    }
 
    mpi::SendBuffer sb;
