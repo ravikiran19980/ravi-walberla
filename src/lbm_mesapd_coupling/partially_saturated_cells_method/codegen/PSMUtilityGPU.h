@@ -32,7 +32,7 @@ namespace psm
 namespace gpu
 {
 
-__device__ void cross(real_t* __restrict__ const crossResult, const real_t* __restrict__ const lhs,
+inline __device__ void cross(real_t* __restrict__ const crossResult, const real_t* __restrict__ const lhs,
                       const real_t* __restrict__ const rhs)
 {
    crossResult[0] = lhs[1] * rhs[2] - lhs[2] * rhs[1];
@@ -40,7 +40,7 @@ __device__ void cross(real_t* __restrict__ const crossResult, const real_t* __re
    crossResult[2] = lhs[0] * rhs[1] - lhs[1] * rhs[0];
 }
 
-__device__ void getVelocityAtWFPoint(real_t* __restrict__ const velocityAtWFPoint,
+inline __device__ void getVelocityAtWFPoint(real_t* __restrict__ const velocityAtWFPoint,
                                      const real_t* __restrict__ const linearVelocity,
                                      const real_t* __restrict__ const angularVelocity,
                                      const real_t* __restrict__ const position, const real_t* __restrict__ const wf_pt)
@@ -53,7 +53,7 @@ __device__ void getVelocityAtWFPoint(real_t* __restrict__ const velocityAtWFPoin
    velocityAtWFPoint[2] = linearVelocity[2] + crossResult[2];
 }
 
-__device__ void addHydrodynamicForceTorqueAtWFPosAtomic(real_t* __restrict__ const particleForce,
+inline __device__ void addHydrodynamicForceTorqueAtWFPosAtomic(real_t* __restrict__ const particleForce,
                                                         real_t* __restrict__ const particleTorque,
                                                         const real_t* __restrict__ const f,
                                                         const real_t* __restrict__ const pos,
