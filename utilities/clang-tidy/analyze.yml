@@ -31,4 +31,5 @@ apps:
   - "benchmarks/NonUniformGridCPU"
   - "showcases/FluidizedBed"
   - "showcases/Piping"
+  - "showcases/SchaeferTurek"
   # to be extended

@@ -1297,10 +1297,9 @@ public:
                const bool logToStream = true, const bool logToFile = true, const std::string& filename = std::string("SchaeferTurek.txt"),
                const Set<SUID> & requiredSelectors = Set<SUID>::emptySet(),
                const Set<SUID> & incompatibleSelectors = Set<SUID>::emptySet() ) :
-      initialized_( false ), blocks_( blocks ),
-      executionCounter_( uint_t(0) ), checkFrequency_( checkFrequency ), pdfFieldId_( pdfFieldId ), flagFieldId_( flagFieldId ),
-      fluid_( fluid ), obstacle_( obstacle ), setup_( setup ), D_( uint_t(0) ), AD_( real_t(0) ), AL_( real_t(0) ), forceEvaluationExecutionCount_( uint_t(0) ),
-      strouhalRising_( false ), strouhalNumberRealD_( real_t(0) ), strouhalNumberDiscreteD_( real_t(0) ), strouhalEvaluationExecutionCount_( uint_t(0) ),
+      blocks_( blocks ),
+      checkFrequency_( checkFrequency ), pdfFieldId_( pdfFieldId ), flagFieldId_( flagFieldId ),
+      fluid_( fluid ), obstacle_( obstacle ), setup_( setup ),
       logToStream_( logToStream ), logToFile_( logToFile ), filename_( filename ),
       requiredSelectors_( requiredSelectors ), incompatibleSelectors_( incompatibleSelectors )
    {
@@ -1345,13 +1344,13 @@ protected:
 
 
 
-   bool initialized_;
+   bool initialized_{ false };
 
    weak_ptr< StructuredBlockStorage > blocks_;
    std::map< IBlock *, std::vector< std::pair< Cell, stencil::Direction > > >  directions_;
 
-   uint_t executionCounter_;
-   uint_t checkFrequency_;
+   uint_t executionCounter_{ uint_c(0) };
+   uint_t checkFrequency_{ uint_c(0) };
    
    BlockDataID pdfFieldId_;
    BlockDataID flagFieldId_;
@@ -1361,23 +1360,23 @@ protected:
    
    Setup setup_;
 
-   uint_t D_;
-   real_t AD_;
-   real_t AL_;
+   uint_t D_{ uint_c(0) };
+   real_t AD_{ real_c(0) };
+   real_t AL_{ real_c(0) };
    
    Vector3< real_t > force_;
    std::vector< math::Sample > forceSample_;
-   uint_t forceEvaluationExecutionCount_;
+   uint_t forceEvaluationExecutionCount_{ uint_c(0) };
    
    std::vector< std::deque< real_t > > coefficients_;
    std::vector< std::pair< real_t, real_t > > coefficientExtremas_;
 
    std::vector< real_t > strouhalVelocities_;
    std::vector< uint_t > strouhalTimeStep_;
-   bool strouhalRising_;
-   real_t strouhalNumberRealD_;
-   real_t strouhalNumberDiscreteD_;
-   uint_t strouhalEvaluationExecutionCount_;
+   bool strouhalRising_{ false };
+   real_t strouhalNumberRealD_{ real_c(0) };
+   real_t strouhalNumberDiscreteD_{ real_c(0) };
+   uint_t strouhalEvaluationExecutionCount_{ uint_c(0) };
 
    bool logToStream_;
    bool logToFile_;
@@ -2155,7 +2154,7 @@ public:
 
    SnapshotSimulator( const weak_ptr<blockforest::StructuredBlockForest> & blocks,
                       const uint_t failAt, const uint_t failRangeBegin, const uint_t failRangeEnd, const bool failRebalance ) :
-      blocks_( blocks ), executionCounter_( 0 ),
+      blocks_( blocks ),
       failAt_( failAt ), failRangeBegin_( failRangeBegin ), failRangeEnd_( failRangeEnd ), failRebalance_( failRebalance )
    {}
 
@@ -2216,7 +2215,7 @@ private:
 
    weak_ptr<blockforest::StructuredBlockForest> blocks_;
 
-   uint_t executionCounter_;
+   uint_t executionCounter_{ uint_c(0) };
    uint_t failAt_;
 
    uint_t failRangeBegin_;
