@@ -1069,8 +1069,8 @@ typename GenericAABB< T >::value_type GenericAABB< T >::sqSignedDistance( const 
    if( !inside )
       return sqDistance( point );
 
-   value_type sqAxisDist[3];
-   
+   std::array< value_type, 3 > sqAxisDist;
+
    for( uint_t i = 0; i < 3; ++i )
    {
       WALBERLA_ASSERT_GREATER_EQUAL( d[i], 0 );
@@ -1159,7 +1159,7 @@ typename GenericAABB< T >::value_type GenericAABB< T >::signedDistance( const ve
    if( !inside )
       return distance( point );
 
-   value_type axisDist[3];
+   std::array< value_type, 3 > axisDist;
 
    for( uint_t i = 0; i < 3; ++i )
    {

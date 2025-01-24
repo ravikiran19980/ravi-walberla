@@ -61,7 +61,7 @@
 namespace walberla {
 namespace math {
 
-FunctionParser::FunctionParser() {}
+FunctionParser::FunctionParser() = default;
 
 FunctionParser::~FunctionParser() 
 {

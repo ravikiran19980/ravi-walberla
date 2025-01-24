@@ -550,7 +550,7 @@ template< typename T >  // Element type
 template< typename V >  // Type of the built-in data value
 inline void GenericRecvBuffer<T>::peek( V& value ) const
 {
-   WALBERLA_STATIC_ASSERT( std::is_arithmetic<V>::value );
+   WALBERLA_STATIC_ASSERT( std::is_arithmetic_v<V> );
 
    WALBERLA_STATIC_ASSERT( sizeof(V) > sizeof(T) );
    WALBERLA_STATIC_ASSERT( sizeof(V) % sizeof(T) == 0);
