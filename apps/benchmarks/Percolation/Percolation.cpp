@@ -73,7 +73,7 @@ namespace percolation
 
 using namespace walberla;
 using namespace lbm_mesapd_coupling::psm::gpu;
-using PackInfo_T = int;
+using PackInfo_T = pystencils::PSMPackInfo;
 
 using flag_t      = walberla::uint8_t;
 using FlagField_T = FlagField< flag_t >;
