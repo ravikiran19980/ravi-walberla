@@ -29,7 +29,7 @@ apps:
   - "benchmarks/ProbeVsExtraMessage"
   - "benchmarks/UniformGridCPU"
   - "benchmarks/NonUniformGridCPU"
+  - "benchmarks/SchaeferTurek"
   - "showcases/FluidizedBed"
   - "showcases/Piping"
-  - "showcases/SchaeferTurek"
   # to be extended
