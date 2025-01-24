@@ -390,7 +390,7 @@ std::enable_if_t< std::is_arithmetic_v<V> || std::is_enum_v<V>,
 GenericRecvBuffer<T>::get( V& value )
 {
    // Compile time check that V is built-in data type
-   static_assert( std::is_arithmetic<V>::value || std::is_enum<V>::value,
+   static_assert( std::is_arithmetic_v<V> || std::is_enum_v<V>,
                             "RecvBuffer accepts only built-in data types");
 
 

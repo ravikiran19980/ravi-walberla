@@ -443,7 +443,7 @@ GenericSendBuffer<T,G>& >
 GenericSendBuffer<T,G>::put( V value )
 {
    // Compile time check that V is built-in data type
-   static_assert( std::is_arithmetic<V>::value || std::is_enum<V>::value,
+   static_assert( std::is_arithmetic_v<V> || std::is_enum_v<V>,
                   "SendBuffer accepts only built-in data types");
 
    static_assert( sizeof(V) >= sizeof(T), "Type that is stored has to be bigger than T" );

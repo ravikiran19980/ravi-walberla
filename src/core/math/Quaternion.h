@@ -264,7 +264,7 @@ template< typename Type >  // Data type of the quaternion
 template< typename Axis >  // Data type of the rotation axis
 inline Quaternion<Type>::Quaternion( Vector3<Axis> axis, Type angle )
 {
-   static_assert(std::is_floating_point<Axis>::value, "Axis has to be floating point!" );
+   static_assert(std::is_floating_point_v<Axis>, "Axis has to be floating point!" );
 
    auto axisLength = axis.length();
    if( (floatIsEqual(axisLength, 0)) || (math::equal(std::fabs(angle), real_t(0)))  ) {

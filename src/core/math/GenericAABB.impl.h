@@ -1883,7 +1883,7 @@ template< typename T,    // Element type of SendBuffer
 mpi::GenericSendBuffer<T,G>& operator<<( mpi::GenericSendBuffer<T,G> & buf, const GenericAABB< VT > & aabb )
 {
    buf.addDebugMarker( "bb" );
-   static_assert ( std::is_trivially_copyable< GenericAABB< VT > >::value,
+   static_assert ( std::is_trivially_copyable_v< GenericAABB< VT > >,
                    "type has to be trivially copyable for the memcpy to work correctly" );
    auto pos = buf.forward(sizeof(GenericAABB< VT >));
    std::memcpy(pos, &aabb, sizeof(GenericAABB< VT >));

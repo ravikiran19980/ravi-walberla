@@ -227,7 +227,7 @@ template< typename Type >
 template< typename Other >
 inline constexpr Vector3<Type>::Vector3( Other init )
 {
-   static_assert( std::is_arithmetic<Other>::value, "Vector3 only accepts arithmetic data types in Vector3( Other init )");
+   static_assert( std::is_arithmetic_v<Other>, "Vector3 only accepts arithmetic data types in Vector3( Other init )");
 
    v_[0] = v_[1] = v_[2] = numeric_cast<Type>(init);
 }
