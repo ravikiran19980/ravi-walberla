@@ -136,7 +136,7 @@ int main( int argc, char * argv[] )
    MPI_Comm comm = MPIManager::instance()->comm();
 
    int result = core::ParMETIS_V3_PartKway( &(vtxdist.front()), &(xadj.front()), &(adjncy.front()), nullptr, nullptr, &wgtflag, &numflag, &ncon, &nparts,
-                                            &(tpwgts.front()), &(ubvec.front()), options, &edgecut, &(part.front()), &comm );
+                                            &(tpwgts.front()), &(ubvec.front()), options.data(), &edgecut, &(part.front()), &comm );
 
 
    WALBERLA_CHECK_EQUAL( result, core::METIS_OK );  
