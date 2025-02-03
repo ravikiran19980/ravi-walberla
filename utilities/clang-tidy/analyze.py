@@ -76,8 +76,26 @@ def main():
         "--parameter-file",
         dest="parameter_file",
         type=str,
-        default="analyze.yml",
+        default=None,
         help="Parameter file that defines which modules and apps should be analyzed.",
+    )
+    parser.add_argument(
+        "-m",
+        "--modules",
+        dest="modules",
+        type=str,
+        nargs="*",
+        default=None,
+        help="Modules to be analyzed. Overrides modules listed in the parameter file."
+    )
+    parser.add_argument(
+        "-a",
+        "--apps",
+        dest="apps",
+        type=str,
+        nargs="*",
+        default=None,
+        help="Apps to be analyzed. Overrides apps listed in the parameter file."
     )
     parser.add_argument(
         "-r",
@@ -103,6 +121,20 @@ def main():
         default="./clang-tidy-output",
         help="Folder to which the error streams from clang-tidy should be written.",
     )
+    parser.add_argument(
+        "--checks",
+        dest="checks",
+        type=str,
+        default=None,
+        nargs="+",
+        help="clang-tidy checks filter. Forwarded to -checks argument of clang-tidy."
+    )
+    parser.add_argument(
+        "--export-fixes",
+        dest="export_fixes",
+        action="store_true",
+        help="Export possible fixes detected by clang-tidy to a YAML file in the output directory"
+    )
 
     args = parser.parse_args()
 
@@ -124,12 +156,21 @@ def main():
         with database_fp.open() as dbfile:
             orig_db = json.load(dbfile)
 
-        parameter_filepath = pathlib.Path(args.parameter_file)
-        with parameter_filepath.open() as pfile:
-            params = yaml.load(pfile, yaml.SafeLoader)
+        if args.parameter_file is not None:
+            parameter_filepath = pathlib.Path(args.parameter_file)
+            with parameter_filepath.open() as pfile:
+                params = yaml.load(pfile, yaml.SafeLoader)
+        else:
+            params = dict()
+
+        if args.modules:
+            params["modules"] = args.modules
+
+        if args.apps:
+            params["apps"] = args.apps
 
         build_dir = database_fp.parent
-        clang_tidy_args = ["run-clang-tidy", "-p", str(build_dir)]
+        clang_tidy_base_args = ["run-clang-tidy", "-p", str(build_dir)]
 
         def run_clang_tidy(
             database: list,
@@ -157,9 +198,15 @@ def main():
             with database_fp.open("w") as db_out:
                 json.dump(cc_filtered, db_out)
 
-            args = clang_tidy_args
+            clang_tidy_args = clang_tidy_base_args
             if header_filter:
-                args += ["-header-filter", header_filter]
+                clang_tidy_args += ["-header-filter", header_filter]
+            if args.checks:
+                checks_str = ",".join(args.checks)
+                clang_tidy_args += [f"-checks={checks_str}"]
+            if args.export_fixes:
+                fixes_file = output.parent / "fixes.yaml"
+                clang_tidy_args += [f"-export-fixes={str(fixes_file)}"]
             output.parent.mkdir(exist_ok=True, parents=True)
 
             errfile = output.with_name(output.name + ".err")
@@ -167,7 +214,7 @@ def main():
             print("  -- Running clang-tidy...")
             with output.open("w") as ofile:
                 with errfile.open("w") as efile:
-                    subprocess.run(args, stdout=ofile, stderr=efile)
+                    subprocess.run(clang_tidy_args, stdout=ofile, stderr=efile)
 
             print(f"  -- clang-tidy output written to {str(output)}")
 
