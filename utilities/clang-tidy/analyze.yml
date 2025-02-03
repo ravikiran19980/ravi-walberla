@@ -21,6 +21,7 @@ modules:
       exclude-tests: true
 
 apps:
+  - "benchmarks/ComplexGeometry"
   - "benchmarks/CouetteFlow"
   - "benchmarks/FieldCommunication"
   - "benchmarks/FluidizedBed"
@@ -32,4 +33,5 @@ apps:
   - "benchmarks/SchaeferTurek"
   - "showcases/FluidizedBed"
   - "showcases/Piping"
+  - "tutorials"
   # to be extended
