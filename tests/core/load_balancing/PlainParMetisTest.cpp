@@ -165,7 +165,7 @@ int main( int argc, char * argv[] )
    std::vector< double > tpwgts( static_cast<size_t>(nparts), 1.0 / static_cast<double>( nparts ) );
    std::vector< double > ubvec(  static_cast<size_t>(ncon), 1.05 );
    double  ipc2redist =  1.0;
-   int64_t options[] = {0,0,0};
+   std::array< int64_t, 3 > options = { 0, 0, 0 };
    int64_t edgecut;
    std::vector< int64_t > part( numVertices );
    MPI_Comm comm = MPI_COMM_WORLD;
