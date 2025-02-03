@@ -117,7 +117,7 @@ template< typename flag_t >
 class Boundary {
 public:
 
-   static_assert( std::is_unsigned<flag_t>::value, "You are trying to instantiate walberla::boundary::Boundary with "
+   static_assert( std::is_unsigned_v<flag_t>, "You are trying to instantiate walberla::boundary::Boundary with "
                                                      "a flag_t which is not an unsigned integer!" );
 
 #ifndef NDEBUG
@@ -156,7 +156,7 @@ struct isThreadSafe
 };
 
 template< typename Boundary_T >
-struct isThreadSafe< Boundary_T, typename std::enable_if< Boundary_T::threadsafe >::type >
+struct isThreadSafe< Boundary_T, typename std::enable_if_t< Boundary_T::threadsafe > >
 {
    static const bool value = Boundary_T::threadsafe;
 };
