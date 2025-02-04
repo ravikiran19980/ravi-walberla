@@ -65,7 +65,7 @@ class StreamingSweep
 
          for(PdfField::iterator i = dst->begin(); i != dst->end(); ++i )
          {
-            stencil::Direction d = Sten::dir[i.f()];
+            stencil::Direction d = Sten::dir[uint_c(i.f())];
             *i = src->get( i.x() - cx[d], i.y() - cy[d], i.z() - cz[d], i.f() );
          }
          src->swapDataPointers( dst );

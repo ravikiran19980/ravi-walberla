@@ -124,9 +124,7 @@ int main( int argc, char ** argv )
    SweepTimeloop timeloop( blocks, numberOfTimesteps );
 
    // registering the function sweep
-   auto pointerToOneArgFunction = [fieldID] (auto block) {return simpleSweep(block, fieldID);};
-
-   timeloop.add() << Sweep( pointerToOneArgFunction, "BogusAlgorithm" );
+   timeloop.add() << Sweep( [fieldID](IBlock * block){ simpleSweep(block, fieldID); }, "BogusAlgorithm" );
 
    // registering the class sweep
    timeloop.add() << Sweep( SimpleSweep(fieldID), "BogusAlgorithmButNowAsFunctor" );

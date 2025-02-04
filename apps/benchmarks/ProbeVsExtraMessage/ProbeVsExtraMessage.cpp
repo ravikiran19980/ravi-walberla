@@ -137,9 +137,9 @@ void communicate( MPIInfo& mpiInfo,
       WALBERLA_MPI_BARRIER();
       tp["unpack"].start();
       auto& recvInfos = bs.getRecvInfos();
-      for (auto recvIt = recvInfos.begin(); recvIt != recvInfos.end(); ++recvIt)
+      for (auto & recvInfoItem : recvInfos)
       {
-         auto& rb = recvIt->second.buffer;
+         auto& rb = recvInfoItem.second.buffer;
          rb >> recvBuf;
          WALBERLA_ASSERT(rb.isEmpty());
       }

@@ -157,20 +157,28 @@ int main( int argc, char ** argv )
    std::function<void(void)> syncCall;
    if (!syncShadowOwners)
    {
-      syncCall = [&capture0 = *forest, storageID, capture1 = &tt, capture2 = real_c(0.0)] { return pe::syncNextNeighbors<BodyTuple>(capture0, storageID, capture1, capture2, false); };
+      syncCall = [forest, storageID, ttree = &tt](){
+         pe::syncNextNeighbors< BodyTuple >(std::ref(*forest), storageID, ttree, real_c(0.0), false);
+      };
    } else
    {
-      syncCall = [&capture0 = *forest, storageID, capture1 = &tt, capture2 = real_c(0.0)] { return pe::syncShadowOwners<BodyTuple>(capture0, storageID, capture1, capture2, false); };
+      syncCall = [forest, storageID, ttree = &tt](){
+         pe::syncShadowOwners<BodyTuple>(std::ref(*forest), storageID, ttree, real_c(0.0), false );
+      };
    }
 
    //! [Bind Sync Call]
    std::function<void(void)> syncCallWithoutTT;
    if (!syncShadowOwners)
    {
-      syncCallWithoutTT = [&capture0 = *forest, storageID, capture1 = real_c(0.0)] { return pe::syncNextNeighbors<BodyTuple>(capture0, storageID, static_cast<WcTimingTree*>(nullptr), capture1, false); };
+      syncCallWithoutTT = [forest, storageID](){
+         pe::syncNextNeighbors< BodyTuple >(std::ref(*forest), storageID, static_cast<WcTimingTree*>(nullptr), real_c(0.0), false);
+      };
    } else
    {
-      syncCallWithoutTT = [&capture0 = *forest, storageID, capture1 = real_c(0.0)] { return pe::syncShadowOwners<BodyTuple>(capture0, storageID, static_cast<WcTimingTree*>(nullptr), capture1, false); };
+      syncCallWithoutTT = [forest, storageID](){
+         pe::syncShadowOwners<BodyTuple>(std::ref(*forest), storageID, static_cast<WcTimingTree*>(nullptr), real_c(0.0), false );
+      };
    }
    //! [Bind Sync Call]
    

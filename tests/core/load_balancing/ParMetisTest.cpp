@@ -102,8 +102,8 @@ int main( int argc, char * argv[] )
    scheme.addPackInfo( make_shared< field::communication::PackInfo< FieldType > >( domainId ) );
    scheme();
 
-   std::vector< int64_t > vtxdist(MPIManager::instance()->numProcesses() + 1);
-   for (int i = 0; i < MPIManager::instance()->numProcesses() + 1; ++i)
+   std::vector< int64_t > vtxdist(uint_c(MPIManager::instance()->numProcesses()) + 1);
+   for (uint_t i = 0; i < MPIManager::instance()->numProcesses() + 1; ++i)
    {
       vtxdist[i] = int64_c(i) * int64_c(fieldSize[0] * fieldSize[1]);
    }

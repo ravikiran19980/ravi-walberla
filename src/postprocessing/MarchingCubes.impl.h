@@ -479,12 +479,12 @@ void generateIsoSurface_internal( const Field_T & f, real_t threshold,
 
             if ( calcNormals )
             {
-               TriangleMesh::normal_t normal    = calcNormal(f, i.x() + cubieOffsetX[e1],
-                                                                i.y() + cubieOffsetY[e1],
-                                                                i.z() + cubieOffsetZ[e1], fCoord ) * (real_t(1) - mu)
-                                                + calcNormal(f, i.x() + cubieOffsetX[e2],
-                                                                i.y() + cubieOffsetY[e2],
-                                                                i.z() + cubieOffsetZ[e2], fCoord) * (mu);
+               TriangleMesh::normal_t normal    = calcNormal(f, i.x() + cubieOffsetX[uint_c(e1)],
+                                                                i.y() + cubieOffsetY[uint_c(e1)],
+                                                                i.z() + cubieOffsetZ[uint_c(e1)], fCoord ) * (real_t(1) - mu)
+                                                + calcNormal(f, i.x() + cubieOffsetX[uint_c(e2)],
+                                                                i.y() + cubieOffsetY[uint_c(e2)],
+                                                                i.z() + cubieOffsetZ[uint_c(e2)], fCoord) * (mu);
 
                if (normal.sqrLength() > 1e-8 )
                   normalize(normal);
