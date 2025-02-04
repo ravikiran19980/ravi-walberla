@@ -440,7 +440,7 @@ private:
    inline const typename std::enable_if_t<(N!=0), Boundary_T> & getBoundaryCondition( const BoundaryUID & uid, const BoundariesTuple & boundaryConditions,
                                                    typename std::enable_if_t< std::is_same_v< typename std::is_same< Boundary_T, typename std::tuple_element_t<N, BoundariesTuple> >::type,
                                                                                               std::false_type > >* /*dummy*/ = nullptr,
-                                                   typename std::enable_if< (N>0) >::type* /*dummy*/ = nullptr ) const
+                                                   typename std::enable_if_t< (N>0) >* /*dummy*/ = nullptr ) const
    {
       return getBoundaryCondition< Boundary_T, BoundariesTuple, N-1 >( uid, boundaryConditions );
    }

@@ -124,8 +124,8 @@ int main( int argc, char ** argv )
    SweepTimeloop timeloop( blocks, numberOfTimesteps );
 
    // registering the function sweep
-   auto pointerToTwoArgFunction = & simpleSweep;
-   auto pointerToOneArgFunction = std::bind( pointerToTwoArgFunction, std::placeholders::_1, fieldID );
+   auto pointerToOneArgFunction = [fieldID] (auto block) {return simpleSweep(block, fieldID);};
+
    timeloop.add() << Sweep( pointerToOneArgFunction, "BogusAlgorithm" );
 
    // registering the class sweep
