@@ -50,7 +50,7 @@ public:
    BranchNode( const shared_ptr< TriangleDistance<MeshType> > & triDistance, InputIterator beginFh, InputIterator endFh,
                uint_t maxDepth, uint_t minNumTriangles );
 
-   ~BranchNode() override { for( int i = 0; i < 8; ++i ) delete children_[i]; }
+   ~BranchNode() override { for( uint_t i = 0; i < 8; ++i ) delete children_[i]; }
 
 
    Scalar sqSignedDistance( const Point & p ) const override;
@@ -104,7 +104,7 @@ template <typename MeshType>
 uint_t BranchNode<MeshType>::height() const
 {
    uint_t maxChildHeight = children_[0]->height();
-   for( int i = 1; i < 8; ++i )
+   for( uint_t i = 1; i < 8; ++i )
    {
       uint_t childHeight = children_[i]->height();
       if( childHeight > maxChildHeight )
@@ -184,7 +184,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( co
    std::sort( std::begin(childinfos), std::end(childinfos) );
 
    Scalar absMinSqSignedDistance = childinfos[0].child->sqSignedDistance( p );
-   for( int i = 1; i < 8; ++i )
+   for( uint_t i = 1; i < 8; ++i )
    {
       WALBERLA_ASSERT_NOT_NULLPTR( childinfos[i].child );
       if( std::fabs( absMinSqSignedDistance ) < childinfos[i].minSqBoxDist )
@@ -214,7 +214,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( co
 
    Scalar absMinSqSignedDistance = childinfos[0].child->sqSignedDistance( p, closestTriangle );
 
-   for( int i = 1; i < 8; ++i )
+   for( uint_t i = 1; i < 8; ++i )
    {
       WALBERLA_ASSERT_NOT_NULLPTR( childinfos[i].child );
       if( std::fabs( absMinSqSignedDistance ) < childinfos[i].minSqBoxDist )
@@ -247,7 +247,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( co
 
    Scalar absMinSqSignedDistance = childinfos[0].child->sqSignedDistance( p, closestPoint );
 
-   for( int i = 1; i < 8; ++i )
+   for( uint_t i = 1; i < 8; ++i )
    {
       WALBERLA_ASSERT_NOT_NULLPTR( childinfos[i].child );
       if( std::fabs( absMinSqSignedDistance ) < childinfos[i].minSqBoxDist )
@@ -280,7 +280,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( co
 
    Scalar absMinSqSignedDistance = childinfos[0].child->sqSignedDistance( p, closestPoint, normal );
 
-   for( int i = 1; i < 8; ++i )
+   for( uint_t i = 1; i < 8; ++i )
    {
       WALBERLA_ASSERT_NOT_NULLPTR( childinfos[i].child );
       if( std::fabs( absMinSqSignedDistance ) < childinfos[i].minSqBoxDist )
@@ -317,7 +317,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Po
    std::sort( std::begin(childinfos), std::end(childinfos) );
 
    Scalar absMinSqDistance = childinfos[0].child->sqDistance( p );
-   for(int i = 1; i < 8; ++i)
+   for(uint_t i = 1; i < 8; ++i)
    {
       WALBERLA_ASSERT_NOT_NULLPTR( childinfos[i].child );
       if( absMinSqDistance < childinfos[i].minSqBoxDist)
@@ -347,7 +347,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Po
 
    Scalar absMinSqDistance = childinfos[0].child->sqDistance( p, closestTriangle );
 
-   for(int i = 1; i < 8; ++i)
+   for(uint_t i = 1; i < 8; ++i)
    {
       WALBERLA_ASSERT_NOT_NULLPTR( childinfos[i].child );
       if( absMinSqDistance < childinfos[i].minSqBoxDist)
@@ -380,7 +380,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Po
 
    Scalar absMinSqDistance = childinfos[0].child->sqDistance( p, closestPoint );
 
-   for(int i = 1; i < 8; ++i)
+   for(uint_t i = 1; i < 8; ++i)
    {
       WALBERLA_ASSERT_NOT_NULLPTR( childinfos[i].child );
       if( absMinSqDistance < childinfos[i].minSqBoxDist)
@@ -413,7 +413,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Po
 
    Scalar absMinSqDistance = childinfos[0].child->sqDistance( p, closestPoint, normal );
 
-   for(int i = 1; i < 8; ++i)
+   for(uint_t i = 1; i < 8; ++i)
    {
       WALBERLA_ASSERT_NOT_NULLPTR( childinfos[i].child );
       if(absMinSqDistance < childinfos[i].minSqBoxDist)
@@ -441,7 +441,7 @@ void BranchNode<MeshType>::numTrianglesToStream( std::ostream & os, const uint_t
    for( uint_t i = 0; i < level; ++i )
       os << "   ";
    os << numTriangles() << "\n";
-   for( int i = 0; i < 8; ++i )
+   for( uint_t i = 0; i < 8; ++i )
       children_[i]->numTrianglesToStream(os, level + 1);
 
 }
