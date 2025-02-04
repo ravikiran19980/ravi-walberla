@@ -319,13 +319,15 @@ void UniformBufferedScheme<Stencil>::startCommunication()
                      localBuffers_.push_back( buffer );
                      const uint_t index = uint_c( localBuffers_.size() ) - uint_t(1);
 
-                     VoidFunction pack = std::bind( &UniformBufferedScheme<Stencil>::localBufferPacking, this,
-                                                      index, std::cref( packInfo ), block, *dir );
+                     VoidFunction pack = [this, index, packInfo, block, direction = *dir]() {
+                        this->localBufferPacking(index, std::cref( packInfo ), block, direction);
+                     };
 
                      threadsafeLocalCommunication_.push_back( pack );
 
-                     VoidFunction unpack = std::bind( &UniformBufferedScheme<Stencil>::localBufferUnpacking, this,
-                                                        index, std::cref( packInfo ), neighbor, *dir  );
+                     VoidFunction unpack = [this, index, packInfo, neighbor, direction=*dir]() {
+                        this->localBufferUnpacking(index, std::cref( packInfo ), neighbor, direction);
+                     };
 
                      if( packInfo->threadsafeReceiving() )
                         threadsafeLocalCommunicationUnpack_.push_back( unpack );
@@ -334,8 +336,10 @@ void UniformBufferedScheme<Stencil>::startCommunication()
                   }
                   else
                   {
-                     VoidFunction localCommunicationFunction = std::bind( &walberla::communication::UniformPackInfo::communicateLocal,
-                                                                            packInfo, block, neighbor, *dir );
+                     VoidFunction localCommunicationFunction = [packInfo, block, neighbor, direction = *dir](){
+                        packInfo->communicateLocal(block, neighbor, direction);
+                     };
+
                      if( packInfo->threadsafeReceiving() )
                         threadsafeLocalCommunication_.push_back( localCommunicationFunction );
                      else
@@ -347,12 +351,21 @@ void UniformBufferedScheme<Stencil>::startCommunication()
             {
                auto nProcess = block->getNeighborProcess( neighborIdx, uint_t(0) );
 
-               if( !packInfos_.empty() )
-                  sendFunctions[ nProcess ].push_back( std::bind( UniformBufferedScheme<Stencil>::writeHeader, std::placeholders::_1, nBlockId, *dir ) );
+               if( !packInfos_.empty() ){
+                  auto writeHeader = [nBlockId, direction = *dir](SendBuffer & buf){
+                     UniformBufferedScheme<Stencil>::writeHeader(buf, nBlockId, direction);
+                  };
+                  sendFunctions[ nProcess ].push_back( writeHeader );
+               }
+                  
 
-               for(auto & packInfo : packInfos_)
-                  sendFunctions[ nProcess ].push_back( std::bind( &walberla::communication::UniformPackInfo::packData,
-                                                                     packInfo, block, *dir,  std::placeholders::_1 ) );
+               for(auto & packInfo : packInfos_){
+                  auto packData = [packInfo, block, direction = *dir](SendBuffer & buf){
+                     packInfo->packData(block, direction, buf);
+                  };
+                  sendFunctions[ nProcess ].push_back( packData );
+               }
+                  
             }
          }
       }
