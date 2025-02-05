@@ -227,7 +227,7 @@ inline GenericRecvBuffer<T>::GenericRecvBuffer( GenericSendBuffer<T,G> & sb )
    , cur_( sb.begin_ )
    , end_( sb.end_ )
 {
-   sb.begin_ = new T[0];
+   sb.begin_ = nullptr;
    sb.cur_   = sb.begin_;
    sb.end_   = sb.begin_;
 }

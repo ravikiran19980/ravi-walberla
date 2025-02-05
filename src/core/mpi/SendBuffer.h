@@ -697,7 +697,7 @@ template< typename T    // Element type
 inline void GenericSendBuffer<T,G>::reset()
 {
    delete [] begin_;
-   begin_ = new T[0];
+   begin_ = nullptr;
    cur_ = begin_;
    end_ = begin_;
 }
