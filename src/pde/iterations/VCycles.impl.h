@@ -126,7 +126,7 @@ VCycles< Stencil_T, OperatorCoarsening_T, Restrict_T, ProlongateAndCorrect_T >::
    for ( uint_t lvl = 0; lvl < numLvl-1; ++lvl )
    {
       RBGSFixedSweeps_.push_back( walberla::make_shared<RBGSFixedStencil< Stencil_T > >( blocks, uId_[lvl], fId_[lvl], weights_[lvl] ) );
-      RBGSIteration_.push_back( RBGSIteration(blocks->getBlockStorage(), preSmoothingIters_, communication_[lvl],
+      RBGSIteration_.emplace_back(RBGSIteration(blocks->getBlockStorage(), preSmoothingIters_, communication_[lvl],
                                 RBGSFixedSweeps_.back()->getRedSweep(), RBGSFixedSweeps_.back()->getBlackSweep(), [](){ return real_t(1.0); }, 0, 1,
                                 requiredSelectors, incompatibleSelectors ) );
    }
@@ -136,7 +136,7 @@ VCycles< Stencil_T, OperatorCoarsening_T, Restrict_T, ProlongateAndCorrect_T >::
    {
       computeResidual_.push_back( ComputeResidualFixedStencil< Stencil_T >( blocks, uId_[lvl], fId_[lvl], weights_[lvl], rId_[lvl] ) );
       restrict_.push_back( Restrict_T(blocks, rId_[lvl], fId_[lvl+1] ) );
-      zeroize_.push_back( Zeroize(blocks, uId_[lvl+1]) );
+      zeroize_.emplace_back(Zeroize(blocks, uId_[lvl+1]) );
       prolongateAndCorrect_.push_back( ProlongateAndCorrect_T(blocks, uId_[lvl+1], uId_[lvl]) );
    }
 
@@ -231,7 +231,7 @@ VCycles< Stencil_T, OperatorCoarsening_T, Restrict_T, ProlongateAndCorrect_T >::
    for ( uint_t lvl = 0; lvl < numLvl-1; ++lvl )
    {
       RBGSSweeps_.push_back( walberla::make_shared<RBGS< Stencil_T > >( blocks, uId_[lvl], fId_[lvl], stencilId_[lvl] ) );
-      RBGSIteration_.push_back( RBGSIteration(blocks->getBlockStorage(), preSmoothingIters_, communication_[lvl],
+      RBGSIteration_.emplace_back(RBGSIteration(blocks->getBlockStorage(), preSmoothingIters_, communication_[lvl],
                                 RBGSSweeps_.back()->getRedSweep(), RBGSSweeps_.back()->getBlackSweep(), [](){ return real_t(1.0); }, 0, 1,
                                 requiredSelectors, incompatibleSelectors ) );
    }
@@ -241,7 +241,7 @@ VCycles< Stencil_T, OperatorCoarsening_T, Restrict_T, ProlongateAndCorrect_T >::
    {
       computeResidual_.push_back( ComputeResidual< Stencil_T >( blocks, uId_[lvl], fId_[lvl], stencilId_[lvl], rId_[lvl] ) );
       restrict_.push_back( Restrict_T(blocks, rId_[lvl], fId_[lvl+1] ) );
-      zeroize_.push_back( Zeroize(blocks, uId_[lvl+1]) );
+      zeroize_.emplace_back(Zeroize(blocks, uId_[lvl+1]) );
       prolongateAndCorrect_.push_back( ProlongateAndCorrect_T(blocks, uId_[lvl+1], uId_[lvl]) );
    }
 
