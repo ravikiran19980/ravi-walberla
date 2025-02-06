@@ -148,7 +148,7 @@ void initURect( const shared_ptr< StructuredBlockStorage > & blocks, const Block
                     real_t(0.5)*(real_c(globalNumCells[0]) + cuboidSize[0]), real_t(0.5)*(real_c(globalNumCells[1]) + cuboidSize[1]), real_t(0.5)*(real_c(globalNumCells[2]) + cuboidSize[2])
    );
 
-   pde::Zeroize(blocks, uId);
+   pde::Zeroize zeroize_u(blocks, uId);
 
    // Initializing non-zero block with a given value in center of domain, relative to domain extension
    for( auto block = blocks->begin(); block != blocks->end(); ++block )
