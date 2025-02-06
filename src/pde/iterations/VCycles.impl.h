@@ -90,7 +90,7 @@ VCycles< Stencil_T, OperatorCoarsening_T, Restrict_T, ProlongateAndCorrect_T >::
    // Set up fields for coarser levels
    for ( uint_t lvl = 1; lvl < numLvl; ++lvl )
    {
-      auto getSize = std::bind(VCycles<Stencil_T, OperatorCoarsening_T, Restrict_T, ProlongateAndCorrect_T>::getSizeForLevel, lvl, std::placeholders::_1, std::placeholders::_2);
+      auto getSize = [lvl](auto & bs, auto & block) { return VCycles<Stencil_T, OperatorCoarsening_T, Restrict_T, ProlongateAndCorrect_T>::getSizeForLevel(lvl, bs, block); };
       uId_.push_back( field::addToStorage< PdeField_T >( blocks, "u_"+std::to_string(lvl), getSize, real_t(0), field::fzyx, uint_t(1) ) );
       fId_.push_back( field::addToStorage< PdeField_T >( blocks, "f_"+std::to_string(lvl), getSize, real_t(0), field::fzyx, uint_t(1) ) );
       rId_.push_back( field::addToStorage< PdeField_T >( blocks, "r_"+std::to_string(lvl), getSize, real_t(0), field::fzyx, uint_t(1) ) );
@@ -103,7 +103,7 @@ VCycles< Stencil_T, OperatorCoarsening_T, Restrict_T, ProlongateAndCorrect_T >::
    }
 
    // Set up fields for CG on coarsest level
-   auto getFineSize = std::bind(VCycles<Stencil_T, OperatorCoarsening_T, Restrict_T, ProlongateAndCorrect_T>::getSizeForLevel, numLvl-1, std::placeholders::_1, std::placeholders::_2);
+   auto getFineSize = [finestLvl = numLvl-1](auto & bs, auto & block) { return VCycles<Stencil_T, OperatorCoarsening_T, Restrict_T, ProlongateAndCorrect_T>::getSizeForLevel(finestLvl, bs, block); };
    dId_ = field::addToStorage< PdeField_T >( blocks, "d", getFineSize, real_t(0), field::fzyx, uint_t(1) );
    zId_ = field::addToStorage< PdeField_T >( blocks, "z", getFineSize, real_t(0), field::fzyx, uint_t(1) );
 
@@ -196,7 +196,7 @@ VCycles< Stencil_T, OperatorCoarsening_T, Restrict_T, ProlongateAndCorrect_T >::
    // Set up fields for coarser levels
    for ( uint_t lvl = 1; lvl < numLvl; ++lvl )
    {
-      auto getSize = std::bind(VCycles<Stencil_T, OperatorCoarsening_T, Restrict_T, ProlongateAndCorrect_T>::getSizeForLevel, lvl, std::placeholders::_1, std::placeholders::_2);
+      auto getSize = [lvl](auto & bs, auto & block) { return VCycles<Stencil_T, OperatorCoarsening_T, Restrict_T, ProlongateAndCorrect_T>::getSizeForLevel(lvl, bs, block); };
       uId_.push_back( field::addToStorage< PdeField_T >( blocks, "u_"+std::to_string(lvl), getSize, real_t(0), field::fzyx, uint_t(1) ) );
       fId_.push_back( field::addToStorage< PdeField_T >( blocks, "f_"+std::to_string(lvl), getSize, real_t(0), field::fzyx, uint_t(1) ) );
       rId_.push_back( field::addToStorage< PdeField_T >( blocks, "r_"+std::to_string(lvl), getSize, real_t(0), field::fzyx, uint_t(1) ) );
@@ -208,7 +208,7 @@ VCycles< Stencil_T, OperatorCoarsening_T, Restrict_T, ProlongateAndCorrect_T >::
    operatorCoarsening(stencilId_);
 
    // Set up fields for CG on coarsest level
-   auto getFineSize = std::bind(VCycles<Stencil_T, OperatorCoarsening_T, Restrict_T, ProlongateAndCorrect_T>::getSizeForLevel, numLvl-1, std::placeholders::_1, std::placeholders::_2);
+   auto getFineSize = [finestLvl = numLvl-1](auto & bs, auto & block) { return VCycles<Stencil_T, OperatorCoarsening_T, Restrict_T, ProlongateAndCorrect_T>::getSizeForLevel(finestLvl, bs, block); };
    dId_ = field::addToStorage< PdeField_T >( blocks, "d", getFineSize, real_t(0), field::fzyx, uint_t(1) );
    zId_ = field::addToStorage< PdeField_T >( blocks, "z", getFineSize, real_t(0), field::fzyx, uint_t(1) );
 
