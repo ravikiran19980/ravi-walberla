@@ -55,7 +55,7 @@ VCycles< Stencil_T, OperatorCoarsening_T, Restrict_T, ProlongateAndCorrect_T >::
    requiredSelectors_( requiredSelectors ), incompatibleSelectors_( incompatibleSelectors )
 {
 
-   static_assert(std::is_same<OperatorCoarsening_T, CoarsenStencilFieldsDCA<Stencil_T>>::value, "Use of weight requires DCA, use constructor with stencil field if you want to employ GCA");
+   static_assert(std::is_same_v<OperatorCoarsening_T, CoarsenStencilFieldsDCA<Stencil_T>>, "Use of weight requires DCA, use constructor with stencil field if you want to employ GCA");
 
    // Set up fields for finest level
    uId_.push_back( uFieldId );
