@@ -49,7 +49,7 @@ namespace walberla {
 
 
 
-typedef GhostLayerField< real_t, 1 > PdeField_T;
+using PdeField_T = GhostLayerField<real_t, 1>;
 using Stencil_T = stencil::D3Q7;
 using StencilField_T = pde::VCycles<Stencil_T>::StencilField_T;
 

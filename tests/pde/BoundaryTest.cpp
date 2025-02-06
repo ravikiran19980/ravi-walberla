@@ -53,16 +53,16 @@ namespace walberla {
 
 
 
-typedef GhostLayerField< real_t, 1 > Field_T;
-typedef stencil::D2Q5                Stencil_T;
-typedef pde::CGIteration<Stencil_T>::StencilField_T  StencilField_T;
+using Field_T = GhostLayerField<real_t, 1>;
+using Stencil_T = stencil::D2Q5;
+using StencilField_T = pde::CGIteration<Stencil_T>::StencilField_T;
 
-typedef walberla::uint8_t      flag_t;
-typedef FlagField < flag_t >   FlagField_T;
-typedef pde::Dirichlet< Stencil_T, flag_t >  Dirichlet_T;
-typedef pde::Neumann< Stencil_T, flag_t >  Neumann_T;
+using flag_t = walberla::uint8_t;
+using FlagField_T = FlagField<flag_t>;
+using Dirichlet_T = pde::Dirichlet<Stencil_T, flag_t>;
+using Neumann_T = pde::Neumann<Stencil_T, flag_t>;
 
-typedef BoundaryHandling< FlagField_T, Stencil_T, Dirichlet_T, Neumann_T > BoundaryHandling_T;
+using BoundaryHandling_T = BoundaryHandling<FlagField_T, Stencil_T, Dirichlet_T, Neumann_T>;
 
 
 const FlagUID  Domain_Flag( "domain" );
