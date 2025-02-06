@@ -165,9 +165,9 @@ template< typename LatticeModel_T, typename Filter_T >
 void VectorGradientRefinement< LatticeModel_T, Filter_T >::operator()( std::vector< std::pair< const Block *, uint_t > > & minTargetLevels,
                                                                        std::vector< const Block * > &, const BlockForest & )
 {
-   for( auto it = minTargetLevels.begin(); it != minTargetLevels.end(); ++it )
+   for(auto & minTargetLevel : minTargetLevels)
    {
-      const Block * const block = it->first;
+      const Block * const block = minTargetLevel.first;
 
       const uint_t currentLevelOfBlock = block->getLevel();
 
@@ -175,7 +175,7 @@ void VectorGradientRefinement< LatticeModel_T, Filter_T >::operator()( std::vect
 
       if( uField == nullptr )
       {
-         it->second = uint_t(0);
+         minTargetLevel.second = uint_t(0);
          continue;
       }
 
@@ -253,12 +253,12 @@ void VectorGradientRefinement< LatticeModel_T, Filter_T >::operator()( std::vect
       if( refine && currentLevelOfBlock < maxLevel_ )
       {
          WALBERLA_ASSERT( !coarsen );
-         it->second = currentLevelOfBlock + uint_t(1);
+         minTargetLevel.second = currentLevelOfBlock + uint_t(1);
       }
       if( coarsen && currentLevelOfBlock > uint_t(0) )
       {
          WALBERLA_ASSERT( !refine );
-         it->second = currentLevelOfBlock - uint_t(1);
+         minTargetLevel.second = currentLevelOfBlock - uint_t(1);
       }
    }
 }

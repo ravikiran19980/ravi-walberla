@@ -158,9 +158,9 @@ template< typename LatticeModel_T, typename Filter_T >
 void VectorGradientRefinement< LatticeModel_T, Filter_T >::operator()( std::vector< std::pair< const Block *, uint_t > > & minTargetLevels,
                                                                        std::vector< const Block * > &, const BlockForest & )
 {
-   for( auto it = minTargetLevels.begin(); it != minTargetLevels.end(); ++it )
+   for(auto & minTargetLevel : minTargetLevels)
    {
-      const Block * const block = it->first;
+      const Block * const block = minTargetLevel.first;
 
       const uint_t currentLevelOfBlock = block->getLevel();
 
@@ -168,7 +168,7 @@ void VectorGradientRefinement< LatticeModel_T, Filter_T >::operator()( std::vect
 
       if( uField == nullptr )
       {
-         it->second = uint_t(0);
+         minTargetLevel.second = uint_t(0);
          continue;
       }
 
@@ -246,12 +246,12 @@ void VectorGradientRefinement< LatticeModel_T, Filter_T >::operator()( std::vect
       if( refine && currentLevelOfBlock < maxLevel_ )
       {
          WALBERLA_ASSERT( !coarsen );
-         it->second = currentLevelOfBlock + uint_t(1);
+         minTargetLevel.second = currentLevelOfBlock + uint_t(1);
       }
       if( coarsen && currentLevelOfBlock > uint_t(0) )
       {
          WALBERLA_ASSERT( !refine );
-         it->second = currentLevelOfBlock - uint_t(1);
+         minTargetLevel.second = currentLevelOfBlock - uint_t(1);
       }
    }
 }
@@ -307,28 +307,28 @@ private:
 static void refinementSelection( SetupBlockForest& forest, uint_t levels, const AABB & refinementBox )
 {
    real_t dx = real_t(1); // dx on finest level
-   for( auto block = forest.begin(); block != forest.end(); ++block )
+   for(auto & block : forest)
    {
-      uint_t blockLevel = block->getLevel();
+      uint_t blockLevel = block.getLevel();
       uint_t levelScalingFactor = ( uint_t(1) << (levels - uint_t(1) - blockLevel) );
       real_t dxOnLevel = dx * real_c(levelScalingFactor);
-      AABB blockAABB = block->getAABB();
+      AABB blockAABB = block.getAABB();
 
       // extend block AABB by ghostlayers
       AABB extendedBlockAABB = blockAABB.getExtended( dxOnLevel * real_c(FieldGhostLayers) );
 
       if( extendedBlockAABB.intersects( refinementBox ) )
          if( blockLevel < ( levels - uint_t(1) ) )
-            block->setMarker( true );
+            block.setMarker( true );
    }
 }
 
 static void workloadAndMemoryAssignment( SetupBlockForest& forest )
 {
-   for( auto block = forest.begin(); block != forest.end(); ++block )
+   for(auto & block : forest)
    {
-      block->setWorkload( numeric_cast< workload_t >( uint_t(1) << block->getLevel() ) );
-      block->setMemory( numeric_cast< memory_t >(1) );
+      block.setWorkload( numeric_cast< workload_t >( uint_t(1) << block.getLevel() ) );
+      block.setMemory( numeric_cast< memory_t >(1) );
    }
 }
 
@@ -620,9 +620,9 @@ public:
       for( uint_t level = 0; level < numberOfLevels_; ++level)
       {
          real_t timeOnLevelProcessLocal = real_t(0);
-         for( auto timerIt = timerOnEachLevel_.begin(); timerIt != timerOnEachLevel_.end(); ++timerIt )
+         for(auto const & timerIt : timerOnEachLevel_)
          {
-            std::string timerName = *timerIt + " (" + std::to_string(level) + ")";
+            std::string timerName = timerIt + " (" + std::to_string(level) + ")";
             timeOnLevelProcessLocal += real_c((*levelwiseTimingPool_)[timerName].total());
          }
 
@@ -630,15 +630,14 @@ public:
          {
             // evaluate more timers on finest level
 
-            for( auto timerIt = timerOnFinestLevel_.begin(); timerIt != timerOnFinestLevel_.end(); ++timerIt )
+            for(auto const & timerIt : timerOnFinestLevel_)
             {
-               std::string timerName = *timerIt + " (" + std::to_string(level) + ")";
+               std::string timerName = timerIt + " (" + std::to_string(level) + ")";
                timeOnLevelProcessLocal += real_c((*levelwiseTimingPool_)[timerName].total());
             }
-            for( auto timerIt = timerInPE_.begin(); timerIt != timerInPE_.end(); ++timerIt )
+            for(auto const & timerName : timerInPE_)
             {
-               std::string timerName = *timerIt;
-               timeOnLevelProcessLocal += real_c((*peTimingTree_)[timerName].total());
+                timeOnLevelProcessLocal += real_c((*peTimingTree_)[timerName].total());
             }
          }
 
