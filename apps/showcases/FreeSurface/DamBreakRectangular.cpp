@@ -129,13 +129,13 @@ class ColumnHeightEvaluator
 
             const FlagField_T* const flagField = blockIt->template getData< const FlagField_T >(flagFieldID);
 
-            for (auto c = localSearchInterval.begin(); c != localSearchInterval.end(); ++c)
+            for (auto c : localSearchInterval)
             {
-               if (flagInfo.isInterface(flagField->get(*c)))
+               if (flagInfo.isInterface(flagField->get(c)))
                {
-                  if (c->y() >= maxColumnHeight)
+                  if (c.y() >= maxColumnHeight)
                   {
-                     maxColumnHeight  = c->y();
+                     maxColumnHeight  = c.y();
                      isInterfaceFound = true;
                   }
                }
@@ -214,13 +214,13 @@ class ColumnWidthEvaluator
 
             const FlagField_T* const flagField = blockIt->template getData< const FlagField_T >(flagFieldID);
 
-            for (auto c = localSearchInterval.begin(); c != localSearchInterval.end(); ++c)
+            for (auto c : localSearchInterval)
             {
-               if (flagInfo.isInterface(flagField->get(*c)))
+               if (flagInfo.isInterface(flagField->get(c)))
                {
-                  if (c->x() >= maxColumnWidth)
+                  if (c.x() >= maxColumnWidth)
                   {
-                     maxColumnWidth   = c->x();
+                     maxColumnWidth   = c.x();
                      isInterfaceFound = true;
                   }
                }
