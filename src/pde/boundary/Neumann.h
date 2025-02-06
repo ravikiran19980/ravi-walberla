@@ -104,11 +104,11 @@ protected:
    StructuredBlockStorage & blocks_;
    BlockDataID fieldId_;
 
-   bool includeBoundary_[ stencil::D3Q6::Size ];
-   uint_t order_[ stencil::D3Q6::Size ];
+   std::array<bool, stencil::D3Q6::Size> includeBoundary_;
+   std::array<uint_t, stencil::D3Q6::Size> order_;
 
-   real_t value_[ stencil::D3Q6::Size ];
-   real_t dx_[ stencil::D3Q6::Size ];
+   std::array<real_t, stencil::D3Q6::Size> value_;
+   std::array<real_t, stencil::D3Q6::Size> dx_;
 
 }; // class NeumannDomainBoundary
 

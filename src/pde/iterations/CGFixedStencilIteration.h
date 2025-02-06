@@ -83,7 +83,7 @@ protected:
    
    real_t cells_;
 
-   real_t w_[ Stencil_T::Size ];
+   std::array<real_t, Stencil_T::Size> w_;
 
    uint_t iterations_;
    real_t residualNormThreshold_;

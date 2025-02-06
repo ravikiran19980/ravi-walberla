@@ -83,7 +83,7 @@ void RBGSFixedStencil< Stencil_T >::update( IBlock * const block, const bool rb 
    WALBERLA_ASSERT_GREATER_EQUAL( uf->nrOfGhostLayers(), 1 );
 
    // stencil weights
-   real_t weights[ Stencil_T::Size ];
+   std::array<real_t, Stencil_T::Size> weights;
    for( auto dir = Stencil_T::beginNoCenter(); dir != Stencil_T::end(); ++dir )
       weights[ dir.toIdx() ] = this->w( dir.toIdx() );
    weights[ Stencil_T::idx[ stencil::C ] ] = real_t(1) / this->w( Stencil_T::idx[ stencil::C ] ); // center already inverted here!

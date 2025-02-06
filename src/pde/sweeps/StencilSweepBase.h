@@ -63,7 +63,7 @@ protected:
 
 
 
-   real_t w_[ Stencil_T::Size ];
+   std::array<real_t, Stencil_T::Size> w_;
 };
 
 

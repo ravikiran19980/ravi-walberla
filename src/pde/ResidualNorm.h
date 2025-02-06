@@ -67,7 +67,7 @@ protected:
    ConstBlockDataID uId_;
    ConstBlockDataID fId_;
    
-   real_t weights_[ Stencil_T::Size ];
+   std::array<real_t, Stencil_T::Size> weights_;
    
    real_t cells_;
    
