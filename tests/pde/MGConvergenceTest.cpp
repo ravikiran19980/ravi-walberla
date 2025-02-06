@@ -71,11 +71,11 @@ void initU( const shared_ptr< StructuredBlockStorage > & blocks, const BlockData
    {
       PdeField_T * u = block->getData< PdeField_T >( uId );
       CellInterval xyz = u->xyzSizeWithGhostLayer();
-      for( auto cell = xyz.begin(); cell != xyz.end(); ++cell )
+      for(auto cell : xyz)
       {
-         const Vector3< real_t > p = blocks->getBlockLocalCellCenter( *block, *cell );
+         const Vector3< real_t > p = blocks->getBlockLocalCellCenter( *block, cell );
          math::seedRandomGenerator( static_cast<unsigned int>( (p[0] * real_t(blocks->getNumberOfXCells()) + p[1]) * real_t(blocks->getNumberOfYCells()) + p[2]) );
-         u->get( *cell ) = math::realRandom( real_t(-10), real_t(10) );
+         u->get( cell ) = math::realRandom( real_t(-10), real_t(10) );
       }
    }
     
@@ -88,9 +88,9 @@ void initU( const shared_ptr< StructuredBlockStorage > & blocks, const BlockData
     {
         PdeField_T * u = block->getData< PdeField_T >( uId );
         CellInterval xyz = u->xyzSize();
-        for( auto cell = xyz.begin(); cell != xyz.end(); ++cell )
+        for(auto cell : xyz)
         {
-            sum += u->get( *cell );
+            sum += u->get( cell );
             ++numCells;
         }
     }
@@ -106,9 +106,9 @@ void initU( const shared_ptr< StructuredBlockStorage > & blocks, const BlockData
     {
         PdeField_T * u = block->getData< PdeField_T >( uId );
         CellInterval xyz = u->xyzSizeWithGhostLayer();
-        for( auto cell = xyz.begin(); cell != xyz.end(); ++cell )
+        for(auto cell : xyz)
         {
-            u->get( *cell ) -= domainMeanVal;
+            u->get( cell ) -= domainMeanVal;
         }
     }
 
@@ -155,16 +155,16 @@ void initURect( const shared_ptr< StructuredBlockStorage > & blocks, const Block
    {
       PdeField_T * u = block->getData< PdeField_T >( uId );
       CellInterval xyz = u->xyzSize();
-      for( auto cell = xyz.begin(); cell != xyz.end(); ++cell )
+      for(auto cell : xyz)
       {
          // get global coordinate of current cell
          Cell globalCoordCell;
-         blocks->transformBlockLocalToGlobalCell( globalCoordCell, *block, *cell );
+         blocks->transformBlockLocalToGlobalCell( globalCoordCell, *block, cell );
 
          // set values in cuboid
          if(cuboidAABB.contains(real_c(globalCoordCell[0]),real_c(globalCoordCell[1]),real_c(globalCoordCell[2]))) {
-            u->get( *cell ) = cuboidValue;
-            sumCuboidValues += u->get( *cell );
+            u->get( cell ) = cuboidValue;
+            sumCuboidValues += u->get( cell );
          }
          ++numCells;
       }
@@ -185,9 +185,9 @@ void initURect( const shared_ptr< StructuredBlockStorage > & blocks, const Block
    {
       PdeField_T * u = block->getData< PdeField_T >( uId );
       CellInterval xyz = u->xyzSize();
-      for( auto cell = xyz.begin(); cell != xyz.end(); ++cell )
+      for(auto cell : xyz)
       {
-         u->get( *cell ) -= domainMeanVal;
+         u->get( cell ) -= domainMeanVal;
       }
    }
 
