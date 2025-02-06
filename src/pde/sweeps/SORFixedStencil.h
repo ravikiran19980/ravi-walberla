@@ -45,7 +45,7 @@ public:
                     const BlockDataID & uFieldId, const BlockDataID & fFieldId, const std::vector< real_t > & weights, const real_t omega ) :
       StencilSweepBase< Stencil_T >( uFieldId, fFieldId, weights ), blocks_( blocks ), omega_( omega ) {}
 
-   void operator()( IBlock * const block ) const { WALBERLA_ABORT( "You are not allowed to use class 'SORFixedStencil' as a standard sweep!\n"
+   void operator()( IBlock * const /*block*/ ) const { WALBERLA_ABORT( "You are not allowed to use class 'SORFixedStencil' as a standard sweep!\n"
                                                                    "Use the member functions 'getRedSweep' and 'getBlackSweep' instead." ); }
 
    void update( IBlock * const block, const bool rb );
