@@ -21,6 +21,7 @@ modules:
       exclude-tests: true
 
 apps:
+  - "benchmark/AdaptiveMeshRefinementFluidParticleCoupling"
   - "benchmarks/ComplexGeometry"
   - "benchmarks/CouetteFlow"
   - "benchmarks/FieldCommunication"
