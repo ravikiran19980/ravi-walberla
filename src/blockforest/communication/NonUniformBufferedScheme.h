@@ -709,7 +709,7 @@ void NonUniformBufferedScheme<Stencil>::startCommunicationEqualLevel( const uint
 
       for( auto & sender : sendFunctions)
       {
-         auto sendingFunc = [&sfunc = sender.second](SendBuffer & sbuf) { NonUniformBufferedScheme< Stencil >::send(sbuf, sfunc); };
+         auto sendingFunc = [sfunc = sender.second](SendBuffer & sbuf) { NonUniformBufferedScheme< Stencil >::send(sbuf, sfunc); };
          bufferSystem->addSendingFunction  ( int_c(sender.first), sendingFunc );
 
          auto receivingFunc = [this](RecvBuffer & rbuf){ this->receive(rbuf); };
@@ -855,7 +855,7 @@ void NonUniformBufferedScheme<Stencil>::startCommunicationCoarseToFine( const ui
       resetBufferSystem( bufferSystem );
 
       for( auto const &sender : sendFunctions ){
-          auto sendingFunc = [&sfunc = sender.second](SendBuffer & sbuf) { NonUniformBufferedScheme< Stencil >::send(sbuf, sfunc); };
+          auto sendingFunc = [sfunc = sender.second](SendBuffer & sbuf) { NonUniformBufferedScheme< Stencil >::send(sbuf, sfunc); };
           bufferSystem->addSendingFunction( int_c(sender.first), sendingFunc );
       }
 
@@ -1004,7 +1004,7 @@ void NonUniformBufferedScheme<Stencil>::startCommunicationFineToCoarse( const ui
       resetBufferSystem( bufferSystem );
 
       for( auto const &sender : sendFunctions ){
-          auto sendingFunc = [&sfunc = sender.second](SendBuffer & sbuf) { NonUniformBufferedScheme< Stencil >::send(sbuf, sfunc); };
+          auto sendingFunc = [sfunc = sender.second](SendBuffer & sbuf) { NonUniformBufferedScheme< Stencil >::send(sbuf, sfunc); };
           bufferSystem->addSendingFunction( int_c(sender.first), sendingFunc );
       }
 
