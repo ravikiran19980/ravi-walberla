@@ -81,3 +81,12 @@ CMakeDefs.h
 /moduleStatistics.json
 /walberla-config.cmake
 cmake-build-*
+
+# Images and media (if not required)
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+**/vtk*
+**/mesh*
