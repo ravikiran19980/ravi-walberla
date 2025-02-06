@@ -40,7 +40,7 @@ class ConditionalResidualNorm
 {
 public:
 
-   typedef GhostLayerField< real_t, 1 > Field_T;
+   using Field_T = GhostLayerField<real_t, 1>;
 
    ConditionalResidualNorm( const BlockStorage & blocks, const ConstBlockDataID & uId, const ConstBlockDataID & fId,
                             const ConstBlockDataID & flagFieldId, const Set< FlagUID > & domainMask,

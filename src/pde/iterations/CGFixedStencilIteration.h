@@ -45,7 +45,7 @@ class CGFixedStencilIteration
 {
 public:
 
-   typedef GhostLayerField< real_t, 1 > Field_T;
+   using Field_T = GhostLayerField<real_t, 1>;
 
    CGFixedStencilIteration( BlockStorage & blocks,
                             const BlockDataID & uId, const BlockDataID & rId, const BlockDataID & dId, const BlockDataID & zId,

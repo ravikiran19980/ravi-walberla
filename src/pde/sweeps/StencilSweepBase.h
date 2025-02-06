@@ -37,7 +37,7 @@ class StencilSweepBase : public SweepBase
 {
 public:
 
-   typedef SweepBase::Field_T Field_T;
+   using Field_T = SweepBase::Field_T;
 
    // block has NO dst u field
    StencilSweepBase( const BlockDataID & uFieldId, const BlockDataID & fFieldId, const std::vector< real_t > & weights ) :

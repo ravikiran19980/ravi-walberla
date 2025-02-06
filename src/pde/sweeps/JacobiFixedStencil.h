@@ -37,7 +37,7 @@ class JacobiFixedStencil : public StencilSweepBase< Stencil_T >
 {
 public:
 
-   typedef typename StencilSweepBase< Stencil_T >::Field_T Field_T;
+   using Field_T = typename StencilSweepBase<Stencil_T>::Field_T;
 
    // block has NO dst u field
    JacobiFixedStencil( const BlockDataID & uFieldId, const BlockDataID & fFieldId, const std::vector< real_t > & weights ) :

@@ -39,8 +39,8 @@ class RBGS : public StencilFieldSweepBase< Stencil_T >
 {
 public:
 
-   typedef typename StencilFieldSweepBase< Stencil_T >::Field_T         Field_T;
-   typedef typename StencilFieldSweepBase< Stencil_T >::StencilField_T  StencilField_T;
+   using Field_T = typename StencilFieldSweepBase<Stencil_T>::Field_T;
+   using StencilField_T = typename StencilFieldSweepBase<Stencil_T>::StencilField_T;
    
    RBGS( const shared_ptr< domain_decomposition::StructuredBlockStorage > & blocks,
                      const BlockDataID & uFieldId, const BlockDataID & fFieldId, const BlockDataID & stencilFieldId ) :

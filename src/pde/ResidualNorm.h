@@ -38,7 +38,7 @@ class ResidualNorm
 {
 public:
 
-   typedef GhostLayerField< real_t, 1 > Field_T;
+   using Field_T = GhostLayerField<real_t, 1>;
    
    ResidualNorm( const BlockStorage & blocks, const ConstBlockDataID & uId, const ConstBlockDataID & fId, const std::vector< real_t > & weights,
                  const Set<SUID> & requiredSelectors     = Set<SUID>::emptySet(),

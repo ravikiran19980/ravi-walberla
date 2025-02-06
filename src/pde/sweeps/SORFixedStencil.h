@@ -39,7 +39,7 @@ class SORFixedStencil : public StencilSweepBase< Stencil_T >
 {
 public:
 
-   typedef typename StencilSweepBase< Stencil_T >::Field_T Field_T;
+   using Field_T = typename StencilSweepBase<Stencil_T>::Field_T;
 
    SORFixedStencil( const shared_ptr< domain_decomposition::StructuredBlockStorage > & blocks,
                     const BlockDataID & uFieldId, const BlockDataID & fFieldId, const std::vector< real_t > & weights, const real_t omega ) :
