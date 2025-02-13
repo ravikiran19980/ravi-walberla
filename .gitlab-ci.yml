@@ -2049,10 +2049,13 @@ clang-tidy:
       - cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DWALBERLA_BUFFER_DEBUG=ON -DWALBERLA_BUILD_TESTS=ON -DWALBERLA_BUILD_BENCHMARKS=ON -DWALBERLA_BUILD_TUTORIALS=ON -DWALBERLA_BUILD_TOOLS=ON -DWALBERLA_BUILD_WITH_MPI=ON -DWALBERLA_BUILD_WITH_OPENMP=ON -DCMAKE_BUILD_TYPE=Debug -DWALBERLA_BUILD_WITH_METIS=ON -DWALBERLA_BUILD_WITH_PARMETIS=ON -DWALBERLA_BUILD_WITH_OPENMESH=ON -DWALBERLA_DOUBLE_ACCURACY=ON -DWALBERLA_LOGLEVEL=DETAIL
       - cmake . -LA
       - python3 utilities/clang-tidy/analyze.py -p utilities/clang-tidy/analyze.yml -r $CI_PROJECT_DIR -c compile_commands.json -o clang-tidy-output
+   after_script:
+      - mkdir -p $CI_PROJECT_DIR/artifacts
+      - mv $CI_PROJECT_DIR/build/clang-tidy-output $CI_PROJECT_DIR/artifacts/clang-tidy-output
    artifacts:
       when: always
       paths:
-         - $CI_PROJECT_DIR/build/clang-tidy-output
+         - $CI_PROJECT_DIR/artifacts/clang-tidy-output
    tags:
       - docker
 
