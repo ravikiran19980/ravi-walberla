@@ -922,7 +922,7 @@ int main(int argc, char** argv) {
    // add velocity field and utility
    BlockDataID velocityFieldID = field::addToStorage<VelocityField_T>( blocks, "velocity field", Vector3<real_t>(real_t(0)), field::fzyx, uint_t(2) );
 
-   typedef lbm::VelocityFieldWriter< PdfField_T, VelocityField_T > VelocityFieldWriter_T;
+   using VelocityFieldWriter_T = lbm::VelocityFieldWriter<PdfField_T, VelocityField_T>;
    BlockSweepWrapper< VelocityFieldWriter_T > velocityFieldWriter( blocks, VelocityFieldWriter_T( pdfFieldID, velocityFieldID ) );
 
    shared_ptr<blockforest::communication::NonUniformBufferedScheme<stencil::D3Q27> > velocityCommunicationScheme = make_shared<blockforest::communication::NonUniformBufferedScheme<stencil::D3Q27> >( blocks );
@@ -931,7 +931,7 @@ int main(int argc, char** argv) {
    // add q criterion field (only needed for mesh output)
    BlockDataID qCriterionFieldID = field::addToStorage<QCriterionField_T>(blocks, "q criterion field", real_t(0), field::fzyx, uint_t(1));
 
-   typedef lbm::QCriterionFieldWriter<VelocityField_T, QCriterionField_T, FluidFilter_T> QCriterionFieldWriter_T;
+   using QCriterionFieldWriter_T = lbm::QCriterionFieldWriter<VelocityField_T, QCriterionField_T, FluidFilter_T>;
    BlockSweepWrapper<QCriterionFieldWriter_T> qCriterionFieldWriter(blocks, QCriterionFieldWriter_T(blocks, velocityFieldID,
            qCriterionFieldID, fluidFlagFieldEvaluationFilter));
 
