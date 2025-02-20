@@ -155,23 +155,23 @@ const FlagUID FormerMO_Flag("former moving obstacle");
 static void refinementSelection(SetupBlockForest &forest, uint_t levels, AABB refinementBox) {
    real_t dx = real_t(1); // dx on finest level
    const uint_t finestLevel = levels - uint_t(1);
-   for (auto block = forest.begin(); block != forest.end(); ++block) {
-      uint_t blockLevel = block->getLevel();
+   for (auto & block : forest) {
+      uint_t blockLevel = block.getLevel();
       uint_t levelScalingFactor = (uint_t(1) << (finestLevel - blockLevel));
       real_t dxOnLevel = dx * real_c(levelScalingFactor);
-      AABB blockAABB = block->getAABB();
+      AABB blockAABB = block.getAABB();
       // extend block AABB by ghostlayers
       AABB extendedBlockAABB = blockAABB.getExtended(dxOnLevel * real_c(FieldGhostLayers));
       if (extendedBlockAABB.intersects(refinementBox))
          if (blockLevel < finestLevel) // only if the block is not on the finest level
-            block->setMarker(true);
+            block.setMarker(true);
    }
 }
 
 static void workloadAndMemoryAssignment(SetupBlockForest &forest) {
-   for (auto block = forest.begin(); block != forest.end(); ++block) {
-      block->setWorkload(numeric_cast<workload_t>(uint_t(1) << block->getLevel()));
-      block->setMemory(numeric_cast<memory_t>(1));
+   for (auto & block : forest) {
+      block.setWorkload(numeric_cast<workload_t>(uint_t(1) << block.getLevel()));
+      block.setMemory(numeric_cast<memory_t>(1));
    }
 }
 static shared_ptr<StructuredBlockForest>
