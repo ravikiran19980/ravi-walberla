@@ -220,7 +220,7 @@ template< typename Type >
 template< typename Other >
 inline Vector2<Type>::Vector2( Other init )
 {
-   static_assert( std::is_arithmetic<Other>::value, "Vector2 only accepts arithmetic data types in Vector2( Other init )");
+   static_assert( std::is_arithmetic_v<Other>, "Vector2 only accepts arithmetic data types in Vector2( Other init )");
 
    v_[0] = v_[1] = init;
 }

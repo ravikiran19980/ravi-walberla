@@ -56,7 +56,7 @@ class ParticleAndVolumeFractionMapping
       : blockStorage_(blockStorage), ac_(ac), mappingParticleSelector_(mappingParticleSelector),
         particleAndVolumeFractionFieldID_(particleAndVolumeFractionFieldID), superSamplingDepth_(superSamplingDepth)
    {
-      static_assert(std::is_base_of< mesa_pd::data::IAccessor, ParticleAccessor_T >::value,
+      static_assert(std::is_base_of_v< mesa_pd::data::IAccessor, ParticleAccessor_T >,
                     "Provide a valid accessor as template");
    }
 

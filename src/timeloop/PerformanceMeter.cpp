@@ -39,7 +39,7 @@ namespace timeloop {
     * \param blockStorage block storage is needed to retrieve the FlagField for cell counting
     *******************************************************************************************************************/
    PerformanceMeter::PerformanceMeter( StructuredBlockStorage & blockStorage)
-      : blockStorage_ ( blockStorage ), firstTimingStartStopCall_( true )
+      : blockStorage_ ( blockStorage )
    {
    }
 

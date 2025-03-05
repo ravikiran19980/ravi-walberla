@@ -28,9 +28,11 @@
 #include "mesh_common/DistanceComputations.h"
 #include "mesh_common/MatrixVectorOperations.h"
 #include "mesh_common/MeshOperations.h"
+# include "pe/raytracing/Intersects.h"
 
 #include <algorithm>
 #include <iterator>
+#include <optional>
 
 namespace walberla {
 namespace mesh {
@@ -50,7 +52,7 @@ public:
    BranchNode( const shared_ptr< TriangleDistance<MeshType> > & triDistance, InputIterator beginFh, InputIterator endFh,
                uint_t maxDepth, uint_t minNumTriangles );
 
-   ~BranchNode() override { for( int i = 0; i < 8; ++i ) delete children_[i]; }
+   ~BranchNode() override { for( uint_t i = 0; i < 8; ++i ) delete children_[i]; }
 
 
    Scalar sqSignedDistance( const Point & p ) const override;
@@ -63,6 +65,8 @@ public:
    Scalar sqDistance( const Point & p, Point & closestPoint ) const override;
    Scalar sqDistance( const Point & p, Point & closestPoint, Normal & normal ) const override;
 
+   Scalar getRayDistanceToMeshObject(const Point & ray_origin, const Point & normalised_ray_direction) const override;
+   
    inline uint_t numTriangles() const override;
    void numTrianglesToStream( std::ostream & os, const uint_t level ) const override;
    inline uint_t height() const override;
@@ -84,6 +88,55 @@ private:
       const Node<MeshType> * child;
       Scalar minSqBoxDist;
    };
+/*
+   struct ChildInfoIntersects
+   {
+      ChildInfoIntersects(const Node<MeshType> * _child, const Point & ray_origin, const Point & ray_direction)
+         :child( _child ), intersectsAabb( pe::raytracing::intersects( child->getAABB(), 
+                                                                       pe::raytracing::Ray(toWalberla( ray_origin ), (toWalberla( ray_direction )).getNormalized()),
+                                                                       parametricDistance,
+                                                                       real_t(0.0), 
+                                                                       &normal
+                                                                     )) {}
+
+      bool operator<( const ChildInfoIntersects & other ) const 
+         { return parametricDistance < other.parametricDistance; }
+   const Node<MeshType> * child;
+      real_t parametricDistance;
+      pe::Vec3 normal;
+      bool intersectsAabb;
+   };
+*/
+   struct ChildInfoIntersects
+   {
+      ChildInfoIntersects(const Node<MeshType> * _child, const real_t & _parametricDistance, 
+                          const Vector3<real_t> & _normal, const bool & _intersects)
+         :child( _child ), parametricDistance(_parametricDistance), normal(_normal), intersectsAabb(_intersects){}
+
+      static ChildInfoIntersects fromRay(const Node<MeshType> * child, const Point & ray_origin, const Point & ray_direction) {
+         real_t distance;
+         Vector3<real_t> ray_normal;
+
+         bool intersects { pe::raytracing::intersects(   child->getAABB(), 
+                                                         pe::raytracing::Ray(
+                                                               toWalberla( ray_origin ), 
+                                                               (toWalberla( ray_direction )).getNormalized()),
+                                                         distance, real_t(0.0), &ray_normal
+                                                      )
+                        };
+                  
+         return ChildInfoIntersects(child, distance, ray_normal, intersects);
+      }
+
+      bool operator<(const ChildInfoIntersects & other) const {
+         return parametricDistance < other.parametricDistance;
+      }
+
+      const Node<MeshType> * child;
+      const real_t parametricDistance;
+      const Vector3<real_t> normal;
+      const bool intersectsAabb;
+   };
 
 protected:
    std::array<const Node<MeshType> *, 8> children_;
@@ -104,7 +157,7 @@ template <typename MeshType>
 uint_t BranchNode<MeshType>::height() const
 {
    uint_t maxChildHeight = children_[0]->height();
-   for( int i = 1; i < 8; ++i )
+   for( uint_t i = 1; i < 8; ++i )
    {
       uint_t childHeight = children_[i]->height();
       if( childHeight > maxChildHeight )
@@ -184,7 +237,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( co
    std::sort( std::begin(childinfos), std::end(childinfos) );
 
    Scalar absMinSqSignedDistance = childinfos[0].child->sqSignedDistance( p );
-   for( int i = 1; i < 8; ++i )
+   for( uint_t i = 1; i < 8; ++i )
    {
       WALBERLA_ASSERT_NOT_NULLPTR( childinfos[i].child );
       if( std::fabs( absMinSqSignedDistance ) < childinfos[i].minSqBoxDist )
@@ -214,7 +267,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( co
 
    Scalar absMinSqSignedDistance = childinfos[0].child->sqSignedDistance( p, closestTriangle );
 
-   for( int i = 1; i < 8; ++i )
+   for( uint_t i = 1; i < 8; ++i )
    {
       WALBERLA_ASSERT_NOT_NULLPTR( childinfos[i].child );
       if( std::fabs( absMinSqSignedDistance ) < childinfos[i].minSqBoxDist )
@@ -247,7 +300,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( co
 
    Scalar absMinSqSignedDistance = childinfos[0].child->sqSignedDistance( p, closestPoint );
 
-   for( int i = 1; i < 8; ++i )
+   for( uint_t i = 1; i < 8; ++i )
    {
       WALBERLA_ASSERT_NOT_NULLPTR( childinfos[i].child );
       if( std::fabs( absMinSqSignedDistance ) < childinfos[i].minSqBoxDist )
@@ -280,7 +333,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqSignedDistance( co
 
    Scalar absMinSqSignedDistance = childinfos[0].child->sqSignedDistance( p, closestPoint, normal );
 
-   for( int i = 1; i < 8; ++i )
+   for( uint_t i = 1; i < 8; ++i )
    {
       WALBERLA_ASSERT_NOT_NULLPTR( childinfos[i].child );
       if( std::fabs( absMinSqSignedDistance ) < childinfos[i].minSqBoxDist )
@@ -317,7 +370,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Po
    std::sort( std::begin(childinfos), std::end(childinfos) );
 
    Scalar absMinSqDistance = childinfos[0].child->sqDistance( p );
-   for(int i = 1; i < 8; ++i)
+   for(uint_t i = 1; i < 8; ++i)
    {
       WALBERLA_ASSERT_NOT_NULLPTR( childinfos[i].child );
       if( absMinSqDistance < childinfos[i].minSqBoxDist)
@@ -347,7 +400,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Po
 
    Scalar absMinSqDistance = childinfos[0].child->sqDistance( p, closestTriangle );
 
-   for(int i = 1; i < 8; ++i)
+   for(uint_t i = 1; i < 8; ++i)
    {
       WALBERLA_ASSERT_NOT_NULLPTR( childinfos[i].child );
       if( absMinSqDistance < childinfos[i].minSqBoxDist)
@@ -380,7 +433,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Po
 
    Scalar absMinSqDistance = childinfos[0].child->sqDistance( p, closestPoint );
 
-   for(int i = 1; i < 8; ++i)
+   for(uint_t i = 1; i < 8; ++i)
    {
       WALBERLA_ASSERT_NOT_NULLPTR( childinfos[i].child );
       if( absMinSqDistance < childinfos[i].minSqBoxDist)
@@ -413,7 +466,7 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Po
 
    Scalar absMinSqDistance = childinfos[0].child->sqDistance( p, closestPoint, normal );
 
-   for(int i = 1; i < 8; ++i)
+   for(uint_t i = 1; i < 8; ++i)
    {
       WALBERLA_ASSERT_NOT_NULLPTR( childinfos[i].child );
       if(absMinSqDistance < childinfos[i].minSqBoxDist)
@@ -436,12 +489,43 @@ typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::sqDistance( const Po
 
 
 template <typename MeshType>
+typename BranchNode<MeshType>::Scalar BranchNode<MeshType>::getRayDistanceToMeshObject(const Point & ray_origin, const Point & normalised_ray_direction) const
+{
+   ChildInfoIntersects childinfos[8] = {
+      ChildInfoIntersects::fromRay( children_[0], ray_origin, normalised_ray_direction ), 
+      ChildInfoIntersects::fromRay( children_[1], ray_origin, normalised_ray_direction ),
+      ChildInfoIntersects::fromRay( children_[2], ray_origin, normalised_ray_direction ), 
+      ChildInfoIntersects::fromRay( children_[3], ray_origin, normalised_ray_direction ),
+      ChildInfoIntersects::fromRay( children_[4], ray_origin, normalised_ray_direction ), 
+      ChildInfoIntersects::fromRay( children_[5], ray_origin, normalised_ray_direction ),
+      ChildInfoIntersects::fromRay( children_[6], ray_origin, normalised_ray_direction ), 
+      ChildInfoIntersects::fromRay( children_[7], ray_origin, normalised_ray_direction )
+   };
+
+   Scalar distance( std::numeric_limits<Scalar>::max() );
+
+   for (const auto& childinfo : childinfos) {
+      if (childinfo.intersectsAabb) 
+      {
+         WALBERLA_ASSERT_NOT_NULLPTR(childinfo.child);
+
+         Scalar newDistance = childinfo.child->getRayDistanceToMeshObject(ray_origin, normalised_ray_direction);
+         
+         if (newDistance < distance)
+            distance = newDistance;
+      }
+   }
+
+   return distance;
+}
+
+template <typename MeshType>
 void BranchNode<MeshType>::numTrianglesToStream( std::ostream & os, const uint_t level ) const
 {
    for( uint_t i = 0; i < level; ++i )
       os << "   ";
    os << numTriangles() << "\n";
-   for( int i = 0; i < 8; ++i )
+   for( uint_t i = 0; i < 8; ++i )
       children_[i]->numTrianglesToStream(os, level + 1);
 
 }

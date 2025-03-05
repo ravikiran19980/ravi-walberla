@@ -34,7 +34,7 @@ struct SomeClass
 
       // The keyword "template" before "argument<1>" is crucial when these functions are inside a class. If the
       // keyword is dropped, compilers interpret "<1" as an arithmetic expression and therefore throw errors.
-      typedef typename FunctionTraits<F>::template argument<1>::type argType;
+      using argType = typename FunctionTraits<F>::template argument<1>::type;
       return std::is_same_v< T, argType >;
    }
 
@@ -51,7 +51,7 @@ int main( int /*argc*/, char** /*argv*/ )
    debug::enterTestMode();
 
    // obtain a function pointer's type
-   typedef std::remove_pointer_t< bool (*)(int, float, double) >FuncType;
+   using FuncType = std::remove_pointer_t<bool (*)(int, float, double)>;
 
    // check return type
    constexpr auto retTypeEqual = std::is_same_v< FunctionTraits<FuncType>::return_type, bool>;

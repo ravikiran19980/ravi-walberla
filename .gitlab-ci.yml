@@ -54,7 +54,6 @@ stages:
         -DWALBERLA_BUILD_WITH_PARMETIS=$WALBERLA_BUILD_WITH_PARMETIS
         -DWALBERLA_BUILD_WITH_FFTW=$WALBERLA_BUILD_WITH_FFTW
         -DWALBERLA_BUILD_WITH_HALF_PRECISION_SUPPORT=$WALBERLA_BUILD_WITH_HALF_PRECISION_SUPPORT
-        -DWALBERLA_ENABLE_GUI=$WALBERLA_ENABLE_GUI
         -DWALBERLA_BUILD_WITH_CODEGEN=$WALBERLA_BUILD_WITH_CODEGEN
         -DWALBERLA_STL_BOUNDS_CHECKS=$WALBERLA_STL_BOUNDS_CHECKS
         -DWALBERLA_LOGLEVEL=$WALBERLA_LOGLEVEL
@@ -79,7 +78,6 @@ stages:
       WALBERLA_BUILD_WITH_METIS: "ON"
       WALBERLA_BUILD_WITH_PARMETIS: "ON"
       WALBERLA_BUILD_WITH_FFTW: "ON"
-      WALBERLA_ENABLE_GUI: "OFF"
       WALBERLA_LOGLEVEL: "DETAIL"
       WARNING_ERROR: "ON"
    artifacts:
@@ -2037,9 +2035,11 @@ doc:
 ###############################################################################
 
 clang-tidy:
-   image: i10git.cs.fau.de:5005/walberla/buildenvs/clang-17
+   image: i10git.cs.fau.de:5005/walberla/buildenvs/clang-18
    stage: "Code Quality"
    needs: []
+   before_script:
+      - pip install pyyaml
    script:
       - $CXX --version
       - clang-tidy -version
@@ -2048,11 +2048,14 @@ clang-tidy:
       - cd $CI_PROJECT_DIR/build
       - cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DWALBERLA_BUFFER_DEBUG=ON -DWALBERLA_BUILD_TESTS=ON -DWALBERLA_BUILD_BENCHMARKS=ON -DWALBERLA_BUILD_TUTORIALS=ON -DWALBERLA_BUILD_TOOLS=ON -DWALBERLA_BUILD_WITH_MPI=ON -DWALBERLA_BUILD_WITH_OPENMP=ON -DCMAKE_BUILD_TYPE=Debug -DWALBERLA_BUILD_WITH_METIS=ON -DWALBERLA_BUILD_WITH_PARMETIS=ON -DWALBERLA_BUILD_WITH_OPENMESH=ON -DWALBERLA_DOUBLE_ACCURACY=ON -DWALBERLA_LOGLEVEL=DETAIL
       - cmake . -LA
-      - utilities/clang-tidy/filterCompileCommands.py --file compile_commands.json --exclude "*" --include core domain_decomposition blockforest field geometry gpu lbm_mesapd_coupling mesh mesh_common sqlite stencil --exclude extern tests
-      - run-clang-tidy -quiet | tee clang-tidy-output.txt
+      - python3 utilities/clang-tidy/analyze.py -p utilities/clang-tidy/analyze.yml -r $CI_PROJECT_DIR -c compile_commands.json -o clang-tidy-output
+   after_script:
+      - mkdir -p $CI_PROJECT_DIR/artifacts
+      - mv $CI_PROJECT_DIR/build/clang-tidy-output $CI_PROJECT_DIR/artifacts/clang-tidy-output
    artifacts:
+      when: always
       paths:
-         - $CI_PROJECT_DIR/build/clang-tidy-output.txt
+         - $CI_PROJECT_DIR/artifacts/clang-tidy-output
    tags:
       - docker
 
@@ -2061,7 +2064,7 @@ cppcheck:
    image: i10git.cs.fau.de:5005/walberla/buildenvs/cppcheck
    script:
       - cppcheck --version
-      - cppcheck . --max-configs=10 --enable=warning --enable=style --enable=performance --enable=portability -i src/gui/extern -i src/geometry/structured/extern -i sqlite3.c -i StackWalker.cpp -I src/ -I tests/ -I apps/ -D WALBERLA_BUILD_WITH_MPI -D WALBERLA_BUILD_WITH_METIS -D WALBERLA_BUILD_WITH_PYTHON --xml 2> report.xml
+      - cppcheck . --max-configs=10 --enable=warning --enable=style --enable=performance --enable=portability -i src/geometry/structured/extern -i sqlite3.c -i StackWalker.cpp -I src/ -I tests/ -I apps/ -D WALBERLA_BUILD_WITH_MPI -D WALBERLA_BUILD_WITH_METIS -D WALBERLA_BUILD_WITH_PYTHON --xml 2> report.xml
       - cppcheck-htmlreport --file=report.xml --report-dir=html_report --source-dir=.
    artifacts:
       untracked: true

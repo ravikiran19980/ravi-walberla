@@ -61,16 +61,7 @@
 namespace walberla {
 namespace math {
 
-
-
-FunctionParser::FunctionParser() 
-   : expression_ ( nullptr ),
-     symbolTable_( nullptr ),
-     isConstant_(false),
-     isZero_(false)
-{
-
-}
+FunctionParser::FunctionParser() = default;
 
 FunctionParser::~FunctionParser() 
 {

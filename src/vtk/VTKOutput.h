@@ -180,8 +180,6 @@ public:
 
 private:
 
-   VTKOutput();
-
    /// creates a VTKOutput object that is supposed to output the domain decomposition
    VTKOutput( const BlockStorage & sbs, const std::string & identifier, const uint_t writeFrequency,
               const std::string & baseFolder, const std::string & executionFolder,

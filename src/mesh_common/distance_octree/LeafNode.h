@@ -52,6 +52,8 @@ public:
    Scalar sqDistance( const Point & p, Point & closestPoint ) const override;
    Scalar sqDistance( const Point & p, Point & closestPoint, Normal & normal ) const override;
 
+   Scalar getRayDistanceToMeshObject(const Point & ray_origin, const Point & normalised_ray_direction) const override;
+   
    uint_t numTriangles() const override { return uint_c( triangles_.size() ); }
    void numTrianglesToStream( std::ostream & os, const uint_t level ) const override;
    uint_t height() const override { return 0; }
@@ -116,8 +118,10 @@ typename LeafNode<MeshType>::Scalar LeafNode<MeshType>::sqSignedDistance( const 
 template <typename MeshType>
 typename LeafNode<MeshType>::Scalar LeafNode<MeshType>::sqDistance( const Point & p ) const
 {
-   if(triangles_.empty())
+   if(triangles_.empty()){
       return std::numeric_limits<Scalar>::max();
+   }
+
 
    return triDistance_->sqDistance( triangles_.begin(), triangles_.end(), p );
 }
@@ -152,6 +156,14 @@ typename LeafNode<MeshType>::Scalar LeafNode<MeshType>::sqDistance( const Point 
    return triDistance_->sqDistance( triangles_.begin(), triangles_.end(), p, closestPoint, normal );
 }
 
+template< typename MeshType >
+typename LeafNode<MeshType>::Scalar LeafNode< MeshType >::getRayDistanceToMeshObject(const Point& ray_origin, const Point& normalised_ray_direction) const
+{
+   if(triangles_.empty())
+      return std::numeric_limits<Scalar>::max();
+
+   return triDistance_->getRayDistanceToMeshObject( triangles_.begin(), triangles_.end(), ray_origin, normalised_ray_direction );
+}
 
 } // namespace distance_octree
 } // namespace mesh

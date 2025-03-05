@@ -57,7 +57,6 @@ include( CTest )
 
 # Build options
 option ( WALBERLA_DOUBLE_ACCURACY           "Floating point accuracy, defaults to double"     ON )
-option ( WALBERLA_ENABLE_GUI                "Compile with GUI"                                   )
 
 option ( WALBERLA_BUILD_TESTS               "Build Testcases"                                 ON )
 option ( WALBERLA_BUILD_BENCHMARKS          "Build Benchmarks"                                ON )
@@ -605,9 +604,6 @@ endif ( )
 #############################################################################################################################
 
 if ( WALBERLA_BUILD_WITH_CODEGEN OR WALBERLA_BUILD_WITH_PYTHON )
-   if ( DEFINED PYTHON_ROOT_DIR OR DEFINED PYTHON_EXECUTABLE )
-      message( WARNING "Setting PYTHON_ROOT_DIR or PYTHON_EXECUTABLE will likely not work. Use Python_ROOT_DIR instead." )
-   endif ()
    cmake_policy( SET CMP0094 NEW )
    set( Python_FIND_FRAMEWORK LAST )
    find_package( Python COMPONENTS Interpreter Development )
@@ -827,29 +823,6 @@ execute_process(COMMAND ${MPIEXEC} --version RESULT_VARIABLE mpi_version_result 
 if (mpi_version_result EQUAL 0 AND mpi_version_output MATCHES "\\(Open(RTE| MPI)\\) ([3-9]\\.|1[0-9])")
     set ( MPIEXEC_PREFLAGS "${MPIEXEC_PREFLAGS}" "-oversubscribe" CACHE STRING "" FORCE)
 endif()
-############################################################################################################################
-
-
-
-############################################################################################################################
-##
-## Qt
-##
-############################################################################################################################
-option (WALBERLA_ENABLE_GUI "This flag builds the graphical user interface, depends on Qt Libraries")
-
-if ( WALBERLA_ENABLE_GUI )
-
-    message( WARNING "The GUI is deprecated and will probably not work correctly." )
-    find_package( Qt4 COMPONENTS QtCore QtGui QtOpenGL QtXml REQUIRED )
-    set( OpenGL_GL_PREFERENCE LEGACY )
-    find_package( OpenGL REQUIRED )
-
-    INCLUDE( ${QT_USE_FILE} )
-    list ( APPEND SERVICE_LIBS ${OPENGL_LIBRARIES} ${QT_LIBRARIES} )
-
-endif(WALBERLA_ENABLE_GUI)
-
 ############################################################################################################################
 
 

@@ -132,7 +132,7 @@ private:
    uint_t flowIterationsIncreaseStart_;
    double flowIterationsIncrease_{ 0.0 };
    
-   bool regardConnectivity_{ false };
+   bool regardConnectivity_{ true };
    uint_t disregardConnectivityStart_;
    double outflowExceedFactor_{ 1.0 };
    double inflowExceedFactor_{ 1.0 };

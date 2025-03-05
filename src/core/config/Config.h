@@ -395,7 +395,7 @@ private:
    //**Member variables*************************************************************************************************
    /*! \name Member variables */
    //@{
-   bool stateFlag_;             //!< Internal status of the config object.
+   bool stateFlag_ = true;      //!< Internal status of the config object.
                                 /*!< An error is indicated by \p false. */
    std::ostringstream error_;   //!< Container for all error messages.
    Block block_;                //!< The global parameter block.

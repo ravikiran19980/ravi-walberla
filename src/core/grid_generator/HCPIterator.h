@@ -102,9 +102,9 @@ public:
       , spacing_(spacing)
    {}
 
-   HCPIterator begin() {return HCPIterator(domain_, pointOfReference_, spacing_);}
-   HCPIterator begin()  const {return HCPIterator(domain_, pointOfReference_, spacing_);}
-   HCPIterator cbegin() const {return HCPIterator(domain_, pointOfReference_, spacing_);}
+   HCPIterator begin() { return { domain_, pointOfReference_, spacing_ }; }
+   HCPIterator begin() const { return { domain_, pointOfReference_, spacing_ }; }
+   HCPIterator cbegin() const { return { domain_, pointOfReference_, spacing_ }; }
 
    HCPIterator end() {return {};}
    HCPIterator end()  const {return {};}

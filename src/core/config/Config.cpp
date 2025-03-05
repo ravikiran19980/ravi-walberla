@@ -44,9 +44,8 @@ namespace config {
 // \brief Default constructor for the Config class.
  */
 Config::Config()
-     : stateFlag_(true) // Internal status flag
-     , error_()         // Container for all error messages
-     , block_()         // Global parameter block
+   : error_(), // Container for all error messages
+     block_()  // Global parameter block
 {}
 //**********************************************************************************************************************
 

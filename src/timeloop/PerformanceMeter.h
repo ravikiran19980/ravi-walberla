@@ -147,7 +147,7 @@ namespace timeloop {
       std::vector<Measurement> measurements_;
 
       /// Used for operator() to indicate if called the first time
-      bool firstTimingStartStopCall_;
+      bool firstTimingStartStopCall_{true};
    };
 
 

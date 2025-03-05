@@ -98,7 +98,7 @@ void UniformDirectScheme<Stencil>::setup()
    WALBERLA_ASSERT( !communicationRunning_ );
 
    WALBERLA_DEBUG_SECTION() {
-      for( auto req: mpiRequests_ )
+      for( [[maybe_unused]] auto req: mpiRequests_ )
       {
          WALBERLA_ASSERT_EQUAL( req, MPI_REQUEST_NULL );
       }

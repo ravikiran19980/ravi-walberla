@@ -227,7 +227,7 @@ inline GenericRecvBuffer<T>::GenericRecvBuffer( GenericSendBuffer<T,G> & sb )
    , cur_( sb.begin_ )
    , end_( sb.end_ )
 {
-   sb.begin_ = new T[0];
+   sb.begin_ = nullptr;
    sb.cur_   = sb.begin_;
    sb.end_   = sb.begin_;
 }
@@ -390,7 +390,7 @@ std::enable_if_t< std::is_arithmetic_v<V> || std::is_enum_v<V>,
 GenericRecvBuffer<T>::get( V& value )
 {
    // Compile time check that V is built-in data type
-   static_assert( std::is_arithmetic<V>::value || std::is_enum<V>::value,
+   static_assert( std::is_arithmetic_v<V> || std::is_enum_v<V>,
                             "RecvBuffer accepts only built-in data types");
 
 
@@ -550,7 +550,7 @@ template< typename T >  // Element type
 template< typename V >  // Type of the built-in data value
 inline void GenericRecvBuffer<T>::peek( V& value ) const
 {
-   WALBERLA_STATIC_ASSERT( std::is_arithmetic<V>::value );
+   WALBERLA_STATIC_ASSERT( std::is_arithmetic_v<V> );
 
    WALBERLA_STATIC_ASSERT( sizeof(V) > sizeof(T) );
    WALBERLA_STATIC_ASSERT( sizeof(V) % sizeof(T) == 0);

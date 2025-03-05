@@ -67,7 +67,7 @@ void generateIsoSurface_internal( const Field_T & f, real_t threshold,
                                   uint_t fCoord, const Vector3<real_t> & posOffset,
                                   const CellInterval & cellInterval )
 {
-   static_assert( (std::is_same<typename Field_T::value_type, real_t>::value ), "Currently only real valued fields are supported" );
+   static_assert( (std::is_same_v<typename Field_T::value_type, real_t> ), "Currently only real valued fields are supported" );
 
    CellInterval targetInterval = cellInterval;
    if ( targetInterval.empty() )
@@ -479,12 +479,12 @@ void generateIsoSurface_internal( const Field_T & f, real_t threshold,
 
             if ( calcNormals )
             {
-               TriangleMesh::normal_t normal    = calcNormal(f, i.x() + cubieOffsetX[e1],
-                                                                i.y() + cubieOffsetY[e1],
-                                                                i.z() + cubieOffsetZ[e1], fCoord ) * (real_t(1) - mu)
-                                                + calcNormal(f, i.x() + cubieOffsetX[e2],
-                                                                i.y() + cubieOffsetY[e2],
-                                                                i.z() + cubieOffsetZ[e2], fCoord) * (mu);
+               TriangleMesh::normal_t normal    = calcNormal(f, i.x() + cubieOffsetX[uint_c(e1)],
+                                                                i.y() + cubieOffsetY[uint_c(e1)],
+                                                                i.z() + cubieOffsetZ[uint_c(e1)], fCoord ) * (real_t(1) - mu)
+                                                + calcNormal(f, i.x() + cubieOffsetX[uint_c(e2)],
+                                                                i.y() + cubieOffsetY[uint_c(e2)],
+                                                                i.z() + cubieOffsetZ[uint_c(e2)], fCoord) * (mu);
 
                if (normal.sqrLength() > 1e-8 )
                   normalize(normal);
@@ -498,22 +498,22 @@ void generateIsoSurface_internal( const Field_T & f, real_t threshold,
       }// for all edges
 
       // Create the triangles...
-      for (int e = 0; mcTriTable[cubeIndex][uint_t(e)] != -1; e += 3)
+      for (uint_t e = 0; mcTriTable[cubeIndex][e] != -1; e += 3)
       {
          if ( calcNormals )
          {
-            mesh.addTriangle(triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 0)])],
-                             triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 1)])],
-                             triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 2)])],
-                             triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 0)])],
-                             triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 1)])],
-                             triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 2)])]);
+            mesh.addTriangle(triIndices[uint_t(mcTriTable[cubeIndex][e + 0])],
+                             triIndices[uint_t(mcTriTable[cubeIndex][e + 1])],
+                             triIndices[uint_t(mcTriTable[cubeIndex][e + 2])],
+                             triIndices[uint_t(mcTriTable[cubeIndex][e + 0])],
+                             triIndices[uint_t(mcTriTable[cubeIndex][e + 1])],
+                             triIndices[uint_t(mcTriTable[cubeIndex][e + 2])]);
          }
          else
          {
-            mesh.addTriangle(triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 0)])],
-                             triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 1)])],
-                             triIndices[uint_t(mcTriTable[cubeIndex][uint_t(e + 2)])] );
+            mesh.addTriangle(triIndices[uint_t(mcTriTable[cubeIndex][e + 0])],
+                             triIndices[uint_t(mcTriTable[cubeIndex][e + 1])],
+                             triIndices[uint_t(mcTriTable[cubeIndex][e + 2])] );
          }
       }
    }
