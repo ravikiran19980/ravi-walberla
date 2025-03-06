@@ -212,7 +212,7 @@ createBlockStructure(const AABB &domainAABB, Vector3<uint_t> blockSizeInCells, u
       WALBERLA_LOG_INFO_ON_ROOT(" - refinement box: " << refinementBox);
 
       sforest.addRefinementSelectionFunction(
-              [numberOfLevels, refinementBox](auto && PH1) { refinementSelection(std::forward<decltype(PH1)>(PH1), numberOfLevels, refinementBox); });
+              [numberOfLevels, refinementBox](SetupBlockForest& block) { refinementSelection(block, numberOfLevels, refinementBox); });
       sforest.addWorkloadMemorySUIDAssignmentFunction(workloadAndMemoryAssignment);
 
       sforest.init(domainAABB, numberOfCoarseBlocksPerDirection[0], numberOfCoarseBlocksPerDirection[1],
