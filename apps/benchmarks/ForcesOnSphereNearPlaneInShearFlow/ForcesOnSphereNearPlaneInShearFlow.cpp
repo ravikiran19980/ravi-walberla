@@ -115,28 +115,28 @@ const FlagUID MO_CLI_Flag( "moving obstacle CLI" );
 static void refinementSelection( SetupBlockForest& forest, uint_t levels, const AABB& refinementBox )
 {
    real_t dx = real_t(1); // dx on finest level
-   for( auto block = forest.begin(); block != forest.end(); ++block )
+   for(auto & block : forest)
    {
-      uint_t blockLevel = block->getLevel();
+      uint_t blockLevel = block.getLevel();
       uint_t levelScalingFactor = ( uint_t(1) << (levels - uint_t(1) - blockLevel) );
       real_t dxOnLevel = dx * real_c(levelScalingFactor);
-      AABB blockAABB = block->getAABB();
+      AABB blockAABB = block.getAABB();
 
       // extend block AABB by ghostlayers
       AABB extendedBlockAABB = blockAABB.getExtended( dxOnLevel * real_c(FieldGhostLayers) );
 
       if( extendedBlockAABB.intersects( refinementBox ) )
          if( blockLevel < ( levels - uint_t(1) ) )
-            block->setMarker( true );
+            block.setMarker( true );
    }
 }
 
 static void workloadAndMemoryAssignment( SetupBlockForest& forest )
 {
-   for( auto block = forest.begin(); block != forest.end(); ++block )
+   for(auto & block : forest)
    {
-      block->setWorkload( numeric_cast< workload_t >( uint_t(1) << block->getLevel() ) );
-      block->setMemory( numeric_cast< memory_t >(1) );
+      block.setWorkload( numeric_cast< workload_t >( uint_t(1) << block.getLevel() ) );
+      block.setMemory( numeric_cast< memory_t >(1) );
    }
 }
 
