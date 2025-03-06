@@ -167,7 +167,7 @@ class AdvectionDynamicsHandler
                               "Second ghost layer update: after excess mass distribution sweep (fill level field)")
                         // update bubble model, i.e., perform registered bubble merges/splits; bubble merges/splits are
                         // already detected and registered by CellConversionSweep
-                        << AfterFunction(std::bind(&bubble_model::BubbleModelBase::update, bubbleModel_),
+                        << AfterFunction([this] { bubbleModel_->update(); },
                                          "Sweep: bubble model update");
       }
       else
@@ -187,7 +187,7 @@ class AdvectionDynamicsHandler
                                  "Second ghost layer update: after excess mass distribution sweep (fill level field)")
                            // update bubble model, i.e., perform registered bubble merges/splits; bubble merges/splits
                            // are already detected and registered by CellConversionSweep
-                           << AfterFunction(std::bind(&bubble_model::BubbleModelBase::update, bubbleModel_),
+                           << AfterFunction([this] { bubbleModel_->update(); },
                                             "Sweep: bubble model update");
          }
          else
@@ -209,7 +209,7 @@ class AdvectionDynamicsHandler
                                    "Second ghost layer update: after excess mass distribution sweep (fill level field)")
                   // update bubble model, i.e., perform registered bubble merges/splits; bubble
                   // merges/splits are already detected and registered by CellConversionSweep
-                  << AfterFunction(std::bind(&bubble_model::BubbleModelBase::update, bubbleModel_),
+                  << AfterFunction([this] { bubbleModel_->update(); },
                                    "Sweep: bubble model update");
             }
          }
