@@ -259,8 +259,8 @@ public:
       blocks_( blocks ), bodyStorageID_( bodyStorageID ),
       fileName_( fileName ), fileIO_(fileIO),
       dragNormalizationFactor_( dragNormalizationFactor ), liftNormalizationFactor_( liftNormalizationFactor ),
-      physicalTimeScale_( physicalTimeScale ),
-      counter_( 0 )
+      physicalTimeScale_( physicalTimeScale )
+
    {
       if ( fileIO_ )
       {
@@ -350,7 +350,7 @@ private:
    real_t dragForce_, liftForce_;
    real_t dragNormalizationFactor_, liftNormalizationFactor_;
    real_t physicalTimeScale_;
-   uint_t counter_;
+   uint_t counter_{ 0 };
 
 };
 
