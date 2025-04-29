@@ -13,28 +13,11 @@
 //  You should have received a copy of the GNU General Public License along
 //  with waLBerla (see COPYING.txt). If not, see <http://www.gnu.org/licenses/>.
 //
-//! \file IFCD.h
-//! \author Sebastian Eibl <sebastian.eibl@fau.de>
+//! \file PSMWrapperKernels.hip
+//! \ingroup lbm_mesapd_coupling
+//! \author Samuel Kemmler <samuel.kemmler@fau.de>
+//! \brief Mirror PSMWrapperKernels.cu to provide a .cpp file for HIP
 //
 //======================================================================================================================
 
-#pragma once
-
-#include "AnalyticCollisionDetection.h"
-#include "GenericFCD.h"
-
-#include <type_traits>
-
-namespace walberla{
-namespace pe{
-namespace fcd {
-
-template <typename BodyTypeTuple>
-class SimpleFCD : public GenericFCD<BodyTypeTuple, AnalyticCollideFunctor>{
-public:
-   ~SimpleFCD() override = default;
-};
-
-}
-}
-}
+#include "PSMWrapperKernels.cu"

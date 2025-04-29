@@ -13,25 +13,11 @@
 //  You should have received a copy of the GNU General Public License along
 //  with waLBerla (see COPYING.txt). If not, see <http://www.gnu.org/licenses/>.
 //
-//! \file Overlap.h
-//! \author Sebastian Eibl <sebastian.eibl@fau.de>
+//! \file ParticleAndVolumeFractionMappingKernels.hip
+//! \ingroup lbm_mesapd_coupling
+//! \author Samuel Kemmler <samuel.kemmler@fau.de>
+//! \brief Mirror ParticleAndVolumeFractionMappingKernels.cu to provide a .cpp file for HIP
 //
 //======================================================================================================================
 
-#pragma once
-
-#include <core/DataTypes.h>
-
-namespace walberla {
-namespace pe {
-
-/*!\brief Calculates overlap between two spheres.
- * \param d distance between two spheres
- * \param r1 radius of sphere 1
- * \param r2 radius of sphere 2
- * \return overlap volume
- */
-real_t getSphereSphereOverlap(const real_t d, const real_t r1, const real_t r2);
-
-}  // namespace pe
-}  // namespace walberla
+#include "ParticleAndVolumeFractionMappingKernels.cu"
