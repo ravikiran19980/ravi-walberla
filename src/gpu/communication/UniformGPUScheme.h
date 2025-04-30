@@ -34,6 +34,7 @@
 #include "gpu/GPUWrapper.h"
 #include "gpu/communication/CustomMemoryBuffer.h"
 #include "gpu/communication/GeneratedGPUPackInfo.h"
+#include "gpu/GPURAII.h"
 
 namespace walberla {
 namespace gpu
@@ -73,7 +74,7 @@ namespace communication {
  * When running multiple \ref UniformGPUScheme concurrently, different MPI tags
  * have to be used for the schemes: the tag can be passed in the constructor.
  */
-template<typename Stencil>
+/*template<typename Stencil>
 class GPUStreamRAII {
  public:
    GPUStreamRAII() {
@@ -117,7 +118,7 @@ class GPUStreamRAII {
 
  private:
    std::array<gpuStream_t, Stencil::Q> streams_;
-};
+};*/
 
    template<typename Stencil>
    class UniformGPUScheme
@@ -137,9 +138,12 @@ class GPUStreamRAII {
        /*~UniformGPUScheme()
        {
           for (uint_t i = 0; i < Stencil::Q; ++i)
-             WALBERLA_GPU_CHECK(gpuStreamDestroy(ravi_[i]))
+             WALBERLA_GPU_CHECK(gpuStreamDestroy(streams_[i]))
        }*/
        ~UniformGPUScheme() = default;
+
+
+
 
        void addPackInfo( const shared_ptr<GeneratedGPUPackInfo> &pi );
 
@@ -181,9 +185,9 @@ class GPUStreamRAII {
 
        Set<SUID> requiredBlockSelectors_;
        Set<SUID> incompatibleBlockSelectors_;
+       //std::array<gpuStream_t, Stencil::Q> streams_;
+       std::array<gpu::StreamRAII, Stencil::Q> streams_;
 
-       //std::array<gpuStream_t, Stencil::Q> streams_; // array of RAII wrappers
-       std::array<GPUStreamRAII<Stencil>, Stencil::Q> streams_;
 
    };
 

@@ -51,7 +51,8 @@ namespace communication {
       else{WALBERLA_LOG_DETAIL_ON_ROOT("Using Communication via CPU Memory")}
 
       for (uint_t i = 0; i < Stencil::Q; ++i)
-         WALBERLA_GPU_CHECK(gpuStreamCreate(&streams_[i]))
+         //WALBERLA_GPU_CHECK(gpuStreamCreate(&streams_[i]))
+         streams_[i] = gpu::StreamRAII::newStream();
    }
 
    template<typename Stencil>
@@ -81,7 +82,8 @@ namespace communication {
       else{WALBERLA_LOG_DETAIL_ON_ROOT("Using Communication via CPU Memory")}
 
       for (uint_t i = 0; i < Stencil::Q; ++i)
-         WALBERLA_GPU_CHECK(gpuStreamCreate(&streams_[i]))
+         //WALBERLA_GPU_CHECK(gpuStreamCreate(&streams_[i]))
+         streams_[i] = gpu::StreamRAII::newStream();
    }
 
 

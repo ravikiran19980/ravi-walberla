@@ -41,6 +41,18 @@ class StreamRAII
       other.stream_ = nullptr;
    }
 
+   StreamRAII& operator=(StreamRAII&& other) noexcept
+   {
+      if (this != &other)
+      {
+         if (stream_ != nullptr)
+            WALBERLA_GPU_CHECK(gpuStreamDestroy(stream_));
+
+         stream_ = other.stream_;
+         other.stream_ = nullptr;
+      }
+      return *this;
+   }
    StreamRAII(const StreamRAII&) = delete;
 
    void operator=(const StreamRAII&) = delete;
@@ -68,9 +80,9 @@ class StreamRAII
       return result;
    }
 
- private:
+ //private:
    StreamRAII() = default;
-
+ private:
    gpuStream_t stream_;
 };
 
