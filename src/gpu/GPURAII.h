@@ -80,8 +80,9 @@ class StreamRAII
       return result;
    }
 
- //private:
-   StreamRAII() = default;
+   StreamRAII(){
+      stream_ = nullptr;
+   };
  private:
    gpuStream_t stream_;
 };

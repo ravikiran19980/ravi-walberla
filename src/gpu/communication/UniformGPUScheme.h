@@ -74,51 +74,7 @@ namespace communication {
  * When running multiple \ref UniformGPUScheme concurrently, different MPI tags
  * have to be used for the schemes: the tag can be passed in the constructor.
  */
-/*template<typename Stencil>
-class GPUStreamRAII {
- public:
-   GPUStreamRAII() {
-      for (uint_t i = 0; i < Stencil::Q; ++i)
-         WALBERLA_GPU_CHECK(gpuStreamCreate(&streams_[i]))
 
-   }
-
-   ~GPUStreamRAII() {
-      for (uint_t i = 0; i < Stencil::Q; ++i) {
-         WALBERLA_GPU_CHECK(gpuStreamDestroy(streams_[i]));
-      }
-   }
-
-   // Delete copy constructor and copy assignment
-   GPUStreamRAII(const GPUStreamRAII&) = delete;
-   GPUStreamRAII& operator=(const GPUStreamRAII&) = delete;
-
-   GPUStreamRAII(GPUStreamRAII&& other) noexcept {
-      for (uint_t i = 0; i < Stencil::Q; ++i) {
-         streams_[i] = other.streams_[i];
-         other.streams_[i] = nullptr;
-      }
-   }
-
-   GPUStreamRAII& operator=(GPUStreamRAII&& other) noexcept {
-      if (this != &other) {
-         for (uint_t i = 0; i < Stencil::Q; ++i) {
-            if (streams_[i]) {
-               WALBERLA_GPU_CHECK(gpuStreamDestroy(streams_[i]));
-            }
-            streams_[i] = other.streams_[i];
-            other.streams_[i] = nullptr;
-         }
-      }
-      return *this;
-   }
-
-   //gpuStream_t get(uint_t index) const { return streams_[index]; }
-
-
- private:
-   std::array<gpuStream_t, Stencil::Q> streams_;
-};*/
 
    template<typename Stencil>
    class UniformGPUScheme
@@ -135,11 +91,7 @@ class GPUStreamRAII {
                                   const bool sendDirectlyFromGPU = false,
                                   const bool useLocalCommunication = true,
                                   const int tag = 5432 );
-       /*~UniformGPUScheme()
-       {
-          for (uint_t i = 0; i < Stencil::Q; ++i)
-             WALBERLA_GPU_CHECK(gpuStreamDestroy(streams_[i]))
-       }*/
+
        ~UniformGPUScheme() = default;
 
 
@@ -185,7 +137,6 @@ class GPUStreamRAII {
 
        Set<SUID> requiredBlockSelectors_;
        Set<SUID> incompatibleBlockSelectors_;
-       //std::array<gpuStream_t, Stencil::Q> streams_;
        std::array<gpu::StreamRAII, Stencil::Q> streams_;
 
 
