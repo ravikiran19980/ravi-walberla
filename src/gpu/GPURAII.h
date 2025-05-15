@@ -45,10 +45,9 @@ class StreamRAII
    {
       if (this != &other)
       {
-         if (stream_ != nullptr)
-            WALBERLA_GPU_CHECK(gpuStreamDestroy(stream_));
+         if (stream_ != nullptr) WALBERLA_GPU_CHECK(gpuStreamDestroy(stream_));
 
-         stream_ = other.stream_;
+         stream_       = other.stream_;
          other.stream_ = nullptr;
       }
       return *this;
@@ -80,9 +79,8 @@ class StreamRAII
       return result;
    }
 
-   StreamRAII(){
-      stream_ = nullptr;
-   };
+   StreamRAII() { stream_ = nullptr; };
+
  private:
    gpuStream_t stream_;
 };

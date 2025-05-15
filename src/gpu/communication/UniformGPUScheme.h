@@ -27,21 +27,21 @@
 
 #include "domain_decomposition/IBlock.h"
 
+#include "gpu/GPURAII.h"
+#include "gpu/GPUWrapper.h"
+#include "gpu/communication/CustomMemoryBuffer.h"
+#include "gpu/communication/GeneratedGPUPackInfo.h"
+
 #include "stencil/Directions.h"
 
 #include <thread>
 
-#include "gpu/GPUWrapper.h"
-#include "gpu/communication/CustomMemoryBuffer.h"
-#include "gpu/communication/GeneratedGPUPackInfo.h"
-#include "gpu/GPURAII.h"
-
-namespace walberla {
+namespace walberla
+{
 namespace gpu
 {
-namespace communication {
-
-
+namespace communication
+{
 
 /**
  * \brief Communication scheme for buffered communication in uniform block grids.
@@ -75,76 +75,65 @@ namespace communication {
  * have to be used for the schemes: the tag can be passed in the constructor.
  */
 
+template< typename Stencil >
+class UniformGPUScheme
+{
+ public:
+   explicit UniformGPUScheme(const weak_ptr< StructuredBlockForest >& bf, const bool sendDirectlyFromGPU = false,
+                             const bool useLocalCommunication = true, const int tag = 5432);
 
-   template<typename Stencil>
-   class UniformGPUScheme
+   explicit UniformGPUScheme(const weak_ptr< StructuredBlockForest >& bf, const Set< SUID >& requiredBlockSelectors,
+                             const Set< SUID >& incompatibleBlockSelectors, const bool sendDirectlyFromGPU = false,
+                             const bool useLocalCommunication = true, const int tag = 5432);
+
+   ~UniformGPUScheme() = default;
+
+   void addPackInfo(const shared_ptr< GeneratedGPUPackInfo >& pi);
+
+   void startCommunication();
+   void wait();
+
+   void operator()() { communicate(); }
+   inline void communicate()
    {
-   public:
-       explicit UniformGPUScheme( const weak_ptr< StructuredBlockForest >& bf,
-                                  const bool sendDirectlyFromGPU = false,
-                                  const bool useLocalCommunication = true,
-                                  const int tag = 5432 );
+      startCommunication();
+      wait();
+   }
 
-       explicit UniformGPUScheme( const weak_ptr< StructuredBlockForest >& bf,
-                                  const Set<SUID> & requiredBlockSelectors,
-                                  const Set<SUID> & incompatibleBlockSelectors,
-                                  const bool sendDirectlyFromGPU = false,
-                                  const bool useLocalCommunication = true,
-                                  const int tag = 5432 );
+   std::function< void() > getCommunicateFunctor();
+   std::function< void() > getStartCommunicateFunctor();
+   std::function< void() > getWaitFunctor();
 
-       ~UniformGPUScheme() = default;
+ private:
+   void setupCommunication();
 
+   weak_ptr< StructuredBlockForest > blockForest_;
+   uint_t forestModificationStamp_;
 
+   bool setupBeforeNextCommunication_;
+   bool communicationInProgress_;
+   const bool sendFromGPU_;
+   const bool useLocalCommunication_;
 
+   using CpuBuffer_T = gpu::communication::PinnedMemoryBuffer;
+   using GpuBuffer_T = gpu::communication::GPUMemoryBuffer;
 
-       void addPackInfo( const shared_ptr<GeneratedGPUPackInfo> &pi );
+   mpi::GenericBufferSystem< CpuBuffer_T, CpuBuffer_T > bufferSystemCPU_;
+   mpi::GenericBufferSystem< GpuBuffer_T, GpuBuffer_T > bufferSystemGPU_;
 
-       void startCommunication();
-       void wait();
+   std::vector< shared_ptr< GeneratedGPUPackInfo > > packInfos_;
 
-       void operator()()         { communicate( ); }
-       inline void communicate() { startCommunication(); wait(); }
-
-       std::function<void()> getCommunicateFunctor();
-       std::function<void()> getStartCommunicateFunctor();
-       std::function<void()> getWaitFunctor();
-
-   private:
-       void setupCommunication();
-
-       weak_ptr<StructuredBlockForest> blockForest_;
-       uint_t forestModificationStamp_;
-
-       bool setupBeforeNextCommunication_;
-       bool communicationInProgress_;
-       const bool sendFromGPU_;
-       const bool useLocalCommunication_;
-
-       using CpuBuffer_T = gpu::communication::PinnedMemoryBuffer;
-       using GpuBuffer_T = gpu::communication::GPUMemoryBuffer;
-
-       mpi::GenericBufferSystem<CpuBuffer_T, CpuBuffer_T> bufferSystemCPU_;
-       mpi::GenericBufferSystem<GpuBuffer_T, GpuBuffer_T> bufferSystemGPU_;
-
-       std::vector<shared_ptr<GeneratedGPUPackInfo> > packInfos_;
-
-       struct Header
-       {
-           BlockID blockId;
-           stencil::Direction dir;
-       };
-       std::map<mpi::MPIRank, std::vector<Header> > headers_;
-
-       Set<SUID> requiredBlockSelectors_;
-       Set<SUID> incompatibleBlockSelectors_;
-       std::array<gpu::StreamRAII, Stencil::Q> streams_;
-
-
+   struct Header
+   {
+      BlockID blockId;
+      stencil::Direction dir;
    };
+   std::map< mpi::MPIRank, std::vector< Header > > headers_;
 
-
-
-
+   Set< SUID > requiredBlockSelectors_;
+   Set< SUID > incompatibleBlockSelectors_;
+   std::array< gpu::StreamRAII, Stencil::Q > streams_;
+};
 
 } // namespace communication
 } // namespace gpu
