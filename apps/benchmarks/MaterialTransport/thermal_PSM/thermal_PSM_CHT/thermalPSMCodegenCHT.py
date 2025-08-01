@@ -31,7 +31,7 @@ from pystencils_walberla import (
 from lbmpy_walberla import generate_boundary
 from lbmpy_walberla.additional_data_handler import DiffusionDirichletAdditionalDataHandler
 from pystencils.cache import clear_cache
-from psm import psm_bounce_back_collision
+from psmclass import ThermalPSMConfig,create_thermal_lb_method,create_psm_thermal_collision_rule
 clear_cache()
 
 
@@ -197,17 +197,27 @@ with CodeGeneration() as ctx:
         #temperature_field=concentration_field,
     )
 
-
-    psm_energy_config = LBMConfig(
+    psm_energy_config = ThermalPSMConfig(
         stencil=stencil_energy,
         method=Method.SRT,
         relaxation_rate=omegaT_f,  # omega_f will be used for the fluid and omega_p will be used for the solid particles
         velocity_input=velocity_field,
         output={"density": energy_field},
-        compressible=True,
-        psm_config=psm_config_E,
+        compressible=False,
         continuous_equilibrium=False,
         zero_centered=False,
+        fraction_field=B,
+        object_velocity_field=particle_velocities,
+        SC=int(5),
+        MaxParticlesPerCell=MaxParticlesPerCell,
+        individual_fraction_field=Bs,
+        particle_temperature_field=particle_temperatures,
+        particle_density=rho_s,
+        particle_specific_heat=Cp_s,
+        solid_relaxation_rate=omegaT_s,
+        energy_field=energy_field,
+        temperature_field_output=concentration_field,
+
     )
 
 
@@ -219,7 +229,8 @@ with CodeGeneration() as ctx:
     # =====================
 
     method_fluid = create_lb_method(lbm_config=psm_fluid_config)
-    method_energy = create_lb_method(lbm_config=psm_energy_config)
+    method_energy = create_thermal_lb_method(lbm_config=psm_energy_config)[0]
+
     init_velocity = sp.symbols("init_velocity_:3")
 
     pdfs_fluid_setter = macroscopic_values_setter(
@@ -268,7 +279,8 @@ with CodeGeneration() as ctx:
         target = ps.Target.CPU
 
     node_collection_fluid = create_psm_update_rule(lbm_config=psm_fluid_config, lbm_optimisation=lbm_fluid_opt)
-    node_collection_energy = create_psm_update_rule(lbm_config=psm_energy_config, lbm_optimisation=lbm_energy_opt)
+    collision_rule_energy = create_psm_thermal_collision_rule(lbm_config=psm_energy_config)
+    node_collection_energy = create_lb_update_rule(collision_rule=collision_rule_energy, lbm_config=psm_energy_config, lbm_optimisation=lbm_energy_opt)
 
     ## defining custom pystencils kernel that computes temperature from rho_cp_T
 
@@ -316,7 +328,7 @@ with CodeGeneration() as ctx:
     generate_sweep(
         ctx,
         "PSMEnergySweep",
-        node_collection_energy,
+        create_lb_update_rule(lbm_config=psm_energy_config, lbm_optimisation=lbm_energy_opt),
         field_swaps=[(pdfs_energy, pdfs_energy_tmp)],
         target=target,
     )

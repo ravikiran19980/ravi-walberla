@@ -45,7 +45,7 @@ class DiscreteThermalMaxwellianCHT(GenericDiscreteEquilibrium):
     #    lattice weights."""
         return DiscreteThermalMaxwellianCHT(self._stencil, compressible=True,
                                             order=self._order, rho_Cp_T=sp.Integer(1),
-                                            u=(0,) * self.dim, c_s_sq=self._c_s_sq,temperature=self.temperature)
+                                            u=(0,) * self.dim, c_s_sq=self._c_s_sq,temperature=self._temperature,Cp_ref = self.Cp_ref)
 
 
 def discrete_thermal_equilibrium_cht(stencil, rho_Cp_T=sp.Symbol("rho_Cp_T"), u=sp.symbols("u_:3"), order=2,
@@ -93,7 +93,7 @@ def thermal_equilibrium_cht(v=sp.symbols("v_:3"), u=sp.symbols("u_:3"), rho_Cp_T
         e_times_u += c_q_alpha * u_alpha
 
     if v == (0,0) or v == (0,0,0):
-        result = rho_Cp_T - Cp_ref* 1 + weight*Cp*temperature* (Cp_ref/Cp - u_times_u/2*c_s_sq )
+        result = rho_Cp_T - Cp_ref* 1 #+ weight*Cp*temperature* (Cp_ref/Cp - u_times_u/2*c_s_sq )
 
     else:
         fq = Cp_ref/Cp
