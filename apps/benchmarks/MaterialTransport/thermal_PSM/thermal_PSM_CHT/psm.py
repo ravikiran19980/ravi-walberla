@@ -2,13 +2,15 @@ import sympy as sp
 from typing import cast
 
 from dataclasses import replace
-
+from collections import OrderedDict
 from pystencils import Assignment, Field
 
 from lbmpy import LBMConfig, create_lb_method, create_lb_collision_rule
 from lbmpy.relaxationrates import get_shear_relaxation_rate
 from lbmpy.methods.conservedquantitycomputation import DensityVelocityComputation
+from lbmpy.methods import create_from_equilibrium
 from lbmpy.creationfunctions import LbmCollisionRule
+from lbmpy.moments import get_default_moment_set_for_stencil
 from equilibirumCHT import DiscreteThermalMaxwellianCHT
 from src.lbm_mesapd_coupling.partially_saturated_cells_method.codegen.PSMCodegen import lbm_config, MaxParticlesPerCell
 
@@ -58,11 +60,24 @@ def psm_bounce_back_collision(
     eps, B = sp.symbols(
         "eps,B"
     )
+    kwargs = {
+        'compressible': lbm_config.compressible,
+        'zero_centered': lbm_config.zero_centered,
+        'delta_equilibrium': lbm_config.delta_equilibrium,
+        'equilibrium_order': lbm_config.equilibrium_order,
+        'force_model': lbm_config.force_model,
+        'continuous_equilibrium': lbm_config.continuous_equilibrium,
+        'c_s_sq': lbm_config.c_s_sq,
+        'collision_space_info': lbm_config.collision_space_info,
+        'fraction_field': fraction_field,
+    }
 
     T = sp.Symbol("T")  # symbol for the temperature in each cell
     Cp_ref = 2*Cp_s*Cp_f/(Cp_s + Cp_f)
 
-    #   Determine PSM parameters
+    moments = get_default_moment_set_for_stencil(stencil)
+    moment_to_relaxation_rate_dict = OrderedDict([(m, omegaT_f) for m in moments])
+
     equilibrium_cht = DiscreteThermalMaxwellianCHT(stencil, rho_Cp_T=rho_Cp_T, u=sp.symbols("u_:3"),
                                                    order=2,
                                                    c_s_sq=c_s_sq, substitutions=None, temperature = T, Cp_ref=Cp_ref)
@@ -84,17 +99,12 @@ def psm_bounce_back_collision(
     ]
 
     #   Update relaxation rates
-    thermalLB_rrates: tuple[sp.Expr, ...] = thermal_lb_method.relaxation_rates
-    thermalPSM_rrates = sp.symbols(f"psm_omega_:{len(thermalLB_rrates)}")
     psm_lb_config = replace(
-        lbm_config, relaxation_rate=None, relaxation_rates=thermalPSM_rrates
+        lbm_config, relaxation_rate=omegaT_f
     )
 
-    for omegaT_f_psm, omegaT_f_LB in zip(thermalPSM_rrates, thermalLB_rrates):
-        parameters.append(Assignment(omegaT_f_psm, (1 - B) * omegaT_f_LB))
+    parameters.append(Assignment(omegaT_f, (1 - B) * omegaT_f))
 
-    lb_method = create_lb_method(lbm_config=psm_lb_config)
-    assert lb_method is not None
     zeroth_moment_symbol = thermal_lb_method.conserved_quantity_computation.zeroth_moment_symbol
     rho_cp_eff = ((1.0 - B.center)* rho_f *Cp_f*omegaT_f + B.center*rho_s*Cp_s*omegaT_s)/((1-B.center)*omegaT_f + B.center*omegaT_s)
     T = zeroth_moment_symbol/rho_cp_eff
@@ -150,7 +160,7 @@ def psm_bounce_back_collision(
         equilibrium_fluid = [
             Assignment(f_eq_symbol, f_eq_term)
             for f_eq_symbol, f_eq_term in zip(
-                fluid_eq_symbols, lb_method.get_equilibrium_terms()
+                fluid_eq_symbols, thermal_lb_method.get_equilibrium_terms()
             )
         ]
         temp_fluid_subs = {sp.Symbol("T"): zeroth_moment_symbol/(rho_f*Cp_f)}
@@ -173,24 +183,24 @@ def psm_bounce_back_collision(
             eq_sol = eq_sol.subs(all_subs)
             equilibrium_solid.append(Assignment(eq_s_symbol, eq_sol))
 
-    #    - Derive solid collision operator
+
+        for i, (f_eq_solid, f, offset) in enumerate(
+                zip(solid_eq_symbols, pre_collision_pdf_symbols, stencil)
+        ):
+
+            sc_term = lbm_config.psm_config.individual_fraction_field.center(p) * (
+                (
+                         omegaT_s * (f_eq_solid - f)
+                )
+
+            )
+            solid_collisions[i] += sc_term
+
+    #   Derive solid collision operator
     solid_post_symbols = sp.symbols(f"f_post_solid_:{stencil.Q}")
 
-
-    for i, (f_post_solid, f_eq_solid, f, offset) in enumerate(
-            zip(solid_post_symbols, solid_eq_symbols, pre_collision_pdf_symbols, stencil)
-    ):
-        i_inv = stencil.inverse_index(offset)
-        f_inv = pre_collision_pdf_symbols[i_inv]
-        f_eq_inv = fluid_eq_symbols[i_inv]
-
-        sc_term =  ((f_inv - f_eq_inv.rhs) - (f - f_eq_solid.rhs))
-
-        solid_collisions[i] += sc_term
-
-        #solid_collisions.append(
-        #    Assignment(f_post_solid, (f_inv - f_eq_inv) - (f - f_eq_solid))
-        #)
+    for i,f_post_solid in enumerate(solid_post_symbols):
+        Assignment(f_post_solid, solid_collisions[i])
 
     #   Combine into update rule
     pdfs_update = [
@@ -211,4 +221,4 @@ def psm_bounce_back_collision(
     )
     mains = pdfs_update + output_asms + remaining_main_asms
 
-    return LbmCollisionRule(lb_method, main_assignments=mains, subexpressions=subexps)
+    return LbmCollisionRule(thermal_lb_method, main_assignments=mains, subexpressions=subexps)
