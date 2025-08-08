@@ -45,4 +45,5 @@ Output
     vtkSpacingParticles 0.1;                        // in s
     vtkSpacingFluid 0.1;                            // in s
     vtkFolderName vtk_out_showcase;
+    sampling 2;
 }

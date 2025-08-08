@@ -6,7 +6,7 @@ PhysicalSetup                         // To be specified in SI units!
     xSize 0.1;                                      // width in SI units
     ySize 0.05;                                     // depth in SI units
     zSize 0.05;                                     // height in SI units
-    runtime 40;
+    runtime 1;
     uInflow 0.01;
     kinematicViscosityFluid 1e-5;
     densityFluid 1000.;
@@ -41,8 +41,9 @@ TemperatureSetup
 Output
 {
     infoSpacing 0.01;                                // in s
-    writeSlice  false;                               // boolean whether you want slice visualization or not. Suggested for large domain sizes
+    writeSlice  true;                               // boolean whether you want slice visualization or not. Suggested for large domain sizes
     vtkSpacingParticles 0.01;                        // in s
     vtkSpacingFluid 0.01;                            // in s
     vtkFolderName vtk_out_showcase;
+    sampling 1;
 }

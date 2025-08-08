@@ -339,6 +339,7 @@ int main(int argc, char** argv)
    const real_t vtkSpacingParticles_SI = outputSetup.getParameter< real_t >("vtkSpacingParticles");
    const real_t vtkSpacingFluid_SI     = outputSetup.getParameter< real_t >("vtkSpacingFluid");
    const std::string vtkFolder         = outputSetup.getParameter< std::string >("vtkFolderName");
+   const real_t sampling        = outputSetup.getParameter< real_t >("sampling");
 
    WALBERLA_CHECK_EQUAL(numXBlocks * numYBlocks * numZBlocks, uint_t(MPIManager::instance()->numProcesses()),
                         "When using GPUs, the number of blocks ("
@@ -992,10 +993,7 @@ auto communication_concentration = std::function< void() >([&]() { com_concentra
    {
       // particles
       auto particleVtkOutput = make_shared< mesa_pd::vtk::ParticleVtkOutput >(ps);
-      particleVtkOutput->addOutput< mesa_pd::data::SelectParticleUid >("uid");
       particleVtkOutput->addOutput< mesa_pd::data::SelectParticleLinearVelocity >("velocity");
-      particleVtkOutput->addOutput< mesa_pd::data::SelectParticleInteractionRadius >("radius");
-      particleVtkOutput->addOutput< mesa_pd::data::SelectParticleTemperature >("temperature");
       // limit output to process-local spheres
       particleVtkOutput->setParticleSelector([sphereShape](const mesa_pd::data::ParticleStorage::iterator& pIt) {
          return pIt->getShapeID() == sphereShape &&
@@ -1061,13 +1059,9 @@ auto communication_concentration = std::function< void() >([&]() { com_concentra
          make_shared< field::VTKWriter< VelocityField_fluid_T > >(velFieldFluidCPUGPUID, "Fluid Velocity"));
       vtkOutput_Fluid->addCellDataWriter(
          make_shared< field::VTKWriter< BField_T > >(particleAndVolumeFractionSoA.BFieldID, "OverlapFraction"));
-      vtkOutput_Fluid->addCellDataWriter(
-         make_shared< field::VTKWriter< particleTemperaturesField_T > >(particleAndVolumeFractionSoA.particleTemperaturesFieldID, "particle temp filed"));
 #endif
       vtkOutput_Fluid->addCellDataWriter(
          make_shared< field::VTKWriter< DensityField_fluid_T > >(densityFluidFieldID, "Fluid Density"));
-      vtkOutput_Fluid->addCellDataWriter(
-         make_shared< field::VTKWriter< FlagField_T > >(flagFieldFluidID, "FluidFlagField"));
 
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
       vtkOutput_Energy->addCellDataWriter(
@@ -1075,15 +1069,10 @@ auto communication_concentration = std::function< void() >([&]() { com_concentra
       vtkOutput_Energy->addCellDataWriter(
          make_shared< field::VTKWriter< DensityField_energy_T > >(energyFieldID,"energy"));
 #else
-      vtkOutput_Energy->addCellDataWriter(
-         make_shared< field::VTKWriter< DensityField_energy_T > >(energyFieldCPUGPUID,"energy"));
 
       vtkOutput_Energy->addCellDataWriter(
          make_shared< field::VTKWriter< DensityField_concentration_T > >(densityConcentrationFieldCPUGPUID, "temperature"));  // temperature field
 #endif
-
-      vtkOutput_Energy->addCellDataWriter(
-         make_shared< field::VTKWriter< FlagField_T > >(flagFieldEnergyID, "EnergyFlagField"));
 
       if(writeSlice)
       {
@@ -1098,7 +1087,7 @@ auto communication_concentration = std::function< void() >([&]() { com_concentra
          combinedSliceFilter.addFilter(aabbSliceFilter);
          // if (fluidSlice) { combinedSliceFilter.addFilter(aabbSliceFilter); }
          vtkOutput_Fluid->addCellInclusionFilter(combinedSliceFilter);
-         vtkOutput_Fluid->setSamplingResolution(1);
+         vtkOutput_Fluid->setSamplingResolution(sampling);
          timeloop.addFuncBeforeTimeStep(walberla::vtk::writeFiles(vtkOutput_Fluid), "VTK (fluid field data)");
 
          field::FlagFieldCellFilter< FlagField_T > energyFilter(flagFieldEnergyID);
@@ -1108,7 +1097,7 @@ auto communication_concentration = std::function< void() >([&]() { com_concentra
          combinedSliceFilterEnergy.addFilter(aabbSliceFilter);
          // if (fluidSlice) { combinedSliceFilter.addFilter(aabbSliceFilter); }
          vtkOutput_Energy->addCellInclusionFilter(combinedSliceFilter);
-         vtkOutput_Energy->setSamplingResolution(1);
+         vtkOutput_Energy->setSamplingResolution(sampling);
          timeloop.addFuncBeforeTimeStep(walberla::vtk::writeFiles(vtkOutput_Energy), "VTK (energy field data)");
       }
       else{
@@ -1117,7 +1106,6 @@ auto communication_concentration = std::function< void() >([&]() { com_concentra
       }
 
    }
-   if (vtkSpacingFluid != uint_t(0)) { vtk::writeDomainDecomposition(blocks, "domain_decomposition", vtkFolder); }
 
    ////////////////////////////////////////////////////////////////////////////////////////////////
    // add LBM communication, boundary handling and the LBM sweeps to the time loop  for codegen //
