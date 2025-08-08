@@ -197,6 +197,7 @@ with CodeGeneration() as ctx:
         #temperature_field=concentration_field,
     )
 
+
     psm_energy_config = ThermalPSMConfig(
         stencil=stencil_energy,
         method=Method.SRT,
@@ -328,7 +329,7 @@ with CodeGeneration() as ctx:
     generate_sweep(
         ctx,
         "PSMEnergySweep",
-        create_lb_update_rule(lbm_config=psm_energy_config, lbm_optimisation=lbm_energy_opt),
+        create_lb_update_rule(collision_rule=collision_rule_energy, lbm_config=psm_energy_config, lbm_optimisation=lbm_energy_opt),
         field_swaps=[(pdfs_energy, pdfs_energy_tmp)],
         target=target,
     )
@@ -357,6 +358,7 @@ with CodeGeneration() as ctx:
         create_lb_update_rule(lbm_config=psm_fluid_config, lbm_optimisation=lbm_fluid_opt),
         target=target,
     )
+
 
     generate_pack_info_from_kernel(
         ctx,
@@ -420,7 +422,6 @@ with CodeGeneration() as ctx:
         streaming_pattern="pull",
         target=target,
     )
-
 
     # energy boundary conditions
 

@@ -15,6 +15,8 @@ from lbmpy.methods.creationfunctions import CollisionSpaceInfo
 from lbmpy.creationfunctions import LbmCollisionRule
 from lbmpy.moments import get_default_moment_set_for_stencil
 from equilibirumCHT import DiscreteThermalMaxwellianCHT
+from lbmpy.maxwellian_equilibrium import get_weights
+from equilibirumCHT import Cp
 
 @dataclass
 class ThermalPSMConfig(LBMConfig):
@@ -107,7 +109,7 @@ def create_thermal_lb_method(lbm_config: ThermalPSMConfig):
     }
     thermal_lb_method = create_from_equilibrium(stencil, equilibrium_cht, cqc_cht, moment_to_relaxation_rate_dict,
                                                 zero_centered=zero_centered, force_model=None, **kwargs)
-
+    thermal_lb_method.override_weights(get_weights(stencil))
     return thermal_lb_method,cqc_cht
 
 
@@ -132,8 +134,9 @@ def create_psm_thermal_collision_rule(lbm_config):
     psm_lb_config = replace(
         lbm_config, relaxation_rate=omegaT_f
     )
-    parameters =[]
-    parameters.append(Assignment(omegaT_f, (1 - B.center) * omegaT_f))
+    omegaT_f_mod = sp.Symbol("omegaT_f_mod")
+    #parameters =[]
+    #parameters.append(Assignment(omegaT_f, (1 - B.center) * omegaT_f))
 
     zeroth_moment_symbol = thermal_lb_method.conserved_quantity_computation.zeroth_order_moment_symbol
     rho_cp_eff = ((1.0 - B.center)* rho_f *Cp_f*omegaT_f + B.center*rho_s*Cp_s*omegaT_s)/((1-B.center)*omegaT_f + B.center*omegaT_s)
@@ -165,7 +168,7 @@ def create_psm_thermal_collision_rule(lbm_config):
                 density_eq
             )
         )
-
+        print("cqc_cgt ", cqc_cht_eqs)
     #   Move fluid collision terms to subexprs
     main_asms_dict = raw_col.main_assignments_dict
 
@@ -194,27 +197,28 @@ def create_psm_thermal_collision_rule(lbm_config):
                 fluid_eq_symbols, thermal_lb_method.get_equilibrium_terms()
             )
         ]
+        equilibrium_fluid_for_solid_subs = equilibrium_fluid
         temp_fluid_subs = {sp.Symbol("T"): zeroth_moment_symbol/(rho_f*Cp_f)}
-        Cp_fluid_subs   = {sp.Symbol("Cp"): Cp_f}
+        Cp_fluid_subs   = {Cp: rho_f*Cp_f}
         all_subs = {**temp_fluid_subs, **Cp_fluid_subs}
         equilibrium_fluid = [
             Assignment(asm.lhs, asm.rhs.subs(all_subs)) for asm in equilibrium_fluid]
 
-
+        print("eq fluid is ", equilibrium_fluid_for_solid_subs)
 
         #    - Set up solid equilibrium
         solid_eq_symbols = sp.symbols(f"f_eq_solid_:{stencil.Q}")
         equilibrium_solid = []
-        for eq_s_symbol, eq_fluid in zip(solid_eq_symbols, equilibrium_fluid):
-            eq_sol = eq_fluid.rhs
+        for eq_s_symbol, eq_fluid in zip(solid_eq_symbols, equilibrium_fluid_for_solid_subs):
+            eq_sol = eq_fluid
             vel_subs = {sp.Symbol(f"u_{i}"): lbm_config.object_velocity_field.center(p * stencil.D + i) for i in range(stencil.D)}
             temp_solid_subs = {sp.Symbol("T"): zeroth_moment_symbol/(rho_s*Cp_s)}
-            Cp_solid_subs   = {sp.Symbol("Cp"): Cp_s}
+            Cp_solid_subs   = {sp.Symbol("Cp"): rho_s*Cp_s}
             all_subs = {**vel_subs, **temp_solid_subs, **Cp_solid_subs}
-            eq_sol = eq_sol.subs(all_subs)
-            equilibrium_solid.append(Assignment(eq_s_symbol, eq_sol))
+            #eq_sol = eq_sol.subs(all_subs)
+            equilibrium_solid.append(Assignment(eq_s_symbol, eq_sol.rhs.subs(all_subs)))
 
-
+        print("eq solid is ", equilibrium_solid)
         for i, (f_eq_solid, f, offset) in enumerate(
                 zip(solid_eq_symbols, pre_collision_pdf_symbols, stencil)
         ):
@@ -230,26 +234,43 @@ def create_psm_thermal_collision_rule(lbm_config):
     #   Derive solid collision operator
     solid_post_symbols = sp.symbols(f"f_post_solid_:{stencil.Q}")
 
-    for i,f_post_solid in enumerate(solid_post_symbols):
-        Assignment(f_post_solid, solid_collisions[i])
+    #for i,f_post_solid in enumerate(solid_post_symbols):
+    #    Assignment(f_post_solid, solid_collisions[i])
+
+    solid_post_assignments = []  # <- collect assignments here
+
+    for i, f_post_solid in enumerate(solid_post_symbols):
+        solid_post_assignments.append(
+            Assignment(f_post_solid, solid_collisions[i])
+        )
+
 
     #   Combine into update rule
     pdfs_update = [
-        Assignment(f_post, f_post_fluid + B.center * f_post_solid)
+        Assignment(f_post, (1 - B.center)*f_post_fluid + B.center * f_post_solid)
         for f_post, f_post_fluid, f_post_solid in zip(
-            post_collision_pdf_symbols, fluid_post_symbols, solid_collisions
+            post_collision_pdf_symbols, fluid_post_symbols, solid_post_symbols
         )
     ]
 
     #   Finalize
     subexps = (
-            parameters
-            + raw_col.subexpressions
+            #parameters
+            raw_col.subexpressions
             + fluid_collisions
             + equilibrium_fluid
             + equilibrium_solid
-            + solid_collisions
+            + solid_post_assignments
     )
     mains = pdfs_update + output_asms + remaining_main_asms
+
+    for item in mains:
+        if not isinstance(item, Assignment):
+            print("❌ Invalid main assignment:", item, type(item))
+
+    for item in subexps:
+        if not isinstance(item, Assignment):
+            print("❌ Invalid subexpression:", item, type(item))
+
 
     return LbmCollisionRule(thermal_lb_method, main_assignments=mains, subexpressions=subexps)
