@@ -170,8 +170,6 @@ with CodeGeneration() as ctx:
     )
 
 
-
-
     ## for CHT
     omega_p = sp.Symbol("omega_p")  # for the particles in CHT
     rho_f = sp.Symbol("rho_f")
@@ -197,7 +195,6 @@ with CodeGeneration() as ctx:
         #temperature_field=concentration_field,
     )
 
-
     psm_energy_config = ThermalPSMConfig(
         stencil=stencil_energy,
         method=Method.SRT,
@@ -220,7 +217,6 @@ with CodeGeneration() as ctx:
         temperature_field_output=concentration_field,
 
     )
-
 
     if config_tokens[0] == "srt-smagorinsky" or config_tokens[0] == "trt-smagorinsky":
         lbm_fluid_config.smagorinsky = True
@@ -281,7 +277,7 @@ with CodeGeneration() as ctx:
 
     node_collection_fluid = create_psm_update_rule(lbm_config=psm_fluid_config, lbm_optimisation=lbm_fluid_opt)
     collision_rule_energy = create_psm_thermal_collision_rule(lbm_config=psm_energy_config)
-    node_collection_energy = create_lb_update_rule(collision_rule=collision_rule_energy, lbm_config=psm_energy_config, lbm_optimisation=lbm_energy_opt)
+    #node_collection_energy = create_lb_update_rule(collision_rule=collision_rule_energy, lbm_config=psm_energy_config, lbm_optimisation=lbm_energy_opt)
 
     ## defining custom pystencils kernel that computes temperature from rho_cp_T
 
@@ -295,7 +291,6 @@ with CodeGeneration() as ctx:
             compute_temperature_field
     )
     generate_sweep(ctx, "compute_temperature_field", compute_temperature_field_ac)
-
 
     assignments = []
     assignments.append(method_energy.conserved_quantity_computation.equilibrium_input_equations_from_pdfs(pdfs_energy.center_vector))
@@ -317,7 +312,6 @@ with CodeGeneration() as ctx:
         target=target,
     )
 
-
     generate_sweep(
         ctx,
         "PSMFluidSweep",
@@ -333,7 +327,7 @@ with CodeGeneration() as ctx:
         field_swaps=[(pdfs_energy, pdfs_energy_tmp)],
         target=target,
     )
-
+    print("collision rule is ", collision_rule_energy)
     generate_sweep(
         ctx,
         "LBMFluidSplitSweep",
@@ -488,6 +482,7 @@ with CodeGeneration() as ctx:
     pdfs_fluid_getter = macroscopic_values_getter(
         method_fluid, density=density_field, velocity=velocity_field.center_vector,pdfs=pdfs_fluid.center_vector
     )
+
 
     pdfs_energy_getter = macroscopic_values_getter(
        method_energy, density=energy_field, velocity=None,pdfs=pdfs_energy.center_vector

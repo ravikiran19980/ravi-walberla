@@ -50,7 +50,6 @@ class ThermalPSMConfig(LBMConfig):
 
 def create_thermal_lb_method(lbm_config: ThermalPSMConfig):
     stencil = lbm_config.stencil
-    print("hey the value of delta eq is ", lbm_config.delta_equilibrium)
     compressible = lbm_config.compressible
     zero_centered = lbm_config.zero_centered
 
@@ -105,7 +104,7 @@ def create_thermal_lb_method(lbm_config: ThermalPSMConfig):
         #'continuous_equilibrium': lbm_config.continuous_equilibrium,
         #'c_s_sq': lbm_config.c_s_sq,
         'collision_space_info': lbm_config.collision_space_info,
-        'fraction_field': lbm_config.fraction_field,
+        #'fraction_field': lbm_config.fraction_field,
     }
     thermal_lb_method = create_from_equilibrium(stencil, equilibrium_cht, cqc_cht, moment_to_relaxation_rate_dict,
                                                 zero_centered=zero_centered, force_model=None, **kwargs)
@@ -116,7 +115,9 @@ def create_thermal_lb_method(lbm_config: ThermalPSMConfig):
 def create_psm_thermal_collision_rule(lbm_config):
     thermal_lb_method,cqc_cht = create_thermal_lb_method(lbm_config)
     MaxParticlesPerCell = lbm_config.MaxParticlesPerCell
-    psm_output = lbm_config.temperature_output
+    psm_output = lbm_config.temperature_field_output
+    print("psm output is ", psm_output)
+    temperature_symbol = lbm_config.temperature_symbol
     # Symbols
     rho_f, omegaT_f, Cp_f = lbm_config.fluid_density, lbm_config.relaxation_rate, lbm_config.fluid_specific_heat
     rho_s, omegaT_s, Cp_s = lbm_config.particle_density, lbm_config.solid_relaxation_rate, lbm_config.particle_specific_heat
@@ -140,13 +141,13 @@ def create_psm_thermal_collision_rule(lbm_config):
 
     zeroth_moment_symbol = thermal_lb_method.conserved_quantity_computation.zeroth_order_moment_symbol
     rho_cp_eff = ((1.0 - B.center)* rho_f *Cp_f*omegaT_f + B.center*rho_s*Cp_s*omegaT_s)/((1-B.center)*omegaT_f + B.center*omegaT_s)
-    T = zeroth_moment_symbol/rho_cp_eff
+    temperature_symbol = zeroth_moment_symbol/rho_cp_eff
 
     #   Output params
     output_asms = []
     if psm_output:
-        if "Temperature" in psm_output:
-            output_asms.append(Assignment(psm_output["Temperature"].center, T))
+        #if "Temperature" in psm_output:
+        output_asms.append(Assignment(psm_output.center, temperature_symbol))
 
 
     #   Derive fluid collision
@@ -168,15 +169,29 @@ def create_psm_thermal_collision_rule(lbm_config):
                 density_eq
             )
         )
-        print("cqc_cgt ", cqc_cht_eqs)
+    cqc_cht_eqs = cqc_cht.equilibrium_input_equations_from_pdfs(pre_collision_pdf_symbols)
+    u_in = lbm_config.velocity_input
+    if u_in is not None and isinstance(u_in, Field):
+        u_in = u_in.center_vector
+    cqe_main_assignments = cqc_cht_eqs.main_assignments_dict
+    for u_sym, u in zip(cqc_cht.velocity_symbols, u_in):
+        #cqe_main_assignments[u_sym] = u
+        raw_col.subexpressions.append(
+            Assignment(
+                u_sym,
+                u
+            )
+        )
+
     #   Move fluid collision terms to subexprs
     main_asms_dict = raw_col.main_assignments_dict
 
     fluid_post_symbols = sp.symbols(f"f_post_fluid_:{stencil.Q}")
     fluid_collisions = [
-        Assignment(f_post_f, main_asms_dict[f_post])
-        for f_post_f, f_post in zip(fluid_post_symbols, post_collision_pdf_symbols)
+        Assignment(f_post_f, main_asms_dict[f_post] - f_pre)
+        for f_post_f, f_post, f_pre in zip(fluid_post_symbols, post_collision_pdf_symbols, pre_collision_pdf_symbols)
     ]
+    print("fluid collisions are ", fluid_collisions)
 
     remaining_main_asms = [
         Assignment(lhs, rhs)
@@ -189,14 +204,15 @@ def create_psm_thermal_collision_rule(lbm_config):
     equilibrium_solid = []
     #    Fluid temperature Equilibrium Terms
     solid_collisions = [0]*stencil.Q
+    fluid_eq_symbols = sp.symbols(f"f_eq_fluid_:{stencil.Q}")
+    equilibrium_fluid = [
+        Assignment(f_eq_symbol, f_eq_term)
+        for f_eq_symbol, f_eq_term in zip(
+            fluid_eq_symbols, thermal_lb_method.get_equilibrium_terms()
+        )
+    ]
     for p in range(MaxParticlesPerCell):
-        fluid_eq_symbols = sp.symbols(f"f_eq_fluid_:{stencil.Q}")
-        equilibrium_fluid = [
-            Assignment(f_eq_symbol, f_eq_term)
-            for f_eq_symbol, f_eq_term in zip(
-                fluid_eq_symbols, thermal_lb_method.get_equilibrium_terms()
-            )
-        ]
+
         equilibrium_fluid_for_solid_subs = equilibrium_fluid
         temp_fluid_subs = {sp.Symbol("T"): zeroth_moment_symbol/(rho_f*Cp_f)}
         Cp_fluid_subs   = {Cp: rho_f*Cp_f}
@@ -215,8 +231,9 @@ def create_psm_thermal_collision_rule(lbm_config):
             temp_solid_subs = {sp.Symbol("T"): zeroth_moment_symbol/(rho_s*Cp_s)}
             Cp_solid_subs   = {sp.Symbol("Cp"): rho_s*Cp_s}
             all_subs = {**vel_subs, **temp_solid_subs, **Cp_solid_subs}
-            #eq_sol = eq_sol.subs(all_subs)
-            equilibrium_solid.append(Assignment(eq_s_symbol, eq_sol.rhs.subs(all_subs)))
+            eq_sol = eq_sol.rhs.subs(all_subs)
+            equilibrium_solid.append(Assignment(eq_s_symbol, eq_sol))
+            #equilibrium_solid.append(Assignment(eq_s_symbol, eq_sol.rhs.subs(all_subs)))
 
         print("eq solid is ", equilibrium_solid)
         for i, (f_eq_solid, f, offset) in enumerate(
@@ -247,9 +264,9 @@ def create_psm_thermal_collision_rule(lbm_config):
 
     #   Combine into update rule
     pdfs_update = [
-        Assignment(f_post, (1 - B.center)*f_post_fluid + B.center * f_post_solid)
-        for f_post, f_post_fluid, f_post_solid in zip(
-            post_collision_pdf_symbols, fluid_post_symbols, solid_post_symbols
+        Assignment(f_post, f_pre + (1- B.center)*f_post_fluid + B.center * f_post_solid)
+        for f_post, f_pre, f_post_fluid, f_post_solid in zip(
+            post_collision_pdf_symbols, pre_collision_pdf_symbols, fluid_post_symbols, solid_post_symbols
         )
     ]
 
@@ -263,7 +280,7 @@ def create_psm_thermal_collision_rule(lbm_config):
             + solid_post_assignments
     )
     mains = pdfs_update + output_asms + remaining_main_asms
-
+    print("main asses are  ", output_asms)
     for item in mains:
         if not isinstance(item, Assignment):
             print("❌ Invalid main assignment:", item, type(item))

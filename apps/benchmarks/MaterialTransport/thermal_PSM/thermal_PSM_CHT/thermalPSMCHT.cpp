@@ -847,7 +847,12 @@ int main(int argc, char** argv)
    pystencils::InitializeEnergyDomain pdfSetterEnergy(
       particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID, densityConcentrationFieldCPUGPUID,
       particleAndVolumeFractionSoA.particleTemperaturesFieldID, pdfFieldEnergyCPUGPUID, velFieldFluidCPUGPUID,
-      Cp_f, Cp_s, omegaT_f, omegaT_s, densityFluid, densityParticle);
+      1,  Cp_f,  Cp_s,1,omegaT_f,omegaT_s,densityFluid, densityParticle);
+
+   /*pystencils::InitializeEnergyDomain pdfSetterEnergy(
+      particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID, densityConcentrationFieldCPUGPUID,
+      particleAndVolumeFractionSoA.particleTemperaturesFieldID, pdfFieldEnergyCPUGPUID, velFieldFluidCPUGPUID,
+       Cp_f,  Cp_s,omegaT_f,omegaT_s,densityFluid, densityParticle);*/
 
 #endif
 
@@ -1012,8 +1017,12 @@ int main(int argc, char** argv)
       pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID, Tref, alphaLB, gravitationalAcceleration, omega_f, rho_0);
 
    pystencils::PSMEnergySweep psmEnergySweep(
-      particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID,energyFieldCPUGPUID,particleAndVolumeFractionSoA.particleVelocitiesFieldID,
-      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,omegaT_f,omegaT_s);
+      particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,particleAndVolumeFractionSoA.particleVelocitiesFieldID,
+      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID, 1,  Cp_f,  Cp_s,1,omegaT_f,omegaT_s,densityFluid, densityParticle);
+
+   /*pystencils::PSMEnergySweep psmEnergySweep(
+      particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,particleAndVolumeFractionSoA.particleVelocitiesFieldID,
+      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID, Cp_f,  Cp_s, omegaT_f,  omegaT_s,densityFluid,densityParticle);*/
 
 
       timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")
