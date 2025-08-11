@@ -4,7 +4,9 @@ from lbmpy.equilibrium import GenericDiscreteEquilibrium, ContinuousHydrodynamic
 from lbmpy.maxwellian_equilibrium import get_weights
 from pystencils.sympyextensions import simplify_by_equality
 from pystencils import Assignment, AssignmentCollection
-Cp = sp.Symbol("Cp")
+#Cp = sp.Symbol("Cp")
+#T = sp.Symbol("T")
+
 class DiscreteThermalMaxwellianCHT(GenericDiscreteEquilibrium):
 
     def __init__(self, stencil, compressible=True,
@@ -13,8 +15,9 @@ class DiscreteThermalMaxwellianCHT(GenericDiscreteEquilibrium):
                  u=sp.symbols("u_:3"),
                  c_s_sq=sp.Symbol("c_s") ** 2,
                  substitutions=None,
+                 Cp_ref = None,
                  temperature = sp.Symbol("T"),
-                 Cp_ref = None):
+                 Cp = sp.Symbol("Cp")):
         dim = stencil.D
 
         if order is None:
@@ -26,13 +29,12 @@ class DiscreteThermalMaxwellianCHT(GenericDiscreteEquilibrium):
         self._u = u[:dim]
         self._c_s_sq = c_s_sq
         self._substitutions = substitutions
-        self._temperature = temperature
         self.Cp_ref = Cp_ref
 
 
         pdfs = discrete_thermal_equilibrium_cht(stencil, rho_Cp_T=self._rho_Cp_T, u=u,
                                                 order=order, c_s_sq=c_s_sq,
-                                                compressible=compressible,substitutions = self._substitutions,temperature= self._temperature, Cp_ref = self.Cp_ref, Cp = Cp)
+                                                compressible=compressible,substitutions = self._substitutions, Cp_ref = self.Cp_ref, temperature = temperature,Cp = Cp)
 
         zeroth_order_moment = rho_Cp_T
         super().__init__(stencil, pdfs, zeroth_order_moment, u)
@@ -45,11 +47,11 @@ class DiscreteThermalMaxwellianCHT(GenericDiscreteEquilibrium):
     #    lattice weights."""
         return DiscreteThermalMaxwellianCHT(self._stencil, compressible=True,
                                             order=self._order, rho_Cp_T=sp.Integer(1),
-                                            u=(0,) * self.dim, c_s_sq=self._c_s_sq,temperature=self._temperature,Cp_ref = self.Cp_ref)
+                                            u=(0,) * self.dim, c_s_sq=self._c_s_sq,Cp_ref = self.Cp_ref)
 
 
 def discrete_thermal_equilibrium_cht(stencil, rho_Cp_T=sp.Symbol("rho_Cp_T"), u=sp.symbols("u_:3"), order=2,
-                                     c_s_sq=sp.Symbol("c_s") ** 2, compressible=True,substitutions=None,temperature=sp.Symbol("T"),Cp_ref=None, Cp=Cp):
+                                     c_s_sq=sp.Symbol("c_s") ** 2, compressible=True,substitutions=None,Cp_ref=None, temperature=sp.Symbol("T"),Cp=sp.Symbol("Cp")):
     """
     Returns the common discrete LBM equilibrium as a list of sympy expressions
 
@@ -64,11 +66,11 @@ def discrete_thermal_equilibrium_cht(stencil, rho_Cp_T=sp.Symbol("rho_Cp_T"), u=
     weights = get_weights(stencil, c_s_sq)
     assert stencil.Q == len(weights)
     u = u[:stencil.D]
-    res = [thermal_equilibrium_cht(e_q, u, rho_Cp_T, w_q, order, c_s_sq, compressible,substitutions,temperature, Cp_ref, Cp=Cp) for w_q, e_q in zip(weights, stencil)]
+    res = [thermal_equilibrium_cht(e_q, u, rho_Cp_T, w_q, order, c_s_sq, compressible,substitutions, Cp_ref, temperature, Cp) for w_q, e_q in zip(weights, stencil)]
     return tuple(res)
 
 def thermal_equilibrium_cht(v=sp.symbols("v_:3"), u=sp.symbols("u_:3"), rho_Cp_T=sp.Symbol("rho_Cp_T"), weight=sp.Symbol("w"),
-                            order=2, c_s_sq=sp.Symbol("c_s") ** 2, compressible=True,substitutions=None,temperature=sp.Symbol("T"), Cp_ref=None,Cp=Cp):
+                            order=2, c_s_sq=sp.Symbol("c_s") ** 2, compressible=True,substitutions=None, Cp_ref=None, temperature=sp.Symbol("T"),Cp=sp.Symbol("Cp")):
     """
     Returns the common discrete LBM equilibrium depending on the mesoscopic velocity and the directional lattice weight
 
@@ -83,7 +85,6 @@ def thermal_equilibrium_cht(v=sp.symbols("v_:3"), u=sp.symbols("u_:3"), rho_Cp_T
     """
 
     ## implementation based on the total enthalpy LB method
-    Cp = sp.Symbol("Cp")
     u_times_u = 0
     for u_alpha in u:
         u_times_u += u_alpha * u_alpha

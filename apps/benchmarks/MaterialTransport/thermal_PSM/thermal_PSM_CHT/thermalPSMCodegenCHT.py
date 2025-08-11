@@ -37,7 +37,6 @@ clear_cache()
 
 
 
-
 info_header = """
 const char * infoStencil_fluid = "{stencil}";
 const char * infoStencil_concentration = "{stencil}";
@@ -115,7 +114,6 @@ with CodeGeneration() as ctx:
 
     # Solid fraction field
     B = ps.fields(f"b({1}): {data_type}[3D]", layout=layout)
-
 
     #force_concentration_on_fluid = sp.Matrix([0, (rho_0)*alpha*(concentration_field.center - T0)*gravity_LBM,0])
     force_concentration_on_fluid = sp.Matrix([0, 0,(rho_0)*alpha*(concentration_field.center - T0)*gravity_LBM])
@@ -269,7 +267,6 @@ with CodeGeneration() as ctx:
 
     # specify the target
 
-
     if ctx.gpu:
         target = ps.Target.GPU
     else:
@@ -300,7 +297,6 @@ with CodeGeneration() as ctx:
         )
     ac = ps.AssignmentCollection(assignments)
     generate_sweep(ctx, "compute_temperature_field_particle", ac)
-
 
     # Generate files
 

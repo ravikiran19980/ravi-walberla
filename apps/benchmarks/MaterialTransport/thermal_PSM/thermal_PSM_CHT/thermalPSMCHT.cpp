@@ -1018,7 +1018,7 @@ int main(int argc, char** argv)
 
    pystencils::PSMEnergySweep psmEnergySweep(
       particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,particleAndVolumeFractionSoA.particleVelocitiesFieldID,
-      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID, 1,  Cp_f,  Cp_s,1,omegaT_f,omegaT_s,densityFluid, densityParticle);
+      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID, 1,  Cp_f,  Cp_s,0.001,omegaT_f,omegaT_s,densityFluid, densityParticle);
 
    /*pystencils::PSMEnergySweep psmEnergySweep(
       particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,particleAndVolumeFractionSoA.particleVelocitiesFieldID,
