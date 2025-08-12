@@ -49,7 +49,7 @@ const bool infoCsePdfs = {cse_pdfs};
 with CodeGeneration() as ctx:
     data_type = "float64" if ctx.double_accuracy else "float32"
     stencil_fluid = LBStencil(Stencil.D3Q19)
-    stencil_energy = LBStencil(Stencil.D3Q7)
+    stencil_energy = LBStencil(Stencil.D3Q19)
     omega = sp.Symbol("omega")  # for now same for both the sweeps
     init_density_fluid = sp.Symbol("init_density_fluid")
     init_velocity_fluid = sp.symbols("init_velocity_fluid_:3")
