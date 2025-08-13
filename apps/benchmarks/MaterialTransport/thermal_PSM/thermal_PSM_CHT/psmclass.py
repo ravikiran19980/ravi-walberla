@@ -239,7 +239,7 @@ def create_psm_thermal_collision_rule(lbm_config):
 
     #   Combine into update rule
     pdfs_update = [
-        Assignment(f_post, f_pre + (1- B.center)*f_post_fluid + B.center * f_post_solid)
+        Assignment(f_post, f_pre + (1- B.center)*f_post_fluid +  f_post_solid)
         for f_post, f_pre, f_post_fluid, f_post_solid in zip(
             post_collision_pdf_symbols, pre_collision_pdf_symbols, fluid_post_symbols, solid_post_symbols
         )

@@ -794,11 +794,11 @@ int main(int argc, char** argv)
    neumann_energy_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldEnergyID,
                                                              Neumann_Energy_Flag, Energy_Flag);
 
-   lbm::BC_energy_DiffusionDirichlet_static energy_static_bc_cold(blocks,pdfFieldEnergyCPUGPUID,real_t(Cp_f*Tcold));
+   lbm::BC_energy_DiffusionDirichlet_static energy_static_bc_cold(blocks,pdfFieldEnergyCPUGPUID,real_t(densityFluid*Cp_f*Tcold));
    energy_static_bc_cold.fillFromFlagField< FlagField_T >(blocks, flagFieldEnergyID,
                                                       Density_Energy_Flag_static_cold, Energy_Flag);
 
-   lbm::BC_energy_DiffusionDirichlet_static energy_static_bc_hot(blocks,pdfFieldEnergyCPUGPUID,real_t(Cp_f*Thot));
+   lbm::BC_energy_DiffusionDirichlet_static energy_static_bc_hot(blocks,pdfFieldEnergyCPUGPUID,real_t(densityFluid*Cp_f*Thot));
    energy_static_bc_hot.fillFromFlagField< FlagField_T >(blocks, flagFieldEnergyID,
                                                           Density_Energy_Flag_static_hot, Energy_Flag);
 
@@ -843,11 +843,12 @@ int main(int argc, char** argv)
       particleAndVolumeFractionSoA.particleVelocitiesFieldID, pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID, Tref,
       alphaLB, gravitationalAcceleration, real_t(1), rho_0);
 
-   const real_t rho_Cp_ref = densityFluid*Cp_f;//2*densityFluid*Cp_f*densityParticle*Cp_s/(densityFluid*Cp_f + densityParticle*Cp_s);
+   const real_t rho_Cp_ref = 2*densityFluid*Cp_f*densityParticle*Cp_s/(densityFluid*Cp_f + densityParticle*Cp_s);
+   const real_t dummy_ref = densityFluid*Cp_f;
    pystencils::InitializeEnergyDomain pdfSetterEnergy(
       particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID, densityConcentrationFieldCPUGPUID,
       particleAndVolumeFractionSoA.particleTemperaturesFieldID, pdfFieldEnergyCPUGPUID, velFieldFluidCPUGPUID,
-      Cp_f,Cp_s,omegaT_f,omegaT_s,rho_Cp_ref,densityFluid, densityParticle);
+      Cp_f,Cp_s,omegaT_f,omegaT_s,dummy_ref,densityFluid, densityParticle);
 
    /*pystencils::InitializeEnergyDomain pdfSetterEnergy(
       particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID, densityConcentrationFieldCPUGPUID,
@@ -1018,7 +1019,7 @@ int main(int argc, char** argv)
 
    pystencils::PSMEnergySweep psmEnergySweep(
       particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,particleAndVolumeFractionSoA.particleVelocitiesFieldID,
-      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,  Cp_f,Cp_s,omegaT_f,omegaT_s,rho_Cp_ref, densityFluid, densityParticle);
+      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,  Cp_f,Cp_s,omegaT_f,omegaT_s,dummy_ref, densityFluid, densityParticle);
 
    /*pystencils::PSMEnergySweep psmEnergySweep(
       particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,particleAndVolumeFractionSoA.particleVelocitiesFieldID,
