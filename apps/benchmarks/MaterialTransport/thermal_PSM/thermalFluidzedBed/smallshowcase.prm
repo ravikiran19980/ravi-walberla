@@ -1,0 +1,49 @@
+// Note: Lines specified after "//" are comments and will not be read by the code
+
+PhysicalSetup                         // To be specified in SI units!
+{
+    showcase true;
+    xSize 0.05;                                      // width in SI units
+    ySize 0.02;                                     // depth in SI units
+    zSize 0.10;                                     // height in SI units
+    runtime 10;
+    uInflow 0.01;
+    kinematicViscosityFluid 1e-5;
+    densityFluid 1000.;
+    particleDiameter 0.002;                         // diameter of the particle
+    densityParticle 1100.;                          // density of the particle
+    particleGenerationSpacing 0.00401;                // spacing between particles
+    numOfParticles 200;
+}
+
+NumericalSetup
+{
+    dx 0.0002; // in m
+    uInflow 0.01;                                   // in LBM units, should be smaller than 0.1, this then determines dt if not equal to 0
+                                                    // product of number of blocks should be equal to number of used processes
+    numXBlocks 2;
+    numYBlocks 1;
+    numZBlocks 2;
+
+}
+
+TemperatureSetup
+{
+    Thot 1;                                         // Temperature of hot wall
+    Tcold 0;                                        // Temperature of cold wall
+    Tref  0;                                        // Temperature of ambient
+    PrandtlNumber 1;
+    particleTemperature 1;
+    RayleighNumber 100000;
+    diffusivityRatio 0.1;
+}
+
+Output
+{
+    infoSpacing 0.01;                                // in s
+    writeSlice  true;                               // boolean whether you want slice visualization or not. Suggested for large domain sizes
+    vtkSpacingParticles 0.01;                        // in s
+    vtkSpacingFluid 0.01;                            // in s
+    vtkFolderName vtk_out_showcase;
+    sampling 1;
+}
