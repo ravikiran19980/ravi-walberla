@@ -614,7 +614,7 @@ int main(int argc, char** argv)
       blocks, "density concentration field", real_t(0), field::fzyx);
 
    // Energy PDFs on CPU
-   BlockDataID pdfFieldEnergyCPUGPUID = field::addToStorage< PdfField_concentration_T >(
+   BlockDataID pdfFieldEnergyCPUGPUID = field::addToStorage< PdfField_energy_T >(
       blocks, "pdf energy field CPU", real_c(std::nan("")), field::fzyx);
 
    BlockDataID energyFieldCPUGPUID = field::addToStorage< DensityField_energy_T >(
@@ -1101,6 +1101,8 @@ auto communication_concentration = std::function< void() >([&]() { com_concentra
          timeloop.addFuncBeforeTimeStep(walberla::vtk::writeFiles(vtkOutput_Energy), "VTK (energy field data)");
       }
       else{
+         vtkOutput_Fluid->setSamplingResolution(sampling);
+         vtkOutput_Energy->setSamplingResolution(sampling);
          timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Fluid), "VTK output Fluid");
          timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Energy), "VTK output Energy");
       }

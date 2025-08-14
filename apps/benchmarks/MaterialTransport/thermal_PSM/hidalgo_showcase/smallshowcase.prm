@@ -41,9 +41,9 @@ TemperatureSetup
 Output
 {
     infoSpacing 0.01;                                // in s
-    writeSlice  true;                               // boolean whether you want slice visualization or not. Suggested for large domain sizes
+    writeSlice  false;                               // boolean whether you want slice visualization or not. Suggested for large domain sizes
     vtkSpacingParticles 0.01;                        // in s
     vtkSpacingFluid 0.01;                            // in s
     vtkFolderName vtk_out_showcase;
-    sampling 1;
+    sampling 2;
 }
