@@ -46,6 +46,7 @@ class ThermalPSMConfig(LBMConfig):
     solid_relaxation_rate: sp.Symbol = sp.Symbol("omegaT_s")
     energy_field: Field = None
     temperature_field_output: Field = None
+    heat_source: Union[int, float, Type[sp.Symbol]] = None
 
 
 def create_thermal_lb_method(lbm_config: ThermalPSMConfig):
@@ -230,11 +231,18 @@ def create_psm_thermal_collision_rule(lbm_config):
     #    Assignment(f_post_solid, solid_collisions[i])
 
     solid_post_assignments = []  # <- collect assignments here
-
+    stencil_weights = get_weights(stencil)
+    print("stencil weights are ", stencil_weights)
+    heat_source = lbm_config.heat_source
     for i, f_post_solid in enumerate(solid_post_symbols):
-        solid_post_assignments.append(
-            Assignment(f_post_solid, solid_collisions[i])
-        )
+        if heat_source is not None:
+            solid_post_assignments.append(
+                Assignment(f_post_solid, solid_collisions[i] + stencil_weights[i] * heat_source * B.center)
+            )
+        else:
+            solid_post_assignments.append(
+                Assignment(f_post_solid, solid_collisions[i])
+            )
 
 
     #   Combine into update rule

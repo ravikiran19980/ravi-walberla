@@ -725,19 +725,19 @@ int main(int argc, char** argv)
        boundariesBlockString += "\n BoundariesEnergy";
        boundariesBlockString += "{"
                                 "Border { direction W;    walldistance -1;  flag Density_Energy_static_hot; }"
-                                "Border { direction E;    walldistance -1;  flag Density_Energy_static_hot; }";
+                                "Border { direction E;    walldistance -1;  flag Density_Energy_static_cold; }";
 
        if (!periodicInY)
        {
-          boundariesBlockString += "Border { direction S;    walldistance -1;  flag Density_Energy_static_hot; }"
-                                   "Border { direction N;    walldistance -1;  flag Density_Energy_static_hot; }";
+          boundariesBlockString += "Border { direction S;    walldistance -1;  flag Neumann_Energy; }"
+                                   "Border { direction N;    walldistance -1;  flag Neumann_Energy; }";
        }
 
        if (!periodicInZ)
        {
           boundariesBlockString +=
-             "Border { direction T;    walldistance -1;  flag Density_Energy_static_hot; }"
-             "Border { direction B;    walldistance -1;  flag Density_Energy_static_hot; }"; // Neumann_Energy
+             "Border { direction T;    walldistance -1;  flag Neumann_Energy; }"
+             "Border { direction B;    walldistance -1;  flag Neumann_Energy; }"; // Neumann_Energy
        }
        boundariesBlockString += "}";
     }
@@ -1016,10 +1016,10 @@ int main(int argc, char** argv)
       particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID, densityConcentrationFieldCPUGPUID,
       particleAndVolumeFractionSoA.particleForcesFieldID, particleAndVolumeFractionSoA.particleVelocitiesFieldID,
       pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID, Tref, alphaLB, gravitationalAcceleration, omega_f, rho_0);
-
+   const real_t Qs = 0.01;
    pystencils::PSMEnergySweep psmEnergySweep(
       particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,particleAndVolumeFractionSoA.particleVelocitiesFieldID,
-      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,  Cp_f,Cp_s,omegaT_f,omegaT_s,dummy_ref, densityFluid, densityParticle);
+      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,  Cp_f,Cp_s,Qs,omegaT_f,omegaT_s,dummy_ref, densityFluid, densityParticle);
 
    /*pystencils::PSMEnergySweep psmEnergySweep(
       particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,particleAndVolumeFractionSoA.particleVelocitiesFieldID,

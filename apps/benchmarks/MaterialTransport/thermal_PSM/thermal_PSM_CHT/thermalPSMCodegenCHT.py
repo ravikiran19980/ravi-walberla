@@ -178,20 +178,6 @@ with CodeGeneration() as ctx:
     Cp_s = sp.Symbol("Cp_s")
 
     # Energy PSM config
-    psm_config_E = PSMConfig(
-        fraction_field=B,
-        object_velocity_field=particle_velocities,
-        SC=int(5),
-        MaxParticlesPerCell=MaxParticlesPerCell,
-        individual_fraction_field=Bs,
-        particle_force_field=None,
-        #particle_temperature_field=particle_temperatures,
-        #particle_density=rho_s,
-        #particle_specific_heat=Cp_s,
-        #solid_relaxation_rate=omegaT_s,
-        #energy_field=energy_field,
-        #temperature_field=concentration_field,
-    )
 
     psm_energy_config = ThermalPSMConfig(
         stencil=stencil_energy,
@@ -213,6 +199,7 @@ with CodeGeneration() as ctx:
         solid_relaxation_rate=omegaT_s,
         energy_field=energy_field,
         temperature_field_output=concentration_field,
+        heat_source=sp.Symbol("Qs"),
 
     )
 
