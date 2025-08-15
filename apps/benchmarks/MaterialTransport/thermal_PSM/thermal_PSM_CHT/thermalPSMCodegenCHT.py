@@ -240,7 +240,6 @@ with CodeGeneration() as ctx:
 
 
 
-
     ## for energy
     sub_exp_energy = pdfs_energy_setter.subexpressions[0]
     rhs_energy = []
