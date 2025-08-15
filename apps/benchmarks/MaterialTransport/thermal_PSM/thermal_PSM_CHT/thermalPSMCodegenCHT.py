@@ -250,7 +250,7 @@ with CodeGeneration() as ctx:
     pdfs_energy_setter.subexpressions.remove(sub_exp_energy)
     pdfs_energy_setter.subexpressions.append(Assignment(sub_exp_energy.lhs, Add(*rhs_energy)))
 
-    #print("energy setter after manip ", pdfs_energy_setter.subexpressions)
+    print("energy setter after manip ", pdfs_energy_setter.subexpressions)
 
     # specify the target
 
@@ -285,6 +285,22 @@ with CodeGeneration() as ctx:
     ac = ps.AssignmentCollection(assignments)
     generate_sweep(ctx, "compute_temperature_field_particle", ac)
 
+    # Build the accumulation as a pure SymPy expression (no kernel assignments involved)
+    acc_expr = sum(
+        Bs.center(p) * particle_temperatures.center(p)
+        for p in range(MaxParticlesPerCell)  # ensure this is an int
+    )
+
+    T_init_fluid = sp.Symbol("T_init_fluid")  # kernel parameter
+
+    @ps.kernel
+    def initializeConcentrationField():
+        concentration_field.center @= (1 - B.center) * T_init_fluid + acc_expr
+
+    initializeConcentrationField_ac = ps.AssignmentCollection(initializeConcentrationField)
+    generate_sweep(ctx, "initializeConcentrationField", initializeConcentrationField_ac)
+
+
     # Generate files
 
     generate_sweep(
@@ -310,7 +326,6 @@ with CodeGeneration() as ctx:
         field_swaps=[(pdfs_energy, pdfs_energy_tmp)],
         target=target,
     )
-    print("collision rule is ", collision_rule_energy)
     generate_sweep(
         ctx,
         "LBMFluidSplitSweep",

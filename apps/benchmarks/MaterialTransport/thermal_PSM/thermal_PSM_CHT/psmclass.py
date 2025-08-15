@@ -115,7 +115,6 @@ def create_psm_thermal_collision_rule(lbm_config):
     thermal_lb_method,cqc_cht = create_thermal_lb_method(lbm_config)
     MaxParticlesPerCell = lbm_config.MaxParticlesPerCell
     psm_output = lbm_config.temperature_field_output
-    print("psm output is ", psm_output)
     # Symbols
     rho_f, omegaT_f, Cp_f = lbm_config.fluid_density, lbm_config.relaxation_rate, lbm_config.fluid_specific_heat
     rho_s, omegaT_s, Cp_s = lbm_config.particle_density, lbm_config.solid_relaxation_rate, lbm_config.particle_specific_heat
@@ -174,7 +173,7 @@ def create_psm_thermal_collision_rule(lbm_config):
         Assignment(f_post_f, main_asms_dict[f_post] - f_pre)
         for f_post_f, f_post, f_pre in zip(fluid_post_symbols, post_collision_pdf_symbols, pre_collision_pdf_symbols)
     ]
-    print("fluid collisions are ", fluid_collisions)
+    #print("fluid collisions are ", fluid_collisions)
 
     remaining_main_asms = [
         Assignment(lhs, rhs)
@@ -197,7 +196,7 @@ def create_psm_thermal_collision_rule(lbm_config):
     for p in range(MaxParticlesPerCell):
 
         equilibrium_fluid_for_solid_subs = equilibrium_fluid
-        print("eq fluid is ", equilibrium_fluid_for_solid_subs)
+        #print("eq fluid is ", equilibrium_fluid_for_solid_subs)
 
         #    - Set up solid equilibrium
         solid_eq_symbols = sp.symbols(f"f_eq_solid_:{stencil.Q}")
@@ -211,7 +210,7 @@ def create_psm_thermal_collision_rule(lbm_config):
             eq_sol = eq_sol.rhs.subs(all_subs)
             equilibrium_solid.append(Assignment(eq_s_symbol, eq_sol))
 
-        print("eq solid is ", equilibrium_solid)
+        #print("eq solid is ", equilibrium_solid)
         for i, (f_eq_solid, f, offset) in enumerate(
                 zip(solid_eq_symbols, pre_collision_pdf_symbols, stencil)
         ):
@@ -232,7 +231,7 @@ def create_psm_thermal_collision_rule(lbm_config):
 
     solid_post_assignments = []  # <- collect assignments here
     stencil_weights = get_weights(stencil)
-    print("stencil weights are ", stencil_weights)
+    #print("stencil weights are ", stencil_weights)
     heat_source = lbm_config.heat_source
     for i, f_post_solid in enumerate(solid_post_symbols):
         if heat_source is not None:
@@ -262,7 +261,7 @@ def create_psm_thermal_collision_rule(lbm_config):
             + solid_post_assignments
     )
     mains = pdfs_update + output_asms + remaining_main_asms
-    print("main asses are  ", output_asms)
+    #print("main asses are  ", output_asms)
     for item in mains:
         if not isinstance(item, Assignment):
             print("❌ Invalid main assignment:", item, type(item))

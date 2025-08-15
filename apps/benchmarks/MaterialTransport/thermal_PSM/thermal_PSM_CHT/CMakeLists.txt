@@ -32,6 +32,7 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
                     EnergyMacroGetter.h EnergyMacroGetter.cpp
                     compute_temperature_field.h compute_temperature_field.cpp
                     compute_temperature_field_particle.h compute_temperature_field_particle.cpp
+                    initializeConcentrationField.h initializeConcentrationField.cpp
                     GeneralInfoHeader.h
         )
             message(STATUS "generated in thermal PSM is: ${config}" )
