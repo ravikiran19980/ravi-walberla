@@ -46,6 +46,7 @@ const bool infoCseGlobal = {cse_global};
 const bool infoCsePdfs = {cse_pdfs};
 """
 
+
 with CodeGeneration() as ctx:
     data_type = "float64" if ctx.double_accuracy else "float32"
     stencil_fluid = LBStencil(Stencil.D3Q19)
@@ -116,7 +117,8 @@ with CodeGeneration() as ctx:
     B = ps.fields(f"b({1}): {data_type}[3D]", layout=layout)
 
     #force_concentration_on_fluid = sp.Matrix([0, (rho_0)*alpha*(concentration_field.center - T0)*gravity_LBM,0])
-    force_concentration_on_fluid = sp.Matrix([0, 0,(rho_0)*alpha*(concentration_field.center - T0)*gravity_LBM])
+    force_concentration_on_fluid = sp.Matrix([0, 0, (rho_0) * alpha * gravity_LBM * (concentration_field.center - T0)])
+    #force_concentration_on_fluid = sp.Matrix([0, 0,sp.Symbol("Gr")*concentration_field.center/sp.Symbol("Re")**2])
 
     # Fluid LBM optimisation
     lbm_fluid_opt = LBMOptimisation(

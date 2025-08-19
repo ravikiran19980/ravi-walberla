@@ -27,7 +27,7 @@
 #else
 #   include "lbm_mesapd_coupling/partially_saturated_cells_method/codegen/PSMWrapperSweepsCPU.h"
 #   include "lbm_mesapd_coupling/partially_saturated_cells_method/codegen/ParticleAndVolumeFractionMappingSweepsCPU.h"
-#include "ConcentrationMacroGetter.h"
+//#include "ConcentrationMacroGetter.h"
 #include "compute_temperature_field.h"
 #endif
 
