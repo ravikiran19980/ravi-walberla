@@ -286,12 +286,13 @@ void writeVelocityToFile(const ParticleInfo &info, uint_t time, const std::strin
 
    // write: time  averageVelocity  maximumVelocity
    if(time == 0){
-      file << "time averagevel\n";
+      file << "time averagevel position\n";
    }
 
    file << std::fixed << std::setprecision(6)
         << time << "  "
-        << info.averageVelocity << "\n";
+        << info.averageVelocity << " "
+        << info.heightOfMass << "\n";
 }
 
 
