@@ -452,7 +452,7 @@ int main(int argc, char** argv)
    const real_t gravitationalAcceleration = (3*Uc*Uc*densityFluid)/(4*particleDiameter*(densityParticle- densityFluid));
    const real_t kinematicViscosityLB = dynamicViscosityLB/densityFluid;
    const real_t rho_Cp_ref = 2*densityFluid*Cp_f*densityParticle*Cp_s/(densityFluid*Cp_f + densityParticle*Cp_s);
-   const real_t dummy_ref = densityFluid*Cp_f;
+   const real_t dummy_ref = 2*densityFluid*Cp_f*densityParticle*Cp_s/(densityFluid*Cp_f + densityParticle*Cp_s); //densityFluid*Cp_f;
    const real_t thermalDiffusivityFluid_LB = Kf/(dummy_ref);
    const real_t thermalDiffusivityParticle_LB = Ks/(dummy_ref);
    //const real_t delta_T = (Gr*dynamicViscosityLB*dynamicViscosityLB)/(densityFluid*densityFluid*alphaLB*particleDiameter*particleDiameter*particleDiameter*gravitationalAcceleration);
@@ -462,7 +462,7 @@ int main(int argc, char** argv)
    const real_t omega_f = lbm::collision_model::omegaFromViscosity(kinematicViscosityLB);
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
    const real_t omegaT_s = lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
-   const real_t Qs = 3*densityFluid*Cp_f*Uc*delta_T/particleDiameter;
+   const real_t Qs = 1*densityFluid*Cp_f*Uc*delta_T/particleDiameter;
 
    WALBERLA_LOG_INFO_ON_ROOT("Known Quantities are    ");
    WALBERLA_LOG_INFO_ON_ROOT("density particle LB is " << densityParticle);
