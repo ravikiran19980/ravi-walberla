@@ -700,8 +700,8 @@ int main(int argc, char** argv)
    // map boundaries into the fluid field simulation
    geometry::initBoundaryHandling< FlagField_T >(*blocks, flagFieldFluidID, boundariesConfigFluid);
    geometry::setNonBoundaryCellsToDomain< FlagField_T >(*blocks, flagFieldFluidID, Fluid_Flag);
-   lbm::BC_Fluid_Density density_fluid_bc(blocks,pdfFieldFluidCPUGPUID,real_t(1));
-   density_fluid_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldFluidID, Density_Fluid_Flag, Fluid_Flag);
+   //lbm::BC_Fluid_Density density_fluid_bc(blocks,pdfFieldFluidCPUGPUID,real_t(1));
+   //density_fluid_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldFluidID, Density_Fluid_Flag, Fluid_Flag);
    lbm::BC_Fluid_NoSlip noSlip_fluid_bc(blocks, pdfFieldFluidCPUGPUID);
    noSlip_fluid_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldFluidID, NoSlip_Fluid_Flag, Fluid_Flag);
    lbm::BC_Fluid_UBB ubb_fluid_bc(blocks, pdfFieldFluidCPUGPUID, real_t(0), real_t(0), real_t(0));
@@ -998,8 +998,8 @@ int main(int argc, char** argv)
                      << Sweep(deviceSyncWrapper(noSlip_fluid_bc.getSweep()), "Boundary Handling (No slip fluid)");
       timeloop.add() << Sweep(deviceSyncWrapper(ubb_fluid_bc.getSweep()),
                                           "Boundary Handling (fluid ubb)");
-      timeloop.add() << Sweep(deviceSyncWrapper(density_fluid_bc.getSweep()),
-                              "Boundary Handling (fluid density)");
+      //timeloop.add() << Sweep(deviceSyncWrapper(density_fluid_bc.getSweep()),
+      //                        "Boundary Handling (fluid density)");
 
 
       // add the energy to the time loop
