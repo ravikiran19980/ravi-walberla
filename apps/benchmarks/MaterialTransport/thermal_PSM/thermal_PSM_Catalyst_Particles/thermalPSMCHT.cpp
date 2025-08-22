@@ -769,7 +769,7 @@ int main(int argc, char** argv)
    initFluidField(blocks, velFieldFluidCPUGPUID, Uinitialize, domainSize);
 
    // Map particles into the fluid domain
-   ParticleAndVolumeFractionSoA_T< Weighting > particleAndVolumeFractionSoA(blocks, omegaT_s);
+   ParticleAndVolumeFractionSoA_T< Weighting > particleAndVolumeFractionSoA(blocks, omega_f);
    PSMSweepCollection psmSweepCollectionUniformTemperatures(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
                                                 particleAndVolumeFractionSoA, densityConcentrationFieldCPUGPUID,
                                                 particleSubBlockSize, true);
@@ -950,8 +950,29 @@ int main(int argc, char** argv)
 
       vtkOutput_Energy->addCellDataWriter(
          make_shared< field::VTKWriter< FlagField_T > >(flagFieldEnergyID, "EnergyFlagField"));
-      timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Fluid), "VTK output Fluid");
-      timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Energy), "VTK output Energy");
+      //timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Fluid), "VTK output Fluid");
+      //timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Energy), "VTK output Energy");
+
+      const AABB sliceAABB(real_t(0), real_c(domainSize[1]) * real_t(0.5) - real_t(1), real_t(0),
+                           real_c(domainSize[0]), real_c(domainSize[1]) * real_t(0.5) + real_t(1),
+                           real_c(domainSize[2]));
+      const walberla::vtk::AABBCellFilter aabbSliceFilter(sliceAABB);
+      field::FlagFieldCellFilter< FlagField_T > fluidFilter(flagFieldFluidID);
+      fluidFilter.addFlag(Fluid_Flag);
+      walberla::vtk::ChainedFilter combinedSliceFilter;
+      combinedSliceFilter.addFilter(fluidFilter);
+      combinedSliceFilter.addFilter(aabbSliceFilter);
+      vtkOutput_Fluid->addCellInclusionFilter(combinedSliceFilter);
+      timeloop.addFuncBeforeTimeStep(walberla::vtk::writeFiles(vtkOutput_Fluid), "VTK (fluid field data)");
+
+      field::FlagFieldCellFilter< FlagField_T > energyFilter(flagFieldEnergyID);
+      energyFilter.addFlag(Energy_Flag);
+      walberla::vtk::ChainedFilter combinedSliceFilterEnergy;
+      combinedSliceFilterEnergy.addFilter(energyFilter);
+      combinedSliceFilterEnergy.addFilter(aabbSliceFilter);
+      vtkOutput_Energy->addCellInclusionFilter(combinedSliceFilter);
+      timeloop.addFuncBeforeTimeStep(walberla::vtk::writeFiles(vtkOutput_Energy), "VTK (energy field data)");
+
    }
    if (vtkSpacingFluid != uint_t(0)) { vtk::writeDomainDecomposition(blocks, "domain_decomposition", vtkFolder); }
 
