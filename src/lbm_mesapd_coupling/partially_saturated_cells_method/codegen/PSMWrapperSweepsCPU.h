@@ -102,38 +102,12 @@ class SetParticleTemperaturesSweep
       auto particleTemperaturesField =
          block->getData< particleTemperaturesField_T >(particleAndVolumeFractionSoA_.particleTemperaturesFieldID);
 
-      auto BsField =
-         block->getData< BsField_T >(particleAndVolumeFractionSoA_.BsFieldID);
-      auto densityConcentrationField = block->getData< DensityField_concentration_T >(densityConcentrationFieldCPUGPUID_);
+      WALBERLA_FOR_ALL_CELLS_XYZ(
+         particleTemperaturesField,
 
-      if (uniformParticleTemperature_)
-      {
-         WALBERLA_FOR_ALL_CELLS_XYZ(
-            particleTemperaturesField,
+         for (uint_t p = 0; p < nOverlappingParticlesField->get(x, y, z);
+              p++) { particleTemperaturesField->get(x, y, z, p) = temperatures[idxField->get(x, y, z, p)]; })
 
-            for (uint_t p = 0; p < nOverlappingParticlesField->get(x, y, z);
-                 p++) { particleTemperaturesField->get(x, y, z, p) = temperatures[idxField->get(x, y, z, p)]; })
-      }
-      else
-      {
-         WALBERLA_FOR_ALL_CELLS_XYZ(
-            particleTemperaturesField,
-
-            for (uint_t p = 0; p < nOverlappingParticlesField->get(x, y, z);
-                 p++) {
-
-               if(BsField->get(x,y,z,p) < 1)
-               {
-                  particleTemperaturesField->get(x, y, z, p) = densityConcentrationField->get(x, y, z);
-
-               }
-               else{
-                  particleTemperaturesField->get(x, y, z, p) = densityConcentrationField->get(x, y, z);
-
-               }
-
-            })
-      }
       free(temperatures);
    }
 

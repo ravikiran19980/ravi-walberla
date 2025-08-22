@@ -96,21 +96,20 @@ void addThermalPSMSweepToTimeloop(SweepTimeloop& timeloop, SweepCollection& psmS
                            "Reduce particle forces");
 }
 
-template< typename SweepCollection, typename PSMSweepFluid,typename PSMSweepCHT, typename ComputeTempSweep>
-void addCHTPSMSweepToTimeloop(SweepTimeloop& timeloop, SweepCollection& psmSweepCollection, PSMSweepFluid& psmFluidSweep,PSMSweepCHT& psmEnergySweep,ComputeTempSweep &compute_temperature_field)
+template< typename SweepCollectionFluid,typename SweepCollectionTemperature,typename PSMSweepFluid,typename PSMSweepCHT>
+void addCHTPSMSweepToTimeloop(SweepTimeloop& timeloop, SweepCollectionFluid& psmSweepCollectionFluid, SweepCollectionTemperature& psmSweepCollectionTemperature,PSMSweepFluid& psmFluidSweep,PSMSweepCHT& psmEnergySweep)
 {
-   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollection.particleMappingSweep), "Particle mapping");
-   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollection.setParticleVelocitiesSweep),
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.particleMappingSweep), "Particle mapping Fluid"); // uses weighting for hydrodynamics specified in Cmakelists file
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping Thermal"); // always uses a weighting of 1
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.setParticleVelocitiesSweep),
                            "Set particle velocities");
 
    timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep");
 
    timeloop.add() << Sweep(deviceSyncWrapper(psmEnergySweep), "PSM Energy sweep");
 
-   //timeloop.add() << Sweep(deviceSyncWrapper(compute_temperature_field),"compute temperature field");
-
    // after both the sweeps, reduce the particle forces.
-   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollection.reduceParticleForcesSweep),
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.reduceParticleForcesSweep),
                            "Reduce particle forces");
 }
 
