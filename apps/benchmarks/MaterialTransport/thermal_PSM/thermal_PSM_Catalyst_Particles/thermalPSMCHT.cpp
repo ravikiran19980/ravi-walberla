@@ -89,6 +89,7 @@
 #include "PSMFluidSweep.h"
 #include "PackInfoFluid.h"
 #include "PackInfoEnergy.h"
+#include "math.h"
 
 namespace MaterialTransport
 {
@@ -336,9 +337,11 @@ int main(int argc, char** argv)
    Config::BlockHandle numericalSetup = cfgFile->getBlock("NumericalSetup");
    const real_t dx_SI                 = numericalSetup.getParameter< real_t >("dx");
    const real_t dt_SI          = numericalSetup.getParameter< real_t >("dt");
+   const real_t Uc          = numericalSetup.getParameter< real_t >("Uc");
    const uint_t numXBlocks            = numericalSetup.getParameter< uint_t >("numXBlocks");
    const uint_t numYBlocks            = numericalSetup.getParameter< uint_t >("numYBlocks");
    const uint_t numZBlocks            = numericalSetup.getParameter< uint_t >("numZBlocks");
+   const bool use2DRefVel            = numericalSetup.getParameter< bool >("use2DRefVel");
    WALBERLA_CHECK_EQUAL(numXBlocks * numYBlocks * numZBlocks, uint_t(MPIManager::instance()->numProcesses()),
                         "When using GPUs, the number of blocks ("
                            << numXBlocks * numYBlocks * numZBlocks << ") has to match the number of MPI processes ("
@@ -368,8 +371,7 @@ int main(int argc, char** argv)
    const real_t Pr                = TemperatureSetup.getParameter< real_t >("PrandtlNumber");
    const real_t Cp_f_SI                    = TemperatureSetup.getParameter<real_t>("Cpf");
    const real_t Cp_s_SI                    = TemperatureSetup.getParameter<real_t>("Cps");
-   const real_t Kf_SI                    = TemperatureSetup.getParameter<real_t>("Kf");
-   const real_t Ks_SI                    = TemperatureSetup.getParameter<real_t>("Ks");
+   const real_t Kr                    = TemperatureSetup.getParameter<real_t>("Kr");
    const real_t Gr                    = TemperatureSetup.getParameter<real_t>("Gr");
 
    Config::BlockHandle outputSetup      = cfgFile->getBlock("Output");
@@ -444,21 +446,33 @@ int main(int argc, char** argv)
    const real_t Tref = Tref_SI;  // this is the initial fluid temperature and we define Gr for the fluid
    const real_t particleTemperature = Tparticle_SI;
    const real_t T0 = 0;
-   const real_t Kf = Kf_SI;  // for the time being
-   const real_t Ks = Ks_SI;  // for the time being
    const real_t delta_T = 1 ; //Tref - T0;
 
-   const real_t dynamicViscosityLB = (Pr*Kf)/Cp_f;
-   const real_t Uc = particleRe*dynamicViscosityLB/(densityFluid*particleDiameter);
-   const real_t gravitationalAcceleration = (3*Uc*Uc*densityFluid)/(4*particleDiameter*(densityParticle- densityFluid));
-   const real_t kinematicViscosityLB = dynamicViscosityLB/densityFluid;
-   const real_t rho_Cp_ref = 2*densityFluid*Cp_f*densityParticle*Cp_s/(densityFluid*Cp_f + densityParticle*Cp_s);
-   const real_t dummy_ref = 2*densityFluid*Cp_f*densityParticle*Cp_s/(densityFluid*Cp_f + densityParticle*Cp_s); //densityFluid*Cp_f;
-   const real_t thermalDiffusivityFluid_LB = Kf/(dummy_ref);
-   const real_t thermalDiffusivityParticle_LB = Ks/(dummy_ref);
-   //const real_t delta_T = (Gr*dynamicViscosityLB*dynamicViscosityLB)/(densityFluid*densityFluid*alphaLB*particleDiameter*particleDiameter*particleDiameter*gravitationalAcceleration);
-   const real_t alphaLB = (Gr*dynamicViscosityLB*dynamicViscosityLB)/(densityFluid*densityFluid*delta_T*particleDiameter*particleDiameter*particleDiameter*gravitationalAcceleration);
+   const real_t dynamicViscosityLB = (densityFluid * Uc * particleDiameter) / (particleRe);
+   real_t gravitationalAcceleration = (3 * Uc * Uc * densityFluid) / (4 * particleDiameter * (densityParticle - densityFluid));
 
+   if (use2DRefVel)
+   {
+      WALBERLA_LOG_INFO_ON_ROOT("pi value is  " << math::pi);
+      gravitationalAcceleration =
+         (2 * Uc * Uc * densityFluid) / ( math::pi * particleDiameter * (densityParticle - densityFluid));
+   }
+
+   const real_t kinematicViscosityLB = dynamicViscosityLB / densityFluid;
+
+   const real_t rho_Cp_ref =
+      2 * densityFluid * Cp_f * densityParticle * Cp_s / (densityFluid * Cp_f + densityParticle * Cp_s);
+
+   const real_t dummy_ref = 2 * densityFluid * Cp_f * densityParticle * Cp_s /
+                            (densityFluid * Cp_f + densityParticle * Cp_s); // densityFluid*Cp_f;
+
+   const real_t thermalDiffusivityFluid_LB = kinematicViscosityLB / Pr;
+
+   const real_t thermalDiffusivityParticle_LB = thermalDiffusivityFluid_LB * Kr;
+
+   const real_t alphaLB = (Gr * dynamicViscosityLB * dynamicViscosityLB) /
+                          (densityFluid * densityFluid * delta_T * particleDiameter * particleDiameter *
+                           particleDiameter * gravitationalAcceleration);
 
    const real_t omega_f = lbm::collision_model::omegaFromViscosity(kinematicViscosityLB);
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
@@ -489,7 +503,7 @@ int main(int argc, char** argv)
    WALBERLA_LOG_INFO_ON_ROOT("Sanity checks------------------------------");
    WALBERLA_LOG_INFO_ON_ROOT("Grashof number from parameter file is = "  << Gr);
    WALBERLA_LOG_INFO_ON_ROOT("Grashof number =    " << (densityFluid*densityFluid*alphaLB*gravitationalAcceleration*delta_T*particleDiameter*particleDiameter*particleDiameter)/(dynamicViscosityLB*dynamicViscosityLB));
-   WALBERLA_LOG_INFO_ON_ROOT("Prandtly number = " <<  (dynamicViscosityLB*Cp_f/Kf) );
+   WALBERLA_LOG_INFO_ON_ROOT("Prandtl number = " <<  (kinematicViscosityLB/thermalDiffusivityFluid_LB) );
    WALBERLA_LOG_INFO_ON_ROOT("Reynolds number = "  << (densityFluid*Uc*particleDiameter/dynamicViscosityLB) );
 
 
@@ -786,10 +800,6 @@ int main(int argc, char** argv)
       particleAndVolumeFractionSoA_fluid.BsFieldID, particleAndVolumeFractionSoA_fluid.BFieldID, densityConcentrationFieldCPUGPUID,
       particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID, pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID, T0,
       alphaLB, gravitationalAcceleration, real_t(1), rho_0);
-   /* pystencils::InitializeFluidDomain pdfSetterFluid(
-      particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID,
-      particleAndVolumeFractionSoA.particleVelocitiesFieldID, pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID,alphaLB,gravitationalAcceleration,real_t(1), rho_0);
-*/
 
 
    pystencils::InitializeEnergyDomain pdfSetterEnergy(
@@ -854,16 +864,10 @@ int main(int argc, char** argv)
    pystencils::FluidMacroGetter getterSweep_fluid(particleAndVolumeFractionSoA_fluid.BFieldID,densityConcentrationFieldCPUGPUID, densityFluidFieldID,
                                                   pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID, T0, alphaLB, gravitationalAcceleration,
                                                   rho_0);
-   /*pystencils::FluidMacroGetter getterSweep_fluid(particleAndVolumeFractionSoA.BFieldID, densityFluidFieldID,
-                                                  pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID,alphaLB,gravitationalAcceleration,rho_0);
-*/
+
    pystencils::EnergyMacroGetter getterSweep_energy(energyFieldCPUGPUID,
                                                   pdfFieldEnergyCPUGPUID);
 
-   //pystencils::compute_temperature_field compute_temperature_field(particleAndVolumeFractionSoA.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,pdfFieldFluidCPUGPUID,Tref,alphaLB,gravitationalAcceleration,rho_0);
-   //pystencils::compute_temperature_field compute_temperature_field(particleAndVolumeFractionSoA.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,Cp_f,Cp_s,omegaT_f,omegaT_s,densityFluid,densityParticle);
-   //pystencils::compute_temperature_field compute_temperature_field(densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID);
-   //pystencils::compute_temperature_field_particle compute_temperature_field_particle(particleAndVolumeFractionSoA.particleTemperaturesFieldID,pdfFieldEnergyCPUGPUID);
 
 #endif
 
@@ -984,10 +988,6 @@ int main(int argc, char** argv)
       particleAndVolumeFractionSoA_fluid.BsFieldID, particleAndVolumeFractionSoA_fluid.BFieldID, densityConcentrationFieldCPUGPUID,
       particleAndVolumeFractionSoA_fluid.particleForcesFieldID, particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID,
       pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID, T0, alphaLB, gravitationalAcceleration, omega_f, rho_0);
-   /*pystencils::PSMFluidSweep psmFluidSweep(
-      particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID,
-      particleAndVolumeFractionSoA.particleForcesFieldID, particleAndVolumeFractionSoA.particleVelocitiesFieldID,
-      pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID,alphaLB,gravitationalAcceleration, omega_f,rho_0);*/
 
 
    pystencils::PSMEnergySweep psmEnergySweep(
@@ -999,8 +999,6 @@ int main(int argc, char** argv)
                      << Sweep(deviceSyncWrapper(noSlip_fluid_bc.getSweep()), "Boundary Handling (No slip fluid)");
       timeloop.add() << Sweep(deviceSyncWrapper(ubb_fluid_bc.getSweep()),
                                           "Boundary Handling (fluid ubb)");
-
-
 
       // add the energy to the time loop
 

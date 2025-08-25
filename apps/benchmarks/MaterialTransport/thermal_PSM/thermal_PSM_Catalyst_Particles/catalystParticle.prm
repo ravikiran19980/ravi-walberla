@@ -9,13 +9,13 @@ PhysicalSetup // all to be specified in SI/ref units
     periodicInY false;
     periodicInZ false;
 
-    runtime 40;
+    runtime 500;
     densityFluid 1.;
     particleDiameter 0.016;
     densityParticle 1.1.;
     particleRe 40;
-    dynamicFrictionCoefficient 0.15;
-    coefficientOfRestitution 0.6;
+    dynamicFrictionCoefficient 0.4;  // wachs, 0.15 originally
+    coefficientOfRestitution 0.7;    // wachs  , 0.6 originally
     collisionTimeFactor 1.0;
 
 }
@@ -24,12 +24,13 @@ NumericalSetup
 {
     dx 0.001; // in m
     dt 0.001;  // this is the dt_SI if at all uInflow is set to 0.
-
+    Uc 0.01;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
     // product of number of blocks should be equal to number of used processes
-    numXBlocks 2;
-    numYBlocks 1;
-    numZBlocks 2;
+    numXBlocks 4;
+    numYBlocks 4;
+    numZBlocks 16;
 
+    use2DRefVel false;
     useLubricationForces true;
     numberOfParticleSubCycles 10;
     useParticles true;
@@ -49,8 +50,7 @@ TemperatureSetup
     PrandtlNumber 0.7;
     Cpf 1;
     Cps 1;
-    Kf  0.01;
-    Ks  0.15;  // 15 times Kf
+    Kr  15;
     Gr 1000;
 }
 
