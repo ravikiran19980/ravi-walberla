@@ -114,6 +114,7 @@ const FlagUID Fluid_Flag("Fluid");
 const FlagUID Density_Fluid_Flag("Density_Fluid");
 const FlagUID NoSlip_Fluid_Flag("NoSlip_Fluid");
 const FlagUID Inflow_Fluid_Flag("Inflow_Fluid");
+const FlagUID FreeSlip_Fluid_Flag("Free_Slip_Fluid");
 
 
 // Energy Flags
@@ -672,7 +673,7 @@ int main(int argc, char** argv)
 
    if (!periodicInZ)
    {
-      boundariesBlockString += "Border { direction T;    walldistance -1;  flag Density_Fluid; }"
+      boundariesBlockString += "Border { direction T;    walldistance -1;  flag Free_Slip_Fluid; }"
                                "Border { direction B;    walldistance -1;  flag NoSlip_Fluid; }";
    }
 
@@ -718,7 +719,8 @@ int main(int argc, char** argv)
    noSlip_fluid_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldFluidID, NoSlip_Fluid_Flag, Fluid_Flag);
    lbm::BC_Fluid_UBB ubb_fluid_bc(blocks, pdfFieldFluidCPUGPUID, real_t(0), real_t(0), real_t(0));
    ubb_fluid_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldFluidID, Inflow_Fluid_Flag, Fluid_Flag);
-
+   lbm::BC_Fluid_FreeSlip freeSlip_fluid_bc(blocks, pdfFieldFluidCPUGPUID);
+   freeSlip_fluid_bc.fillFromFlagField<FlagField_T>(blocks, flagFieldFluidID, FreeSlip_Fluid_Flag, Fluid_Flag);
 
    // map boundaries into the energy field simulation
 
@@ -1004,6 +1006,8 @@ int main(int argc, char** argv)
                                           "Boundary Handling (fluid ubb)");
       timeloop.add() << Sweep(deviceSyncWrapper(density_fluid_bc.getSweep()),
                               "Boundary Handling (fluid density)");
+      timeloop.add() << Sweep(deviceSyncWrapper(freeSlip_fluid_bc.getSweep()),
+                              "Boundary Handling (Free slip fluid)");
 
       // add the energy to the time loop
 
