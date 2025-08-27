@@ -313,7 +313,7 @@ int main(int argc, char** argv)
    const real_t particleDiameter_SI          = physicalSetup.getParameter< real_t >("particleDiameter");
    real_t densityParticle_SI                 = physicalSetup.getParameter< real_t >("densityParticle");
    const real_t particleGenerationSpacing_SI = physicalSetup.getParameter< real_t >("particleGenerationSpacing");
-   const real_t numOfParticles               = physicalSetup.getParameter< real_t >("numOfParticles");
+   const uint_t numOfParticles               = physicalSetup.getParameter< real_t >("numOfParticles");
    bool showcase                             = physicalSetup.getParameter< bool >("showcase");
 
    Config::BlockHandle numericalSetup = cfgFile->getBlock("NumericalSetup");
@@ -501,6 +501,7 @@ int main(int argc, char** argv)
    WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.yMin(), real_t(0));
    WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.zMin(), real_t(0));
    if(showcase){
+      WALBERLA_LOG_INFO_ON_ROOT("Creating " << numOfParticles << " particles for the showcase simulations");
    auto generationDomain = math::AABB::createFromMinMaxCorner(
       math::Vector3< real_t >(simulationDomain.xMax() * (real_t(1) - generationDomainFraction[0]) / real_t(2),
                               simulationDomain.yMax() * (real_t(1) - generationDomainFraction[1]) / real_t(2),
@@ -531,16 +532,23 @@ int main(int argc, char** argv)
    }
 }
    else{
-         Vector3< real_t > pt(domainSize[0]/2, domainSize[1]/2, domainSize[2]/2);
-         if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
+         WALBERLA_LOG_INFO_ON_ROOT("Creating " << numOfParticles << " particles for the scaling benchmarks");
+         auto generationDomain = simulationDomain.getExtended(-particleGenerationSpacing * 0.5_r);
+         uint_t numparticles = 0;
+         for (auto pt : grid_generator::SCGrid(generationDomain, generationDomain.center(), particleGenerationSpacing))
          {
-            mesa_pd::data::Particle&& p = *ps->create();
-            p.setPosition(pt);
-            p.setInteractionRadius(particleDiameter * real_t(0.5));
-            p.setOwner(mpi::MPIManager::instance()->rank());
-            p.setShapeID(sphereShape);
-            p.setType(1);
-            p.setTemperature(particleTemperature);
+            if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
+            {
+               mesa_pd::data::Particle&& p = *ps->create();
+               p.setPosition(pt);
+               p.setInteractionRadius(particleDiameter * real_t(0.5));
+               p.setOwner(mpi::MPIManager::instance()->rank());
+               p.setShapeID(sphereShape);
+               p.setType(1);
+               p.setTemperature(particleTemperature);
+            }
+            numparticles += 1;
+            if (numparticles == numOfParticles ) { break; }
          }
    }
 
