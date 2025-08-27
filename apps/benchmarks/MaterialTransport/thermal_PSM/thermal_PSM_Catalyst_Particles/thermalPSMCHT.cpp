@@ -672,7 +672,7 @@ int main(int argc, char** argv)
 
    if (!periodicInZ)
    {
-      boundariesBlockString += "Border { direction T;    walldistance -1;  flag NoSlip_Fluid; }"
+      boundariesBlockString += "Border { direction T;    walldistance -1;  flag Density_Fluid; }"
                                "Border { direction B;    walldistance -1;  flag NoSlip_Fluid; }";
    }
 
@@ -785,6 +785,9 @@ int main(int argc, char** argv)
    PSMSweepCollection psmSweepCollectionFluid(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
                                               particleAndVolumeFractionSoA_fluid, densityConcentrationFieldCPUGPUID,
                                               particleSubBlockSize);
+   lbm::BC_Fluid_Density density_fluid_bc(blocks,
+                                          particleAndVolumeFractionSoA_fluid.BFieldID,densityConcentrationFieldCPUGPUID,pdfFieldFluidCPUGPUID, T0, alphaLB, real_t(1),gravitationalAcceleration, 1);
+   density_fluid_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldFluidID, Density_Fluid_Flag, Fluid_Flag);
 
    ParticleAndVolumeFractionSoA_T< 1 > particleAndVolumeFractionSoA_energy(blocks,omegaT_f);
    PSMSweepCollection psmSweepCollectionTemperature(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
@@ -999,6 +1002,8 @@ int main(int argc, char** argv)
                      << Sweep(deviceSyncWrapper(noSlip_fluid_bc.getSweep()), "Boundary Handling (No slip fluid)");
       timeloop.add() << Sweep(deviceSyncWrapper(ubb_fluid_bc.getSweep()),
                                           "Boundary Handling (fluid ubb)");
+      timeloop.add() << Sweep(deviceSyncWrapper(density_fluid_bc.getSweep()),
+                              "Boundary Handling (fluid density)");
 
       // add the energy to the time loop
 
