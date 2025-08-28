@@ -58,8 +58,7 @@ class PSMSweepCollection
                       const ParticleSelector_T& ps,
                       ParticleAndVolumeFractionSoA_T< Weighting_T >& particleAndVolumeFractionSoA,
                       BlockDataID & densityConcentrationFieldCPUGPUID,
-                      const Vector3< uint_t > particleSubBlockSize = Vector3< uint_t >(10),
-                      bool uniformParticleTemperature = false)
+                      const Vector3< uint_t > particleSubBlockSize = Vector3< uint_t >(10))
       : particleMappingSweep(SphereFractionMappingSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >(
            bs, ac, ps, particleAndVolumeFractionSoA, particleSubBlockSize)),
         setParticleVelocitiesSweep(SetParticleVelocitiesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >(
@@ -67,7 +66,7 @@ class PSMSweepCollection
         reduceParticleForcesSweep(ReduceParticleForcesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >(
            bs, ac, ps, particleAndVolumeFractionSoA)),
         setParticleTemperaturesSweep( SetParticleTemperaturesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >(
-           bs, ac, ps, particleAndVolumeFractionSoA, densityConcentrationFieldCPUGPUID,uniformParticleTemperature))
+           bs, ac, ps, particleAndVolumeFractionSoA, densityConcentrationFieldCPUGPUID))
 
    {}
 

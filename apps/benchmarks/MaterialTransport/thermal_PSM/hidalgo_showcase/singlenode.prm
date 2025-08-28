@@ -2,7 +2,7 @@
 
 PhysicalSetup                         // To be specified in SI units!
 {
-    showcase false;
+    showcase false;     // false is used for scaling runs, true is just used for the visualization for the september review
     xSize 0.2;                                      // width in SI units
     ySize 0.08;                                     // depth in SI units
     zSize 0.04;                                     // height in SI units
@@ -24,6 +24,7 @@ NumericalSetup
     numXBlocks 2;
     numYBlocks 2;
     numZBlocks 2;
+    useIntegrators true;   // true means particles move, false means particles are stationary
 
 }
 

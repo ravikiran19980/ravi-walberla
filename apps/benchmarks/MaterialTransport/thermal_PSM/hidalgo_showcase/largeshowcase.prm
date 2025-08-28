@@ -24,6 +24,7 @@ NumericalSetup
     numXBlocks 4;
     numYBlocks 4;
     numZBlocks 4;
+    useIntegrators true;   // true means particles move, false means particles are stationary
 
 }
 

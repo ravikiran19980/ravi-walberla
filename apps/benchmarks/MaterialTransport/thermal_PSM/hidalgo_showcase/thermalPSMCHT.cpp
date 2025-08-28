@@ -323,6 +323,7 @@ int main(int argc, char** argv)
    const uint_t numXBlocks            = numericalSetup.getParameter< uint_t >("numXBlocks");
    const uint_t numYBlocks            = numericalSetup.getParameter< uint_t >("numYBlocks");
    const uint_t numZBlocks            = numericalSetup.getParameter< uint_t >("numZBlocks");
+   const bool useIntegrators          = numericalSetup.getParameter< bool >("useIntegrators");
 
    Config::BlockHandle TemperatureSetup = cfgFile->getBlock("TemperatureSetup");
    const real_t Thot_SI                 = TemperatureSetup.getParameter< real_t >("Thot");
@@ -357,15 +358,11 @@ int main(int argc, char** argv)
 
    const bool useLubricationForces        = false;
    const uint_t numberOfParticleSubCycles = uint_c(1);
-   bool useIntegrators;
-   if (showcase) { useIntegrators = true; }
-   else { useIntegrators = false; }
 
    const bool particleBarriers    = true;
    const bool sendDirectlyFromGPU = false;
    const Vector3< uint_t > particleSubBlockSize(5, 5, 1);
    const real_t linkedCellWidthRation = real_c(1.01);
-   const Vector3< real_t > generationDomainFraction(0.95, 0.95, 0.95);
 
    if ((periodicInX && numXBlocks == 1) || (periodicInY && numYBlocks == 1) || (periodicInZ && numZBlocks == 1))
    {
@@ -502,7 +499,8 @@ int main(int argc, char** argv)
    WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.zMin(), real_t(0));
    if(showcase){
       WALBERLA_LOG_INFO_ON_ROOT("Creating " << numOfParticles << " particles for the showcase simulations");
-   auto generationDomain = math::AABB::createFromMinMaxCorner(
+      const Vector3< real_t > generationDomainFraction(0.95, 0.95, 0.95);
+      auto generationDomain = math::AABB::createFromMinMaxCorner(
       math::Vector3< real_t >(simulationDomain.xMax() * (real_t(1) - generationDomainFraction[0]) / real_t(2),
                               simulationDomain.yMax() * (real_t(1) - generationDomainFraction[1]) / real_t(2),
                               simulationDomain.zMax() * (real_t(1) - generationDomainFraction[2]) / real_t(2)),
@@ -871,9 +869,6 @@ int main(int argc, char** argv)
 
    // Map particles into the fluid domain
    ParticleAndVolumeFractionSoA_T< Weighting > particleAndVolumeFractionSoA(blocks, omegaT_s);
-   PSMSweepCollection psmSweepCollectionUniformTemperatures(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
-                                                particleAndVolumeFractionSoA, densityConcentrationFieldCPUGPUID,
-                                                particleSubBlockSize, true);
    PSMSweepCollection psmSweepCollection(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
                                          particleAndVolumeFractionSoA, densityConcentrationFieldCPUGPUID,
                                          particleSubBlockSize);
@@ -909,7 +904,7 @@ int main(int argc, char** argv)
       psmSweepCollection.setParticleTemperaturesSweep(&(*blockIt));
 
 #else
-      psmSweepCollectionUniformTemperatures.setParticleTemperaturesSweep(
+      psmSweepCollection.setParticleTemperaturesSweep(
          &(*blockIt)); // the initial temperatures of particles are always uniform
 
 #endif
@@ -1093,7 +1088,6 @@ auto communication_concentration = std::function< void() >([&]() { com_concentra
          walberla::vtk::ChainedFilter combinedSliceFilter;
          combinedSliceFilter.addFilter(fluidFilter);
          combinedSliceFilter.addFilter(aabbSliceFilter);
-         // if (fluidSlice) { combinedSliceFilter.addFilter(aabbSliceFilter); }
          vtkOutput_Fluid->addCellInclusionFilter(combinedSliceFilter);
          vtkOutput_Fluid->setSamplingResolution(sampling);
          timeloop.addFuncBeforeTimeStep(walberla::vtk::writeFiles(vtkOutput_Fluid), "VTK (fluid field data)");
@@ -1103,7 +1097,6 @@ auto communication_concentration = std::function< void() >([&]() { com_concentra
          walberla::vtk::ChainedFilter combinedSliceFilterEnergy;
          combinedSliceFilterEnergy.addFilter(energyFilter);
          combinedSliceFilterEnergy.addFilter(aabbSliceFilter);
-         // if (fluidSlice) { combinedSliceFilter.addFilter(aabbSliceFilter); }
          vtkOutput_Energy->addCellInclusionFilter(combinedSliceFilter);
          vtkOutput_Energy->setSamplingResolution(sampling);
          timeloop.addFuncBeforeTimeStep(walberla::vtk::writeFiles(vtkOutput_Energy), "VTK (energy field data)");

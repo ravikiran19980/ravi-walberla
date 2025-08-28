@@ -55,10 +55,9 @@ class SetParticleTemperaturesSweep
                                 const shared_ptr< ParticleAccessor_T >& ac,
                                 const ParticleSelector_T& mappingParticleSelector,
                                 ParticleAndVolumeFractionSoA_T< Weighting_T >& particleAndVolumeFractionSoA,
-                                BlockDataID & densityConcentrationFieldCPUGPUID,bool uniformParticleTemperature = false)
+                                BlockDataID & densityConcentrationFieldCPUGPUID)
       : bs_(bs), ac_(ac), mappingParticleSelector_(mappingParticleSelector),
-        particleAndVolumeFractionSoA_(particleAndVolumeFractionSoA), densityConcentrationFieldCPUGPUID_(densityConcentrationFieldCPUGPUID),
-        uniformParticleTemperature_(uniformParticleTemperature)
+        particleAndVolumeFractionSoA_(particleAndVolumeFractionSoA), densityConcentrationFieldCPUGPUID_(densityConcentrationFieldCPUGPUID)
    {}
    void operator()(IBlock* block)
    {
@@ -106,34 +105,12 @@ class SetParticleTemperaturesSweep
          block->getData< BsField_T >(particleAndVolumeFractionSoA_.BsFieldID);
       auto densityConcentrationField = block->getData< DensityField_concentration_T >(densityConcentrationFieldCPUGPUID_);
 
-      if (uniformParticleTemperature_)
-      {
-         WALBERLA_FOR_ALL_CELLS_XYZ(
-            particleTemperaturesField,
+      WALBERLA_FOR_ALL_CELLS_XYZ(
+         particleTemperaturesField,
 
-            for (uint_t p = 0; p < nOverlappingParticlesField->get(x, y, z);
-                 p++) { particleTemperaturesField->get(x, y, z, p) = temperatures[idxField->get(x, y, z, p)]; })
-      }
-      else
-      {
-         WALBERLA_FOR_ALL_CELLS_XYZ(
-            particleTemperaturesField,
+         for (uint_t p = 0; p < nOverlappingParticlesField->get(x, y, z);
+              p++) { particleTemperaturesField->get(x, y, z, p) = temperatures[idxField->get(x, y, z, p)]; })
 
-            for (uint_t p = 0; p < nOverlappingParticlesField->get(x, y, z);
-                 p++) {
-
-               if(BsField->get(x,y,z,p) < 1)
-               {
-                  particleTemperaturesField->get(x, y, z, p) = densityConcentrationField->get(x, y, z);
-
-               }
-               else{
-                  particleTemperaturesField->get(x, y, z, p) = densityConcentrationField->get(x, y, z);
-
-               }
-
-            })
-      }
       free(temperatures);
    }
 
@@ -143,7 +120,6 @@ class SetParticleTemperaturesSweep
    const ParticleSelector_T& mappingParticleSelector_;
    ParticleAndVolumeFractionSoA_T< Weighting_T >& particleAndVolumeFractionSoA_;
    const BlockDataID &densityConcentrationFieldCPUGPUID_;
-   const bool uniformParticleTemperature_;
 };
 
 template< typename ParticleAccessor_T, typename ParticleSelector_T, int Weighting_T >
