@@ -472,14 +472,14 @@ int main(int argc, char** argv)
    const real_t Tcold = Tcold_SI/T_conversion;
    const real_t Tref = Tref_SI/T_conversion;
    const real_t Cp_f = real_t(1);
-   const real_t Cp_s = real_t(2);
+   const real_t Cp_s = real_t(15);
    real_t Cp_S_SI = (Cp_s * dx_SI*dx_SI)/(dt_SI*dt_SI);
    WALBERLA_LOG_INFO_ON_ROOT("si cp solid is  " << Cp_S_SI);
    real_t omega_f = 1/(0.6);
    const real_t kinematicViscosityLB = lbm::collision_model::viscosityFromOmega(omega_f);
    const real_t thermalDiffusivityFluid_LB = kinematicViscosityLB/Pr;
    const real_t thermalDiffusivityParticle_SI = Ks_SI/(densityParticle_SI*Cp_S_SI);
-   const real_t thermalDiffusivityParticle_LB = 1*thermalDiffusivityFluid_LB;//(thermalDiffusivityParticle_SI * dt_SI) / (dx_SI * dx_SI);
+   const real_t thermalDiffusivityParticle_LB = 15*thermalDiffusivityFluid_LB;//(thermalDiffusivityParticle_SI * dt_SI) / (dx_SI * dx_SI);
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
    const real_t omegaT_s = lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
 
@@ -845,7 +845,7 @@ int main(int argc, char** argv)
       alphaLB, gravitationalAcceleration, real_t(1), rho_0);
 
    const real_t rho_Cp_ref = 2*densityFluid*Cp_f*densityParticle*Cp_s/(densityFluid*Cp_f + densityParticle*Cp_s);
-   const real_t dummy_ref = densityFluid*Cp_f;
+   const real_t dummy_ref =  densityParticle*Cp_s;//2*densityFluid*Cp_f*densityParticle*Cp_s/(densityFluid*Cp_f + densityParticle*Cp_s); //densityFluid*Cp_f;
    pystencils::InitializeEnergyDomain pdfSetterEnergy(
       particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID, densityConcentrationFieldCPUGPUID,
       particleAndVolumeFractionSoA.particleTemperaturesFieldID, pdfFieldEnergyCPUGPUID, velFieldFluidCPUGPUID,

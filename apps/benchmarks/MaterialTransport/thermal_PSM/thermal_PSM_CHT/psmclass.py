@@ -144,7 +144,7 @@ def create_psm_thermal_collision_rule(lbm_config):
 
     pre_collision_pdf_symbols = thermal_lb_method.pre_collision_pdf_symbols
     post_collision_pdf_symbols = thermal_lb_method.post_collision_pdf_symbols
-
+    print("raw coll subexp is  ", raw_col.subexpressions_dict)
     if cqc_cht.density_symbol not in raw_col.subexpressions_dict:
 
         cqc_cht_eqs = cqc_cht.equilibrium_input_equations_from_pdfs(pre_collision_pdf_symbols)
