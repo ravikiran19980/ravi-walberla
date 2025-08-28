@@ -105,10 +105,9 @@ void addCHTPSMSweepToTimeloop(SweepTimeloop& timeloop, SweepCollection& psmSweep
 
    timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep");
 
-   //timeloop.add() << Sweep(deviceSyncWrapper(psmEnergySweep), "PSM Energy sweep");
+   timeloop.add() << Sweep(deviceSyncWrapper(psmEnergySweep), "PSM Energy sweep");
 
-   //timeloop.add() << Sweep(deviceSyncWrapper(compute_temperature_field),"compute temperature field");
-   //timeloop.add() << Sweep(deviceSyncWrapper(computeTempSweepParticle),"compute particle temperature field");
+   timeloop.add() << Sweep(deviceSyncWrapper(compute_temperature_field),"compute temperature field");
 
    // after both the sweeps, reduce the particle forces.
    timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollection.reduceParticleForcesSweep),
