@@ -845,7 +845,7 @@ int main(int argc, char** argv)
       alphaLB, gravitationalAcceleration, real_t(1), rho_0);
 
    const real_t rho_Cp_ref = 2*densityFluid*Cp_f*densityParticle*Cp_s/(densityFluid*Cp_f + densityParticle*Cp_s);
-   const real_t dummy_ref =  densityParticle*Cp_s;//2*densityFluid*Cp_f*densityParticle*Cp_s/(densityFluid*Cp_f + densityParticle*Cp_s); //densityFluid*Cp_f;
+   const real_t dummy_ref =  densityFluid*Cp_f;
    pystencils::InitializeEnergyDomain pdfSetterEnergy(
       particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID, densityConcentrationFieldCPUGPUID,
       particleAndVolumeFractionSoA.particleTemperaturesFieldID, pdfFieldEnergyCPUGPUID, velFieldFluidCPUGPUID,

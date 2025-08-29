@@ -119,7 +119,7 @@ def create_psm_thermal_collision_rule(lbm_config):
     rho_f, omegaT_f, Cp_f = lbm_config.fluid_density, lbm_config.relaxation_rate, lbm_config.fluid_specific_heat
     rho_s, omegaT_s, Cp_s = lbm_config.particle_density, lbm_config.solid_relaxation_rate, lbm_config.particle_specific_heat
     B = lbm_config.fraction_field
-
+    omega_eff = (1 - B.center)*omegaT_f + B.center*omegaT_s
 
     #   Update relaxation rates
     psm_lb_config = replace(
@@ -236,7 +236,7 @@ def create_psm_thermal_collision_rule(lbm_config):
     for i, f_post_solid in enumerate(solid_post_symbols):
         if heat_source is not None:
             solid_post_assignments.append(
-                Assignment(f_post_solid, solid_collisions[i] + stencil_weights[i] * heat_source * B.center)
+                Assignment(f_post_solid, solid_collisions[i] + stencil_weights[i] * heat_source * B.center*(1 - 0.5*omega_eff))
             )
         else:
             solid_post_assignments.append(
