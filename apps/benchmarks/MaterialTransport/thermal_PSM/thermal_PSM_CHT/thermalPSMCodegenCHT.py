@@ -247,8 +247,9 @@ with CodeGeneration() as ctx:
         rhs_energy.append((particle_temperatures(p) * Bs.center(p) * rho_s * Cp_s * omegaT_s)/((1 - B.center)*omegaT_f + B.center*omegaT_s))
     pdfs_energy_setter.subexpressions.remove(sub_exp_energy)
     pdfs_energy_setter.subexpressions.append(Assignment(sub_exp_energy.lhs, Add(*rhs_energy)))
-
+    pdfs_energy_setter.subexpressions.append(Assignment(sp.Symbol("rho"),rho_f))
     print("energy setter after manip ", pdfs_energy_setter.subexpressions)
+
 
     # specify the target
 

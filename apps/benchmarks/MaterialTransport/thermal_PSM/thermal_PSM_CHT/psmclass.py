@@ -166,6 +166,15 @@ def create_psm_thermal_collision_rule(lbm_config):
             Assignment(u_sym, u)
         )
 
+    sub_exp_cp = raw_col.subexpressions[0]
+    sub_exp_rho = raw_col.subexpressions[1]
+    raw_col.subexpressions.remove(sub_exp_rho)
+    raw_col.subexpressions.append(Assignment(sub_exp_rho.lhs, rho_f))
+    #raw_col.subexpressions.remove(sub_exp_cp)
+    #raw_col.subexpressions.append(Assignment(sub_exp_cp.lhs, Cp_f))
+    #for i,exp in enumerate(raw_col.subexpressions):
+    print("subexp after manip is  ", raw_col.subexpressions)
+
     #   Move fluid collision terms to subexprs
     main_asms_dict = raw_col.main_assignments_dict
     fluid_post_symbols = sp.symbols(f"f_post_fluid_:{stencil.Q}")
@@ -204,7 +213,7 @@ def create_psm_thermal_collision_rule(lbm_config):
         for eq_s_symbol, eq_fluid in zip(solid_eq_symbols, equilibrium_fluid):
             eq_sol = eq_fluid
             vel_subs = {sp.Symbol(f"u_{i}"): lbm_config.object_velocity_field.center(p * stencil.D + i) for i in range(stencil.D)}
-            temp_solid_subs = {sp.Symbol("rho_f"): rho_s}
+            temp_solid_subs = {sp.Symbol("rho"): rho_s}
             Cp_solid_subs   = {sp.Symbol("Cp_f"): Cp_s}
             all_subs = {**vel_subs,**Cp_solid_subs, **temp_solid_subs}
             eq_sol = eq_sol.rhs.subs(all_subs)
@@ -256,7 +265,7 @@ def create_psm_thermal_collision_rule(lbm_config):
     subexps = (
             raw_col.subexpressions
             + fluid_collisions
-            + equilibrium_fluid
+            #+ equilibrium_fluid
             + equilibrium_solid
             + solid_post_assignments
     )
