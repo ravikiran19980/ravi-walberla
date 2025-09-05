@@ -52,19 +52,11 @@ with CodeGeneration() as ctx:
     stencil_energy = LBStencil(Stencil.D3Q19)
     omega = sp.Symbol("omega")  # for now same for both the sweeps
     init_density_fluid = sp.Symbol("init_density_fluid")
-    init_velocity_fluid = sp.symbols("init_velocity_fluid_:3")
-    #init_velocity_concentration = sp.symbols("init_velocity_concentration_:3")
-    pdfs_inter_fluid = sp.symbols("pdfs_inter_fluid:" + str(stencil_fluid.Q))
     rho_0 = sp.Symbol("rho_0")
     T0 = sp.Symbol("T0")
     alpha = sp.Symbol("alpha")
     gravity_LBM = sp.Symbol("gravityLB")
-    Sv = sp.Symbol("Sv")
-    Sq = sp.Symbol("Sq")
     omega_f = sp.Symbol("omega_f")
-    omega_c = sp.Symbol("omega_c")
-
-
 
     layout = "fzyx"
     config_tokens = ctx.config.split("_")
@@ -115,7 +107,6 @@ with CodeGeneration() as ctx:
     # Solid fraction field
     B = ps.fields(f"b({1}): {data_type}[3D]", layout=layout)
 
-    #force_concentration_on_fluid = sp.Matrix([0, (rho_0)*alpha*(concentration_field.center - T0)*gravity_LBM,0])
     force_concentration_on_fluid = sp.Matrix([0, 0,(rho_0)*alpha*(concentration_field.center - T0)*gravity_LBM])
 
     # Fluid LBM optimisation
@@ -169,7 +160,6 @@ with CodeGeneration() as ctx:
 
 
     ## for CHT
-    omega_p = sp.Symbol("omega_p")  # for the particles in CHT
     rho_f = sp.Symbol("rho_f")
     rho_s = sp.Symbol("rho_s")
     omegaT_f = sp.Symbol("omegaT_f")
@@ -248,7 +238,9 @@ with CodeGeneration() as ctx:
     pdfs_energy_setter.subexpressions.remove(sub_exp_energy)
     pdfs_energy_setter.subexpressions.append(Assignment(sub_exp_energy.lhs, Add(*rhs_energy)))
     pdfs_energy_setter.subexpressions.append(Assignment(sp.Symbol("rho"),rho_f))
-    print("energy setter after manip ", pdfs_energy_setter.subexpressions)
+    pdfs_energy_setter.subexpressions.append(Assignment(sp.Symbol("Cp"),Cp_f))
+    pdfs_energy_setter.subexpressions.append(Assignment(sp.Symbol("T"),(1 - B.center)*concentration_field.center +  B.center*sp.Symbol("T_s")))
+    #print("energy setter after manip ", pdfs_energy_setter.subexpressions)
 
 
     # specify the target
@@ -260,7 +252,7 @@ with CodeGeneration() as ctx:
 
     node_collection_fluid = create_psm_update_rule(lbm_config=psm_fluid_config, lbm_optimisation=lbm_fluid_opt)
     collision_rule_energy = create_psm_thermal_collision_rule(lbm_config=psm_energy_config)
-    #node_collection_energy = create_lb_update_rule(collision_rule=collision_rule_energy, lbm_config=psm_energy_config, lbm_optimisation=lbm_energy_opt)
+
 
     ## defining custom pystencils kernel that computes temperature from rho_cp_T
 

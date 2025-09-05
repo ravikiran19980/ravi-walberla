@@ -144,7 +144,7 @@ def create_psm_thermal_collision_rule(lbm_config):
 
     pre_collision_pdf_symbols = thermal_lb_method.pre_collision_pdf_symbols
     post_collision_pdf_symbols = thermal_lb_method.post_collision_pdf_symbols
-    print("raw coll subexp is  ", raw_col.subexpressions_dict)
+    #print("raw coll subexp is  ", raw_col.subexpressions_dict)
     if cqc_cht.density_symbol not in raw_col.subexpressions_dict:
 
         cqc_cht_eqs = cqc_cht.equilibrium_input_equations_from_pdfs(pre_collision_pdf_symbols)
@@ -159,9 +159,7 @@ def create_psm_thermal_collision_rule(lbm_config):
     u_in = lbm_config.velocity_input
     if u_in is not None and isinstance(u_in, Field):
         u_in = u_in.center_vector
-    cqe_main_assignments = cqc_cht_eqs.main_assignments_dict
     for u_sym, u in zip(cqc_cht.velocity_symbols, u_in):
-        #cqe_main_assignments[u_sym] = u
         raw_col.subexpressions.append(
             Assignment(u_sym, u)
         )
@@ -169,10 +167,10 @@ def create_psm_thermal_collision_rule(lbm_config):
     sub_exp_cp = raw_col.subexpressions[0]
     sub_exp_rho = raw_col.subexpressions[1]
     raw_col.subexpressions.remove(sub_exp_rho)
-    raw_col.subexpressions.append(Assignment(sub_exp_rho.lhs, rho_f))
-    #raw_col.subexpressions.remove(sub_exp_cp)
-    #raw_col.subexpressions.append(Assignment(sub_exp_cp.lhs, Cp_f))
-    #for i,exp in enumerate(raw_col.subexpressions):
+    raw_col.subexpressions.append(Assignment(sub_exp_rho.lhs, 1/rho_f))
+    raw_col.subexpressions.remove(sub_exp_cp)
+    raw_col.subexpressions.append(Assignment(sub_exp_cp.lhs, 1/Cp_f))
+    raw_col.subexpressions.append(Assignment(sp.Symbol("T"), zeroth_moment_symbol/(rho_f*Cp_f)))
     print("subexp after manip is  ", raw_col.subexpressions)
 
     #   Move fluid collision terms to subexprs
@@ -204,22 +202,21 @@ def create_psm_thermal_collision_rule(lbm_config):
     ]
     for p in range(MaxParticlesPerCell):
 
-        equilibrium_fluid_for_solid_subs = equilibrium_fluid
-        #print("eq fluid is ", equilibrium_fluid_for_solid_subs)
-
         #    - Set up solid equilibrium
         solid_eq_symbols = sp.symbols(f"f_eq_solid_:{stencil.Q}")
         equilibrium_solid = []
         for eq_s_symbol, eq_fluid in zip(solid_eq_symbols, equilibrium_fluid):
             eq_sol = eq_fluid
             vel_subs = {sp.Symbol(f"u_{i}"): lbm_config.object_velocity_field.center(p * stencil.D + i) for i in range(stencil.D)}
-            temp_solid_subs = {sp.Symbol("rho"): rho_s}
-            Cp_solid_subs   = {sp.Symbol("Cp_f"): Cp_s}
-            all_subs = {**vel_subs,**Cp_solid_subs, **temp_solid_subs}
+            density_solid_subs = {sp.Symbol("rho"): rho_s}
+            Cp_solid_subs   = {sp.Symbol("Cp"): Cp_s}
+            temp_solid_subs   = {sp.Symbol("T"): sp.Symbol("T_s")}
+            energy_solid_subs   = {sp.Symbol("rho_Cp_T"): rho_s *Cp_s* sp.Symbol("T_s")}
+            all_subs = {**vel_subs,**Cp_solid_subs, **density_solid_subs, **temp_solid_subs, **energy_solid_subs}
             eq_sol = eq_sol.rhs.subs(all_subs)
             equilibrium_solid.append(Assignment(eq_s_symbol, eq_sol))
 
-        #print("eq solid is ", equilibrium_solid)
+        print("eq solid is ", equilibrium_solid)
         for i, (f_eq_solid, f, offset) in enumerate(
                 zip(solid_eq_symbols, pre_collision_pdf_symbols, stencil)
         ):
@@ -235,12 +232,9 @@ def create_psm_thermal_collision_rule(lbm_config):
     #   Derive solid collision operator
     solid_post_symbols = sp.symbols(f"f_post_solid_:{stencil.Q}")
 
-    #for i,f_post_solid in enumerate(solid_post_symbols):
-    #    Assignment(f_post_solid, solid_collisions[i])
 
     solid_post_assignments = []  # <- collect assignments here
     stencil_weights = get_weights(stencil)
-    #print("stencil weights are ", stencil_weights)
     heat_source = lbm_config.heat_source
     for i, f_post_solid in enumerate(solid_post_symbols):
         if heat_source is not None:
@@ -265,7 +259,6 @@ def create_psm_thermal_collision_rule(lbm_config):
     subexps = (
             raw_col.subexpressions
             + fluid_collisions
-            #+ equilibrium_fluid
             + equilibrium_solid
             + solid_post_assignments
     )

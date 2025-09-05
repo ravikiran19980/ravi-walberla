@@ -17,7 +17,7 @@ class DiscreteThermalMaxwellianCHT(GenericDiscreteEquilibrium):
                  substitutions=None,
                  Cp_ref = None,
                  temperature = sp.Symbol("T"),
-                 Cp_f = sp.Symbol("Cp_f"),
+                 Cp = sp.Symbol("Cp"),
                  rho = sp.Symbol("rho")):
 
         dim = stencil.D
@@ -35,7 +35,7 @@ class DiscreteThermalMaxwellianCHT(GenericDiscreteEquilibrium):
 
         pdfs = discrete_thermal_equilibrium_cht(stencil, rho_Cp_T=self._rho_Cp_T, u=u,
                                                 order=order, c_s_sq=c_s_sq,
-                                                compressible=compressible,substitutions = self._substitutions, Cp_ref = self.Cp_ref, temperature = temperature,Cp_f=Cp_f, rho=rho)
+                                                compressible=compressible,substitutions = self._substitutions, Cp_ref = self.Cp_ref, temperature = temperature,Cp=Cp, rho=rho)
 
         zeroth_order_moment = rho_Cp_T
         super().__init__(stencil, pdfs, zeroth_order_moment, u)
@@ -52,7 +52,7 @@ class DiscreteThermalMaxwellianCHT(GenericDiscreteEquilibrium):
 
 
 def discrete_thermal_equilibrium_cht(stencil, rho_Cp_T=sp.Symbol("rho_Cp_T"), u=sp.symbols("u_:3"), order=2,
-                                     c_s_sq=sp.Symbol("c_s") ** 2, compressible=True,substitutions=None,Cp_ref=None, temperature=sp.Symbol("T"),Cp_f=sp.Symbol("Cp_f"), rho=sp.Symbol("rho")):
+                                     c_s_sq=sp.Symbol("c_s") ** 2, compressible=True,substitutions=None,Cp_ref=None, temperature=sp.Symbol("T"),Cp=sp.Symbol("Cp"), rho=sp.Symbol("rho")):
     """
     Returns the common discrete LBM equilibrium as a list of sympy expressions
 
@@ -67,11 +67,11 @@ def discrete_thermal_equilibrium_cht(stencil, rho_Cp_T=sp.Symbol("rho_Cp_T"), u=
     weights = get_weights(stencil, c_s_sq)
     assert stencil.Q == len(weights)
     u = u[:stencil.D]
-    res = [thermal_equilibrium_cht(e_q, u, rho_Cp_T, w_q, order, c_s_sq, compressible,substitutions, Cp_ref, temperature, Cp_f, rho) for w_q, e_q in zip(weights, stencil)]
+    res = [thermal_equilibrium_cht(e_q, u, rho_Cp_T, w_q, order, c_s_sq, compressible,substitutions, Cp_ref, temperature, Cp, rho) for w_q, e_q in zip(weights, stencil)]
     return tuple(res)
 
 def thermal_equilibrium_cht(v=sp.symbols("v_:3"), u=sp.symbols("u_:3"), rho_Cp_T=sp.Symbol("rho_Cp_T"), weight=sp.Symbol("w"),
-                            order=2, c_s_sq=sp.Symbol("c_s") ** 2, compressible=True,substitutions=None, Cp_ref=None, temperature=sp.Symbol("T"),Cp_f=sp.Symbol("Cp_f"), rho=sp.Symbol("rho")):
+                            order=2, c_s_sq=sp.Symbol("c_s") ** 2, compressible=True,substitutions=None, Cp_ref=None, temperature=sp.Symbol("T"),Cp=sp.Symbol("Cp"), rho=sp.Symbol("rho")):
     """
     Returns the common discrete LBM equilibrium depending on the mesoscopic velocity and the directional lattice weight
 
@@ -91,7 +91,7 @@ def thermal_equilibrium_cht(v=sp.symbols("v_:3"), u=sp.symbols("u_:3"), rho_Cp_T
     for c_q_alpha, u_alpha in zip(v, u):
         e_times_u += c_q_alpha * u_alpha
 
-    fq = Cp_ref / (rho * Cp_f) + e_times_u / c_s_sq
+    fq = Cp_ref / (rho * Cp) + e_times_u / c_s_sq
 
     u_times_u = 0
     for u_alpha in u:
@@ -99,7 +99,7 @@ def thermal_equilibrium_cht(v=sp.symbols("v_:3"), u=sp.symbols("u_:3"), rho_Cp_T
     fq += sp.Rational(1, 2) / c_s_sq ** 2 * e_times_u ** 2 - sp.Rational(1, 2) / c_s_sq * u_times_u
 
     if v == (0, 0) or v == (0, 0, 0):
-        result = rho_Cp_T - Cp_ref * (rho_Cp_T) / (rho * Cp_f) + fq * weight * rho_Cp_T
+        result = rho_Cp_T - Cp_ref * temperature + weight * rho_Cp_T * fq
 
     else:
         result = weight * rho_Cp_T * fq
