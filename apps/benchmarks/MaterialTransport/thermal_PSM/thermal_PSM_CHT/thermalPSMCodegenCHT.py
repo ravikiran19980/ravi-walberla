@@ -35,8 +35,6 @@ from psmclass import ThermalPSMConfig,create_thermal_lb_method,create_psm_therma
 clear_cache()
 
 
-
-
 info_header = """
 const char * infoStencil_fluid = "{stencil}";
 const char * infoStencil_concentration = "{stencil}";
@@ -45,7 +43,6 @@ const char * infoCollisionSetup = "{collision_setup}";
 const bool infoCseGlobal = {cse_global};
 const bool infoCsePdfs = {cse_pdfs};
 """
-
 with CodeGeneration() as ctx:
     data_type = "float64" if ctx.double_accuracy else "float32"
     stencil_fluid = LBStencil(Stencil.D3Q19)
@@ -71,7 +68,6 @@ with CodeGeneration() as ctx:
         "srt-smagorinsky": Method.SRT,
         "trt-smagorinsky": Method.TRT,
     }
-
 
     # Solid collision variant
     SC = int(config_tokens[1])
@@ -169,6 +165,7 @@ with CodeGeneration() as ctx:
 
     # Energy PSM config
 
+
     psm_energy_config = ThermalPSMConfig(
         stencil=stencil_energy,
         method=Method.SRT,
@@ -252,7 +249,6 @@ with CodeGeneration() as ctx:
 
     node_collection_fluid = create_psm_update_rule(lbm_config=psm_fluid_config, lbm_optimisation=lbm_fluid_opt)
     collision_rule_energy = create_psm_thermal_collision_rule(lbm_config=psm_energy_config)
-
 
     ## defining custom pystencils kernel that computes temperature from rho_cp_T
 

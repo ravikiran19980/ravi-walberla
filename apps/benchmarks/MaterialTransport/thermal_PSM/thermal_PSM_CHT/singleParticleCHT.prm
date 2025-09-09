@@ -21,7 +21,7 @@ PhysicalSetup // all to be specified in SI units!
 
     particleDiameter 0.01;  // 1cm
     densityParticle 1100.;
-    particleRe 140;
+    particleRe 100;
     dynamicFrictionCoefficient 0.15;
     coefficientOfRestitution 0.6;
     collisionTimeFactor 1.0;
@@ -31,8 +31,8 @@ PhysicalSetup // all to be specified in SI units!
 
 NumericalSetup
 {
-    dx 0.0005; // in m
-    uInflow 0.005; // in LBM units, should be smaller than 0.1, this then determines dt if not equal to 0
+    dx 0.001; // in m
+    uInflow 0.01; // in LBM units, should be smaller than 0.1, this then determines dt if not equal to 0
     dt 1e-3;      // this is the dt_SI if at all uInflow is set to 0.
 
     // product of number of blocks should be equal to number of used processes
@@ -71,7 +71,7 @@ Output
     infoSpacing 0.01; // in s
 
     vtkSpacingParticles 0; // in s
-    vtkSpacingFluid 0; // in s
+    vtkSpacingFluid 0.01; // in s
     vtkFolder vtk_out;
 
     performanceLogFrequency 5000000000;

@@ -13,7 +13,7 @@ PhysicalSetup // all to be specified in SI units!
 
     runtime 40;
 
-    uInflow 0.005;
+    uInflow 0.01;
     gravitationalAcceleration 9.81;
 
     kinematicViscosityFluid 1e-5;
@@ -32,7 +32,7 @@ PhysicalSetup // all to be specified in SI units!
 NumericalSetup
 {
     dx 0.001; // in m
-    uInflow 0; // in LBM units, should be smaller than 0.1, this then determines dt if not equal to 0
+    uInflow 0.01; // in LBM units, should be smaller than 0.1, this then determines dt if not equal to 0
     dt 1e-3;      // this is the dt_SI if at all uInflow is set to 0.
 
     // product of number of blocks should be equal to number of used processes

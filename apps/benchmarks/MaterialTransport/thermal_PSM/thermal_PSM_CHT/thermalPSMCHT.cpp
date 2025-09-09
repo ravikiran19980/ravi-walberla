@@ -349,7 +349,7 @@ int main(int argc, char** argv)
    const real_t Tcold_SI          = TemperatureSetup.getParameter< real_t >("Tcold");
    const real_t Tref_SI          = TemperatureSetup.getParameter< real_t >("Tref");
    const real_t Pr             = TemperatureSetup.getParameter< real_t >("PrandtlNumber");
-   const real_t particleTemperature             = TemperatureSetup.getParameter< real_t >("particleTemperature");
+   real_t particleTemperature             = TemperatureSetup.getParameter< real_t >("particleTemperature");
    real_t thermal_expansion_coeff_SI = TemperatureSetup.getParameter< real_t >("thermal_expansion_coeff");
    real_t Cp_f_SI                    = TemperatureSetup.getParameter<real_t>("Cpf");
    real_t Cp_s_SI                    = TemperatureSetup.getParameter<real_t>("Cps");
@@ -433,21 +433,21 @@ int main(int argc, char** argv)
    const real_t Thot = Thot_SI/T_conversion;
    const real_t Tcold = Tcold_SI/T_conversion;
    const real_t Cp_f =  Cp_f_SI * (dt_SI * dt_SI * T_conversion)/(dx_SI * dx_SI);
-   const real_t Cp_s =  Cp_s_SI * (dt_SI * dt_SI * T_conversion)/(dx_SI * dx_SI);
    const real_t Tref = Tref_SI/T_conversion;
    const real_t kinematicViscosityLB = (kinematicViscosityFluid_SI * dt_SI) / (dx_SI * dx_SI);
    const real_t thermalDiffusivityFluid_LB = kinematicViscosityLB/Pr;
    const real_t alphaLB = thermal_expansion_coeff_SI * T_conversion;
-
+   particleTemperature = particleTemperature/T_conversion;
    const real_t Wref = (particleRe * kinematicViscosityLB)/particleDiameter;
    densityParticle = (Wref*Wref*3)/(4*particleDiameter*gravitationalAcceleration) + 1;
+   const real_t Cp_s =  densityFluid*Cp_f/(densityParticle);
    const real_t Gr                     = (gravitationalAcceleration * alphaLB * std::pow(particleDiameter, 3) * (particleTemperature - Tref)) /
                      (kinematicViscosityLB * kinematicViscosityLB);
    densityRatio = densityParticle/densityFluid;
    densityParticle_SI = (densityParticle * densityFluid_SI)/(densityFluid);
 
    const real_t thermalDiffusivityParticle_SI = Ks_SI/(densityParticle_SI*Cp_s_SI);
-   const real_t thermalDiffusivityParticle_LB = (thermalDiffusivityParticle_SI * dt_SI) / (dx_SI * dx_SI);
+   const real_t thermalDiffusivityParticle_LB = 1*thermalDiffusivityFluid_LB;
    const real_t omega_f = lbm::collision_model::omegaFromViscosity(kinematicViscosityLB);
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
    const real_t omegaT_s = lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
@@ -477,14 +477,14 @@ int main(int argc, char** argv)
    const real_t kinematicViscosityLB = lbm::collision_model::viscosityFromOmega(omega_f);
    const real_t thermalDiffusivityFluid_LB = kinematicViscosityLB/Pr;
    const real_t thermalDiffusivityParticle_SI = Ks_SI/(densityParticle_SI*Cp_S_SI);
-   const real_t thermalDiffusivityParticle_LB = 1*thermalDiffusivityFluid_LB;//(thermalDiffusivityParticle_SI * dt_SI) / (dx_SI * dx_SI);
+   const real_t thermalDiffusivityParticle_LB = 0.0001*thermalDiffusivityFluid_LB;//(thermalDiffusivityParticle_SI * dt_SI) / (dx_SI * dx_SI);
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
    const real_t omegaT_s = lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
 
    const real_t alphaLB = (Ra*kinematicViscosityLB*thermalDiffusivityFluid_LB)/(gravitationalAcceleration * (Thot-Tcold)* domainSize[0] * domainSize[0] * domainSize[0]);
    const real_t RayleighNumber =
       (gravitationalAcceleration * alphaLB * (Thot - Tcold) * domainSize[0] * domainSize[0] * domainSize[0])/
-      (kinematicViscosityLB * thermalDiffusivityFluid_LB);*/
+      (kinematicViscosityLB * thermalDiffusivityFluid_LB);
 
    WALBERLA_LOG_INFO_ON_ROOT("density particle LB is " << densityParticle);
    WALBERLA_LOG_INFO_ON_ROOT("density fluid LB is " << densityFluid);
@@ -493,7 +493,7 @@ int main(int argc, char** argv)
    WALBERLA_LOG_INFO_ON_ROOT("Energy Relaxation rate  fluid is " << omegaT_f);
    WALBERLA_LOG_INFO_ON_ROOT("Energy Relaxation rate  particle is " << omegaT_s);
    WALBERLA_LOG_INFO_ON_ROOT("check equal " << kinematicViscosityFluid_SI/Pr <<" and  " << Kf_SI/(densityFluid_SI*Cp_f_SI);)
-   //WALBERLA_LOG_INFO_ON_ROOT("Rayleigh number for 2D case is " << RayleighNumber);
+   //WALBERLA_LOG_INFO_ON_ROOT("Rayleigh number for 2D case is " << RayleighNumber);*/
    ///////////////////////////
    // BLOCK STRUCTURE SETUP //
    ///////////////////////////
@@ -844,10 +844,15 @@ int main(int argc, char** argv)
 
    const real_t rho_Cp_ref = 2*densityFluid*Cp_f*densityParticle*Cp_s/(densityFluid*Cp_f + densityParticle*Cp_s);
    const real_t dummy_ref =  densityFluid*Cp_f;
+   /*pystencils::InitializeEnergyDomain pdfSetterEnergy(
+      particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID, densityConcentrationFieldCPUGPUID,
+      particleAndVolumeFractionSoA.particleTemperaturesFieldID, pdfFieldEnergyCPUGPUID, velFieldFluidCPUGPUID,
+      Cp_f,Cp_s,particleTemperature,omegaT_f,omegaT_s,dummy_ref,densityFluid, densityParticle);*/
+
    pystencils::InitializeEnergyDomain pdfSetterEnergy(
       particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID, densityConcentrationFieldCPUGPUID,
       particleAndVolumeFractionSoA.particleTemperaturesFieldID, pdfFieldEnergyCPUGPUID, velFieldFluidCPUGPUID,
-      Cp_f,Cp_s,particleTemperature,omegaT_f,omegaT_s,dummy_ref,densityFluid, densityParticle);
+      Cp_f,Cp_s,particleTemperature,omegaT_f,omegaT_s,densityFluid, densityParticle);
 
 
 #endif
@@ -1013,9 +1018,13 @@ int main(int argc, char** argv)
       particleAndVolumeFractionSoA.particleForcesFieldID, particleAndVolumeFractionSoA.particleVelocitiesFieldID,
       pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID, Tref, alphaLB, gravitationalAcceleration, omega_f, rho_0);
    const real_t Qs = 0;
+   /*pystencils::PSMEnergySweep psmEnergySweep(
+      particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,particleAndVolumeFractionSoA.particleVelocitiesFieldID,
+      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID, Cp_f, Cp_f,Cp_s,omegaT_f,omegaT_s,densityFluid,dummy_ref, densityFluid, densityParticle);*/
+
    pystencils::PSMEnergySweep psmEnergySweep(
       particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,particleAndVolumeFractionSoA.particleVelocitiesFieldID,
-      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,  Cp_f,Cp_s,Qs,particleTemperature,omegaT_f,omegaT_s,dummy_ref, densityFluid, densityParticle);
+      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,particleTemperature,omegaT_f);
 
 
       timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")
@@ -1068,7 +1077,10 @@ int main(int argc, char** argv)
       // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
 
       timeloop.singleStep(timeloopTiming);
-
+      for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
+      {
+         psmSweepCollectionUniformTemperatures.setParticleTemperaturesSweep(&(*blockIt));
+      }
          if (particleBarriers) WALBERLA_MPI_BARRIER();
          timeloopTiming["RPD forEachParticle assoc"].start();
          ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, assoc, *accessor);

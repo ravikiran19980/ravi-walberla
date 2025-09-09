@@ -91,7 +91,8 @@ def thermal_equilibrium_cht(v=sp.symbols("v_:3"), u=sp.symbols("u_:3"), rho_Cp_T
     for c_q_alpha, u_alpha in zip(v, u):
         e_times_u += c_q_alpha * u_alpha
 
-    fq = Cp_ref / (rho * Cp) + e_times_u / c_s_sq
+    #fq = Cp_ref / (rho * Cp) + e_times_u / c_s_sq
+    fq =  1 + e_times_u / c_s_sq
 
     u_times_u = 0
     for u_alpha in u:
@@ -99,7 +100,8 @@ def thermal_equilibrium_cht(v=sp.symbols("v_:3"), u=sp.symbols("u_:3"), rho_Cp_T
     fq += sp.Rational(1, 2) / c_s_sq ** 2 * e_times_u ** 2 - sp.Rational(1, 2) / c_s_sq * u_times_u
 
     if v == (0, 0) or v == (0, 0, 0):
-        result = rho_Cp_T - Cp_ref * temperature + weight * rho_Cp_T * fq
+        #result = rho_Cp_T - Cp_ref * rho_Cp_T/(rho*Cp) + weight * rho_Cp_T * fq
+        result = weight * rho_Cp_T * fq
 
     else:
         result = weight * rho_Cp_T * fq
