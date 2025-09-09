@@ -30,14 +30,14 @@ PhysicalSetup // all to be specified in SI units!
 
 NumericalSetup
 {
-    dx 0.0005; // in m
+    dx 0.001; // in m
     uInflow 0; // in LBM units, should be smaller than 0.1, this then determines dt if not equal to 0
     dt 1e-3;      // this is the dt_SI if at all uInflow is set to 0.
 
     // product of number of blocks should be equal to number of used processes
-    numXBlocks 1;
+    numXBlocks 2;
     numYBlocks 1;
-    numZBlocks 1;
+    numZBlocks 2;
 
     useLubricationForces false;
     numberOfParticleSubCycles 10;
@@ -51,12 +51,12 @@ NumericalSetup
 
 TemperatureSetup
 {
-    Thot 310;   // ThotSI = ThotLB   (concentration conversion from SI to LB)
+    Thot 300;   // ThotSI = ThotLB   (concentration conversion from SI to LB)
     Tcold 300;
     PrandtlNumber 1;
     RayleighNumber 1000000;
     Mach 0.1;
-    particleTemperature 290;
+    particleTemperature 300;
     thermal_expansion_coeff 1.04e-4;
 }
 

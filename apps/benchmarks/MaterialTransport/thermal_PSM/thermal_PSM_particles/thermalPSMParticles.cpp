@@ -461,9 +461,9 @@ int main(int argc, char** argv)
       domainSizeLB           = Vector3< uint_t >{ uint_c(numXBlocks * real_c(cellsPerBlockPerDirection[0])),
                                                   uint_c(numYBlocks * real_c(cellsPerBlockPerDirection[1])),
                                                   uint_c(numZBlocks * real_c(cellsPerBlockPerDirection[2])) };
-      delta_T                = Thot - Tcold;
+
       T0                     = (Thot + Tcold) / (2 * delta_T);
-      Tref                   = Tcold;
+      Tref                   = Thot;
       kinematicViscosityLB   = kinematicViscosityFluid_SI * dt_SI / (dx_SI * dx_SI);
       thermalDiffusivityLB   = kinematicViscosityLB / Pr;
       omega_f                = lbm::collision_model::omegaFromViscosity(kinematicViscosityLB);
@@ -471,6 +471,7 @@ int main(int argc, char** argv)
       gravityLB              = gravitationalAcceleration_SI * dt_SI * dt_SI / dx_SI;
       alphaLB                = thermal_expansion_coeff;
       Wref = (particleRe * kinematicViscosityLB)/particleDiameter;
+      delta_T                = particleTemperature - Tref;
       densityParticle = (Wref*Wref*3)/(4*particleDiameter*gravityLB) + 1;
       Gr                     = (gravityLB * alphaLB * std::pow(particleDiameter, 3) * (particleTemperature - Tref)) /
            (kinematicViscosityLB * kinematicViscosityLB);
@@ -742,19 +743,19 @@ int main(int argc, char** argv)
    else
    {
       boundariesBlockString += "{"
-                               "Border { direction W;    walldistance -1;  flag Density_Concentration_east; }"
-                               "Border { direction E;    walldistance -1;  flag Density_Concentration_east; }";
+                               "Border { direction W;    walldistance -1;  flag Density_Concentration_west; }"
+                               "Border { direction E;    walldistance -1;  flag Density_Concentration_west; }";
 
       if (!periodicInY)
       {
-         boundariesBlockString += "Border { direction S;    walldistance -1;  flag Density_Concentration_east; }"
-                                  "Border { direction N;    walldistance -1;  flag Density_Concentration_east; }";
+         boundariesBlockString += "Border { direction S;    walldistance -1;  flag Density_Concentration_west; }"
+                                  "Border { direction N;    walldistance -1;  flag Density_Concentration_west; }";
       }
 
       if (!periodicInZ)
       {
-         boundariesBlockString += "Border { direction T;    walldistance -1;  flag Density_Concentration_east; }"
-                                  "Border { direction B;    walldistance -1;  flag Density_Concentration_east; }";
+         boundariesBlockString += "Border { direction T;    walldistance -1;  flag Density_Concentration_west; }"
+                                  "Border { direction B;    walldistance -1;  flag Density_Concentration_west; }";
       }
       boundariesBlockString += "}";
    }
