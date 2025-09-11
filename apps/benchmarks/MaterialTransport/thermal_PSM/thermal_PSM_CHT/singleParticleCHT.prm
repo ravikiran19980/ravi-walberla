@@ -21,7 +21,7 @@ PhysicalSetup // all to be specified in SI units!
 
     particleDiameter 0.01;  // 1cm
     densityParticle 1100.;
-    particleRe 100;
+    particleRe 140;
     dynamicFrictionCoefficient 0.15;
     coefficientOfRestitution 0.6;
     collisionTimeFactor 1.0;
@@ -57,7 +57,7 @@ TemperatureSetup
     Tcold 0;
     Tref  300;
     PrandtlNumber 1;
-    particleTemperature 300;
+    particleTemperature 310;
     thermal_expansion_coeff 1.04e-4;
     Cpf 1;
     Cps 1;

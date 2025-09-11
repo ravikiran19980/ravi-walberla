@@ -844,15 +844,10 @@ int main(int argc, char** argv)
 
    const real_t rho_Cp_ref = 2*densityFluid*Cp_f*densityParticle*Cp_s/(densityFluid*Cp_f + densityParticle*Cp_s);
    const real_t dummy_ref =  densityFluid*Cp_f;
-   /*pystencils::InitializeEnergyDomain pdfSetterEnergy(
-      particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID, densityConcentrationFieldCPUGPUID,
-      particleAndVolumeFractionSoA.particleTemperaturesFieldID, pdfFieldEnergyCPUGPUID, velFieldFluidCPUGPUID,
-      Cp_f,Cp_s,particleTemperature,omegaT_f,omegaT_s,dummy_ref,densityFluid, densityParticle);*/
-
    pystencils::InitializeEnergyDomain pdfSetterEnergy(
       particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID, densityConcentrationFieldCPUGPUID,
       particleAndVolumeFractionSoA.particleTemperaturesFieldID, pdfFieldEnergyCPUGPUID, velFieldFluidCPUGPUID,
-      Cp_f,Cp_s,particleTemperature,omegaT_f,omegaT_s,densityFluid, densityParticle);
+      Cp_f,Cp_s,omegaT_f,omegaT_s,dummy_ref,densityFluid, densityParticle);
 
 
 #endif
@@ -914,10 +909,8 @@ int main(int argc, char** argv)
    pystencils::EnergyMacroGetter getterSweep_energy(energyFieldCPUGPUID,
                                                   pdfFieldEnergyCPUGPUID);
 
-   //pystencils::compute_temperature_field compute_temperature_field(particleAndVolumeFractionSoA.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,pdfFieldFluidCPUGPUID,Tref,alphaLB,gravitationalAcceleration,rho_0);
    pystencils::compute_temperature_field compute_temperature_field(particleAndVolumeFractionSoA.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,Cp_f,Cp_s,omegaT_f,omegaT_s,densityFluid,densityParticle);
    //pystencils::compute_temperature_field compute_temperature_field(densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID);
-   pystencils::compute_temperature_field_particle compute_temperature_field_particle(particleAndVolumeFractionSoA.particleTemperaturesFieldID,pdfFieldEnergyCPUGPUID);
 
 #endif
 
@@ -973,6 +966,7 @@ int main(int argc, char** argv)
          for (auto& block : *blocks)
          {
             getterSweep_energy(&block);
+            compute_temperature_field(&block);
          }
       });
 
@@ -1018,13 +1012,9 @@ int main(int argc, char** argv)
       particleAndVolumeFractionSoA.particleForcesFieldID, particleAndVolumeFractionSoA.particleVelocitiesFieldID,
       pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID, Tref, alphaLB, gravitationalAcceleration, omega_f, rho_0);
    const real_t Qs = 0;
-   /*pystencils::PSMEnergySweep psmEnergySweep(
-      particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,particleAndVolumeFractionSoA.particleVelocitiesFieldID,
-      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID, Cp_f, Cp_f,Cp_s,omegaT_f,omegaT_s,densityFluid,dummy_ref, densityFluid, densityParticle);*/
-
    pystencils::PSMEnergySweep psmEnergySweep(
-      particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,particleAndVolumeFractionSoA.particleVelocitiesFieldID,
-      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,particleTemperature,omegaT_f);
+      particleAndVolumeFractionSoA.BsFieldID,particleAndVolumeFractionSoA.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,particleAndVolumeFractionSoA.particleVelocitiesFieldID,
+      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,Cp_f,Cp_s,particleTemperature,omegaT_f,dummy_ref,densityFluid,densityParticle);;
 
 
       timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")
@@ -1047,12 +1037,43 @@ int main(int argc, char** argv)
       timeloop.add() << Sweep(deviceSyncWrapper(energy_static_bc_cold.getSweep()),
                               "Boundary Handling (Energy static bc cold)");
 
+      // have this  addCHTPSMSweepToTimeloop commented out and have this afterfunction for future reference
+      //addCHTPSMSweepToTimeloop(timeloop, psmSweepCollection, psmSweepCollectionUniformTemperatures,psmFluidSweep,psmEnergySweep);
+      timeloop.add() << Sweep(
+         deviceSyncWrapper(psmSweepCollection.particleMappingSweep),
+         "Particle mapping Fluid"); // uses weighting for hydrodynamics specified in Cmakelists file
+      timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionUniformTemperatures.particleMappingSweep),
+                              "Particle mapping Thermal"); // always uses a weighting of 1
+      timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollection.setParticleVelocitiesSweep),
+                              "Set particle velocities");
 
-      addCHTPSMSweepToTimeloop(timeloop, psmSweepCollection, psmSweepCollectionUniformTemperatures,psmFluidSweep,psmEnergySweep);
+      timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep")
+                     << AfterFunction(
+                           [&blocks, &getterSweep_fluid]() {
+                              for (auto& block : *blocks)
+                              {
+                                 getterSweep_fluid(&block);
+                              }
+                           },
+                           "Compute fluid sweep");
+
+      timeloop.add() << Sweep(deviceSyncWrapper(psmEnergySweep), "PSM Energy sweep")
+                     << AfterFunction(
+                           [&blocks, &getterSweep_energy, &compute_temperature_field]() {
+                              for (auto& block : *blocks)
+                              {
+                                 getterSweep_energy(&block);
+                                 compute_temperature_field(&block);
+                              }
+                           },
+                           "Compute energy sweep");
 
 
+      // after both the sweeps, reduce the particle forces.
+      timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollection.reduceParticleForcesSweep),
+                              "Reduce particle forces");
 
-   // Add performance logging
+      // Add performance logging
    lbm::PerformanceLogger< FlagField_T > performanceLogger(blocks, flagFieldFluidID, Fluid_Flag, performanceLogFrequency);
    if (performanceLogFrequency > 0)
    {
@@ -1077,10 +1098,7 @@ int main(int argc, char** argv)
       // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
 
       timeloop.singleStep(timeloopTiming);
-      for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
-      {
-         psmSweepCollectionUniformTemperatures.setParticleTemperaturesSweep(&(*blockIt));
-      }
+
          if (particleBarriers) WALBERLA_MPI_BARRIER();
          timeloopTiming["RPD forEachParticle assoc"].start();
          ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, assoc, *accessor);

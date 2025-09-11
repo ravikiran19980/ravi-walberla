@@ -236,7 +236,7 @@ with CodeGeneration() as ctx:
     pdfs_energy_setter.subexpressions.append(Assignment(sub_exp_energy.lhs, Add(*rhs_energy)))
     pdfs_energy_setter.subexpressions.append(Assignment(sp.Symbol("rho"),rho_f))
     pdfs_energy_setter.subexpressions.append(Assignment(sp.Symbol("Cp"),Cp_f))
-    pdfs_energy_setter.subexpressions.append(Assignment(sp.Symbol("T"),(1 - B.center)*concentration_field.center +  B.center*sp.Symbol("T_s")))
+    #pdfs_energy_setter.subexpressions.append(Assignment(sp.Symbol("T"),(1 - B.center)*concentration_field.center +  B.center*sp.Symbol("T_s")))
     #print("energy setter after manip ", pdfs_energy_setter.subexpressions)
 
 
@@ -255,8 +255,7 @@ with CodeGeneration() as ctx:
     rho_cp_eff = sp.Symbol("rho_cp_eff")
     @ps.kernel
     def compute_temperature_field():
-
-        rho_cp_eff = ((1.0 - B.center)* method_fluid.conserved_quantity_computation.density_symbol *Cp_f*omegaT_f + B.center*rho_s*Cp_s*omegaT_s)/((1-B.center)*omegaT_f + B.center*omegaT_s)
+        rho_cp_eff = ((1.0 - B.center)* rho_f *Cp_f*omegaT_f + B.center*rho_s*Cp_s*omegaT_s)/((1-B.center)*omegaT_f + B.center*omegaT_s)
         concentration_field.center @= energy_field.center/rho_cp_eff
     compute_temperature_field_ac = ps.AssignmentCollection(
             compute_temperature_field
