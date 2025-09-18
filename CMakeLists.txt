@@ -34,7 +34,7 @@ set ( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${walberla_SOURCE_DIR}/cmake ${walb
 
 include ( waLBerlaFunctions )
 
-set_version( 7 0 )
+set_version( 7 2 )
 
 include( CMakeParseArguments )
 
@@ -42,6 +42,7 @@ include( CMakeParseArguments )
 enable_testing()
 include( CTest )
 
+include(FetchContent)
 
 ############################################################################################################################
 
@@ -62,6 +63,7 @@ option ( WALBERLA_BUILD_TESTS               "Build Testcases"                   
 option ( WALBERLA_BUILD_BENCHMARKS          "Build Benchmarks"                                ON )
 option ( WALBERLA_BUILD_TOOLS               "Build Tools"                                     ON )
 option ( WALBERLA_BUILD_TUTORIALS           "Build Tutorials"                                 ON )
+option ( WALBERLA_BUILD_EXAMPLES            "Build Example Apps"                              ON )
 option ( WALBERLA_BUILD_SHOWCASES           "Build Showcases"                                 ON )
 option ( WALBERLA_BUILD_DOC                 "Build Documentation"                             ON )
 
@@ -69,6 +71,7 @@ option ( WALBERLA_BUILD_WITH_MPI            "Build with MPI"                    
 option ( WALBERLA_BUILD_WITH_METIS          "Build with metis graph partitioner"             OFF )
 option ( WALBERLA_BUILD_WITH_PARMETIS       "Build with ParMetis graph partitioner"          OFF )
 option ( WALBERLA_BUILD_WITH_FFTW           "Build with FFTW Fourier Transform library"      OFF )
+option ( WALBERLA_BUILD_WITH_OPENMESH       "Build with OpenMesh library for geometry"       OFF )
 
 option ( WALBERLA_BUILD_WITH_GPROF          "Enables gprof"                                      )
 option ( WALBERLA_BUILD_WITH_GCOV           "Enables gcov"                                       )
@@ -76,12 +79,13 @@ option ( WALBERLA_BUILD_WITH_LTO            "Enable link time optimizations"    
 option ( WALBERLA_BUILD_WITH_OPENMP         "Enable OpenMP support"                              )
 option ( WALBERLA_BUILD_WITH_PYTHON         "Support for embedding Python"                       )
 option ( WALBERLA_BUILD_WITH_CODEGEN        "Enable pystencils code generation"              OFF )
+option ( WALBERLA_ENABLE_SWEEPGEN           "Enable the SweepGen metaprogramming system"     OFF )
 
 
 option ( WALBERLA_BUILD_WITH_LIKWID_MARKERS "Compile in markers for likwid-perfctr"              )
 
-option ( WALBERLA_BUILD_WITH_CUDA	        "Enable CUDA support"                                )
-option ( WALBERLA_BUILD_WITH_HIP	           "Enable ROCm HIP support"                            )
+option ( WALBERLA_BUILD_WITH_CUDA           "Enable CUDA support"                                )
+option ( WALBERLA_BUILD_WITH_HIP            "Enable ROCm HIP support"                            )
 
 
 option ( WALBERLA_BUILD_WITH_FASTMATH       "Fast math"                                          )
@@ -141,7 +145,7 @@ endif()
 
 ############################################################################################################################
 
-set( CMAKE_CXX_STANDARD 17 )
+set( CMAKE_CXX_STANDARD 20 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
 set( CMAKE_CXX_EXTENSIONS OFF )
 
@@ -307,7 +311,7 @@ endif ()
 
 ############################################################################################################################
 ##
-## Code Generation (pystencils)
+## Legacy Code Generation (pystencils 1.3)
 ##
 #############################################################################################################################
 if ( WALBERLA_BUILD_WITH_CODEGEN )
@@ -337,6 +341,17 @@ endif()
 ############################################################################################################################
 
 
+############################################################################################################################
+##
+## SweepGen Metaprogramming
+##
+#############################################################################################################################
+
+
+if( WALBERLA_ENABLE_SWEEPGEN )
+    list (APPEND CMAKE_MODULE_PATH ${walberla_SOURCE_DIR}/sweepgen/cmake )
+    include( SweepGen )
+endif()
 
 
 ############################################################################################################################
@@ -346,13 +361,23 @@ endif()
 #############################################################################################################################
 if ( WALBERLA_BUILD_WITH_PYTHON )
 
-    include(FetchContent)
+    set(PYBIND11_FINDPYTHON ON)  # Force FindPython mode
 
-    FetchContent_Declare(
-            pybind11
-            GIT_REPOSITORY https://github.com/pybind/pybind11.git
-            GIT_TAG        v2.13.6
-    )
+    if( DEFINED WALBERLA_PYBIND11_SOURCE_DIR )
+        message(STATUS "Using local pybind11 from: ${WALBERLA_PYBIND11_SOURCE_DIR}. The version has to be pybind11 v2.13.6!")
+        FetchContent_Declare(
+                pybind11
+                SOURCE_DIR ${WALBERLA_PYBIND11_SOURCE_DIR}
+        )
+
+    else()
+        message(STATUS "Fetching pybind11 from GitHub")
+        FetchContent_Declare(
+                pybind11
+                GIT_REPOSITORY https://github.com/pybind/pybind11.git
+                GIT_TAG        v2.13.6
+        )
+    endif()
 
     FetchContent_MakeAvailable(pybind11)
 
@@ -532,19 +557,34 @@ endif()
 ## OpenMesh
 ##
 ############################################################################################################################
-if( (NOT DEFINED WALBERLA_BUILD_WITH_OPENMESH) OR WALBERLA_BUILD_WITH_OPENMESH )
-   find_package( OpenMesh )
-   if( OPENMESH_FOUND )
-      set( WALBERLA_BUILD_WITH_OPENMESH ON CACHE BOOL "Build with OpenMesh support" )
-      include_directories( SYSTEM ${OPENMESH_INCLUDE_DIRS} )
-      list( APPEND SERVICE_LIBS ${OPENMESH_LIBRARIES} )
-      if( WALBERLA_CXX_COMPILER_IS_MSVC )
-         add_definitions(-D_USE_MATH_DEFINES )
-      endif()
-   else()
-      message("   If OpenMesh required, set OPENMESH_LIBRARY_DIR to the OpenMesh directory.")
-      set( WALBERLA_BUILD_WITH_OPENMESH OFF CACHE BOOL "Build with OpenMesh support" FORCE )
-   endif()
+
+if( WALBERLA_BUILD_WITH_OPENMESH )
+
+    if ( DEFINED WALBERLA_OPENMESH_SOURCE_DIR )
+        message(STATUS "Using local OpenMesh from: ${WALBERLA_OPENMESH_SOURCE_DIR}")
+        FetchContent_Declare(
+                OpenMesh
+                SOURCE_DIR ${WALBERLA_OPENMESH_SOURCE_DIR}
+                EXCLUDE_FROM_ALL
+                SYSTEM
+        )
+    else()
+        message(STATUS "Fetching OpenMesh from GitLab")
+        FetchContent_Declare(
+                OpenMesh
+                GIT_REPOSITORY https://gitlab.vci.rwth-aachen.de:9000/OpenMesh/OpenMesh.git
+                GIT_TAG        OpenMesh-11.0
+                EXCLUDE_FROM_ALL
+                SYSTEM
+        )
+    endif()
+
+    set(CMAKE_SUPPRESS_DEVELOPER_WARNINGS 1 CACHE INTERNAL "Suppress dev warnings")
+    FetchContent_MakeAvailable(OpenMesh)
+    set(CMAKE_SUPPRESS_DEVELOPER_WARNINGS 0 CACHE INTERNAL "Suppress dev warnings")
+    target_compile_options(OpenMeshCore PRIVATE -w)
+    target_compile_options(OpenMeshTools PRIVATE -w)
+    list( APPEND SERVICE_LIBS ${OPENMESH_LIBRARIES} )
 endif()
 
 ############################################################################################################################
@@ -607,17 +647,7 @@ if ( WALBERLA_BUILD_WITH_OPENMP AND NOT OpenMP_FOUND )
         set( CMAKE_FRAMEWORK_PATH /opt/local/lib/libomp )
         set( CMAKE_INCLUDE_PATH /opt/local/include/libomp )
     endif()
-    find_package( OpenMP )
-    if (OpenMP_FOUND)
-        add_flag ( CMAKE_C_FLAGS   "${OpenMP_C_FLAGS}" )
-        add_flag ( CMAKE_CXX_FLAGS "${OpenMP_CXX_FLAGS}" )
-        list ( APPEND SERVICE_LIBS ${OpenMP_CXX_LIBRARIES} )
-        if( OpenMP_CXX_INCLUDE_DIRS )
-            include_directories( ${OpenMP_CXX_INCLUDE_DIRS} )
-        endif()
-    else()
-         message(FATAL_ERROR "Could NOT enable OpenMP")
-    endif()
+    find_package( OpenMP REQUIRED )
 endif()
 ############################################################################################################################
 
@@ -633,42 +663,26 @@ if ( WALBERLA_BUILD_WITH_CUDA )
        message(FATAL_ERROR "For GPU support either use CUDA or HIP. Both simultaneously is not supported.")
     endif()
 
-    include(CheckLanguage)
-    check_language(CUDA)
-    if( CMAKE_CUDA_COMPILER )
+    enable_language(CUDA)
+    find_package(CUDAToolkit REQUIRED)
 
-        if(${CMAKE_VERSION} VERSION_GREATER "3.18.0" AND NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-            set(CMAKE_CUDA_ARCHITECTURES OFF)
-            message(WARNING "CMAKE_CUDA_ARCHITECTURES was not set. It is automatically set to: ${CMAKE_CUDA_ARCHITECTURES}")
-        endif()
+    if(${CMAKE_VERSION} VERSION_GREATER "3.18.0" AND NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+        set(CMAKE_CUDA_ARCHITECTURES OFF)
+        message(WARNING "CMAKE_CUDA_ARCHITECTURES was not set. It is automatically set to: ${CMAKE_CUDA_ARCHITECTURES}")
+    endif()
 
-        enable_language(CUDA)
-
-        #include directories and cudart lib is needed for cpp files that use cuda headers/libs
-        include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
-        find_library(CUDART_LIBRARY cudart ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
-        list ( APPEND SERVICE_LIBS ${CUDART_LIBRARY} )
-
-        find_library( NVTX_LIBRARY nvToolsExt ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES} )
-        list ( APPEND SERVICE_LIBS ${NVTX_LIBRARY} )
-
-        #CUDA_FOUND is need for our cmake mechanism
-        set ( CUDA_FOUND TRUE )
-        set (WALBERLA_BUILD_WITH_GPU_SUPPORT TRUE)
+    #include directories and cudart lib is needed for cpp files that use cuda headers/libs
+    list ( APPEND SERVICE_LIBS CUDA::cudart )
+    if (${CUDAToolkit_VERSION} VERSION_LESS "10")
+     list ( APPEND SERVICE_LIBS CUDA::nvToolsExt )
     else()
-        message( WARNING "CUDA could not be enabled. The host compiler might not be compatible. Check CMakeFiles/CMakeError.log for more information" )
-        set ( WALBERLA_BUILD_WITH_CUDA FALSE )
-    endif ( )
+       # nvtx3 was introduced in cuda 10 and replaces nvToolsExt in cuda 12.9
+     list ( APPEND SERVICE_LIBS CUDA::nvtx3)
+    endif()
 endif ( )
 
-if (WALBERLA_BUILD_WITH_CUDA AND (CMAKE_CUDA_COMPILER_VERSION VERSION_LESS "11.0" OR CMAKE_VERSION VERSION_LESS 3.18.0))
-    # CUDA < 11 does not support C++17. std::experimental::any works with C++14, unlike std::any.
-    set(CMAKE_CUDA_STANDARD 14)
-    set(WALBERLA_USE_STD_EXPERIMENTAL_ANY 1)
-endif()
-
 # Can be used in CMake files containing generated files where the file suffix is dependent on the target
-if (WALBERLA_BUILD_WITH_CUDA AND CUDA_FOUND)
+if (WALBERLA_BUILD_WITH_CUDA)
     set(CODEGEN_FILE_SUFFIX "cu")
 else()
     set(CODEGEN_FILE_SUFFIX "cpp")
@@ -686,27 +700,26 @@ if ( WALBERLA_BUILD_WITH_HIP )
     if (WALBERLA_BUILD_WITH_CUDA)
        message(FATAL_ERROR "For GPU support either use CUDA or HIP. Both simultaneously is not supported.")
     endif()
-    if (${CMAKE_VERSION} VERSION_LESS "3.21.0")
-       message(FATAL_ERROR "For HIP support CMake > 3.21.0 is needed. Please install a newer version")
-    endif()
 
-    include(CheckLanguage)
-    check_language(HIP)
-
-    if( CMAKE_HIP_COMPILER )
-        enable_language(HIP)
-        # since waLBerla also supports CUDA we only use HIP on an AMD platform
-        add_compile_definitions(__HIP_PLATFORM_AMD__)
-        # include_directories(${HSA_HEADER})
-        set (WALBERLA_BUILD_WITH_GPU_SUPPORT TRUE)
-    else()
-         message("HIP compiler not found. HIP support is not possible")
-        set ( WALBERLA_BUILD_WITH_HIP FALSE )
-    endif ( )
+    enable_language(HIP)
+    find_package(hip REQUIRED)
+    # since waLBerla also supports CUDA we only use HIP on an AMD platform
+    add_compile_definitions(__HIP_PLATFORM_AMD__)
+    # include_directories(${HSA_HEADER})
+    list (APPEND SERVICE_LIBS hip::host)
 endif ( )
 
+if (WALBERLA_BUILD_WITH_HIP)
+    set(CODEGEN_FILE_SUFFIX "hip")
+endif()
 ############################################################################################################################
 
+if (WALBERLA_BUILD_WITH_HIP OR WALBERLA_BUILD_WITH_CUDA)
+   set (WALBERLA_BUILD_WITH_GPU_SUPPORT TRUE CACHE BOOL "")
+else()
+   set (WALBERLA_BUILD_WITH_GPU_SUPPORT FALSE CACHE BOOL "")
+endif()
+mark_as_advanced( WALBERLA_BUILD_WITH_GPU_SUPPORT )
 
 
 ############################################################################################################################
@@ -792,6 +805,9 @@ endif () # Check if WALBERLA_BUILD_WITH_HALF_PRECISION_SUPPORT is set
 # Documentation Generation
 #
 if (WALBERLA_BUILD_DOC)
+
+  add_custom_target( walberla_doc )
+
   # Build documentation using Doxygen (www.doxygen.org)
   ############################################################################################################################
   find_package ( Doxygen  )
@@ -804,16 +820,65 @@ if (WALBERLA_BUILD_DOC)
   endif ( )
 
   if ( DOXYGEN_FOUND )
+
+     include(FetchContent)
+     FetchContent_Declare(
+         doxygen-awesome-css
+         URL https://github.com/jothepro/doxygen-awesome-css/archive/refs/heads/main.zip
+     )
+     FetchContent_MakeAvailable(doxygen-awesome-css)
+
+     # Save the location the files were cloned into
+     # This allows us to get the path to doxygen-awesome.css
+     FetchContent_GetProperties(doxygen-awesome-css SOURCE_DIR AWESOME_CSS_DIR)
+
      set ( DOXYGEN_HTML_HEADER ${walberla_SOURCE_DIR}/doc/header.html )
      set ( DOXYGEN_HTML_FOOTER ${walberla_SOURCE_DIR}/doc/footer.html )
      set ( DOXYGEN_HTML_OUTPUT "html" )
 
+     # Find out if the current revision is a release or not
+     execute_process(
+      COMMAND git describe --tags --exact-match
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      OUTPUT_VARIABLE GIT_TAG
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET
+      RESULT_VARIABLE TAG_RESULT
+     )
+
+   message(STATUS "Found ${GIT_TAG} ${TAG_RESULT} ${WALBERLA_VERSION}")
+     if(TAG_RESULT EQUAL 0 AND GIT_TAG STREQUAL "v${WALBERLA_VERSION}")
+       set(RELEASE_NOTE "\\include{doc} release.dox")
+     else()
+       set(RELEASE_NOTE "\\include{doc} development.dox")
+     endif()
+
+     configure_file ( ${walberla_SOURCE_DIR}/doc/Mainpage.dox.in ${walberla_BINARY_DIR}/doc/input/Mainpage.dox @ONLY )
      configure_file ( ${walberla_SOURCE_DIR}/doc/doxygen.in ${walberla_BINARY_DIR}/doc/doxygen.cfg @ONLY )
 
-     add_custom_target ( doc   ${DOXYGEN_EXECUTABLE} ${walberla_BINARY_DIR}/doc/doxygen.cfg
+     add_custom_target ( walberla_doxygen   ${DOXYGEN_EXECUTABLE} ${walberla_BINARY_DIR}/doc/doxygen.cfg
                             COMMENT "Generating API documentation with Doxygen" VERBATIM )
-
+     add_dependencies( walberla_doc walberla_doxygen )
   endif ( )
+
+  # Build SweepGen user manual
+  
+  execute_process( COMMAND nox --version RESULT_VARIABLE _noxResult OUTPUT_QUIET ERROR_QUIET )
+  if( ${_noxResult} )
+    message(STATUS "Could not find nox - will not build SweepGen user manual")
+  else()
+    set( _sweepgen_dir ${walberla_SOURCE_DIR}/sweepgen )
+    add_custom_target( 
+        walberla_sweepgen_manual
+        COMMAND nox -f ${_sweepgen_dir}/noxfile.py -s user_manual -- --fail-on-warnings
+        COMMAND
+            ${CMAKE_COMMAND} -E copy_directory_if_different
+            ${_sweepgen_dir}/user_manual/_build/html
+            ${walberla_BINARY_DIR}/doc/html/sweepgen
+    )
+    add_dependencies( walberla_doc walberla_sweepgen_manual )
+  endif()
+  
 endif()
 
 ############################################################################################################################

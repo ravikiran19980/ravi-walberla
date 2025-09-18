@@ -60,7 +60,7 @@ def generate_lbm_storage_specification(generation_context: CodeGenerationContext
             symbolic_temporary_field = create_pdf_field(config=config, name="pdfs_dst", stencil=stencil,
                                                         field_layout=lbm_optimisation.field_layout)
 
-    cg = PackingKernelsCodegen(stencil, streaming_pattern, class_name, config,
+    cg = PackingKernelsCodegen(stencil, streaming_pattern, class_name, config, nonuniform,
                                src_field=symbolic_field, dst_field=symbolic_temporary_field)
     kernels = cg.create_uniform_kernel_families()
 
@@ -125,7 +125,13 @@ def generate_lbm_storage_specification(generation_context: CodeGenerationContext
     header = env.get_template('LbmStorageSpecification.tmpl.h').render(**jinja_context)
     source = env.get_template('LbmStorageSpecification.tmpl.cpp').render(**jinja_context)
 
-    source_extension = "cu" if target == Target.GPU and generation_context.cuda else "cpp"
+    source_extension = (
+        "hip"
+        if target == Target.GPU and generation_context.hip
+        else "cu"
+        if target == Target.GPU and generation_context.cuda
+        else "cpp"
+    )
     generation_context.write_file(f"{class_name}.h", header)
     generation_context.write_file(f"{class_name}.{source_extension}", source)
 

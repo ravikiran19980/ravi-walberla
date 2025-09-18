@@ -345,10 +345,10 @@ class ShiftedPeriodicityBase {
       const int atMaxTagSend = normalShift < 0 ? 0 : 1;
       const int atMaxTagRecv = normalShift < 0 ? 1 : 0;
 
-      const int sendTag1 = ((int_c(blockID.getID()) + int_c(id1.getID() * numGlobalBlocks_)) * 2 + atMaxTagSend) * 2 + 0;
-      const int sendTag2 = ((int_c(blockID.getID()) + int_c(id2.getID() * numGlobalBlocks_)) * 2 + atMaxTagSend) * 2 + 1;
-      const int recvTag2 = ((int_c(id2.getID()) + int_c(blockID.getID() * numGlobalBlocks_)) * 2 + atMaxTagRecv) * 2 + 0;
-      const int recvTag1 = ((int_c(id1.getID()) + int_c(blockID.getID() * numGlobalBlocks_)) * 2 + atMaxTagRecv) * 2 + 1;
+      const int sendTag1 = ((int_c(blockID.getID()) + int_c(id1.getID() )) * 2 + atMaxTagSend) * 2 + 0;
+      const int sendTag2 = ((int_c(blockID.getID()) + int_c(id2.getID() )) * 2 + atMaxTagSend) * 2 + 1;
+      const int recvTag2 = ((int_c(id2.getID()) + int_c(blockID.getID() )) * 2 + atMaxTagRecv) * 2 + 0;
+      const int recvTag1 = ((int_c(id1.getID()) + int_c(blockID.getID() )) * 2 + atMaxTagRecv) * 2 + 1;
 
       auto block = sbf->getBlock(blockID);
 
@@ -422,8 +422,8 @@ class ShiftedPeriodicityBase {
       const int atMaxTagSend = normalShift < 0 ? 0 : 1;
       const int atMaxTagRecv = normalShift < 0 ? 1 : 0;
 
-      const int sendTag = ((int_c(blockID.getID()) + int_c(id.getID() * numGlobalBlocks_)) * 2 + atMaxTagSend) * 2 + 0;
-      const int recvTag = ((int_c(id.getID()) + int_c(blockID.getID() * numGlobalBlocks_)) * 2 + atMaxTagRecv) * 2 + 0;
+      const int sendTag = ((int_c(blockID.getID()) + int_c(id.getID() )) * 2 + atMaxTagSend) * 2 + 0;
+      const int recvTag = ((int_c(id.getID()) + int_c(blockID.getID() )) * 2 + atMaxTagRecv) * 2 + 0;
 
       auto block = sbf->getBlock(blockID);
 
@@ -583,10 +583,10 @@ class ShiftedPeriodicity : public ShiftedPeriodicityBase<ShiftedPeriodicity<Ghos
       auto bufferIt = buffer.begin();
 
       // forward iterate over ci and add values to value vector
-      for(auto cellIt = ci.begin(); cellIt != ci.end(); ++cellIt) {
+      for(auto &&cell : ci) {
          for(cell_idx_t f = 0; f < this->fSize_; ++f, ++bufferIt) {
-            WALBERLA_ASSERT(field->coordinatesValid(cellIt->x(), cellIt->y(), cellIt->z(), f))
-            *bufferIt = field->get(*cellIt, f);
+            WALBERLA_ASSERT(field->coordinatesValid(cell.x(), cell.y(), cell.z(), f))
+            *bufferIt = field->get(cell, f);
          }
       }
 
@@ -602,10 +602,10 @@ class ShiftedPeriodicity : public ShiftedPeriodicityBase<ShiftedPeriodicity<Ghos
       auto bufferIt = buffer.begin();
 
       // forward iterate over ci and add values to value vector
-      for(auto cellIt = ci.begin(); cellIt != ci.end(); ++cellIt) {
+      for(auto &&cell : ci) {
          for(cell_idx_t f = 0; f < this->fSize_; ++f, ++bufferIt) {
-            WALBERLA_ASSERT(field->coordinatesValid(cellIt->x(), cellIt->y(), cellIt->z(), f))
-            field->get(*cellIt, f) = *bufferIt;
+            WALBERLA_ASSERT(field->coordinatesValid(cell.x(), cell.y(), cell.z(), f))
+            field->get(cell, f) = *bufferIt;
          }
       }
 

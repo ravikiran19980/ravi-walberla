@@ -1,0 +1,56 @@
+/**
+\mainpage waLBerla - widely applicable lattice Boltzmann from Erlangen
+
+\tableofcontents
+
+<div style="margin: 3em 0; text-align: center;">
+  <img src="walberla_logo.svg" alt="" class="inline">
+</div>
+
+Welcome to the waLBerla Framework, a widely applicable lattice Boltzmann simulation code from Erlangen.
+These are the documentation pages for the project's C++ code base.
+
+@RELEASE_NOTE@
+
+\section getting-started Getting Started
+
+On the following pages, you can find instructions on downloading and
+setting up waLBerla both as a standalone project and as a library:
+
+- \ref setup-instructions
+- \ref using-as-library
+- \ref faq
+
+After setting up waLBerla,
+you can browse our @ref tutorials and @ref example-apps
+to learn how to use the framework.
+
+\section further-ressources Further Ressources
+
+Here are additional documentation, reference, and learning ressources related to waLBerla:
+
+- <a href="./sweepgen/index.html">SweepGen User Manual</a>
+
+\section contact Contact Us
+
+To get in touch with the waLBerla team, you can:
+
+- For bug reports and code-related issues:
+  Create an issue at https://i10git.cs.fau.de/walberla/walberla and describe the bug
+  as accurately as possible.
+- For feature requests, collaboration inquiries, etc.:
+  write to our developer's mailing list (mailto:cs10-walberla@fau.de).
+
+\section cite Please cite us
+
+If you use waLBerla in the preparation of a publication, please cite
+\cite godenschwager2013framework and \cite bauer2021walberla. There are separate publications for some modules,
+which you should cite in addition if you use them.
+
+- Grid refinement: \cite schornbaum2016massively
+- PE coupling: \cite rettinger2017comparative
+- Python interface: \cite bauer2016python
+- pystencils code generation: \cite bauer2019code
+- lbmpy LB model generation: \cite bauer2021lbmpy and \cite Hennig2023
+
+*/

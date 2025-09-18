@@ -69,7 +69,7 @@ def generate_boundary(generation_context,
 
     bc_force = hasattr(boundary_object, "calculate_force_on_boundary") and boundary_object.calculate_force_on_boundary
     if bc_force:
-        force_vector_type = np.dtype([(f"F_{i}", np.float64) for i in range(dim)], align=True)
+        force_vector_type = np.dtype([(f"F_{i}", field_data_type) for i in range(dim)] + [(f"cellOnGL", np.bool_)], align=True)
         force_vector = Field('forceVector', FieldType.INDEXED, force_vector_type, layout=[0],
                              shape=(TypedSymbol("forceVectorSize", create_type("int32")), 1), strides=(1, 1))
         kernel = kernel_creation_function(field, index_field, neighbor_stencil, boundary_object,
@@ -121,7 +121,13 @@ def generate_boundary(generation_context,
     header = env.get_template('Boundary.tmpl.h').render(**context)
     source = env.get_template('Boundary.tmpl.cpp').render(**context)
 
-    source_extension = "cu" if target == Target.GPU and generation_context.cuda else "cpp"
+    source_extension = (
+        "hip"
+        if target == Target.GPU and generation_context.hip
+        else "cu"
+        if target == Target.GPU and generation_context.cuda
+        else "cpp"
+    )
     generation_context.write_file(f"{class_name}.h", header)
     generation_context.write_file(f"{class_name}.{source_extension}", source)
 
