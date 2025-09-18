@@ -1,0 +1,4 @@
+pystencils>=2.0.dev0
+pystencilssfg>=0.1a4
+lbmpy
+py-cpuinfo>=9.0
