@@ -728,7 +728,7 @@ int main(int argc, char** argv)
    geometry::setNonBoundaryCellsToDomain< FlagField_T >(*blocks, flagFieldEnergyID, Energy_Flag);
 
 
-   auto EnergyCallback = [](const Cell& pos, const shared_ptr< StructuredBlockForest >& blocks, IBlock& block,BlockDataID densityFluidFieldID, const real_t Cp_f,const real_t Twall) {
+   /*auto EnergyCallback = [](const Cell& pos, const shared_ptr< StructuredBlockForest >& blocks, IBlock& block,BlockDataID densityFluidFieldID, const real_t Cp_f,const real_t Twall) {
 
 
       Cell global_cell;
@@ -744,7 +744,7 @@ int main(int argc, char** argv)
 
    lbm::BC_energy_DiffusionDirichlet_dynamic energy_dynamic_bc(blocks, pdfFieldEnergyCPUGPUID, velFieldFluidCPUGPUID,dynamic_energy_bc);
    energy_dynamic_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldEnergyID,
-                                                      Density_Energy_Flag_dynamic, Energy_Flag);
+                                                      Density_Energy_Flag_dynamic, Energy_Flag);*/
 
    lbm::BC_Energy_Neumann neumann_energy_bc(blocks, pdfFieldEnergyCPUGPUID);
    neumann_energy_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldEnergyID,

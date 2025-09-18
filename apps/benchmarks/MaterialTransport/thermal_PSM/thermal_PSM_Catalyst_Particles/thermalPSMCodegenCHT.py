@@ -22,19 +22,14 @@ from lbmpy.macroscopic_value_kernels import (
     macroscopic_values_setter,
 )
 
-from pystencils_walberla import (
-    CodeGeneration,
-    generate_info_header,
-    generate_sweep,
-    generate_pack_info_from_kernel,
-)
-from lbmpy_walberla import generate_boundary
-from lbmpy_walberla.additional_data_handler import DiffusionDirichletAdditionalDataHandler
+from pystencilssfg import SourceFileGenerator
 from pystencils.cache import clear_cache
 from psmclass import ThermalPSMConfig,create_thermal_lb_method,create_psm_thermal_collision_rule
 clear_cache()
 
-
+from sweepgen import get_build_config
+from sweepgen.boundaries import GenericHBB
+from sweepgen import Sweep
 
 
 info_header = """
@@ -47,8 +42,9 @@ const bool infoCsePdfs = {cse_pdfs};
 """
 
 
-with CodeGeneration() as ctx:
-    data_type = "float64" if ctx.double_accuracy else "float32"
+with SourceFileGenerator(keep_unknown_argv=True) as sfg:
+
+    data_type = "float64" if get_build_config(sfg).use_double_precision else "float32"
     stencil_fluid = LBStencil(Stencil.D3Q19)
     stencil_energy = LBStencil(Stencil.D3Q19)
     omega = sp.Symbol("omega")  # for now same for both the sweeps
@@ -68,7 +64,7 @@ with CodeGeneration() as ctx:
 
 
     layout = "fzyx"
-    config_tokens = ctx.config.split("_")
+    config_tokens = sfg.context.argv[0].split("_")
     print(config_tokens[0]," ", config_tokens[1])
 
     MaxParticlesPerCell = int(2)
@@ -256,10 +252,6 @@ with CodeGeneration() as ctx:
 
     # specify the target
 
-    if ctx.gpu:
-        target = ps.Target.GPU
-    else:
-        target = ps.Target.CPU
 
     node_collection_fluid = create_psm_update_rule(lbm_config=psm_fluid_config, lbm_optimisation=lbm_fluid_opt)
     collision_rule_energy = create_psm_thermal_collision_rule(lbm_config=psm_energy_config)
@@ -276,7 +268,7 @@ with CodeGeneration() as ctx:
     compute_temperature_field_ac = ps.AssignmentCollection(
             compute_temperature_field
     )
-    generate_sweep(ctx, "compute_temperature_field", compute_temperature_field_ac)
+    sfg.generate(Sweep("compute_temperature_field", compute_temperature_field_ac))
 
     assignments = []
     assignments.append(method_energy.conserved_quantity_computation.equilibrium_input_equations_from_pdfs(pdfs_energy.center_vector))
@@ -285,7 +277,7 @@ with CodeGeneration() as ctx:
             ps.Assignment(particle_temperatures.center(k), method_energy.conserved_quantity_computation.density_symbol)
         )
     ac = ps.AssignmentCollection(assignments)
-    generate_sweep(ctx, "compute_temperature_field_particle", ac)
+    sfg.generate(Sweep( "compute_temperature_field_particle", ac))
 
     # Build the accumulation as a pure SymPy expression (no kernel assignments involved)
     acc_expr = sum(
@@ -300,18 +292,15 @@ with CodeGeneration() as ctx:
         concentration_field.center @= (1 - B.center) * T_init_fluid + acc_expr
 
     initializeConcentrationField_ac = ps.AssignmentCollection(initializeConcentrationField)
-    generate_sweep(ctx, "initializeConcentrationField", initializeConcentrationField_ac)
+    sfg.generate(Sweep("initializeConcentrationField", initializeConcentrationField_ac))
 
 
     # Generate files
+    LBMFluidSweep = Sweep("LBMFluidSweep",
+                                   create_lb_update_rule(lbm_config=lbm_fluid_config, lbm_optimisation=lbm_fluid_opt) )
+    LBMFluidSweep.swap_fields(pdfs_fluid, pdfs_fluid_tmp)
+    sfg.generate(LBMFluidSweep)
 
-    generate_sweep(
-        ctx,
-        "LBMFluidSweep",
-        create_lb_update_rule(lbm_config=lbm_fluid_config, lbm_optimisation=lbm_fluid_opt),
-        field_swaps=[(pdfs_fluid, pdfs_fluid_tmp)],
-        target=target,
-    )
 
     generate_sweep(
         ctx,
@@ -321,30 +310,12 @@ with CodeGeneration() as ctx:
         target=target,
     )
 
-    generate_sweep(
-        ctx,
-        "PSMEnergySweep",
-        create_lb_update_rule(collision_rule=collision_rule_energy, lbm_config=psm_energy_config, lbm_optimisation=lbm_energy_opt),
-        field_swaps=[(pdfs_energy, pdfs_energy_tmp)],
-        target=target,
-    )
-    generate_sweep(
-        ctx,
-        "LBMFluidSplitSweep",
-        create_lb_update_rule(lbm_config=lbm_fluid_config, lbm_optimisation=lbm_fluid_opt),
-        field_swaps=[(pdfs_fluid, pdfs_fluid_tmp)],
-        target=target,
-        inner_outer_split=True,
-    )
+    # Generate files
+    PSMEnergySweep = Sweep("PSMEnergySweep",
+                          create_lb_update_rule(collision_rule=collision_rule_energy, lbm_config=psm_energy_config, lbm_optimisation=lbm_energy_opt) )
+    PSMEnergySweep.swap_fields(pdfs_fluid, pdfs_fluid_tmp)
+    sfg.generate(PSMEnergySweep)
 
-    generate_sweep(
-        ctx,
-        "PSMFluidSweepSplit",
-        node_collection_fluid,
-        field_swaps=[(pdfs_fluid, pdfs_fluid_tmp)],
-        target=target,
-        inner_outer_split=True,
-    )
 
     generate_pack_info_from_kernel(
         ctx,
@@ -361,41 +332,22 @@ with CodeGeneration() as ctx:
         target=target,
     )
 
-    generate_sweep(ctx, "InitializeFluidDomain", pdfs_fluid_setter, target=target)
-    generate_sweep(ctx, "InitializeEnergyDomain", pdfs_energy_setter, target=target)
-
+    sfg.generate(Sweep("InitializeFluidDomain", pdfs_fluid_setter))
+    sfg.generate(Sweep("InitializeEnergyDomain", pdfs_energy_setter))
     # Fluid Boundary conditions
-    generate_boundary(
-        ctx,
-        "BC_Fluid_NoSlip",
-        NoSlip(),
-        method_fluid,
-        field_name=pdfs_fluid.name,
-        streaming_pattern="pull",
-        target=target,
-    )
+
+    BC_Fluid_NoSlip = GenericHBB(NoSlip("noSlip"),method_fluid,pdfs_fluid)
+    sfg.generate(BC_Fluid_NoSlip)
+
 
     bc_velocity_fluid = sp.symbols("bc_velocity_fluid_:3")
-    generate_boundary(
-        ctx,
-        "BC_Fluid_UBB",
-        UBB(bc_velocity_fluid),
-        method_fluid,
-        field_name=pdfs_fluid.name,
-        streaming_pattern="pull",
-        target=target,
-    )
+    BC_Fluid_UBB = GenericHBB(UBB("BC_Fluid_UBB",bc_velocity_fluid),method_fluid,pdfs_fluid)
+    sfg.generate(BC_Fluid_UBB)
+
 
     bc_density_fluid = sp.Symbol("bc_density_fluid")
-    generate_boundary(
-        ctx,
-        "BC_Fluid_Density",
-        FixedDensity(bc_density_fluid),
-        method_fluid,
-        field_name=pdfs_fluid.name,
-        streaming_pattern="pull",
-        target=target,
-    )
+    BC_Fluid_Density = GenericHBB(FixedDensity("BC_Fluid_Density",bc_density_fluid),method_fluid,pdfs_fluid)
+    sfg.generate(BC_Fluid_Density)
 
     generate_boundary(
         ctx,
@@ -419,34 +371,20 @@ with CodeGeneration() as ctx:
 
     # energy boundary conditions
 
-    dirichlet_bc_dynamic = DiffusionDirichlet(lambda *args: None, velocity_field, data_type=data_type)
-    diffusion_data_handler = DiffusionDirichletAdditionalDataHandler(stencil_energy, dirichlet_bc_dynamic)
-    generate_boundary(ctx, 'BC_energy_DiffusionDirichlet_dynamic', dirichlet_bc_dynamic, method_energy,
-                      additional_data_handler=diffusion_data_handler,
-                      target=target, streaming_pattern='pull', data_type=data_type)
+    #dirichlet_bc_dynamic = DiffusionDirichlet(lambda *args: None, velocity_field, data_type=data_type)
+    #diffusion_data_handler = DiffusionDirichletAdditionalDataHandler(stencil_energy, dirichlet_bc_dynamic)
+    #generate_boundary(ctx, 'BC_energy_DiffusionDirichlet_dynamic', dirichlet_bc_dynamic, method_energy,
+    #                  additional_data_handler=diffusion_data_handler,
+    #                  target=target, streaming_pattern='pull', data_type=data_type)
+
 
     bc_density_energy = sp.Symbol("bc_density_energy")
-    generate_boundary(
-        ctx,
-        "BC_energy_DiffusionDirichlet_static",
-        DiffusionDirichlet(bc_density_energy),
-        method_energy,
-        field_name=pdfs_energy.name,
-        streaming_pattern="pull",
-        target=target,
-    )
+    bc_density_energy = GenericHBB(DiffusionDirichlet("bc_density_energy",bc_density_energy),method_energy,pdfs_energy)
+    sfg.generate(bc_density_energy)
 
 
-    generate_boundary(
-        ctx,
-        "BC_Energy_Neumann",
-        NeumannByCopy(stencil_energy),
-        method_energy,
-        field_name=pdfs_energy.name,
-        streaming_pattern="pull",
-        target=target,
-    )
-
+    BC_Energy_Neumann = GenericHBB(NeumannByCopy("BC_Energy_Neumann",stencil_energy),method_energy,pdfs_energy)
+    sfg.generate(BC_Energy_Neumann)
 
 
     # Info header containing correct template definitions for stencil and fields
@@ -488,7 +426,7 @@ with CodeGeneration() as ctx:
        method_energy, density=energy_field, velocity=None,pdfs=pdfs_energy.center_vector
     )
 
-    generate_sweep(ctx, "FluidMacroSetter", pdfs_fluid_setter)
-    generate_sweep(ctx, "FluidMacroGetter", pdfs_fluid_getter)
-    generate_sweep(ctx, "EnergyMacroSetter", pdfs_energy_setter)
-    generate_sweep(ctx, "EnergyMacroGetter", pdfs_energy_getter)
+    sfg.generate(Sweep("FluidMacroSetter", pdfs_fluid_setter))
+    sfg.generate(Sweep("FluidMacroGetter", pdfs_fluid_getter))
+    sfg.generate(Sweep("EnergyMacroSetter", pdfs_energy_setter))
+    sfg.generate(Sweep("EnergyMacroGetter", pdfs_energy_getter))

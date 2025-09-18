@@ -77,7 +77,7 @@ if( WALBERLA_SWEEPGEN_MANAGED_VENV )
     )
 
     file(COPY_FILE ${SWEEPGEN_REQUIREMENTS_FILE} ${_requirements_file} )
-    file(APPEND ${_requirements_file} "\n-e ${walberla_SOURCE_DIR}/sweepgen\n")
+    file(APPEND ${_requirements_file} "\n ${walberla_SOURCE_DIR}/sweepgen\n")
 
     set(_init_args ${WALBERLA_CODEGEN_VENV_PATH} ${_requirements_file})
 
