@@ -36,8 +36,8 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
                     GeneralInfoHeader.h
         )
             message(STATUS "generated in thermal PSM is: ${config}" )
-            waLBerla_add_executable(NAME thermalPSMCHT_${config} FILES thermalPSMCHT.cpp ../../utilities/InitializerFunctions.cpp
-                    DEPENDS walberla::blockforest walberla::core walberla::field walberla::geometry walberla::gpu walberla::lbm walberla::lbm_mesapd_coupling walberla::mesa_pd walberla::sqlite walberla::vtk MTWCodegenThermalPSMCHT_${config})
+            add_executable(thermalPSMCHT_${config}  thermalPSMCHT.cpp ../../utilities/InitializerFunctions.cpp)
+            target_link_libraries(thermalPSMCHT_${config} walberla::blockforest walberla::core walberla::field walberla::geometry walberla::gpu walberla::lbm walberla::lbm_mesapd_coupling walberla::mesa_pd walberla::sqlite walberla::vtk MTWCodegenThermalPSMCHT_${config})
             target_compile_definitions(thermalPSMCHT_${config} PRIVATE Weighting=1)
         endforeach ()
 

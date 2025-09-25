@@ -43,8 +43,8 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
                 GeneralInfoHeader.h
         )
 
-        waLBerla_add_executable(NAME MTW_2Way FILES MaterialTransport.cpp ../utilities/InitializerFunctions.cpp
-                DEPENDS walberla::blockforest walberla::core walberla::field walberla::geometry walberla::gpu walberla::lbm walberla::lbm_mesapd_coupling walberla::mesa_pd walberla::sqlite walberla::vtk MTW_2WayCodegen)
+        add_executable(MTW_2Way  MaterialTransport.cpp ../utilities/InitializerFunctions.cpp)
+        target_link_libraries(MTW_2Way walberla::blockforest walberla::core walberla::field walberla::geometry walberla::gpu walberla::lbm walberla::lbm_mesapd_coupling walberla::mesa_pd walberla::sqlite walberla::vtk MTW_2WayCodegen)
         target_compile_definitions(MTW_2Way PRIVATE Weighting=2)
     endif ()
 endif ()
