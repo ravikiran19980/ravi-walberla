@@ -334,6 +334,7 @@ int main(int argc, char** argv)
    const real_t dynamicFrictionCoefficient = physicalSetup.getParameter< real_t >("dynamicFrictionCoefficient");
    const real_t coefficientOfRestitution   = physicalSetup.getParameter< real_t >("coefficientOfRestitution");
    const real_t collisionTimeFactor        = physicalSetup.getParameter< real_t >("collisionTimeFactor");
+   const real_t particleGenerationSpacing_SI = physicalSetup.getParameter< real_t >("particleGenerationSpacing");
 
    Config::BlockHandle numericalSetup = cfgFile->getBlock("NumericalSetup");
    const real_t dx_SI                 = numericalSetup.getParameter< real_t >("dx");
@@ -359,6 +360,9 @@ int main(int argc, char** argv)
       numericalSetup.getParameter< Vector3< uint_t > >("particleSubBlockSize");
    const real_t linkedCellWidthRation = numericalSetup.getParameter< real_t >("linkedCellWidthRation");
    const bool particleBarriers        = numericalSetup.getParameter< bool >("particleBarriers");
+   const Vector3< real_t > generationDomainFraction =
+      numericalSetup.getParameter< Vector3< real_t > >("generationDomainFraction");
+
 
    const Vector3< real_t > SingleparticleLocation =
       numericalSetup.getParameter< Vector3< real_t > >("SingleparticleLocation");
@@ -422,7 +426,7 @@ int main(int argc, char** argv)
    const real_t densityFluid = real_t(1);
    real_t densityParticle    = densityRatio;
    const real_t dx           = real_t(1);
-
+   const real_t particleGenerationSpacing = particleGenerationSpacing_SI / dx_SI;
    const uint_t numTimeSteps        = uint_c(std::ceil(runtime_SI / dt_SI));
    const uint_t infoSpacing         = uint_c(std::ceil(infoSpacing_SI / dt_SI));
    const uint_t vtkSpacingParticles = uint_c(std::ceil(vtkSpacingParticles_SI / dt_SI));
@@ -450,18 +454,10 @@ int main(int argc, char** argv)
    const real_t T0 = 0;
    const real_t delta_T = 1;  //Tref - T0;
 
-   //const real_t dynamicViscosityLB = dyna;
-   const real_t dynamicViscosityLB = (densityFluid * Uc * particleDiameter) / (particleRe);
-   //const real_t Uc = dynamicViscosityLB * particleRe / (densityFluid * particleDiameter);
-   //const real_t dynamicViscosityLB = (densityFluid * Uc * particleDiameter) / (particleRe);
-   real_t gravitationalAcceleration = (3 * Uc * Uc * densityFluid) / (4 * particleDiameter * (densityParticle - densityFluid));
 
-   if (use2DRefVel)
-   {
-      WALBERLA_LOG_INFO_ON_ROOT("pi value is  " << math::pi);
-      gravitationalAcceleration =
-         (2 * Uc * Uc * densityFluid) / ( math::pi * particleDiameter * (densityParticle - densityFluid));
-   }
+   const real_t dynamicViscosityLB = (densityFluid * Uc * particleDiameter) / (particleRe);
+
+   real_t gravitationalAcceleration = (3 * Uc * Uc * densityFluid) / (4 * particleDiameter * (densityParticle - densityFluid));
 
    const real_t kinematicViscosityLB = dynamicViscosityLB / densityFluid;
 
@@ -547,21 +543,35 @@ int main(int argc, char** argv)
    WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.yMin(), real_t(0));
    WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.zMin(), real_t(0));
 
-   Vector3< real_t > particleLocation(((SingleparticleLocation[0] / dx_SI)),
-                                      ((SingleparticleLocation[1] / dx_SI)),
-                                      ((SingleparticleLocation[2] / dx_SI)));
-
-   auto pt = particleLocation;
-   if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
+   auto generationDomain = math::AABB::createFromMinMaxCorner(
+      math::Vector3< real_t >(simulationDomain.xMax() * (real_t(1) - generationDomainFraction[0]) / real_t(2),
+                              simulationDomain.yMax() * (real_t(1) - generationDomainFraction[1]) / real_t(2),
+                              simulationDomain.zMax() * (real_t(1) - generationDomainFraction[2]) / real_t(2)),
+      math::Vector3< real_t >(simulationDomain.xMax() * (real_t(1) + generationDomainFraction[0]) / real_t(2),
+                              simulationDomain.yMax() * (real_t(1) + generationDomainFraction[1]) / real_t(2),
+                              simulationDomain.zMax() * (real_t(1) + generationDomainFraction[2]) / real_t(2)));
+   uint_t numparticles   = 0;
+   std::random_device rd;
+   std::mt19937 gen(rd());
+   std::uniform_real_distribution<real_t> dist(0.0, 1.0);
+   for (auto pt : grid_generator::SCGrid(generationDomain, generationDomain.center(), particleGenerationSpacing))
    {
-      mesa_pd::data::Particle&& p = *ps->create();
-      p.setPosition(pt);
-      p.setInteractionRadius(particleDiameter * real_t(0.5));
-      p.setOwner(mpi::MPIManager::instance()->rank());
-      p.setShapeID(sphereShape);
-      p.setType(1);
-      p.setTemperature(particleTemperature);
+      if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
+      {
+         mesa_pd::data::Particle&& p = *ps->create();
+         p.setPosition(pt);
+         p.setInteractionRadius(particleDiameter * real_t(0.5));
+         p.setOwner(mpi::MPIManager::instance()->rank());
+         p.setShapeID(sphereShape);
+         p.setType(1);
+         real_t randomTemp = dist(gen);
+         p.setTemperature(randomTemp);
+         //p.setTemperature(particleTemperature);
+      }
+      numparticles += 1;
+      if (numparticles == 500) { break; }
    }
+
 
    ////////////////////////
    // ADD DATA TO BLOCKS //
