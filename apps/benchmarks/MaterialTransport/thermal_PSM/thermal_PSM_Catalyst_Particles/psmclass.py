@@ -213,7 +213,7 @@ def create_psm_thermal_collision_rule(lbm_config):
             equilibrium_temp.append(eq_sol)
         #print("eq solid is ", equilibrium_solid)
         for i, (f_eq_solid, f, offset) in enumerate(
-                zip(solid_eq_symbols, pre_collision_pdf_symbols, stencil)
+                zip(equilibrium_temp, pre_collision_pdf_symbols, stencil)
         ):
 
             sc_term = lbm_config.individual_fraction_field.center(p) * (
@@ -267,7 +267,7 @@ def create_psm_thermal_collision_rule(lbm_config):
             raw_col.subexpressions
             + fluid_collisions
             + equilibrium_fluid
-            + equilibrium_solid
+            #+ equilibrium_solid
             + solid_post_assignments
     )
     mains = pdfs_update + output_asms + remaining_main_asms
