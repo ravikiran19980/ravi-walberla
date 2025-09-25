@@ -85,6 +85,17 @@ function( waLBerla_generate_target_from_python )
     # cmake might not be able to determine linker language since file extension is "hidden" in variable
     set_target_properties(${PYGEN_NAME} PROPERTIES LINKER_LANGUAGE CXX)
     target_include_directories(${PYGEN_NAME} PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/${codegenCfg})
+    if ( OpenMP_CXX_FOUND )
+        target_link_libraries( ${PYGEN_NAME} PUBLIC OpenMP::OpenMP_CXX )
+    endif ()
+
+    if ( WALBERLA_BUILD_WITH_CUDA )
+       target_link_libraries( ${PYGEN_NAME} PUBLIC CUDA::cudart)
+    endif ( WALBERLA_BUILD_WITH_CUDA )
+
+    if ( WALBERLA_BUILD_WITH_HIP )
+        target_link_libraries( ${PYGEN_NAME} PUBLIC hip::host )
+    endif ( WALBERLA_BUILD_WITH_HIP )
 endfunction()
 #######################################################################################################################
 
@@ -160,7 +171,7 @@ function ( waLBerla_export )
     endforeach()
 
     # Export service libs
-    set ( WALBERLA_SERVICE_LIBS ${SERVICE_LIBS} CACHE INTERNAL "External Libraries necessary for waLBerla" )
+    set ( WALBERLA_CORE_SERVICE_LIBS ${CORE_SERVICE_LIBS} CACHE INTERNAL "Ext. libraries necessary for waLBerla core" )
 
     # Export compile definitions
     get_directory_property( WALBERLA_COMPILE_DEFINITIONS DIRECTORY ${walberla_SOURCE_DIR} COMPILE_DEFINITIONS )
@@ -232,7 +243,7 @@ function ( waLBerla_import )
         endforeach()
     endif()
 
-    set( SERVICE_LIBS ${WALBERLA_SERVICE_LIBS} PARENT_SCOPE )
+    set( CORE_SERVICE_LIBS ${WALBERLA_CORE_SERVICE_LIBS} PARENT_SCOPE )
 
     set( CMAKE_CXX_STANDARD ${WALBERLA_CXX_STANDARD}  PARENT_SCOPE)
     set( CMAKE_CXX_STANDARD_REQUIRED ${WALBERLA_STANDARD_REQUIRED} PARENT_SCOPE)

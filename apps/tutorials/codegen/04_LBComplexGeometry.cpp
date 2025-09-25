@@ -39,6 +39,8 @@
    #include "gpu/HostFieldAllocator.h"
    #include "gpu/ParallelStreams.h"
    #include "gpu/communication/UniformGPUScheme.h"
+   #include "gpu/timeloop/DeviceSweepTimeloop.h"
+   #include "gpu/timing/DeviceTimingPool.h"
 #endif
 
 #include "lbm/all.h"
@@ -259,7 +261,7 @@ private:
    const Vector3<bool> periodicity_;
 };
 
-auto velocityCallback= [](const Cell & pos, const shared_ptr< StructuredBlockForest > & structuredBlockforest, IBlock & block, const real_t & velocity )
+auto velocityCallback= [](const Cell & /*pos*/, const shared_ptr< StructuredBlockForest > & /*structuredBlockforest*/, IBlock & /*block*/, const real_t & velocity )
 {
    const real_t v = velocity;
 
@@ -268,7 +270,7 @@ auto velocityCallback= [](const Cell & pos, const shared_ptr< StructuredBlockFor
    return result;
 };
 
-auto wallDistanceCallback= [](const Cell& fluid, const Cell& boundary, const shared_ptr< StructuredBlockForest >& SbF, IBlock& block, const real_t & q )
+auto wallDistanceCallback= [](const Cell& /*fluid*/, const Cell& /*boundary*/, const shared_ptr< StructuredBlockForest >& /*SbF*/, IBlock& /*block*/, const real_t & q )
 {
    return q;
 };

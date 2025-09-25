@@ -15,6 +15,7 @@ qrc_*
 
 # Generated files
 *.out
+**/out
 /src/waLBerlaDefinitions.h
 /src/core/waLBerlaBuildInfo.cpp
 
@@ -71,10 +72,11 @@ logfile*.txt
 # CMake
 CMakeUserPresets.json
 /CMakeLists.txt.user
+CMakeUserPresets.json
+ci-workflows.json
 
 # CMake build files
 CMakeFiles
-Makefile
 /CMakeCache.txt
 CTestTestfile.cmake
 /DartConfiguration.tcl
@@ -84,9 +86,15 @@ CMakeDefs.h
 /walberla-config.cmake
 cmake-build-*
 
+# Python build files
+**/build
+**/*.egg-info
 
 # Virtual environments
 .venv/
 env/
 venv/
 ENV/
+
+# Coverage
+coverage
