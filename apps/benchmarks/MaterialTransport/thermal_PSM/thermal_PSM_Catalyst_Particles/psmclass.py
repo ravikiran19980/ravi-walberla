@@ -201,6 +201,7 @@ def create_psm_thermal_collision_rule(lbm_config):
         #    - Set up solid equilibrium
         solid_eq_symbols = sp.symbols(f"f_eq_solid_:{stencil.Q}")
         equilibrium_solid = []
+        equilibrium_temp = []
         for eq_s_symbol, eq_fluid in zip(solid_eq_symbols, equilibrium_fluid):
             eq_sol = eq_fluid
             vel_subs = {sp.Symbol(f"u_{i}"): lbm_config.object_velocity_field.center(p * stencil.D + i) for i in range(stencil.D)}
@@ -209,7 +210,7 @@ def create_psm_thermal_collision_rule(lbm_config):
             all_subs = {**vel_subs,**Cp_solid_subs, **temp_solid_subs}
             eq_sol = eq_sol.rhs.subs(all_subs)
             equilibrium_solid.append(Assignment(eq_s_symbol, eq_sol))
-
+            equilibrium_temp.append(eq_sol)
         #print("eq solid is ", equilibrium_solid)
         for i, (f_eq_solid, f, offset) in enumerate(
                 zip(solid_eq_symbols, pre_collision_pdf_symbols, stencil)
@@ -236,7 +237,7 @@ def create_psm_thermal_collision_rule(lbm_config):
     for i, f_post_solid in enumerate(solid_post_symbols):
         if heat_source is not None:
             solid_post_assignments.append(
-                Assignment(f_post_solid, solid_collisions[i] + stencil_weights[i] * heat_source * B.center*(1 - 0.5*omega_eff))
+                Assignment(f_post_solid, solid_collisions[i] + stencil_weights[i] * heat_source * B.center)
             )
         else:
             solid_post_assignments.append(
@@ -251,6 +252,15 @@ def create_psm_thermal_collision_rule(lbm_config):
             post_collision_pdf_symbols, pre_collision_pdf_symbols, fluid_post_symbols, solid_post_symbols
         )
     ]
+
+    print("raw coll subexp before manipulation is  ", raw_col.subexpressions)
+    for i, a in enumerate(raw_col.subexpressions):
+        if a.lhs.name == "rho_Cp_T":
+            # Update the rhs: add 0.5 * Q to the existing expression
+            raw_col.subexpressions[i] = Assignment(a.lhs, a.rhs ) #+ 0.5 * heat_source*B.center)
+            break
+
+    print("raw coll subexp after manipulation is  ", raw_col.subexpressions)
 
     #   Finalize
     subexps = (

@@ -276,7 +276,7 @@ FluidInfo evaluateFluidInfo(const shared_ptr< StructuredBlockStorage >& blocks, 
 #include <fstream>
 #include <iomanip>   // for std::setprecision
 
-void writeVelocityToFile(const ParticleInfo &info, uint_t time, const std::string &filename = "velocity_vs_time.txt")
+void writeVelocityToFile(const ParticleInfo &info, uint_t time, const std::string &filename = "velocity_vs_time_bottom.txt")
 {
    // open file in append mode so new results get added each timestep
    std::ofstream file(filename, std::ios::app);
@@ -374,6 +374,7 @@ int main(int argc, char** argv)
    const real_t Cp_s_SI                    = TemperatureSetup.getParameter<real_t>("Cps");
    const real_t Kr                    = TemperatureSetup.getParameter<real_t>("Kr");
    const real_t Gr                    = TemperatureSetup.getParameter<real_t>("Gr");
+   const real_t Qso                    = TemperatureSetup.getParameter<real_t>("Qso");
 
    Config::BlockHandle outputSetup      = cfgFile->getBlock("Output");
    const real_t infoSpacing_SI          = outputSetup.getParameter< real_t >("infoSpacing");
@@ -447,9 +448,12 @@ int main(int argc, char** argv)
    const real_t Tref = Tref_SI;  // this is the initial fluid temperature and we define Gr for the fluid
    const real_t particleTemperature = Tparticle_SI;
    const real_t T0 = 0;
-   const real_t delta_T = 1 ; //Tref - T0;
+   const real_t delta_T = 1;  //Tref - T0;
 
+   //const real_t dynamicViscosityLB = dyna;
    const real_t dynamicViscosityLB = (densityFluid * Uc * particleDiameter) / (particleRe);
+   //const real_t Uc = dynamicViscosityLB * particleRe / (densityFluid * particleDiameter);
+   //const real_t dynamicViscosityLB = (densityFluid * Uc * particleDiameter) / (particleRe);
    real_t gravitationalAcceleration = (3 * Uc * Uc * densityFluid) / (4 * particleDiameter * (densityParticle - densityFluid));
 
    if (use2DRefVel)
@@ -464,8 +468,7 @@ int main(int argc, char** argv)
    const real_t rho_Cp_ref =
       2 * densityFluid * Cp_f * densityParticle * Cp_s / (densityFluid * Cp_f + densityParticle * Cp_s);
 
-   const real_t dummy_ref = 2 * densityFluid * Cp_f * densityParticle * Cp_s /
-                            (densityFluid * Cp_f + densityParticle * Cp_s); // densityFluid*Cp_f;
+   const real_t dummy_ref = densityFluid*Cp_f;
 
    const real_t thermalDiffusivityFluid_LB = kinematicViscosityLB / Pr;
 
@@ -478,7 +481,7 @@ int main(int argc, char** argv)
    const real_t omega_f = lbm::collision_model::omegaFromViscosity(kinematicViscosityLB);
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
    const real_t omegaT_s = lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
-   const real_t Qs = 1*densityFluid*Cp_f*Uc*delta_T/particleDiameter;
+   const real_t Qs = (Qso)*densityFluid*Cp_f*Uc*delta_T/particleDiameter;
 
    WALBERLA_LOG_INFO_ON_ROOT("Known Quantities are    ");
    WALBERLA_LOG_INFO_ON_ROOT("density particle LB is " << densityParticle);
@@ -534,8 +537,8 @@ int main(int argc, char** argv)
    ss->shapes[sphereShape]->updateMassAndInertia(densityParticle);
 
    // prevent particles from interfering with inflow and outflow by putting the bounding planes slightly in front
-   const real_t planeOffsetFromInflow  = dx;
-   const real_t planeOffsetFromOutflow = dx;
+   const real_t planeOffsetFromInflow  = 0;//dx;
+   const real_t planeOffsetFromOutflow = 0;//dx;
    createPlaneSetup(ps, ss, simulationDomain, periodicInX, periodicInY,periodicInZ, planeOffsetFromInflow, planeOffsetFromOutflow);
    // Create spheres
 
@@ -544,22 +547,23 @@ int main(int argc, char** argv)
       WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.yMin(), real_t(0));
       WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.zMin(), real_t(0));
 
-      Vector3< uint_t > particleLocation(uint_c(std::ceil(SingleparticleLocation[0] / dx_SI)),
-                                         uint_c(std::ceil(SingleparticleLocation[1] / dx_SI)),
-                                         uint_c(std::ceil(SingleparticleLocation[2] / dx_SI)));
-      auto pt = particleLocation;
-      if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
-      {
-         mesa_pd::data::Particle&& p = *ps->create();
-         p.setPosition(pt);
-         p.setInteractionRadius(particleDiameter * real_t(0.5));
-         p.setOwner(mpi::MPIManager::instance()->rank());
-         p.setShapeID(sphereShape);
-         p.setType(1);
-         p.setTemperature(particleTemperature);
-      }
+   Vector3< real_t > particleLocation(((SingleparticleLocation[0] / dx_SI)),
+                                      ((SingleparticleLocation[1] / dx_SI)),
+                                      ((SingleparticleLocation[2] / dx_SI)));
 
-      ////////////////////////
+   auto pt = particleLocation;
+   if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
+   {
+      mesa_pd::data::Particle&& p = *ps->create();
+      p.setPosition(pt);
+      p.setInteractionRadius(particleDiameter * real_t(0.5));
+      p.setOwner(mpi::MPIManager::instance()->rank());
+      p.setShapeID(sphereShape);
+      p.setType(1);
+      p.setTemperature(particleTemperature);
+   }
+
+   ////////////////////////
    // ADD DATA TO BLOCKS //
    ///////////////////////
 
@@ -673,7 +677,7 @@ int main(int argc, char** argv)
 
    if (!periodicInZ)
    {
-      boundariesBlockString += "Border { direction T;    walldistance -1;  flag Free_Slip_Fluid; }"
+      boundariesBlockString += "Border { direction T;    walldistance -1;  flag NoSlip_Fluid; }"
                                "Border { direction B;    walldistance -1;  flag NoSlip_Fluid; }";
    }
 
@@ -748,15 +752,15 @@ int main(int argc, char** argv)
 
    lbm::BC_Energy_Neumann neumann_energy_bc(blocks, pdfFieldEnergyCPUGPUID);
    neumann_energy_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldEnergyID,
-                                                             Neumann_Energy_Flag, Energy_Flag);
+                                                      Neumann_Energy_Flag, Energy_Flag);
 
    lbm::BC_energy_DiffusionDirichlet_static energy_static_bc_cold(blocks,pdfFieldEnergyCPUGPUID,real_t(densityFluid*Cp_f*Tcold));
    energy_static_bc_cold.fillFromFlagField< FlagField_T >(blocks, flagFieldEnergyID,
-                                                      Density_Energy_Flag_static_cold, Energy_Flag);
+                                                          Density_Energy_Flag_static_cold, Energy_Flag);
 
    lbm::BC_energy_DiffusionDirichlet_static energy_static_bc_hot(blocks,pdfFieldEnergyCPUGPUID,real_t(densityFluid*Cp_f*Thot));
    energy_static_bc_hot.fillFromFlagField< FlagField_T >(blocks, flagFieldEnergyID,
-                                                          Density_Energy_Flag_static_hot, Energy_Flag);
+                                                         Density_Energy_Flag_static_hot, Energy_Flag);
 
 ///////////////
 // TIME LOOP //
@@ -793,8 +797,8 @@ int main(int argc, char** argv)
 
    ParticleAndVolumeFractionSoA_T< 1 > particleAndVolumeFractionSoA_energy(blocks,omegaT_f);
    PSMSweepCollection psmSweepCollectionTemperature(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
-                                                            particleAndVolumeFractionSoA_energy, densityConcentrationFieldCPUGPUID,
-                                                particleSubBlockSize, true);
+                                                    particleAndVolumeFractionSoA_energy, densityConcentrationFieldCPUGPUID,
+                                                    particleSubBlockSize, true);
 
 
    pystencils::initializeConcentrationField initializeConcentrationField(particleAndVolumeFractionSoA_energy.BsFieldID,particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,particleAndVolumeFractionSoA_energy.particleTemperaturesFieldID, Tref);
@@ -845,7 +849,7 @@ int main(int argc, char** argv)
 // Setup of the energy LBM communication for synchronizing the energy pdf field between neighboring blocks
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
    gpu::communication::UniformGPUScheme< Stencil_Energy_T > com_energy(blocks, sendDirectlyFromGPU,
-                                                                                     false);
+                                                                       false);
 #else
    walberla::blockforest::communication::UniformBufferedScheme< Stencil_Energy_T > com_energy(blocks);
 #endif
@@ -871,7 +875,9 @@ int main(int argc, char** argv)
                                                   rho_0);
 
    pystencils::EnergyMacroGetter getterSweep_energy(energyFieldCPUGPUID,
-                                                  pdfFieldEnergyCPUGPUID);
+                                                    pdfFieldEnergyCPUGPUID);
+
+   pystencils::compute_temperature_field compute_temperature_field(particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,Cp_f,Cp_s,omegaT_f,omegaT_s,densityFluid,densityParticle);
 
 
 #endif
@@ -992,37 +998,68 @@ int main(int argc, char** argv)
    pystencils::PSMFluidSweep psmFluidSweep(
       particleAndVolumeFractionSoA_fluid.BsFieldID, particleAndVolumeFractionSoA_fluid.BFieldID, densityConcentrationFieldCPUGPUID,
       particleAndVolumeFractionSoA_fluid.particleForcesFieldID, particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID,
-      pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID, T0, alphaLB, gravitationalAcceleration, omega_f, rho_0);
+      pdfFieldFluidCPUGPUID, T0, alphaLB, gravitationalAcceleration, omega_f, rho_0);
 
 
    pystencils::PSMEnergySweep psmEnergySweep(
-      particleAndVolumeFractionSoA_energy.BsFieldID, particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,particleAndVolumeFractionSoA_energy.particleVelocitiesFieldID,
+      particleAndVolumeFractionSoA_energy.BsFieldID, particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,particleAndVolumeFractionSoA_energy.particleVelocitiesFieldID,
       pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,  Cp_f,Cp_s,Qs,omegaT_f,omegaT_s,dummy_ref, densityFluid, densityParticle);
 
 
-      timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")
-                     << Sweep(deviceSyncWrapper(noSlip_fluid_bc.getSweep()), "Boundary Handling (No slip fluid)");
-      timeloop.add() << Sweep(deviceSyncWrapper(ubb_fluid_bc.getSweep()),
-                                          "Boundary Handling (fluid ubb)");
-      timeloop.add() << Sweep(deviceSyncWrapper(density_fluid_bc.getSweep()),
-                              "Boundary Handling (fluid density)");
-      timeloop.add() << Sweep(deviceSyncWrapper(freeSlip_fluid_bc.getSweep()),
-                              "Boundary Handling (Free slip fluid)");
+   timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")
+                  << Sweep(deviceSyncWrapper(noSlip_fluid_bc.getSweep()), "Boundary Handling (No slip fluid)");
+   timeloop.add() << Sweep(deviceSyncWrapper(ubb_fluid_bc.getSweep()),
+                           "Boundary Handling (fluid ubb)");
+   timeloop.add() << Sweep(deviceSyncWrapper(density_fluid_bc.getSweep()),
+                           "Boundary Handling (fluid density)");
+   timeloop.add() << Sweep(deviceSyncWrapper(freeSlip_fluid_bc.getSweep()),
+                           "Boundary Handling (Free slip fluid)");
 
-      // add the energy to the time loop
+   // add the energy to the time loop
 
-      timeloop.add() << BeforeFunction(communication_energy, "LBM energy Communication")
-                     << Sweep(deviceSyncWrapper(neumann_energy_bc.getSweep()),
-                              "Boundary Handling (Energy Neumann)");
+   timeloop.add() << BeforeFunction(communication_energy, "LBM energy Communication")
+                  << Sweep(deviceSyncWrapper(neumann_energy_bc.getSweep()),
+                           "Boundary Handling (Energy Neumann)");
 
-      timeloop.add() << Sweep(deviceSyncWrapper(energy_static_bc_hot.getSweep()),
-                              "Boundary Handling (Energy static bc hot)");
+   timeloop.add() << Sweep(deviceSyncWrapper(energy_static_bc_hot.getSweep()),
+                           "Boundary Handling (Energy static bc hot)");
 
-      timeloop.add() << Sweep(deviceSyncWrapper(energy_static_bc_cold.getSweep()),
-                              "Boundary Handling (Energy static bc cold)");
+   timeloop.add() << Sweep(deviceSyncWrapper(energy_static_bc_cold.getSweep()),
+                           "Boundary Handling (Energy static bc cold)");
 
 
-      addCHTPSMSweepToTimeloop(timeloop, psmSweepCollectionFluid,psmSweepCollectionTemperature, psmFluidSweep,psmEnergySweep);
+   //addCHTPSMSweepToTimeloop(timeloop, psmSweepCollectionFluid,psmSweepCollectionTemperature, psmFluidSweep,psmEnergySweep);
+
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.particleMappingSweep), "Particle mapping Fluid"); // uses weighting for hydrodynamics specified in Cmakelists file
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping Thermal"); // always uses a weighting of 1
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.setParticleVelocitiesSweep),
+                           "Set particle velocities");
+
+   timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep")
+                  << AfterFunction(
+                        [&blocks, &getterSweep_fluid]() {
+                           for (auto& block : *blocks)
+                           {
+                              getterSweep_fluid(&block);
+                           }
+                        },
+                        "Compute fluid sweep");
+
+   timeloop.add() << Sweep(deviceSyncWrapper(psmEnergySweep), "PSM Energy sweep")
+                  << AfterFunction(
+                        [&blocks, &getterSweep_energy, &compute_temperature_field]() {
+                           for (auto& block : *blocks)
+                           {
+                              getterSweep_energy(&block);
+                              compute_temperature_field(&block);
+                           }
+                        },
+                        "Compute energy sweep");
+
+
+   // after both the sweeps, reduce the particle forces.
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.reduceParticleForcesSweep),
+                           "Reduce particle forces");
 
 
 
@@ -1052,142 +1089,142 @@ int main(int argc, char** argv)
 
       timeloop.singleStep(timeloopTiming);
 
-         if (particleBarriers) WALBERLA_MPI_BARRIER();
-         timeloopTiming["RPD forEachParticle assoc"].start();
-         ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, assoc, *accessor);
-         if (particleBarriers) WALBERLA_MPI_BARRIER();
-         timeloopTiming["RPD forEachParticle assoc"].end();
-         timeloopTiming["RPD reduceProperty HydrodynamicForceTorqueNotification"].start();
-         reduceProperty.operator()< mesa_pd::HydrodynamicForceTorqueNotification >(*ps);
-         if (particleBarriers) WALBERLA_MPI_BARRIER();
-         timeloopTiming["RPD reduceProperty HydrodynamicForceTorqueNotification"].end();
+      if (particleBarriers) WALBERLA_MPI_BARRIER();
+      timeloopTiming["RPD forEachParticle assoc"].start();
+      ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, assoc, *accessor);
+      if (particleBarriers) WALBERLA_MPI_BARRIER();
+      timeloopTiming["RPD forEachParticle assoc"].end();
+      timeloopTiming["RPD reduceProperty HydrodynamicForceTorqueNotification"].start();
+      reduceProperty.operator()< mesa_pd::HydrodynamicForceTorqueNotification >(*ps);
+      if (particleBarriers) WALBERLA_MPI_BARRIER();
+      timeloopTiming["RPD reduceProperty HydrodynamicForceTorqueNotification"].end();
 
-         if (timeStep == 0)
+      if (timeStep == 0)
+      {
+         lbm_mesapd_coupling::InitializeHydrodynamicForceTorqueForAveragingKernel
+            initializeHydrodynamicForceTorqueForAveragingKernel;
+         timeloopTiming["RPD forEachParticle initializeHydrodynamicForceTorqueForAveragingKernel"].start();
+         ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor,
+                             initializeHydrodynamicForceTorqueForAveragingKernel, *accessor);
+         if (particleBarriers) WALBERLA_MPI_BARRIER();
+         timeloopTiming["RPD forEachParticle initializeHydrodynamicForceTorqueForAveragingKernel"].end();
+      }
+      timeloopTiming["RPD forEachParticle averageHydrodynamicForceTorque"].start();
+      ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, averageHydrodynamicForceTorque,
+                          *accessor);
+      if (particleBarriers) WALBERLA_MPI_BARRIER();
+      timeloopTiming["RPD forEachParticle averageHydrodynamicForceTorque"].end();
+
+      for (auto subCycle = uint_t(0); subCycle < numberOfParticleSubCycles; ++subCycle)
+      {
+         if(useIntegrators)
          {
-            lbm_mesapd_coupling::InitializeHydrodynamicForceTorqueForAveragingKernel
-               initializeHydrodynamicForceTorqueForAveragingKernel;
-            timeloopTiming["RPD forEachParticle initializeHydrodynamicForceTorqueForAveragingKernel"].start();
-            ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor,
-                                initializeHydrodynamicForceTorqueForAveragingKernel, *accessor);
+            timeloopTiming["RPD forEachParticle vvIntegratorPreForce"].start();
+            ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, vvIntegratorPreForce,
+                                *accessor);
             if (particleBarriers) WALBERLA_MPI_BARRIER();
-            timeloopTiming["RPD forEachParticle initializeHydrodynamicForceTorqueForAveragingKernel"].end();
+            timeloopTiming["RPD forEachParticle vvIntegratorPreForce"].end();
          }
-         timeloopTiming["RPD forEachParticle averageHydrodynamicForceTorque"].start();
-         ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, averageHydrodynamicForceTorque,
-                             *accessor);
+         timeloopTiming["RPD syncCall"].start();
+         syncCall();
          if (particleBarriers) WALBERLA_MPI_BARRIER();
-         timeloopTiming["RPD forEachParticle averageHydrodynamicForceTorque"].end();
+         timeloopTiming["RPD syncCall"].end();
 
-         for (auto subCycle = uint_t(0); subCycle < numberOfParticleSubCycles; ++subCycle)
+         timeloopTiming["RPD linkedCells.clear"].start();
+         linkedCells.clear();
+         if (particleBarriers) WALBERLA_MPI_BARRIER();
+         timeloopTiming["RPD linkedCells.clear"].end();
+         timeloopTiming["RPD forEachParticle ipilc"].start();
+         ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectAll(), *accessor, ipilc, *accessor, linkedCells);
+         if (particleBarriers) WALBERLA_MPI_BARRIER();
+         timeloopTiming["RPD forEachParticle ipilc"].end();
+
+         if (useLubricationForces)
          {
-            if(useIntegrators)
-            {
-               timeloopTiming["RPD forEachParticle vvIntegratorPreForce"].start();
-               ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, vvIntegratorPreForce,
-                                   *accessor);
-               if (particleBarriers) WALBERLA_MPI_BARRIER();
-               timeloopTiming["RPD forEachParticle vvIntegratorPreForce"].end();
-            }
-            timeloopTiming["RPD syncCall"].start();
-            syncCall();
-            if (particleBarriers) WALBERLA_MPI_BARRIER();
-            timeloopTiming["RPD syncCall"].end();
-
-            timeloopTiming["RPD linkedCells.clear"].start();
-            linkedCells.clear();
-            if (particleBarriers) WALBERLA_MPI_BARRIER();
-            timeloopTiming["RPD linkedCells.clear"].end();
-            timeloopTiming["RPD forEachParticle ipilc"].start();
-            ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectAll(), *accessor, ipilc, *accessor, linkedCells);
-            if (particleBarriers) WALBERLA_MPI_BARRIER();
-            timeloopTiming["RPD forEachParticle ipilc"].end();
-
-            if (useLubricationForces)
-            {
-               // lubrication correction
-               timeloopTiming["RPD forEachParticlePairHalf lubricationCorrectionKernel"].start();
-               linkedCells.forEachParticlePairHalf(
-                  useOpenMP, mesa_pd::kernel::ExcludeInfiniteInfinite(), *accessor,
-                  [&lubricationCorrectionKernel, &rpdDomain](const size_t idx1, const size_t idx2, auto& ac) {
-                     mesa_pd::collision_detection::AnalyticContactDetection acd;
-                     acd.getContactThreshold() = lubricationCorrectionKernel.getNormalCutOffDistance();
-                     mesa_pd::kernel::DoubleCast double_cast;
-                     mesa_pd::mpi::ContactFilter contact_filter;
-                     if (double_cast(idx1, idx2, ac, acd, ac))
-                     {
-                        if (contact_filter(acd.getIdx1(), acd.getIdx2(), ac, acd.getContactPoint(), *rpdDomain))
-                        {
-                           double_cast(acd.getIdx1(), acd.getIdx2(), ac, lubricationCorrectionKernel, ac,
-                                       acd.getContactNormal(), acd.getPenetrationDepth());
-                        }
-                     }
-                  },
-                  *accessor);
-               if (particleBarriers) WALBERLA_MPI_BARRIER();
-               timeloopTiming["RPD forEachParticlePairHalf lubricationCorrectionKernel"].end();
-            }
-
-            // collision response
-            timeloopTiming["RPD forEachParticlePairHalf collisionResponse"].start();
+            // lubrication correction
+            timeloopTiming["RPD forEachParticlePairHalf lubricationCorrectionKernel"].start();
             linkedCells.forEachParticlePairHalf(
                useOpenMP, mesa_pd::kernel::ExcludeInfiniteInfinite(), *accessor,
-               [&collisionResponse, &rpdDomain, timeStepSizeRPD](const size_t idx1, const size_t idx2, auto& ac) {
+               [&lubricationCorrectionKernel, &rpdDomain](const size_t idx1, const size_t idx2, auto& ac) {
                   mesa_pd::collision_detection::AnalyticContactDetection acd;
+                  acd.getContactThreshold() = lubricationCorrectionKernel.getNormalCutOffDistance();
                   mesa_pd::kernel::DoubleCast double_cast;
                   mesa_pd::mpi::ContactFilter contact_filter;
                   if (double_cast(idx1, idx2, ac, acd, ac))
                   {
                      if (contact_filter(acd.getIdx1(), acd.getIdx2(), ac, acd.getContactPoint(), *rpdDomain))
                      {
-                        collisionResponse(acd.getIdx1(), acd.getIdx2(), ac, acd.getContactPoint(),
-                                          acd.getContactNormal(), acd.getPenetrationDepth(), timeStepSizeRPD);
+                        double_cast(acd.getIdx1(), acd.getIdx2(), ac, lubricationCorrectionKernel, ac,
+                                    acd.getContactNormal(), acd.getPenetrationDepth());
                      }
                   }
                },
                *accessor);
             if (particleBarriers) WALBERLA_MPI_BARRIER();
-            timeloopTiming["RPD forEachParticlePairHalf collisionResponse"].end();
-
-            timeloopTiming["RPD reduceProperty reduceAndSwapContactHistory"].start();
-            reduceAndSwapContactHistory(*ps);
-            if (particleBarriers) WALBERLA_MPI_BARRIER();
-            timeloopTiming["RPD reduceProperty reduceAndSwapContactHistory"].end();
-
-            // add hydrodynamic force
-            lbm_mesapd_coupling::AddHydrodynamicInteractionKernel addHydrodynamicInteraction;
-            timeloopTiming["RPD forEachParticle addHydrodynamicInteraction + addGravitationalForce"].start();
-            ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, addHydrodynamicInteraction,
-                                *accessor);
-
-            ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, addGravitationalForce, *accessor);
-            if (particleBarriers) WALBERLA_MPI_BARRIER();
-            timeloopTiming["RPD forEachParticle addHydrodynamicInteraction + addGravitationalForce"].end();
-
-            timeloopTiming["RPD reduceProperty ForceTorqueNotification"].start();
-            reduceProperty.operator()< mesa_pd::ForceTorqueNotification >(*ps);
-            if (particleBarriers) WALBERLA_MPI_BARRIER();
-            timeloopTiming["RPD reduceProperty ForceTorqueNotification"].end();
-
-            if(useIntegrators)
-            {
-               timeloopTiming["RPD forEachParticle vvIntegratorPostForce"].start();
-               ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, vvIntegratorPostForce,
-                                   *accessor);
-               if (particleBarriers) WALBERLA_MPI_BARRIER();
-               timeloopTiming["RPD forEachParticle vvIntegratorPostForce"].end();
-            }
+            timeloopTiming["RPD forEachParticlePairHalf lubricationCorrectionKernel"].end();
          }
 
-         timeloopTiming["RPD syncCall"].start();
-         syncCall();
+         // collision response
+         timeloopTiming["RPD forEachParticlePairHalf collisionResponse"].start();
+         linkedCells.forEachParticlePairHalf(
+            useOpenMP, mesa_pd::kernel::ExcludeInfiniteInfinite(), *accessor,
+            [&collisionResponse, &rpdDomain, timeStepSizeRPD](const size_t idx1, const size_t idx2, auto& ac) {
+               mesa_pd::collision_detection::AnalyticContactDetection acd;
+               mesa_pd::kernel::DoubleCast double_cast;
+               mesa_pd::mpi::ContactFilter contact_filter;
+               if (double_cast(idx1, idx2, ac, acd, ac))
+               {
+                  if (contact_filter(acd.getIdx1(), acd.getIdx2(), ac, acd.getContactPoint(), *rpdDomain))
+                  {
+                     collisionResponse(acd.getIdx1(), acd.getIdx2(), ac, acd.getContactPoint(),
+                                       acd.getContactNormal(), acd.getPenetrationDepth(), timeStepSizeRPD);
+                  }
+               }
+            },
+            *accessor);
          if (particleBarriers) WALBERLA_MPI_BARRIER();
-         timeloopTiming["RPD syncCall"].end();
+         timeloopTiming["RPD forEachParticlePairHalf collisionResponse"].end();
 
-         timeloopTiming["RPD forEachParticle resetHydrodynamicForceTorque"].start();
-         ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectAll(), *accessor, resetHydrodynamicForceTorque,
-                             *accessor);
+         timeloopTiming["RPD reduceProperty reduceAndSwapContactHistory"].start();
+         reduceAndSwapContactHistory(*ps);
          if (particleBarriers) WALBERLA_MPI_BARRIER();
-         timeloopTiming["RPD forEachParticle resetHydrodynamicForceTorque"].end();
+         timeloopTiming["RPD reduceProperty reduceAndSwapContactHistory"].end();
+
+         // add hydrodynamic force
+         lbm_mesapd_coupling::AddHydrodynamicInteractionKernel addHydrodynamicInteraction;
+         timeloopTiming["RPD forEachParticle addHydrodynamicInteraction + addGravitationalForce"].start();
+         ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, addHydrodynamicInteraction,
+                             *accessor);
+
+         ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, addGravitationalForce, *accessor);
+         if (particleBarriers) WALBERLA_MPI_BARRIER();
+         timeloopTiming["RPD forEachParticle addHydrodynamicInteraction + addGravitationalForce"].end();
+
+         timeloopTiming["RPD reduceProperty ForceTorqueNotification"].start();
+         reduceProperty.operator()< mesa_pd::ForceTorqueNotification >(*ps);
+         if (particleBarriers) WALBERLA_MPI_BARRIER();
+         timeloopTiming["RPD reduceProperty ForceTorqueNotification"].end();
+
+         if(useIntegrators)
+         {
+            timeloopTiming["RPD forEachParticle vvIntegratorPostForce"].start();
+            ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, vvIntegratorPostForce,
+                                *accessor);
+            if (particleBarriers) WALBERLA_MPI_BARRIER();
+            timeloopTiming["RPD forEachParticle vvIntegratorPostForce"].end();
+         }
+      }
+
+      timeloopTiming["RPD syncCall"].start();
+      syncCall();
+      if (particleBarriers) WALBERLA_MPI_BARRIER();
+      timeloopTiming["RPD syncCall"].end();
+
+      timeloopTiming["RPD forEachParticle resetHydrodynamicForceTorque"].start();
+      ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectAll(), *accessor, resetHydrodynamicForceTorque,
+                          *accessor);
+      if (particleBarriers) WALBERLA_MPI_BARRIER();
+      timeloopTiming["RPD forEachParticle resetHydrodynamicForceTorque"].end();
 
       if (infoSpacing != 0 && timeStep % infoSpacing == 0)
       {
@@ -1198,6 +1235,10 @@ int main(int argc, char** argv)
          if (mpi::MPIManager::instance()->rank() == 0) { (writeVelocityToFile(particleInfo, timeStep)); }
 
          auto fluidInfo = evaluateFluidInfo(blocks, densityFluidFieldID, velFieldFluidCPUGPUID);
+         for (auto& block : *blocks)
+         {
+            getterSweep_fluid(&block);
+         }
          WALBERLA_LOG_INFO_ON_ROOT(fluidInfo);
          if (particleBarriers) WALBERLA_MPI_BARRIER();
          timeloopTiming["Evaluate infos"].end();
