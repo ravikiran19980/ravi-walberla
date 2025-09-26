@@ -90,6 +90,7 @@
 #include "PackInfoFluid.h"
 #include "PackInfoEnergy.h"
 #include "math.h"
+#include "heatFlux.cpp"
 
 namespace MaterialTransport
 {
@@ -551,10 +552,10 @@ int main(int argc, char** argv)
                               simulationDomain.yMax() * (real_t(1) + generationDomainFraction[1]) / real_t(2),
                               simulationDomain.zMax() * (real_t(1) + generationDomainFraction[2]) / real_t(2)));
    uint_t numparticles   = 0;
-   std::random_device rd;
+   /*std::random_device rd;
    std::mt19937 gen(rd());
-   std::uniform_real_distribution<real_t> dist(0.0, 1.0);
-   for (auto pt : grid_generator::SCGrid(generationDomain, generationDomain.center(), particleGenerationSpacing))
+   std::uniform_real_distribution<real_t> dist(0.0, 1.0);*/
+   /*for (auto pt : grid_generator::SCGrid(generationDomain, generationDomain.center(), particleGenerationSpacing))
    {
       if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
       {
@@ -570,7 +571,59 @@ int main(int argc, char** argv)
       }
       numparticles += 1;
       if (numparticles == 500) { break; }
-   }
+   }*/
+
+   struct Vec3Equal {
+      bool operator()(const std::tuple<int,int,int>& a, const std::tuple<int,int,int>& b) const {
+         return (std::get<0>(a) == std::get<0>(b) &&
+                 std::get<1>(a) == std::get<1>(b) &&
+                 std::get<2>(a) == std::get<2>(b));
+      }
+   };
+   struct Vec3Hash {
+      std::size_t operator()(const std::tuple<int,int,int>& t) const {
+         auto h1 = std::hash<int>{}(std::get<0>(t));
+         auto h2 = std::hash<int>{}(std::get<1>(t));
+         auto h3 = std::hash<int>{}(std::get<2>(t));
+         return h1 ^ (h2 << 1) ^ (h3 << 2);
+      }
+   };
+      std::random_device rd;
+      std::mt19937 gen(rd());
+      std::uniform_real_distribution<real_t> distx(0.0, domainSize[0]);
+      std::uniform_real_distribution<real_t> disty(0.0, domainSize[1]);
+      std::uniform_real_distribution<real_t> distz(0.0, domainSize[2]);
+      std::uniform_real_distribution<real_t> distTemp(0.0, 1.0);
+
+      std::unordered_set<std::tuple<int,int,int>, Vec3Hash, Vec3Equal> usedPositions;
+
+      uint_t created = 0;
+      const real_t tol = 1e-6;  // tolerance for uniqueness check
+
+      while (created < 50)
+      {
+         real_t x = distx(gen);
+         real_t y = disty(gen);
+         real_t z = distz(gen);
+
+         Vector3<uint_t> pt(x, y, z);
+
+
+         if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
+         {
+            mesa_pd::data::Particle&& p = *ps->create();
+            p.setPosition(pt);
+            p.setInteractionRadius(particleDiameter * real_t(0.5));
+            p.setOwner(mpi::MPIManager::instance()->rank());
+            p.setShapeID(sphereShape);
+            p.setType(1);
+
+            real_t randomTemp = distTemp(gen);
+            p.setTemperature(randomTemp);
+         }
+
+         created++;
+      }
 
 
    ////////////////////////

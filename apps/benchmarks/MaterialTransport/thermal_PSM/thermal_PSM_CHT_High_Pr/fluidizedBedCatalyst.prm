@@ -54,7 +54,7 @@ TemperatureSetup
     Cps 1;
     Kr  15;
     Gr 1000;
-    Qso 5;
+    Qso 0;
 }
 
 Output
