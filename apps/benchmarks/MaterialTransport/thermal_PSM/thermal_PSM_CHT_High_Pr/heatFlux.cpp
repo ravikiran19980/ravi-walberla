@@ -25,13 +25,16 @@ struct HeatFluxAverager
    std::vector< double > sum_T, sum_Vy, cell_count_plane, sum_fluct_prod, avg_fluct_prod;  // used for the convective part
    std::vector< double > dtdy;   // used for the diffusive part with derivatives
    std::vector< double > count_final;
+   std::vector<double> Qfluctuation;
+   std::vector<double> Qderivative;
    std::vector<double> Qtotal;
 
 
    HeatFluxAverager(uint_t Nx_, uint_t Ny_, uint_t Nz_, real_t dy_, real_t alpha_f_, real_t alpha_p_)
       : Nx(Nx_), Ny(Ny_), Nz(Nz_), dy(dy_), alpha_f(alpha_f_), alpha_p(alpha_p_),  Tbar(Ny_, 0),
         Vybar(Ny_, 0), sum_T(Ny_, 0), sum_Vy(Ny_, 0), cell_count_plane(Ny_, 0),
-        sum_fluct_prod(Ny_,0), avg_fluct_prod(Ny_,0), dtdy(Ny_,0), count_final(Ny_,0), Qtotal(Ny_,0)
+        sum_fluct_prod(Ny_,0), avg_fluct_prod(Ny_,0), dtdy(Ny_,0), count_final(Ny_,0)
+        , Qfluctuation(Ny_,0), Qderivative(Ny_,0), Qtotal(Ny_,0)
 
    {}
 
@@ -86,16 +89,15 @@ struct HeatFluxAverager
 
             Tfield, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
 
-            const uint_t j = uint_c(cell.y()); const real_t B = Bfield->get(x, y, z);
-            const real_t vyf                                  = velF->get(x, y, z, 1);
-
+            const uint_t j = uint_c(cell.z()); const real_t B = Bfield->get(x, y, z);
+            const real_t vyf                                  = velF->get(x, y, z, 2);
+            //WALBERLA_LOG_INFO_ON_ROOT("vy is  " << vyf);
             sum_T[j] += Tfield->get(x, y, z); sum_Vy[j] += vyf; cell_count_plane[j] += 1.0;)
       }
       // reductions needed here for the sums of T and vy and cell_plane_count
       mpi::allReduceInplace(sum_T, mpi::SUM);
       mpi::allReduceInplace(sum_Vy, mpi::SUM);
       mpi::allReduceInplace(cell_count_plane, mpi::SUM);
-
       // compute fluctuations for each time in each height "y":
 
       for (uint_t j = 0; j < Ny; ++j)
@@ -115,43 +117,48 @@ struct HeatFluxAverager
 
          WALBERLA_FOR_ALL_CELLS_XYZ(
             Tfield, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
-            const uint_t j = uint_c(cell.y()); const real_t B = Bfield->get(x, y, z);
+            const uint_t j = uint_c(cell.z()); const real_t B = Bfield->get(x, y, z);
             count_final[j] += 1;
 
             // fluctuations part
-            const real_t vy = velF->get(x, y, z, 1); const real_t T = Tfield->get(x, y, z);
+            const real_t vy = velF->get(x, y, z, 2); const real_t T = Tfield->get(x, y, z);
             const real_t T_fluctuation = T - Tbar[j]; const real_t vel_fluctuation = vy - Vybar[j];
-            real_t fluctuation_product = -T_fluctuation * vel_fluctuation;
+            //WALBERLA_LOG_INFO_ON_ROOT("vel fluctuation is  " << Vybar[j]);
+            real_t fluctuation_product = -vel_fluctuation*T_fluctuation;
             sum_fluct_prod[j] += fluctuation_product;
 
             // dT/dy central (use one-sided later at walls)
             real_t dTdy = 0.0;
             if (j > 0 && j < Ny - 1) {
+               //WALBERLA_LOG_INFO_ON_ROOT("entered normal dtdy loop");
                // grab neighbors using local y +/- 1 – assumes one ghost layer present
-               const real_t T0 = Tfield->get(x, y - 1, z);
-               const real_t T1 = Tfield->get(x, y + 1, z);
+               const real_t T0 = Tfield->get(x, y, z-1);
+               const real_t T1 = Tfield->get(x, y, z+1);
                dTdy            = (T1 - T0) / (2.0 * dy);
-               dTdy            = (1 - B) * alpha_p * dTdy + B * alpha_f * dTdy;
-               dtdy[j] = dTdy;
+               dTdy            = (1 - B) * alpha_f * dTdy + B * alpha_p * dTdy;
+               dtdy[j] += dTdy;
             } else {
                // wall flux (one-sided derivative), average over x,z on the two extreme planes
-               if (j == 0 && y + 2 < int(Tfield->ySize()))
+               //WALBERLA_LOG_INFO_ON_ROOT("entered else part of dtdy loop");
+               if (j == 0)
                {
+                  //WALBERLA_LOG_INFO_ON_ROOT("entered j==0  dtdy loop");
                   const real_t T0        = Tfield->get(x, y, z);
-                  const real_t T1        = Tfield->get(x, y + 1, z);
-                  const real_t T2        = Tfield->get(x, y + 2, z);
+                  const real_t T1        = Tfield->get(x, y, z+1);
+                  const real_t T2        = Tfield->get(x, y, z+2);
                   const real_t dTdy_wall = oneSidedBottom(T0, T1, T2, dy);
-                  wallFluxBot_sum += (1 - B) * alpha_p * dTdy_wall + B * alpha_f * dTdy_wall;
-                  dtdy[j] = wallFluxBot_sum;
+                  wallFluxBot_sum = (1 - B) * alpha_f * dTdy_wall + B * alpha_p * dTdy_wall;
+                  dtdy[j] += wallFluxBot_sum;
                }
-               if (j == Ny - 1 && y - 2 >= 0)
+               if (j == Ny - 1)
                {
+                  //WALBERLA_LOG_INFO_ON_ROOT("entered j == Ny-1 dtdy loop");
                   const real_t Tm        = Tfield->get(x, y, z);
-                  const real_t Tm1       = Tfield->get(x, y - 1, z);
-                  const real_t Tm2       = Tfield->get(x, y - 2, z);
+                  const real_t Tm1       = Tfield->get(x, y, z-1);
+                  const real_t Tm2       = Tfield->get(x, y, z-2);
                   const real_t dTdy_wall = oneSidedTop(Tm, Tm1, Tm2, dy);
-                  wallFluxTop_sum += (1 - B) * alpha_p * dTdy_wall + B * alpha_f * dTdy_wall;
-                  dtdy[j] = wallFluxTop_sum;
+                  wallFluxTop_sum = (1 - B) * alpha_f * dTdy_wall + B * alpha_p * dTdy_wall;
+                  dtdy[j] += wallFluxTop_sum;
                }
             })
       }
@@ -161,7 +168,8 @@ struct HeatFluxAverager
       mpi::allReduceInplace(sum_fluct_prod, mpi::SUM);
       mpi::allReduceInplace(dtdy, mpi::SUM);
       mpi::allReduceInplace(count_final, mpi::SUM);
-
+      //WALBERLA_LOG_INFO("sum fluct prod is " << dtdy[20]);
+      //WALBERLA_LOG_INFO("count final is " << count_final[20]);
       // plane-averaged instantaneous and time running averages
       ++nSamples;
 
@@ -179,9 +187,13 @@ struct HeatFluxAverager
       }
 
 
-      runningMeanVec(sum_fluct_prod, q_fluc_inst, nSamples);
-      runningMeanVec(dtdy, q_cond_inst, nSamples);
-      runningMeanVec(Qtotal, q_cond_inst, nSamples);
+      //runningMeanVec(sum_fluct_prod, q_fluc_inst, nSamples);
+      //runningMeanVec(dtdy, q_cond_inst, nSamples);
+      //runningMeanVec(Qtotal, q_total_inst, nSamples);
+
+      WALBERLA_LOG_INFO_ON_ROOT( "fluctuation flux is  " << runningMeanVec(Qfluctuation, q_fluc_inst , nSamples)[10]);
+      WALBERLA_LOG_INFO_ON_ROOT( "dtdy flux is  "        << runningMeanVec(Qderivative, q_cond_inst , nSamples)[10]);
+      WALBERLA_LOG_INFO_ON_ROOT( "q totl is  "           << runningMeanVec(Qtotal, q_total_inst , nSamples)[10]);
 
    }
 };

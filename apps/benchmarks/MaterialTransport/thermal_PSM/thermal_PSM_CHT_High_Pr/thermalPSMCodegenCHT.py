@@ -162,7 +162,7 @@ with CodeGeneration() as ctx:
         method=Method.SRT,
         relaxation_rate=omega_f,
         #output={"velocity": velocity_field},
-        force= force_concentration_on_fluid,
+        #force= force_concentration_on_fluid,
         force_model=ForceModel.GUO,
         compressible=False,
         psm_config=psm_config_F,
@@ -294,7 +294,7 @@ with CodeGeneration() as ctx:
 
     @ps.kernel
     def initializeConcentrationField():
-        concentration_field.center @= (1 - B.center) * T_init_fluid + acc_expr
+        concentration_field.center @=  (1 - B.center) * T_init_fluid + acc_expr
 
     initializeConcentrationField_ac = ps.AssignmentCollection(initializeConcentrationField)
     generate_sweep(ctx, "initializeConcentrationField", initializeConcentrationField_ac)

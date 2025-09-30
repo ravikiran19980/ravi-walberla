@@ -62,6 +62,31 @@ void initConcentrationField(const shared_ptr< StructuredBlockStorage >& blocks, 
 
 } // initConcentrationField
 
+
+void initConcentrationFieldCoutte(const shared_ptr< StructuredBlockStorage >& blocks, BlockDataID& ConcentrationFieldID,
+                             Vector3< uint_t > domainSize)
+{
+
+   for (auto& block : *blocks)
+   {
+      Block& b                = dynamic_cast< Block& >(block);
+      uint_t level            = b.getLevel();
+      auto ConcentrationField = block.getData< DensityField_concentration_T >(ConcentrationFieldID);
+      WALBERLA_FOR_ALL_CELLS_INCLUDING_GHOST_LAYER_XYZ(ConcentrationField, {
+         Cell globalCell;
+         blocks->transformBlockLocalToGlobalCell(globalCell, block, Cell(x,y,z));
+         Vector3< real_t > position = blocks->getCellCenter(globalCell, level);
+         const real_t posX   = position[0]; // cellCenter[0];
+         const real_t posY   = position[1]; // cellCenter[1];
+         const real_t posZ   = position[2]; // cellCenter[2];
+
+         ConcentrationField->get(x, y, z) = 0.5 - posZ/(domainSize[2]);
+
+      }) // WALBERLA_FOR_ALL_CELLS_INCLUDING_GHOST_LAYER_XYZ
+   }
+
+} // initConcentrationField
+
 void initConcentrationFieldGaussian(const shared_ptr< StructuredBlockStorage >& blocks,
                                     BlockDataID& ConcentrationFieldID, const math::AABB& domainAABB,
                                     Vector3< uint_t > domainSize, const real_t sigma_0, const real_t sigma_D,
@@ -161,6 +186,26 @@ void initFluidField(const shared_ptr< StructuredBlockStorage >& blocks, BlockDat
          {
             FluidVelocityField->get(x, y, z, 2) = uInflow[2];
          }
+      }) // WALBERLA_FOR_ALL_CELLS_INCLUDING_GHOST_LAYER_XYZ
+   }
+}
+
+void initFluidFieldCoutte(const shared_ptr< StructuredBlockStorage >& blocks, BlockDataID& FluidFieldID, const real_t h,
+                    const Vector3< real_t > uInflow)
+{
+   for (auto& block : *blocks)
+   {
+      Block& b                = dynamic_cast< Block& >(block);
+      uint_t level            = b.getLevel();
+      auto FluidVelocityField = block.getData< VelocityField_fluid_T >(FluidFieldID);
+
+      WALBERLA_FOR_ALL_CELLS_INCLUDING_GHOST_LAYER_XYZ(FluidVelocityField, {
+         Cell globalCell;
+         blocks->transformBlockLocalToGlobalCell(globalCell, block, Cell(x, y, z));
+         Vector3< real_t > position          = blocks->getCellCenter(globalCell, level);
+         FluidVelocityField->get(x, y, z, 0) = (uInflow[0] / (2 * h)) * (position[2] - h);
+         FluidVelocityField->get(x, y, z, 1) = uInflow[1];
+         FluidVelocityField->get(x, y, z, 2) = uInflow[2];
       }) // WALBERLA_FOR_ALL_CELLS_INCLUDING_GHOST_LAYER_XYZ
    }
 }
