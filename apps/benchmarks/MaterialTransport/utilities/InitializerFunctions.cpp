@@ -64,7 +64,7 @@ void initConcentrationField(const shared_ptr< StructuredBlockStorage >& blocks, 
 
 
 void initConcentrationFieldCoutte(const shared_ptr< StructuredBlockStorage >& blocks, BlockDataID& ConcentrationFieldID,
-                             Vector3< uint_t > domainSize)
+                                  BlockDataID& BFieldID,Vector3< uint_t > domainSize )
 {
 
    for (auto& block : *blocks)
@@ -72,6 +72,7 @@ void initConcentrationFieldCoutte(const shared_ptr< StructuredBlockStorage >& bl
       Block& b                = dynamic_cast< Block& >(block);
       uint_t level            = b.getLevel();
       auto ConcentrationField = block.getData< DensityField_concentration_T >(ConcentrationFieldID);
+      auto Bfield = block.getData< GhostLayerField< real_t, 1 > >(BFieldID);
       WALBERLA_FOR_ALL_CELLS_INCLUDING_GHOST_LAYER_XYZ(ConcentrationField, {
          Cell globalCell;
          blocks->transformBlockLocalToGlobalCell(globalCell, block, Cell(x,y,z));
@@ -80,7 +81,7 @@ void initConcentrationFieldCoutte(const shared_ptr< StructuredBlockStorage >& bl
          const real_t posY   = position[1]; // cellCenter[1];
          const real_t posZ   = position[2]; // cellCenter[2];
 
-         ConcentrationField->get(x, y, z) = 0.5 - posZ/(domainSize[2]);
+         ConcentrationField->get(x, y, z) = (1 - Bfield->get(x,y,z)) * (1 - posZ/(domainSize[2])) + Bfield->get(x,y,z)*((1 - posZ/(domainSize[2])));
 
       }) // WALBERLA_FOR_ALL_CELLS_INCLUDING_GHOST_LAYER_XYZ
    }

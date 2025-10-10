@@ -456,7 +456,7 @@ int main(int argc, char** argv)
 
    const real_t thermalDiffusivityFluid_LB = kinematicViscosityLB / Pr;
 
-   const real_t thermalDiffusivityParticle_LB = thermalDiffusivityFluid_LB;
+   const real_t thermalDiffusivityParticle_LB = 1*thermalDiffusivityFluid_LB;
 
 
    const real_t omega_f  = lbm::collision_model::omegaFromViscosity(kinematicViscosityLB);
@@ -539,8 +539,8 @@ int main(int argc, char** argv)
          if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
          {
             mesa_pd::data::Particle&& p = *ps->create();
-            p.setPosition(pt + Vector3< real_t >(distx(gen), disty(gen), distz(gen)));
-            ;
+            //p.setPosition(pt + Vector3< real_t >(distx(gen), disty(gen), distz(gen)));
+            p.setPosition(pt);
             p.setInteractionRadius(particleDiameter * real_t(0.5));
             p.setOwner(mpi::MPIManager::instance()->rank());
             p.setShapeID(sphereShape);
@@ -679,13 +679,13 @@ int main(int argc, char** argv)
 
    if(!periodicInX)
    {
-      boundariesBlockString += "Border { direction W;    walldistance -1;  flag Density_Energy_static_cold; }"
-                               "Border { direction E;    walldistance -1;  flag Density_Energy_static_cold; }";
+      boundariesBlockString += "Border { direction W;    walldistance -1;  flag Neumann_Energy; }"
+                               "Border { direction E;    walldistance -1;  flag Neumann_Energy; }";
    }
    if (!periodicInY)
    {
-      boundariesBlockString += "Border { direction S;    walldistance -1;  flag Density_Energy_static_cold; }"
-                               "Border { direction N;    walldistance -1;  flag Density_Energy_static_cold; }";
+      boundariesBlockString += "Border { direction S;    walldistance -1;  flag Neumann_Energy; }"
+                               "Border { direction N;    walldistance -1;  flag Neumann_Energy; }";
    }
 
    if (!periodicInZ)
@@ -817,14 +817,15 @@ int main(int argc, char** argv)
    for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
    {
       psmSweepCollectionFluid.particleMappingSweep(&(*blockIt));
+      psmSweepCollectionTemperature.particleMappingSweep(&(*blockIt));
    }
-   //initConcentrationFieldCoutte(blocks, densityConcentrationFieldCPUGPUID,
-   //                             domainSize);
+
+      initConcentrationFieldCoutte(blocks, densityConcentrationFieldCPUGPUID,particleAndVolumeFractionSoA_fluid.BFieldID,
+                             domainSize);
    for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
    {
       psmSweepCollectionFluid.setParticleVelocitiesSweep(&(*blockIt));
-      psmSweepCollectionTemperature.setParticleTemperaturesSweep(&(*blockIt)); // the initial temperatures of particles are always uniform
-      initializeConcentrationField(&(*blockIt));
+      // psmSweepCollectionTemperature.setParticleTemperaturesSweep(&(*blockIt)); // the initial temperatures of particles are always uniform initializeConcentrationField(&(*blockIt));
       pdfSetterFluid(&(*blockIt));
       pdfSetterEnergy(&(*blockIt));
    }
@@ -946,7 +947,7 @@ int main(int argc, char** argv)
       vtkOutput_Fluid->addCellDataWriter(
          make_shared< field::VTKWriter< BField_T > >(particleAndVolumeFractionSoA_fluid.BFieldID, "OverlapFraction"));
       vtkOutput_Fluid->addCellDataWriter(
-         make_shared< field::VTKWriter< particleTemperaturesField_T > >(particleAndVolumeFractionSoA_fluid.particleTemperaturesFieldID, "particle temp filed"));
+         make_shared< field::VTKWriter< particleTemperaturesField_T > >(particleAndVolumeFractionSoA_energy.particleTemperaturesFieldID, "particle temp filed"));
 
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
       vtkOutput_Energy->addCellDataWriter(
@@ -1030,6 +1031,8 @@ int main(int argc, char** argv)
    timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.particleMappingSweep), "Particle mapping Fluid"); // uses weighting for hydrodynamics specified in Cmakelists file
    timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping Thermal"); // always uses a weighting of 1
    timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.setParticleVelocitiesSweep),
+                           "Set particle velocities");
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.setParticleVelocitiesSweep),
                            "Set particle velocities");
 
    timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep")

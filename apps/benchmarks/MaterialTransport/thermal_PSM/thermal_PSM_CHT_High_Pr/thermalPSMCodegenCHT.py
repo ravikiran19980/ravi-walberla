@@ -48,8 +48,8 @@ const bool infoCsePdfs = {cse_pdfs};
 
 with CodeGeneration() as ctx:
     data_type = "float64" if ctx.double_accuracy else "float32"
-    stencil_fluid = LBStencil(Stencil.D3Q19)
-    stencil_energy = LBStencil(Stencil.D3Q19)
+    stencil_fluid = LBStencil(Stencil.D3Q27)
+    stencil_energy = LBStencil(Stencil.D3Q27)
     omega = sp.Symbol("omega")  # for now same for both the sweeps
     init_density_fluid = sp.Symbol("init_density_fluid")
     init_velocity_fluid = sp.symbols("init_velocity_fluid_:3")
@@ -219,7 +219,6 @@ with CodeGeneration() as ctx:
         method_fluid, density=init_density_fluid, velocity=velocity_field.center_vector, pdfs=pdfs_fluid.center_vector
     )
 
-
     pdfs_energy_setter = macroscopic_values_setter(
         method_energy, density=energy_field.center, velocity= velocity_field.center_vector,pdfs=pdfs_energy.center_vector
     )
@@ -301,7 +300,6 @@ with CodeGeneration() as ctx:
 
 
     # Generate files
-
     generate_sweep(
         ctx,
         "LBMFluidSweep",
@@ -414,8 +412,8 @@ with CodeGeneration() as ctx:
         target=target,
     )
 
-    # energy boundary conditions
 
+    # energy boundary conditions
     dirichlet_bc_dynamic = DiffusionDirichlet(lambda *args: None, velocity_field, data_type=data_type)
     diffusion_data_handler = DiffusionDirichletAdditionalDataHandler(stencil_energy, dirichlet_bc_dynamic)
     generate_boundary(ctx, 'BC_energy_DiffusionDirichlet_dynamic', dirichlet_bc_dynamic, method_energy,
@@ -432,7 +430,6 @@ with CodeGeneration() as ctx:
         streaming_pattern="pull",
         target=target,
     )
-
 
     generate_boundary(
         ctx,

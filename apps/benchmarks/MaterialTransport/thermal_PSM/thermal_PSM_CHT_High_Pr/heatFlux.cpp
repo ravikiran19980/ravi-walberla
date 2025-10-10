@@ -123,7 +123,7 @@ struct HeatFluxAverager
             // fluctuations part
             const real_t vy = velF->get(x, y, z, 2); const real_t T = Tfield->get(x, y, z);
             const real_t T_fluctuation = T - Tbar[j]; const real_t vel_fluctuation = vy - Vybar[j];
-            //WALBERLA_LOG_INFO_ON_ROOT("vel fluctuation is  " << Vybar[j]);
+            //WALBERLA_LOG_INFO_ON_ROOT("vel fluctuation is  " << Vybar[j] << "temp fluctuation is  " << T_fluctuation);
             real_t fluctuation_product = -vel_fluctuation*T_fluctuation;
             sum_fluct_prod[j] += fluctuation_product;
 

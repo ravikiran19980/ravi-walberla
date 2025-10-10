@@ -1,23 +1,23 @@
 PhysicalSetup // all to be specified in SI/ref units
 {
 
-    xSize 0.288; // = width  // 4dp
-    ySize 0.144; // = depth  // 4dp
-    zSize 0.144; // = height  // 20dp
+    xSize 0.05; // = width  // 4dp
+    ySize 0.05; // = depth  // 4dp
+    zSize 0.05; // = height  // 20dp
 
     periodicInX true;
     periodicInY true;
     periodicInZ false;
 
-    runtime 100;
+    runtime 1000;
     densityFluid 1.;
-    particleDiameter 0.024;
-    densityParticle 1.5.;
+    particleDiameter 0.01;
+    densityParticle 1.;
     particleRe 0.5;
-    dynamicFrictionCoefficient 0.4;  // wachs, 0.15 originally
-    coefficientOfRestitution 0.7;    // wachs  , 0.6 originally
+    dynamicFrictionCoefficient 0.15;  // wachs, 0.15 originally
+    coefficientOfRestitution 0.97;    // wachs  , 0.6 originally
     collisionTimeFactor 1.0;
-    particleGenerationSpacing 0.027;
+    particleGenerationSpacing 0.013;
 
 }
 
@@ -25,7 +25,7 @@ NumericalSetup
 {
     dx 0.001; // in m
     dt 0.001;  // this is the dt_SI if at all uInflow is set to 0.
-    Uc 0.01;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
+    Uc 0.1;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
     // product of number of blocks should be equal to number of used processes
     numXBlocks 2;
     numYBlocks 2;
@@ -36,21 +36,21 @@ NumericalSetup
     numberOfParticleSubCycles 10;
     useParticles true;
     useIntegrators true;
-    particleSubBlockSize <8, 8, 8>;
+    particleSubBlockSize <5, 5, 5>;
     linkedCellWidthRation 1.01;
     particleBarriers true;
-    generationDomainFraction <0.95,0.95,0.95>;
+    generationDomainFraction <0.85,0.85,0.85>;
     SingleparticleLocation <0.064,0.064,0.128>;
     volfraction 0.2;
 }
 
 TemperatureSetup
 {
-    Thot 0.5;   // ThotSI = ThotLB   (concentration conversion from SI to LB)
-    Tcold -0.5;
+    Thot 1;   // ThotSI = ThotLB   (concentration conversion from SI to LB)
+    Tcold 0;
     Tref  0;
     Tparticle 0;
-    PrandtlNumber 1;
+    PrandtlNumber 7;
     Cpf 1;
     Cps 1;
     Kr  1;
@@ -60,9 +60,9 @@ TemperatureSetup
 
 Output
 {
-    infoSpacing 0.001; // in s
+    infoSpacing 0.002; // in s
     vtkSpacingParticles 0; // in s
-    vtkSpacingFluid 0; // ins
+    vtkSpacingFluid 0.001; // ins
     vtkFolder vtk_out;
     performanceLogFrequency 5000000000;
 }

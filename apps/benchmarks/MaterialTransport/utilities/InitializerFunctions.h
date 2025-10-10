@@ -39,7 +39,7 @@ void initFluidField(const shared_ptr< StructuredBlockStorage >& blocks, BlockDat
 void initFluidFieldCoutte(const shared_ptr< StructuredBlockStorage >& blocks, BlockDataID& FluidFieldID, const real_t h,
                      const Vector3< real_t > uInflow);
 void initConcentrationFieldCoutte(const shared_ptr< StructuredBlockStorage >& blocks, BlockDataID& ConcentrationFieldID,
-                                  Vector3< uint_t > domainSize);
+                                  BlockDataID& BFieldID,Vector3< uint_t > domainSize );
 void initFluidFieldPoiseuille(const shared_ptr< StructuredBlockStorage >& blocks, BlockDataID& FluidFieldID,
                               const Vector3< real_t > uInflow,Vector3< uint_t > domainSize);
 void analyticalSolGaussian(const shared_ptr< StructuredBlockStorage >& blocks, BlockDataID& AnalyticalConcentrationFieldID,const math::AABB& domainAABB,Vector3< uint_t > domainSize, const real_t sigma_0, const real_t diffusivity,const Vector3<real_t> uInflow,const Vector3< real_t > x_0, const real_t time, uint_t advection_period);
