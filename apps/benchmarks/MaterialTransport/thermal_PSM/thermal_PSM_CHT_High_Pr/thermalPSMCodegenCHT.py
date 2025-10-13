@@ -412,7 +412,6 @@ with CodeGeneration() as ctx:
         target=target,
     )
 
-
     # energy boundary conditions
     dirichlet_bc_dynamic = DiffusionDirichlet(lambda *args: None, velocity_field, data_type=data_type)
     diffusion_data_handler = DiffusionDirichletAdditionalDataHandler(stencil_energy, dirichlet_bc_dynamic)
