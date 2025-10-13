@@ -81,7 +81,7 @@ void initConcentrationFieldCoutte(const shared_ptr< StructuredBlockStorage >& bl
          const real_t posY   = position[1]; // cellCenter[1];
          const real_t posZ   = position[2]; // cellCenter[2];
 
-         ConcentrationField->get(x, y, z) = (1 - Bfield->get(x,y,z)) * (1 - posZ/(domainSize[2])) + Bfield->get(x,y,z)*((1 - posZ/(domainSize[2])));
+         ConcentrationField->get(x, y, z) = (1 - Bfield->get(x,y,z)) * (0.5 - posZ/(domainSize[2])) + Bfield->get(x,y,z)*((0.5 - posZ/(domainSize[2])));
 
       }) // WALBERLA_FOR_ALL_CELLS_INCLUDING_GHOST_LAYER_XYZ
    }
