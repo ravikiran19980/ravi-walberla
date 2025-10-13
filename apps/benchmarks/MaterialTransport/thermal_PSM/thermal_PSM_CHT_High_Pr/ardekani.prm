@@ -46,8 +46,8 @@ NumericalSetup
 
 TemperatureSetup
 {
-    Thot 1;   // ThotSI = ThotLB   (concentration conversion from SI to LB)
-    Tcold 0;
+    Thot 0.5;   // ThotSI = ThotLB   (concentration conversion from SI to LB)
+    Tcold -0.5;
     Tref  0;
     Tparticle 0;
     PrandtlNumber 7;
@@ -62,7 +62,7 @@ Output
 {
     infoSpacing 0.002; // in s
     vtkSpacingParticles 0; // in s
-    vtkSpacingFluid 0.001; // ins
+    vtkSpacingFluid 0; // ins
     vtkFolder vtk_out;
     performanceLogFrequency 5000000000;
 }
