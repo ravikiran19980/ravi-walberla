@@ -791,9 +791,6 @@ int main(int argc, char** argv)
    PSMSweepCollection psmSweepCollectionFluid(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
                                               particleAndVolumeFractionSoA_fluid, densityConcentrationFieldCPUGPUID,
                                               particleSubBlockSize);
-   lbm::BC_Fluid_Density density_fluid_bc(blocks,
-                                          particleAndVolumeFractionSoA_fluid.BFieldID,densityConcentrationFieldCPUGPUID,pdfFieldFluidCPUGPUID, T0, alphaLB, real_t(1),gravitationalAcceleration, 1);
-   density_fluid_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldFluidID, Density_Fluid_Flag, Fluid_Flag);
 
    ParticleAndVolumeFractionSoA_T< 1 > particleAndVolumeFractionSoA_energy(blocks,omegaT_f);
    PSMSweepCollection psmSweepCollectionTemperature(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
@@ -822,11 +819,13 @@ int main(int argc, char** argv)
    for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
    {
       psmSweepCollectionFluid.particleMappingSweep(&(*blockIt));
+      psmSweepCollectionTemperature.particleMappingSweep(&(*blockIt));
    }
 
    for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
    {
       psmSweepCollectionFluid.setParticleVelocitiesSweep(&(*blockIt));
+      psmSweepCollectionTemperature.setParticleVelocitiesSweep(&(*blockIt));
       psmSweepCollectionTemperature.setParticleTemperaturesSweep(&(*blockIt)); // the initial temperatures of particles are always uniform
       initializeConcentrationField(&(*blockIt));
       pdfSetterFluid(&(*blockIt));
@@ -1010,8 +1009,6 @@ int main(int argc, char** argv)
                   << Sweep(deviceSyncWrapper(noSlip_fluid_bc.getSweep()), "Boundary Handling (No slip fluid)");
    timeloop.add() << Sweep(deviceSyncWrapper(ubb_fluid_bc.getSweep()),
                            "Boundary Handling (fluid ubb)");
-   timeloop.add() << Sweep(deviceSyncWrapper(density_fluid_bc.getSweep()),
-                           "Boundary Handling (fluid density)");
    timeloop.add() << Sweep(deviceSyncWrapper(freeSlip_fluid_bc.getSweep()),
                            "Boundary Handling (Free slip fluid)");
 
@@ -1031,9 +1028,12 @@ int main(int argc, char** argv)
    //addCHTPSMSweepToTimeloop(timeloop, psmSweepCollectionFluid,psmSweepCollectionTemperature, psmFluidSweep,psmEnergySweep);
 
    timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.particleMappingSweep), "Particle mapping Fluid"); // uses weighting for hydrodynamics specified in Cmakelists file
-   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping Thermal"); // always uses a weighting of 1
+
    timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.setParticleVelocitiesSweep),
-                           "Set particle velocities");
+                           "Set particle velocities from fluid sweepcollection");
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping Thermal"); // always uses a weighting of 1
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.setParticleVelocitiesSweep),
+                           "Set particle velocities from thermal sweepcollection");
 
    timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep")
                   << AfterFunction(
