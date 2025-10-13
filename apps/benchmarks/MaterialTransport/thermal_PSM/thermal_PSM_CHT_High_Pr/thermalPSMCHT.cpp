@@ -232,6 +232,8 @@ struct FluidInfo
    real_t maximumVelocity = 0_r;
    real_t averageDensity  = 0_r;
    real_t maximumDensity  = 0_r;
+   real_t maxTemperature  = 0_r;
+   real_t minTemperature  = 0_r;
 
    void allReduce()
    {
@@ -241,6 +243,8 @@ struct FluidInfo
       ;
       walberla::mpi::allReduceInplace(averageDensity, walberla::mpi::SUM);
       walberla::mpi::allReduceInplace(maximumDensity, walberla::mpi::MAX);
+      walberla::mpi::allReduceInplace(maxTemperature, walberla::mpi::MAX);
+      walberla::mpi::allReduceInplace(minTemperature, walberla::mpi::MIN);
 
       averageVelocity /= real_c(numFluidCells);
       averageDensity /= real_c(numFluidCells);
@@ -251,11 +255,11 @@ std::ostream& operator<<(std::ostream& os, FluidInfo const& m)
 {
    return os << "Fluid Info: numFluidCells = " << m.numFluidCells << ", uAvg = " << m.averageVelocity
              << ", uMax = " << m.maximumVelocity << ", densityAvg = " << m.averageDensity
-             << ", densityMax = " << m.maximumDensity;
+             << ", densityMax = " << m.maximumDensity << ", TMax = " << m.maxTemperature << ", TMin = " << m.minTemperature;
 }
 
 FluidInfo evaluateFluidInfo(const shared_ptr< StructuredBlockStorage >& blocks, const BlockDataID& densityFieldID,
-                            const BlockDataID& velocityFieldID)
+                            const BlockDataID& velocityFieldID, const BlockDataID &temperatureFieldID)
 {
    FluidInfo info;
 
@@ -263,13 +267,18 @@ FluidInfo evaluateFluidInfo(const shared_ptr< StructuredBlockStorage >& blocks, 
    {
       auto densityField  = blockIt->getData< DensityField_fluid_T >(densityFieldID);
       auto velocityField = blockIt->getData< VelocityField_fluid_T >(velocityFieldID);
+      auto temperatureField = blockIt->getData< DensityField_concentration_T >(temperatureFieldID);
 
       WALBERLA_FOR_ALL_CELLS_XYZ(
          densityField, ++info.numFluidCells; Vector3< real_t > velocity(
             velocityField->get(x, y, z, 0), velocityField->get(x, y, z, 1), velocityField->get(x, y, z, 2));
          real_t density = densityField->get(x, y, z); real_t velMagnitude = velocity.length();
+         real_t temperature = temperatureField->get(x,y,z);
          info.averageVelocity += velMagnitude; info.maximumVelocity = std::max(info.maximumVelocity, velMagnitude);
-         info.averageDensity += density; info.maximumDensity        = std::max(info.maximumDensity, density);)
+         info.averageDensity += density; info.maximumDensity        = std::max(info.maximumDensity, density);
+         info.maxTemperature = std::max(info.maxTemperature, temperature);
+         info.minTemperature = std::min(info.minTemperature, temperature);)
+
    }
    info.allReduce();
    return info;
@@ -539,8 +548,7 @@ int main(int argc, char** argv)
          if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
          {
             mesa_pd::data::Particle&& p = *ps->create();
-            //p.setPosition(pt + Vector3< real_t >(distx(gen), disty(gen), distz(gen)));
-            p.setPosition(pt);
+            p.setPosition(pt + Vector3< real_t >(distx(gen), disty(gen), distz(gen)));
             p.setInteractionRadius(particleDiameter * real_t(0.5));
             p.setOwner(mpi::MPIManager::instance()->rank());
             p.setShapeID(sphereShape);
@@ -1236,7 +1244,7 @@ int main(int argc, char** argv)
          WALBERLA_LOG_INFO_ON_ROOT(particleInfo);
          if (mpi::MPIManager::instance()->rank() == 0) { (writeVelocityToFile(particleInfo, timeStep)); }
 
-         auto fluidInfo = evaluateFluidInfo(blocks, densityFluidFieldID, velFieldFluidCPUGPUID);
+         auto fluidInfo = evaluateFluidInfo(blocks, densityFluidFieldID, velFieldFluidCPUGPUID,densityConcentrationFieldCPUGPUID);
          for (auto& block : *blocks)
          {
             getterSweep_fluid(&block);
