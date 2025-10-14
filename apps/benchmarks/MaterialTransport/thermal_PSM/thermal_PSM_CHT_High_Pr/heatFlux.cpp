@@ -191,9 +191,9 @@ struct HeatFluxAverager
       //runningMeanVec(dtdy, q_cond_inst, nSamples);
       //runningMeanVec(Qtotal, q_total_inst, nSamples);
 
-      WALBERLA_LOG_INFO_ON_ROOT( "fluctuation flux is  " << runningMeanVec(Qfluctuation, q_fluc_inst , nSamples)[10]);
-      WALBERLA_LOG_INFO_ON_ROOT( "dtdy flux is  "        << runningMeanVec(Qderivative, q_cond_inst , nSamples)[10]);
-      WALBERLA_LOG_INFO_ON_ROOT( "q totl is  "           << runningMeanVec(Qtotal, q_total_inst , nSamples)[10]);
+      WALBERLA_LOG_INFO_ON_ROOT( "fluctuation flux is  " << runningMeanVec(Qfluctuation, q_fluc_inst , nSamples)[48]);
+      WALBERLA_LOG_INFO_ON_ROOT( "dtdy flux is  "        << runningMeanVec(Qderivative, q_cond_inst , nSamples)[48]);
+      WALBERLA_LOG_INFO_ON_ROOT( "q totl is  "           << runningMeanVec(Qtotal, q_total_inst , nSamples)[48]);
 
    }
 };

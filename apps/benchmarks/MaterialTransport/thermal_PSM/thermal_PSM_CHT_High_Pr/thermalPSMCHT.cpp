@@ -91,6 +91,7 @@
 #include "PackInfoEnergy.h"
 #include "math.h"
 #include "heatFlux.cpp"
+#include "randomPoints.cpp"
 
 namespace MaterialTransport
 {
@@ -345,7 +346,6 @@ int main(int argc, char** argv)
    const real_t dynamicFrictionCoefficient   = physicalSetup.getParameter< real_t >("dynamicFrictionCoefficient");
    const real_t coefficientOfRestitution     = physicalSetup.getParameter< real_t >("coefficientOfRestitution");
    const real_t collisionTimeFactor          = physicalSetup.getParameter< real_t >("collisionTimeFactor");
-   const real_t particleGenerationSpacing_SI = physicalSetup.getParameter< real_t >("particleGenerationSpacing");
 
    Config::BlockHandle numericalSetup = cfgFile->getBlock("NumericalSetup");
    const real_t dx_SI                 = numericalSetup.getParameter< real_t >("dx");
@@ -435,7 +435,6 @@ int main(int argc, char** argv)
    const real_t densityFluid              = real_t(1);
    real_t densityParticle                 = densityRatio;
    const real_t dx                        = real_t(1);
-   const real_t particleGenerationSpacing = particleGenerationSpacing_SI / dx_SI;
    const uint_t numTimeSteps              = uint_c(std::ceil(runtime_SI / dt_SI));
    const uint_t infoSpacing               = uint_c(std::ceil(infoSpacing_SI / dt_SI));
    const uint_t vtkSpacingParticles       = uint_c(std::ceil(vtkSpacingParticles_SI / dt_SI));
@@ -449,6 +448,7 @@ int main(int argc, char** argv)
    Vector3< real_t > Uinitialize(Uc, 0, 0);
    const real_t domainVolume = domainSize[0] * domainSize[1] * domainSize[2];
    const uint_t numParticles = uint_c((volfraction*domainVolume)/(particleVolume));
+   WALBERLA_LOG_INFO_ON_ROOT(numParticles << " particles will be created");
    const real_t T_conversion = real_t(1);
    // conversion for the various temperature quantities:
    const real_t rho_0               = densityFluid;
@@ -517,48 +517,48 @@ int main(int argc, char** argv)
    ss->shapes[sphereShape]->updateMassAndInertia(densityParticle);
 
    // prevent particles from interfering with inflow and outflow by putting the bounding planes slightly in front
-   const real_t planeOffsetFromInflow  = 0; // dx;
-   const real_t planeOffsetFromOutflow = 0; // dx;
+   const real_t planeOffsetFromInflow  =  dx;
+   const real_t planeOffsetFromOutflow =  dx;
    createPlaneSetup(ps, ss, simulationDomain, periodicInX, periodicInY, periodicInZ, planeOffsetFromInflow,
                     planeOffsetFromOutflow);
    // Create spheres
 
-   // Ensure that generation domain is computed correctly
-   WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.xMin(), real_t(0));
-   WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.yMin(), real_t(0));
-   WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.zMin(), real_t(0));
+   const int rank = mpi::MPIManager::instance()->rank();
 
-   auto generationDomain = math::AABB::createFromMinMaxCorner(
-      math::Vector3< real_t >(simulationDomain.xMax() * (real_t(1) - generationDomainFraction[0]) / real_t(2),
-                              simulationDomain.yMax() * (real_t(1) - generationDomainFraction[1]) / real_t(2),
-                              simulationDomain.zMax() * (real_t(1) - generationDomainFraction[2]) / real_t(2)),
-      math::Vector3< real_t >(simulationDomain.xMax() * (real_t(1) + generationDomainFraction[0]) / real_t(2),
-                              simulationDomain.yMax() * (real_t(1) + generationDomainFraction[1]) / real_t(2),
-                              simulationDomain.zMax() * (real_t(1) + generationDomainFraction[2]) / real_t(2)));
-   uint_t particlecount = 0;
-   std::random_device rd;
-   std::mt19937 gen(rd());
-   std::uniform_real_distribution< real_t > distx(0.0, 3);
-   std::uniform_real_distribution< real_t > disty(0.0, 3);
-   std::uniform_real_distribution< real_t > distz(0.0, 3);
-   if(useParticles)
-   {
-      for (auto pt : grid_generator::SCGrid(generationDomain, generationDomain.center(), particleGenerationSpacing))
-      {
-         if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
-         {
-            mesa_pd::data::Particle&& p = *ps->create();
-            p.setPosition(pt + Vector3< real_t >(distx(gen), disty(gen), distz(gen)));
-            p.setInteractionRadius(particleDiameter * real_t(0.5));
-            p.setOwner(mpi::MPIManager::instance()->rank());
-            p.setShapeID(sphereShape);
-            p.setType(1);
-            p.setTemperature(particleTemperature);
-         }
-         particlecount += 1;
-         if (particlecount == numParticles) { break; }
+   std::vector< math::Vector3<real_t> > positions;
+   if (rank == 0) {
+      const unsigned base_seed = 123456u;           // no rank in the seed!
+      std::seed_seq seq{ base_seed };
+      std::mt19937 gen(seq);
+
+      // min center-to-center distance = particleDiameter (or a bit more)
+      const real_t minCenterDistance = particleDiameter;
+      real_t boundarymargin = minCenterDistance/2;
+      positions = generatePositionsSimple(simulationDomain, numParticles, minCenterDistance,boundarymargin, gen);
+
+      if (positions.size() != numParticles) {
+         WALBERLA_ABORT("Requested " << numParticles
+                                     << " but only placed " << positions.size()
+                                     << " with min spacing " << minCenterDistance
+                                     << ". Enlarge domain or reduce spacing.");
       }
    }
+   walberla::mpi::broadcastObject(positions);
+   uint_t particlecount = 0;
+   for (const auto& pos : positions) {
+      if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pos)) {
+         mesa_pd::data::Particle&& p = *ps->create();
+         p.setPosition(pos);
+         p.setInteractionRadius(particleDiameter * real_t(0.5));
+         p.setOwner(mpi::MPIManager::instance()->rank());
+         p.setShapeID(sphereShape);
+         p.setType(1);
+         p.setTemperature(particleTemperature);
+      }
+      particlecount += 1;
+      if (particlecount == numParticles) break;
+   }
+
 
    ////////////////////////
    // ADD DATA TO BLOCKS //
