@@ -1017,7 +1017,7 @@ int main(int argc, char** argv)
    const real_t Qs = 0;
    pystencils::PSMEnergySweep psmEnergySweep(
       particleAndVolumeFractionSoA_energy.BsFieldID,particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,particleAndVolumeFractionSoA_energy.particleVelocitiesFieldID,
-      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,Cp_f,Cp_s,particleTemperature,omegaT_f,dummy_ref,densityFluid,densityParticle);;
+      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,Cp_f,Cp_s,particleTemperature,omegaT_f,omegaT_s,dummy_ref,densityFluid,densityParticle);
 
 
       timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")

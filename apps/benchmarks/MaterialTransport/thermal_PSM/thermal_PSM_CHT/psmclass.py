@@ -128,7 +128,7 @@ def create_psm_thermal_collision_rule(lbm_config):
 
     zeroth_moment_symbol = thermal_lb_method.conserved_quantity_computation.zeroth_order_moment_symbol
     rho_cp_eff = ((1.0 - B.center)* rho_f *Cp_f*omegaT_f + B.center*rho_s*Cp_s*omegaT_s)/((1-B.center)*omegaT_f + B.center*omegaT_s)
-    temperature_symbol = zeroth_moment_symbol
+    temperature_symbol = zeroth_moment_symbol/(rho_cp_eff)
     print("zeroth moment symbol is ", zeroth_moment_symbol)
     #   Output params
     output_asms = []
@@ -212,7 +212,7 @@ def create_psm_thermal_collision_rule(lbm_config):
             vel_subs = {sp.Symbol(f"u_{i}"): lbm_config.object_velocity_field.center(p * stencil.D + i) for i in range(stencil.D)}
             density_solid_subs = {sp.Symbol("rho"): rho_s}
             Cp_solid_subs   = {sp.Symbol("Cp"): Cp_s}
-            energy_solid_subs   = {zeroth_moment_symbol: sp.Symbol("T_s")}
+            energy_solid_subs   = {zeroth_moment_symbol: rho_s*Cp_s*sp.Symbol("T_s")}
             all_subs = {**vel_subs,**Cp_solid_subs, **density_solid_subs,**energy_solid_subs}
             eq_sol = eq_sol.rhs.subs(all_subs)
             equilibrium_solid.append(Assignment(eq_s_symbol, eq_sol))
@@ -224,7 +224,7 @@ def create_psm_thermal_collision_rule(lbm_config):
         ):
 
 
-            sc_term = lbm_config.individual_fraction_field.center(p) * f_eq_solid
+            sc_term = lbm_config.individual_fraction_field.center(p) * (f_eq_solid -f)
             solid_collisions[i] += sc_term
 
 
@@ -251,16 +251,24 @@ def create_psm_thermal_collision_rule(lbm_config):
                         Assignment(f_post_solid, solid_collisions[i])
                 )
 
+    #pdfs_update = [
+    #   Assignment(
+    #       f_post,
+    #       sp.Piecewise(
+    #           (solid_eq_rhs, sp.Eq(B.center, 1)),
+    #           ((1 - B.center) * (f_pre +f_post_fluid )+ solid_eq_rhs, True)
+    #       )
+    #   )
+    #   for f_post, f_pre, f_post_fluid, solid_eq_rhs in zip(
+    #       post_collision_pdf_symbols, pre_collision_pdf_symbols, fluid_post_symbols, solid_collisions)
+    #]
+
+    #   Combine into update rule
     pdfs_update = [
-       Assignment(
-           f_post,
-           sp.Piecewise(
-               (solid_eq_rhs, sp.Eq(B.center, 1)),
-               ((1 - B.center) * (f_pre +f_post_fluid )+ solid_eq_rhs, True)
-           )
-       )
-       for f_post, f_pre, f_post_fluid, solid_eq_rhs in zip(
-           post_collision_pdf_symbols, pre_collision_pdf_symbols, fluid_post_symbols, solid_collisions)
+        Assignment(f_post, f_pre + (1- B.center)*f_post_fluid +  f_post_solid)
+        for f_post, f_pre, f_post_fluid, f_post_solid in zip(
+            post_collision_pdf_symbols, pre_collision_pdf_symbols, fluid_post_symbols, solid_post_symbols
+        )
     ]
 
 #   Finalize
