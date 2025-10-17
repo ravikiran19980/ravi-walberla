@@ -826,7 +826,7 @@ int main(int argc, char** argv)
 
    // Map particles into the fluid domain
    ParticleAndVolumeFractionSoA_T< Weighting > particleAndVolumeFractionSoA_fluid(blocks, omega_f);
-   ParticleAndVolumeFractionSoA_T< Weighting > particleAndVolumeFractionSoA_energy(blocks, omegaT_f);
+   ParticleAndVolumeFractionSoA_T< 1 > particleAndVolumeFractionSoA_energy(blocks, omegaT_f);
    PSMSweepCollection psmSweepCollectionFluid(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
                                               particleAndVolumeFractionSoA_fluid, densityConcentrationFieldCPUGPUID,
                                          particleSubBlockSize);
