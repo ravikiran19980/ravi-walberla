@@ -26,9 +26,9 @@ NumericalSetup
     dt 0.001;  // this is the dt_SI if at all uInflow is set to 0.
     Uc 0.01;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
     // product of number of blocks should be equal to number of used processes
-    numXBlocks 4;
-    numYBlocks 4;
-    numZBlocks 16;
+    numXBlocks 1;
+    numYBlocks 2;
+    numZBlocks 2;
 
     use2DRefVel false;
     useLubricationForces true;
@@ -52,6 +52,7 @@ TemperatureSetup
     Cps 1;
     Kr  15;
     Gr 1000;
+    Qso 1;
 }
 
 Output
