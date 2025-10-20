@@ -9,7 +9,7 @@ PhysicalSetup // all to be specified in SI/ref units
     periodicInY true;
     periodicInZ false;
 
-    runtime 1000;
+    runtime 1000000;
     densityFluid 1.;
     particleDiameter 0.024;
     densityParticle 1.;
@@ -26,9 +26,9 @@ NumericalSetup
     dt 0.001;  // this is the dt_SI if at all uInflow is set to 0.
     Uc 0.01;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
     // product of number of blocks should be equal to number of used processes
-    numXBlocks 2;
-    numYBlocks 2;
-    numZBlocks 1;
+    numXBlocks 5;
+    numYBlocks 5;
+    numZBlocks 5;
 
     use2DRefVel false;
     useLubricationForces true;
@@ -49,7 +49,7 @@ TemperatureSetup
     Tcold -0.5;
     Tref  0;
     Tparticle 0;
-    PrandtlNumber 7;
+    PrandtlNumber 20;
     Cpf 1;
     Cps 1;
     Kr  1;
@@ -59,7 +59,7 @@ TemperatureSetup
 
 Output
 {
-    infoSpacing 0.002; // in s
+    infoSpacing 100; // in s
     vtkSpacingParticles 0; // in s
     vtkSpacingFluid 0; // ins
     vtkFolder vtk_out;

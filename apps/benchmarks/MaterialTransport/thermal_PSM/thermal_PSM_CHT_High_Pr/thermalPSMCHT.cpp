@@ -1094,8 +1094,10 @@ int main(int argc, char** argv)
    {
       // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
       timeloop.singleStep(timeloopTiming);
-      hfAverager.sampleStep(blocks, velFieldFluidCPUGPUID, densityConcentrationFieldCPUGPUID, particleAndVolumeFractionSoA_fluid.BFieldID);
 
+      if(timeStep > 2000000==0){
+         hfAverager.sampleStep(blocks, velFieldFluidCPUGPUID, densityConcentrationFieldCPUGPUID, particleAndVolumeFractionSoA_fluid.BFieldID,timeStep);
+      }
       if (particleBarriers) WALBERLA_MPI_BARRIER();
       timeloopTiming["RPD forEachParticle assoc"].start();
       ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, assoc, *accessor);

@@ -66,7 +66,8 @@ struct HeatFluxAverager
    void sampleStep(const shared_ptr< StructuredBlockStorage >& blocks,
                    const BlockDataID& velFieldFluidID, // VelocityField_fluid_T  (vy_f)
                    const BlockDataID& tempFieldID,     // DensityField_concentration_T  (your T field)
-                   const BlockDataID& BFieldID        // overlap/solid fraction B
+                   const BlockDataID& BFieldID,        // overlap/solid fraction B
+                   uint_t timeStep
    )
    {
       // --- pass 1: plane means of composite Vy and T
@@ -130,14 +131,38 @@ struct HeatFluxAverager
             // dT/dy central (use one-sided later at walls)
             real_t dTdy = 0.0;
             if (j > 0 && j < Ny - 1) {
-               //WALBERLA_LOG_INFO_ON_ROOT("entered normal dtdy loop");
+
                // grab neighbors using local y +/- 1 – assumes one ghost layer present
-               const real_t T0 = Tfield->get(x, y, z-1);
-               const real_t T1 = Tfield->get(x, y, z+1);
-               dTdy            = (T1 - T0) / (2.0 * dy);
-               dTdy            = (1 - B) * alpha_f * dTdy + B * alpha_p * dTdy;
-               dtdy[j] += dTdy;
-            } else {
+
+               if(z ==0 )
+               {
+                  const real_t T0 = Tfield->get(x,y,z);
+                  const real_t T1 = Tfield->get(x,y,z+1);
+                  const real_t T2 = Tfield->get(x,y,z+2);
+                  dTdy = (-3.0*T0 + 4.0*T1 - T2) / (2.0*dy);
+                  dTdy  = (1 - B) * alpha_f * dTdy + B * alpha_p * dTdy;
+                  dtdy[j] += dTdy;
+               }
+               else if(z == cell_idx_c(blocks->getNumberOfZCells(block) -1))
+               {
+                  const real_t T0 = Tfield->get(x,y,z);
+                  const real_t Tm1= Tfield->get(x,y,z-1);
+                  const real_t Tm2= Tfield->get(x,y,z-2);
+                  dTdy = (3.0*T0 - 4.0*Tm1 + Tm2) / (2.0*dy);
+                  dTdy  = (1 - B) * alpha_f * dTdy + B * alpha_p * dTdy;
+                  dtdy[j] += dTdy;
+               }
+               else
+               {
+                  const real_t T0 = Tfield->get(x, y, z-1);
+                  const real_t T1 = Tfield->get(x, y, z+1);
+                  dTdy            = (T1 - T0) / (2.0 * dy);
+                  dTdy            = (1 - B) * alpha_f * dTdy + B * alpha_p * dTdy;
+                  dtdy[j] += dTdy;
+               }
+            }
+            else {
+
                // wall flux (one-sided derivative), average over x,z on the two extreme planes
                //WALBERLA_LOG_INFO_ON_ROOT("entered else part of dtdy loop");
                if (j == 0)
@@ -168,8 +193,7 @@ struct HeatFluxAverager
       mpi::allReduceInplace(sum_fluct_prod, mpi::SUM);
       mpi::allReduceInplace(dtdy, mpi::SUM);
       mpi::allReduceInplace(count_final, mpi::SUM);
-      //WALBERLA_LOG_INFO("sum fluct prod is " << dtdy[20]);
-      //WALBERLA_LOG_INFO("count final is " << count_final[20]);
+
       // plane-averaged instantaneous and time running averages
       ++nSamples;
 
@@ -186,15 +210,20 @@ struct HeatFluxAverager
          }
       }
 
+      runningMeanVec(Qderivative, q_cond_inst, nSamples);
+      runningMeanVec(Qfluctuation, q_fluc_inst, nSamples);
+      runningMeanVec(Qtotal, q_total_inst, nSamples);
 
-      //runningMeanVec(sum_fluct_prod, q_fluc_inst, nSamples);
-      //runningMeanVec(dtdy, q_cond_inst, nSamples);
-      //runningMeanVec(Qtotal, q_total_inst, nSamples);
+      if(timeStep % 10000 == 0) {
 
-      WALBERLA_LOG_INFO_ON_ROOT( "fluctuation flux is  " << runningMeanVec(Qfluctuation, q_fluc_inst , nSamples)[48]);
-      WALBERLA_LOG_INFO_ON_ROOT( "dtdy flux is  "        << runningMeanVec(Qderivative, q_cond_inst , nSamples)[48]);
-      WALBERLA_LOG_INFO_ON_ROOT( "q totl is  "           << runningMeanVec(Qtotal, q_total_inst , nSamples)[48]);
+         for(int i =0; i < Ny; i++){
 
+            WALBERLA_LOG_INFO_ON_ROOT(" q dtdy " << i << " is " << Qderivative[i]
+                                                 << "  q fluctuation " << i << " is " << Qfluctuation[i]
+                                                 << "  q totl "<< i << " is  "  << Qtotal[i]);
+
+         }
+      }
    }
 };
 }
