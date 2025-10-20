@@ -224,7 +224,12 @@ def create_psm_thermal_collision_rule(lbm_config):
         ):
 
 
-            sc_term = lbm_config.individual_fraction_field.center(p) * (f_eq_solid -f)
+            sc_term = lbm_config.individual_fraction_field.center(p) * (
+                (
+                        omegaT_s*(f_eq_solid - f)
+                )
+
+            )
             solid_collisions[i] += sc_term
 
 

@@ -450,7 +450,7 @@ int main(int argc, char** argv)
    const real_t thermalDiffusivityParticle_LB = 1*thermalDiffusivityFluid_LB;
    const real_t omega_f = lbm::collision_model::omegaFromViscosity(kinematicViscosityLB);
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
-   const real_t omegaT_s = lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
+   const real_t omegaT_s = 1; //lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
 
    WALBERLA_LOG_INFO_ON_ROOT("density particle LB is " << densityParticle);
    WALBERLA_LOG_INFO_ON_ROOT("density fluid LB is " << densityFluid);
