@@ -17,7 +17,8 @@ from lbmpy.moments import get_default_moment_set_for_stencil
 from equilibirumCHT import DiscreteThermalMaxwellianCHT
 from lbmpy.maxwellian_equilibrium import get_weights
 from lbmpy.relaxationrates import relaxation_rate_from_lattice_viscosity
-#from equilibirumCHT import Cp
+from lbmpy.moments import is_even
+from lbmpy.relaxationrates import relaxation_rate_from_magic_number
 
 @dataclass
 class ThermalPSMConfig(LBMConfig):
@@ -74,11 +75,20 @@ def create_thermal_lb_method(lbm_config: ThermalPSMConfig):
 
     # Symbols
     rho_Cp_T = lbm_config.energy_density_symbol
-    rho_f, omegaT_f, Cp_f = lbm_config.fluid_density, lbm_config.relaxation_rate, lbm_config.fluid_specific_heat
-    rho_s, omegaT_s, Cp_s = lbm_config.particle_density, lbm_config.solid_relaxation_rate, lbm_config.particle_specific_heat
 
-    moments = get_default_moment_set_for_stencil(stencil)
-    moment_to_relaxation_rate_dict = OrderedDict((m, lbm_config.relaxation_rate) for m in moments)
+
+
+    if lbm_config.method == Method.SRT:
+        moments = get_default_moment_set_for_stencil(stencil)
+        moment_to_relaxation_rate_dict = OrderedDict((m, lbm_config.relaxation_rate) for m in moments)
+
+    else:
+        moments = get_default_moment_set_for_stencil(stencil)
+        relaxation_rate_odd_moments = lbm_config.relaxation_rate
+        relaxation_rate_even_moments = relaxation_rate_from_magic_number(relaxation_rate_odd_moments, sp.Rational(1,4))
+        moment_to_relaxation_rate_dict = OrderedDict([(m, relaxation_rate_even_moments if is_even(m) else relaxation_rate_odd_moments)
+                            for m in moments])
+
 
     equilibrium_cht = DiscreteThermalMaxwellianCHT(
         stencil=stencil,
@@ -125,7 +135,7 @@ def create_psm_thermal_collision_rule(lbm_config):
     rho_s, omegaT_s, Cp_s = lbm_config.particle_density, lbm_config.solid_relaxation_rate, lbm_config.particle_specific_heat
     B = lbm_config.fraction_field
     k_eff = (1 - B.center)*lbm_config.fluid_conductivity + B.center*lbm_config.solid_conductivity
-    rho_Cp_ref = rho_f*Cp_f #(2*rho_f*Cp_f*rho_s*Cp_s)/(rho_f*Cp_f + rho_s*Cp_s)
+    rho_Cp_ref = (2*rho_f*Cp_f*rho_s*Cp_s)/(rho_f*Cp_f + rho_s*Cp_s)
     thermal_diffusivity_eff = k_eff / rho_Cp_ref
     omega_eff = relaxation_rate_from_lattice_viscosity(thermal_diffusivity_eff)
     #   Update relaxation rates
@@ -171,17 +181,6 @@ def create_psm_thermal_collision_rule(lbm_config):
     u_in = lbm_config.velocity_input
     if u_in is not None and isinstance(u_in, Field):
         u_in = u_in.center_vector
-    cqe_main_assignments = cqc_cht_eqs.main_assignments_dict
-    #for u_sym, u in zip(cqc_cht.velocity_symbols, u_in):
-
-    # cqe_main_assignments[u_sym] = (1-B.center)*u
-    #raw_col.subexpressions.append(
-    #    Assignment(u_sym,(1-B.center)*u)
-    #)
-
-
-    # replace raw_col.subexpressions with filtered+blended
-    #raw_col.subexpressions = filtered_subexprs + blended_velocity_assignments
 
 
     #   Move fluid collision terms to subexprs
@@ -191,29 +190,22 @@ def create_psm_thermal_collision_rule(lbm_config):
         Assignment(f_post_f, main_asms_dict[f_post])
         for f_post_f, f_post in zip(fluid_post_symbols, post_collision_pdf_symbols)
     ]
-    #print("fluid collisions are ", fluid_collisions)
 
     remaining_main_asms = [
         Assignment(lhs, rhs)
         for lhs, rhs in main_asms_dict.items()
         if lhs not in post_collision_pdf_symbols
     ]
+    print("remainign main asms are ", remaining_main_asms)
 
-    #   Derive solid collision
-    equilibrium_fluid = []
-
-    #print("raw collision main assignments ", raw_col.main_assignments)
-
-    #print("raw collision subexpressions ", raw_col.subexpressions)
     #   Finalize
     subexps = (
             [Assignment(sp.Symbol("rho_cp") , rho_cp_eff)]
             + raw_col.subexpressions
             + [Assignment(sp.Symbol("T") , temperature_symbol)]
             + fluid_collisions
-        #+ equilibrium_fluid
     )
-    mains =  raw_col.main_assignments  + output_asms #+ remaining_main_asms
+    mains =  raw_col.main_assignments   + output_asms
     #print("main asses are  ", output_asms)
     for item in mains:
         if not isinstance(item, Assignment):

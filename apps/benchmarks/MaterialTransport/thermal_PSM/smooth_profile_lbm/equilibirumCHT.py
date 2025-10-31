@@ -96,6 +96,7 @@ def thermal_equilibrium_cht(v=sp.symbols("v_:3"), u=sp.symbols("u_:3"), rho_Cp_T
     u_times_u = 0
     for u_alpha in u:
         u_times_u += u_alpha * u_alpha
+    fq_ = Cp_ref / (sp.Symbol("rho_cp")) - sp.Rational(1, 2) / c_s_sq * u_times_u
     fq += sp.Rational(1, 2) / c_s_sq ** 2 * e_times_u ** 2 - sp.Rational(1, 2) / c_s_sq * u_times_u
 
     if v == (0, 0) or v == (0, 0, 0):

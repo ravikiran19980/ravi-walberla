@@ -272,32 +272,6 @@ FluidInfo evaluateFluidInfo(const shared_ptr< StructuredBlockStorage >& blocks, 
    info.allReduce();
    return info;
 }
-
-#include <fstream>
-#include <iomanip>   // for std::setprecision
-
-void writeVelocityToFile(const ParticleInfo &info, uint_t time, const std::string &filename = "velocity_vs_time_bottom.txt")
-{
-   // open file in append mode so new results get added each timestep
-   std::ofstream file(filename, std::ios::app);
-
-   if (!file.is_open())
-   {
-      throw std::runtime_error("Could not open file " + filename);
-   }
-
-   // write: time  averageVelocity  maximumVelocity
-   if(time == 0){
-      file << "time averagevel position\n";
-   }
-
-   file << std::fixed << std::setprecision(6)
-        << time << "  "
-        << info.averageVelocity << " "
-        << info.heightOfMass << "\n";
-}
-
-
 //////////
 // MAIN //
 //////////
@@ -444,12 +418,12 @@ int main(int argc, char** argv)
    const real_t Thot = Thot_SI;
    const real_t Tcold = Tcold_SI;
    real_t Cp_f =  Cp_f_SI;
-   real_t Cp_s = (densityFluid * Cp_f * Cp_s_SI)/(densityParticle);
+   real_t Cp_s = Cp_s_SI;//(densityFluid * Cp_f * Cp_s_SI)/(densityParticle);
    const real_t Tref = Tref_SI;  // this is the initial fluid temperature and we define Gr for the fluid
    const real_t particleTemperature = Tparticle_SI;
    const real_t T0 = 0;
    const real_t delta_T = 1;  //Tref - T0;
-   const real_t omega_f = real_c(1.886);
+   const real_t omega_f = real_c(1.88);
    const real_t kinematicViscosityLB  = lbm::collision_model::viscosityFromOmega(omega_f);
    const real_t Uchar = (particleRe*kinematicViscosityLB)/(particleDiameter);
    real_t gravitationalAcceleration = (3 * Uchar * Uchar * densityFluid) / (4 * particleDiameter * (densityParticle - densityFluid));
@@ -464,7 +438,7 @@ int main(int argc, char** argv)
    const real_t rho_Cp_ref =
       2 * densityFluid * Cp_f * densityParticle * Cp_s / (densityFluid * Cp_f + densityParticle * Cp_s);
 
-   const real_t dummy_ref = densityFluid*Cp_f;
+   const real_t dummy_ref = rho_Cp_ref;//densityFluid*Cp_f;
    const real_t dummy_ref_2 = rho_Cp_ref;
    WALBERLA_LOG_INFO_ON_ROOT("rho cp reference is  " << dummy_ref);
    WALBERLA_LOG_INFO_ON_ROOT("rho cp reference 2 is  " << dummy_ref_2);
@@ -534,8 +508,8 @@ int main(int argc, char** argv)
    ss->shapes[sphereShape]->updateMassAndInertia(densityParticle);
 
    // prevent particles from interfering with inflow and outflow by putting the bounding planes slightly in front
-   const real_t planeOffsetFromInflow  = 0;//dx;
-   const real_t planeOffsetFromOutflow = 0;//dx;
+   const real_t planeOffsetFromInflow  = dx;
+   const real_t planeOffsetFromOutflow = dx;
    createPlaneSetup(ps, ss, simulationDomain, periodicInX, periodicInY,periodicInZ, planeOffsetFromInflow, planeOffsetFromOutflow);
    // Create spheres
 
@@ -544,21 +518,20 @@ int main(int argc, char** argv)
    WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.yMin(), real_t(0));
    WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.zMin(), real_t(0));
 
-   Vector3< real_t > particleLocation(((SingleparticleLocation[0] / dx_SI)),
-                                      ((SingleparticleLocation[1] / dx_SI)),
-                                      ((SingleparticleLocation[2] / dx_SI)));
-
-   auto pt = particleLocation;
-   if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
-   {
-      mesa_pd::data::Particle&& p = *ps->create();
-      p.setPosition(pt);
-      p.setInteractionRadius(particleDiameter * real_t(0.5));
-      p.setOwner(mpi::MPIManager::instance()->rank());
-      p.setShapeID(sphereShape);
-      p.setType(1);
-      p.setTemperature(particleTemperature);
-   }
+      Vector3< real_t > particleLocation(uint_c(std::ceil(SingleparticleLocation[0] / dx_SI)),
+                                         uint_c(std::ceil(SingleparticleLocation[1] / dx_SI)),
+                                         uint_c(std::ceil(SingleparticleLocation[2] / dx_SI)));
+      auto pt = particleLocation;
+      if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
+      {
+         mesa_pd::data::Particle&& p = *ps->create();
+         p.setPosition(pt);
+         p.setInteractionRadius(particleDiameter * real_t(0.5));
+         p.setOwner(mpi::MPIManager::instance()->rank());
+         p.setShapeID(sphereShape);
+         p.setType(1);
+         p.setTemperature(particleTemperature);
+      }
 
    ////////////////////////
    // ADD DATA TO BLOCKS //
@@ -760,7 +733,7 @@ int main(int argc, char** argv)
    energy_static_bc_cold.fillFromFlagField< FlagField_T >(blocks, flagFieldEnergyID,
                                                           Density_Energy_Flag_static_cold, Energy_Flag);
 
-   lbm::BC_energy_DiffusionDirichlet_static energy_static_bc_hot(blocks,pdfFieldEnergyCPUGPUID,real_t(densityFluid*Cp_f*Thot));
+   lbm::BC_energy_DiffusionDirichlet_static energy_static_bc_hot(blocks,pdfFieldEnergyCPUGPUID,real_t(densityFluid*Cp_f*Thot*dummy_ref));
    energy_static_bc_hot.fillFromFlagField< FlagField_T >(blocks, flagFieldEnergyID,
                                                          Density_Energy_Flag_static_hot, Energy_Flag);
 
@@ -806,7 +779,7 @@ int main(int argc, char** argv)
 
    pystencils::InitializeFluidDomain pdfSetterFluid(
       particleAndVolumeFractionSoA_fluid.BsFieldID, particleAndVolumeFractionSoA_fluid.BFieldID, densityConcentrationFieldCPUGPUID,
-      particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID, pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID, T0,
+      particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID, pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID, Tref,
       alphaLB, gravitationalAcceleration, real_t(1), rho_0);
 
 
@@ -871,7 +844,7 @@ int main(int argc, char** argv)
                                                   rho_0);
 #else
    pystencils::FluidMacroGetter getterSweep_fluid(particleAndVolumeFractionSoA_fluid.BFieldID,densityConcentrationFieldCPUGPUID, densityFluidFieldID,
-                                                  pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID, T0, alphaLB, gravitationalAcceleration,
+                                                  pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID, Tref, alphaLB, gravitationalAcceleration,
                                                   rho_0);
 
    pystencils::EnergyMacroGetter getterSweep_energy(energyFieldCPUGPUID,
@@ -998,7 +971,7 @@ int main(int argc, char** argv)
    pystencils::PSMFluidSweep psmFluidSweep(
       particleAndVolumeFractionSoA_fluid.BsFieldID, particleAndVolumeFractionSoA_fluid.BFieldID, densityConcentrationFieldCPUGPUID,
       particleAndVolumeFractionSoA_fluid.particleForcesFieldID, particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID,
-      pdfFieldFluidCPUGPUID, T0, alphaLB, gravitationalAcceleration, omega_f, rho_0);
+      pdfFieldFluidCPUGPUID, Tref, alphaLB, gravitationalAcceleration, omega_f, rho_0);
 
 
    pystencils::PSMEnergySweep psmEnergySweep(
@@ -1233,7 +1206,7 @@ int main(int argc, char** argv)
 
          auto particleInfo = evaluateParticleInfo(*accessor);
          WALBERLA_LOG_INFO_ON_ROOT(particleInfo);
-         if (mpi::MPIManager::instance()->rank() == 0) { (writeVelocityToFile(particleInfo, timeStep)); }
+         //if (mpi::MPIManager::instance()->rank() == 0) { (writeVelocityToFile(particleInfo, timeStep)); }
 
          auto fluidInfo = evaluateFluidInfo(blocks, densityFluidFieldID, velFieldFluidCPUGPUID);
          for (auto& block : *blocks)

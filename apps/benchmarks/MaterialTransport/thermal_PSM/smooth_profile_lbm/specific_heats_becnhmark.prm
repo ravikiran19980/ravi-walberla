@@ -3,7 +3,7 @@ PhysicalSetup // all to be specified in SI/ref units
 
     xSize 0.08; // = width  // 4dp
     ySize 0.08; // = depth  // 4dp
-    zSize 0.2; // = height  // 20dp
+    zSize 0.14; // = height  // 20dp
 
     periodicInX false;
     periodicInY false;
@@ -11,9 +11,9 @@ PhysicalSetup // all to be specified in SI/ref units
 
     runtime 500;
     densityFluid 1.;
-    particleDiameter 0.02;
+    particleDiameter 0.03;
     densityParticle 1.00232.;
-    particleRe 10.5;
+    particleRe 30.5;
     dynamicFrictionCoefficient 0.4;  // wachs, 0.15 originally
     coefficientOfRestitution 0.7;    // wachs  , 0.6 originally
     collisionTimeFactor 1.0;
@@ -38,7 +38,7 @@ NumericalSetup
     particleSubBlockSize <5, 5, 5>;
     linkedCellWidthRation 1.01;
     particleBarriers true;
-    SingleparticleLocation <0.04,0.04,0.17>;
+    SingleparticleLocation <0.04,0.04,0.11>;
 }
 
 TemperatureSetup
@@ -47,10 +47,10 @@ TemperatureSetup
     Tcold 0;
     Tref  1;
     Tparticle 0;
-    PrandtlNumber 0.7;
+    PrandtlNumber 7;
     Cpf 1;
-    Cps 2;
-    Kr  1;
+    Cps 1;
+    Kr  0.1;
     Gr 1000;
     Qso 1;
 }
