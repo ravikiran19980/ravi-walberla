@@ -1,0 +1,67 @@
+PhysicalSetup // all to be specified in SI/ref units
+{
+
+    xSize 0.288; // = width  // 4dp
+    ySize 0.144; // = depth  // 4dp
+    zSize 0.144; // = height  // 20dp
+
+    periodicInX true;
+    periodicInY true;
+    periodicInZ false;
+
+    runtime 1000000;
+    densityFluid 1.;
+    particleDiameter 0.024;
+    densityParticle 1.;
+    particleRe 0.5;
+    dynamicFrictionCoefficient 0.15;  // wachs, 0.15 originally
+    coefficientOfRestitution 0.97;    // wachs  , 0.6 originally
+    collisionTimeFactor 1.0;
+
+}
+
+NumericalSetup
+{
+    dx 0.001; // in m
+    dt 0.001;  // this is the dt_SI if at all uInflow is set to 0.
+    Uc 0.01;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
+    // product of number of blocks should be equal to number of used processes
+    numXBlocks 5;
+    numYBlocks 5;
+    numZBlocks 5;
+
+    use2DRefVel false;
+    useLubricationForces true;
+    numberOfParticleSubCycles 10;
+    useParticles true;
+    useIntegrators true;
+    particleSubBlockSize <8, 8, 8>;
+    linkedCellWidthRation 1.01;
+    particleBarriers true;
+    generationDomainFraction <0.95,0.95,0.95>;
+    SingleparticleLocation <0.064,0.064,0.128>;
+    volfraction 0.3;
+}
+
+TemperatureSetup
+{
+    Thot 0.5;   // ThotSI = ThotLB   (concentration conversion from SI to LB)
+    Tcold -0.5;
+    Tref  0;
+    Tparticle 0;
+    PrandtlNumber 20;
+    Cpf 1;
+    Cps 1;
+    Kr  1;
+    Gr 1000;
+    Qso 0;
+}
+
+Output
+{
+    infoSpacing 100; // in s
+    vtkSpacingParticles 0; // in s
+    vtkSpacingFluid 0; // ins
+    vtkFolder vtk_out;
+    performanceLogFrequency 5000000000;
+}
