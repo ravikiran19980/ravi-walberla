@@ -135,7 +135,7 @@ def create_psm_thermal_collision_rule(lbm_config):
     rho_s, omegaT_s, Cp_s = lbm_config.particle_density, lbm_config.solid_relaxation_rate, lbm_config.particle_specific_heat
     B = lbm_config.fraction_field
     k_eff = (1 - B.center)*lbm_config.fluid_conductivity + B.center*lbm_config.solid_conductivity
-    rho_Cp_ref = (2*rho_f*Cp_f*rho_s*Cp_s)/(rho_f*Cp_f + rho_s*Cp_s)
+    rho_Cp_ref = rho_f*Cp_f#(2*rho_f*Cp_f*rho_s*Cp_s)/(rho_f*Cp_f + rho_s*Cp_s)
     thermal_diffusivity_eff = k_eff / rho_Cp_ref
     omega_eff = relaxation_rate_from_lattice_viscosity(thermal_diffusivity_eff)
     #   Update relaxation rates
@@ -191,6 +191,16 @@ def create_psm_thermal_collision_rule(lbm_config):
         for f_post_f, f_post in zip(fluid_post_symbols, post_collision_pdf_symbols)
     ]
 
+    stencil_weights = get_weights(stencil)
+    heat_source = lbm_config.heat_source
+    fluid_post_symbols_with_heatsource = sp.symbols(f"f_post_fluid_heat_:{stencil.Q}")
+    fluid_collisions_with_heatsource = [
+        Assignment(f_post_f, main_asms_dict[f_post_f] + stencil_weights[i] * heat_source * B.center)
+        for f_post_f, i in zip(post_collision_pdf_symbols, range(stencil.Q))
+    ]
+
+
+
     remaining_main_asms = [
         Assignment(lhs, rhs)
         for lhs, rhs in main_asms_dict.items()
@@ -205,7 +215,7 @@ def create_psm_thermal_collision_rule(lbm_config):
             + [Assignment(sp.Symbol("T") , temperature_symbol)]
             + fluid_collisions
     )
-    mains =  raw_col.main_assignments   + output_asms
+    mains =     fluid_collisions_with_heatsource + remaining_main_asms
     #print("main asses are  ", output_asms)
     for item in mains:
         if not isinstance(item, Assignment):

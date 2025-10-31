@@ -195,7 +195,7 @@ with CodeGeneration() as ctx:
         solid_relaxation_rate=omegaT_s,
         energy_field=energy_field,
         temperature_field_output=concentration_field,
-        heat_source=None,
+        heat_source=sp.Symbol("Qs"),
         fluid_conductivity = k_f,
         solid_conductivity = k_s,
         combined_velocity_field=velcombined,
