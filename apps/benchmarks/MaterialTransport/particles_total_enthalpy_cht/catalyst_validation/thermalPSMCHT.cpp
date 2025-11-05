@@ -462,10 +462,8 @@ int main(int argc, char** argv)
    const real_t rho_Cp_ref =
       2 * densityFluid * Cp_f * densityParticle * Cp_s / (densityFluid * Cp_f + densityParticle * Cp_s);
 
-   const real_t dummy_ref = densityFluid*Cp_f;
-   const real_t dummy_ref_2 = rho_Cp_ref;
-   WALBERLA_LOG_INFO_ON_ROOT("rho cp reference is  " << dummy_ref);
-   WALBERLA_LOG_INFO_ON_ROOT("rho cp reference 2 is  " << dummy_ref_2);
+   const real_t rhoCpRef = densityFluid*Cp_f;
+   WALBERLA_LOG_INFO_ON_ROOT("rho cp reference is  " << rhoCpRef);
    const real_t thermalDiffusivityFluid_LB = kinematicViscosityLB / Pr;
 
 
@@ -476,9 +474,9 @@ int main(int argc, char** argv)
    const real_t omega_f = lbm::collision_model::omegaFromViscosity(kinematicViscosityLB);
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
    const real_t Qs = (Qso)*densityFluid*Cp_f*Uc*delta_T/particleDiameter;
-   const real_t kf = dummy_ref*thermalDiffusivityFluid_LB;
+   const real_t kf = rhoCpRef*thermalDiffusivityFluid_LB;
    const real_t ks = Kr*kf;
-   const real_t thermalDiffusivityParticle_LB = ks/dummy_ref;
+   const real_t thermalDiffusivityParticle_LB = ks/rhoCpRef;
    const real_t omegaT_s = lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
    WALBERLA_LOG_INFO_ON_ROOT("Known Quantities are    ");
    WALBERLA_LOG_INFO_ON_ROOT("density particle LB is " << densityParticle);
@@ -753,11 +751,11 @@ int main(int argc, char** argv)
    neumann_energy_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldEnergyID,
                                                       Neumann_Energy_Flag, Energy_Flag);
 
-   lbm::BC_energy_DiffusionDirichlet_static energy_static_bc_cold(blocks,pdfFieldEnergyCPUGPUID,real_t(densityFluid*Cp_f*Tcold));
+   lbm::BC_energy_DiffusionDirichlet_static energy_static_bc_cold(blocks,pdfFieldEnergyCPUGPUID,real_t(densityFluid*Cp_f*Tcold*rhoCpRef));
    energy_static_bc_cold.fillFromFlagField< FlagField_T >(blocks, flagFieldEnergyID,
                                                           Density_Energy_Flag_static_cold, Energy_Flag);
 
-   lbm::BC_energy_DiffusionDirichlet_static energy_static_bc_hot(blocks,pdfFieldEnergyCPUGPUID,real_t(densityFluid*Cp_f*Thot*dummy_ref));
+   lbm::BC_energy_DiffusionDirichlet_static energy_static_bc_hot(blocks,pdfFieldEnergyCPUGPUID,real_t(densityFluid*Cp_f*Thot*rhoCpRef));
    energy_static_bc_hot.fillFromFlagField< FlagField_T >(blocks, flagFieldEnergyID,
                                                          Density_Energy_Flag_static_hot, Energy_Flag);
 
@@ -810,7 +808,7 @@ int main(int argc, char** argv)
    pystencils::InitializeEnergyDomain pdfSetterEnergy(
       particleAndVolumeFractionSoA_energy.BFieldID, densityConcentrationFieldCPUGPUID,
       pdfFieldEnergyCPUGPUID, velFieldFluidCPUGPUID,
-      Cp_f,Cp_s,particleTemperature,dummy_ref,densityFluid, densityParticle);
+      Cp_f,Cp_s,particleTemperature,rhoCpRef,densityFluid, densityParticle);
 
 
 #endif
@@ -875,7 +873,6 @@ int main(int argc, char** argv)
                                                     pdfFieldEnergyCPUGPUID);
 
    pystencils::compute_temperature_field compute_temperature_field(particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,Cp_f,Cp_s,densityFluid,densityParticle);
-   pystencils::compute_velocity_field compute_velocity_field(particleAndVolumeFractionSoA_fluid.BsFieldID,particleAndVolumeFractionSoA_fluid.BFieldID,particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID,velFieldcombinedCPUGPUID,velFieldFluidCPUGPUID);
 
 #endif
 
@@ -999,8 +996,8 @@ int main(int argc, char** argv)
 
 
    pystencils::PSMEnergySweep psmEnergySweep(
-      particleAndVolumeFractionSoA_energy.BFieldID,
-      energyFieldCPUGPUID,pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,Cp_f,Cp_s,Qs,kf,ks,dummy_ref, densityFluid, densityParticle);
+      particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,
+      energyFieldCPUGPUID,pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,Cp_f,Cp_s,Qs,kf,ks,rhoCpRef, densityFluid, densityParticle);
 
 
    timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")
@@ -1033,11 +1030,10 @@ int main(int argc, char** argv)
 
    timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep")
                   << AfterFunction(
-                        [&blocks, &getterSweep_fluid,&compute_velocity_field]() {
+                        [&blocks, &getterSweep_fluid]() {
                            for (auto& block : *blocks)
                            {
                               getterSweep_fluid(&block);
-                              //compute_velocity_field(&block);
                            }
                         },
                         "Compute fluid sweep");
@@ -1048,7 +1044,7 @@ int main(int argc, char** argv)
                            for (auto& block : *blocks)
                            {
                               getterSweep_energy(&block);
-                              compute_temperature_field(&block);
+                              //compute_temperature_field(&block);
                               //compute_velocity_field(&block);
                            }
                         },

@@ -90,6 +90,8 @@
 #include "PackInfoFluid.h"
 #include "PackInfoEnergy.h"
 #include "math.h"
+#include <fstream>
+#include <iomanip>
 
 namespace MaterialTransport
 {
@@ -208,7 +210,7 @@ ParticleInfo evaluateParticleInfo(const Accessor_T& ac)
       if (isSet(ac.getFlags(i), mesa_pd::data::particle_flags::GLOBAL)) continue;
 
       ++info.numParticles;
-      real_t velMagnitude   = ac.getLinearVelocity(i).length();
+      real_t velMagnitude   = std::abs(ac.getLinearVelocity(i)[2]);
       real_t particleVolume = ac.getShape(i)->getVolume();
       real_t height         = ac.getPosition(i)[2];
       info.averageVelocity += velMagnitude;
@@ -271,6 +273,27 @@ FluidInfo evaluateFluidInfo(const shared_ptr< StructuredBlockStorage >& blocks, 
    }
    info.allReduce();
    return info;
+}
+
+void writeVelocityToFile(const ParticleInfo &info, uint_t time, const std::string &filename = "velocity_vs_time_specificHeats.txt")
+{
+   // open file in append mode so new results get added each timestep
+   std::ofstream file(filename, std::ios::app);
+
+   if (!file.is_open())
+   {
+      throw std::runtime_error("Could not open file " + filename);
+   }
+
+   // write: time  averageVelocity  maximumVelocity
+   if(time == 0){
+      file << "time averagevel position\n";
+   }
+
+   file << std::fixed << std::setprecision(6)
+        << time << "  "
+        << info.averageVelocity << " "
+        << info.heightOfMass << "\n";
 }
 //////////
 // MAIN //
@@ -438,10 +461,8 @@ int main(int argc, char** argv)
    const real_t rho_Cp_ref =
       2 * densityFluid * Cp_f * densityParticle * Cp_s / (densityFluid * Cp_f + densityParticle * Cp_s);
 
-   const real_t dummy_ref = rho_Cp_ref;//densityFluid*Cp_f;
-   const real_t dummy_ref_2 = rho_Cp_ref;
-   WALBERLA_LOG_INFO_ON_ROOT("rho cp reference is  " << dummy_ref);
-   WALBERLA_LOG_INFO_ON_ROOT("rho cp reference 2 is  " << dummy_ref_2);
+   const real_t rhoCpRef = rho_Cp_ref;
+   WALBERLA_LOG_INFO_ON_ROOT("rho cp reference is  " << rhoCpRef);
    const real_t thermalDiffusivityFluid_LB = kinematicViscosityLB / Pr;
 
 
@@ -452,9 +473,9 @@ int main(int argc, char** argv)
 
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
 
-   const real_t kf = dummy_ref*thermalDiffusivityFluid_LB;
+   const real_t kf = rhoCpRef*thermalDiffusivityFluid_LB;
    const real_t ks = Kr*kf;
-   const real_t thermalDiffusivityParticle_LB = ks/dummy_ref;
+   const real_t thermalDiffusivityParticle_LB = ks/rhoCpRef;
    const real_t omegaT_s = lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
    WALBERLA_LOG_INFO_ON_ROOT("Known Quantities are    ");
    WALBERLA_LOG_INFO_ON_ROOT("density particle LB is " << densityParticle);
@@ -729,11 +750,11 @@ int main(int argc, char** argv)
    neumann_energy_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldEnergyID,
                                                       Neumann_Energy_Flag, Energy_Flag);
 
-   lbm::BC_energy_DiffusionDirichlet_static energy_static_bc_cold(blocks,pdfFieldEnergyCPUGPUID,real_t(densityFluid*Cp_f*Tcold));
+   lbm::BC_energy_DiffusionDirichlet_static energy_static_bc_cold(blocks,pdfFieldEnergyCPUGPUID,real_t(densityFluid*Cp_f*Tcold*rhoCpRef));
    energy_static_bc_cold.fillFromFlagField< FlagField_T >(blocks, flagFieldEnergyID,
                                                           Density_Energy_Flag_static_cold, Energy_Flag);
 
-   lbm::BC_energy_DiffusionDirichlet_static energy_static_bc_hot(blocks,pdfFieldEnergyCPUGPUID,real_t(densityFluid*Cp_f*Thot*dummy_ref));
+   lbm::BC_energy_DiffusionDirichlet_static energy_static_bc_hot(blocks,pdfFieldEnergyCPUGPUID,real_t(densityFluid*Cp_f*Thot*rhoCpRef));
    energy_static_bc_hot.fillFromFlagField< FlagField_T >(blocks, flagFieldEnergyID,
                                                          Density_Energy_Flag_static_hot, Energy_Flag);
 
@@ -786,7 +807,7 @@ int main(int argc, char** argv)
    pystencils::InitializeEnergyDomain pdfSetterEnergy(
       particleAndVolumeFractionSoA_energy.BFieldID, densityConcentrationFieldCPUGPUID,
       pdfFieldEnergyCPUGPUID, velFieldFluidCPUGPUID,
-      Cp_f,Cp_s,particleTemperature,dummy_ref,densityFluid, densityParticle);
+      Cp_f,Cp_s,particleTemperature,rhoCpRef,densityFluid, densityParticle);
 
 
 #endif
@@ -851,7 +872,6 @@ int main(int argc, char** argv)
                                                     pdfFieldEnergyCPUGPUID);
 
    pystencils::compute_temperature_field compute_temperature_field(particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,Cp_f,Cp_s,densityFluid,densityParticle);
-   pystencils::compute_velocity_field compute_velocity_field(particleAndVolumeFractionSoA_fluid.BsFieldID,particleAndVolumeFractionSoA_fluid.BFieldID,particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID,velFieldcombinedCPUGPUID,velFieldFluidCPUGPUID);
 
 #endif
 
@@ -976,7 +996,7 @@ int main(int argc, char** argv)
 
    pystencils::PSMEnergySweep psmEnergySweep(
       particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,
-      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,Cp_f,Cp_s,kf,ks,dummy_ref, densityFluid, densityParticle);
+      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,Cp_f,Cp_s,kf,ks,rhoCpRef, densityFluid, densityParticle);
 
 
    timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")
@@ -1009,11 +1029,10 @@ int main(int argc, char** argv)
 
    timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep")
                   << AfterFunction(
-                        [&blocks, &getterSweep_fluid,&compute_velocity_field]() {
+                        [&blocks, &getterSweep_fluid]() {
                            for (auto& block : *blocks)
                            {
                               getterSweep_fluid(&block);
-                              //compute_velocity_field(&block);
                            }
                         },
                         "Compute fluid sweep");
@@ -1206,7 +1225,7 @@ int main(int argc, char** argv)
 
          auto particleInfo = evaluateParticleInfo(*accessor);
          WALBERLA_LOG_INFO_ON_ROOT(particleInfo);
-         //if (mpi::MPIManager::instance()->rank() == 0) { (writeVelocityToFile(particleInfo, timeStep)); }
+         if (mpi::MPIManager::instance()->rank() == 0) { (writeVelocityToFile(particleInfo, timeStep)); }
 
          auto fluidInfo = evaluateFluidInfo(blocks, densityFluidFieldID, velFieldFluidCPUGPUID);
          for (auto& block : *blocks)

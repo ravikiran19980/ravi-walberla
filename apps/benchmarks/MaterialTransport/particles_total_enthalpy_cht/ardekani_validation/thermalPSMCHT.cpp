@@ -90,6 +90,8 @@
 #include "PackInfoFluid.h"
 #include "PackInfoEnergy.h"
 #include "math.h"
+#include <fstream>
+#include <iomanip>
 #include "heatFlux.cpp"
 #include "randomPoints.cpp"
 
@@ -285,10 +287,7 @@ FluidInfo evaluateFluidInfo(const shared_ptr< StructuredBlockStorage >& blocks, 
    return info;
 }
 
-#include <fstream>
-#include <iomanip>   // for std::setprecision
-
-void writeVelocityToFile(const ParticleInfo &info, uint_t time, const std::string &filename = "velocity_vs_time_bottom.txt")
+void writeVelocityToFile(const ParticleInfo &info, uint_t time, const std::string &filename = "velocity_vs_time_specificHeats.txt")
 {
    // open file in append mode so new results get added each timestep
    std::ofstream file(filename, std::ios::app);
@@ -366,8 +365,7 @@ int main(int argc, char** argv)
 
    const bool useLubricationForces        = numericalSetup.getParameter< bool >("useLubricationForces");
    const uint_t numberOfParticleSubCycles = numericalSetup.getParameter< uint_t >("numberOfParticleSubCycles");
-   const bool useIntegrators              = numericalSetup.getParameter< bool >("useIntegrators");
-   const bool useParticles              = numericalSetup.getParameter< bool >("useParticles");
+   const bool useIntegrators        = numericalSetup.getParameter< bool >("useIntegrators");
    const Vector3< uint_t > particleSubBlockSize =
       numericalSetup.getParameter< Vector3< uint_t > >("particleSubBlockSize");
    const real_t linkedCellWidthRation = numericalSetup.getParameter< real_t >("linkedCellWidthRation");
@@ -460,19 +458,22 @@ int main(int argc, char** argv)
    const real_t particleTemperature = Tparticle_SI;
    const real_t h = real_c(domainSize[2]/2);
    const real_t kinematicViscosityLB = Uc*h/(18*particleRe);
+   real_t gravitationalAcceleration = (3 * Uc * Uc * densityFluid) / (4 * particleDiameter * (densityParticle - densityFluid));
+   const real_t delta_T = 1;
+   const real_t rho_Cp_ref =
+      2 * densityFluid * Cp_f * densityParticle * Cp_s / (densityFluid * Cp_f + densityParticle * Cp_s);
 
-   const real_t dummy_ref = densityFluid * Cp_f;
-
+   const real_t rhoCpRef = rho_Cp_ref;
+   WALBERLA_LOG_INFO_ON_ROOT("rho cp reference is  " << rhoCpRef);
    const real_t thermalDiffusivityFluid_LB = kinematicViscosityLB / Pr;
-
-   const real_t thermalDiffusivityParticle_LB = 1*thermalDiffusivityFluid_LB;
+   const real_t kf = rhoCpRef*thermalDiffusivityFluid_LB;
+   const real_t ks = 1*kf;
+   const real_t thermalDiffusivityParticle_LB = ks/rhoCpRef;
 
 
    const real_t omega_f  = lbm::collision_model::omegaFromViscosity(kinematicViscosityLB);
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
    const real_t omegaT_s = lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
-   const real_t Qs       = real_t(0);
-
    WALBERLA_LOG_INFO_ON_ROOT("Known Quantities are    ");
    WALBERLA_LOG_INFO_ON_ROOT("density particle LB is " << densityParticle);
    WALBERLA_LOG_INFO_ON_ROOT("density fluid LB is " << densityFluid);
@@ -796,8 +797,6 @@ int main(int argc, char** argv)
    PSMSweepCollection psmSweepCollectionFluid(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
                                               particleAndVolumeFractionSoA_fluid, densityConcentrationFieldCPUGPUID,
                                               particleSubBlockSize);
-   lbm::BC_Fluid_Density density_fluid_bc(blocks,pdfFieldFluidCPUGPUID,real_t(1));
-   density_fluid_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldFluidID, Density_Fluid_Flag, Fluid_Flag);
 
    ParticleAndVolumeFractionSoA_T< 1 > particleAndVolumeFractionSoA_energy(blocks,omegaT_f);
    PSMSweepCollection psmSweepCollectionTemperature(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
@@ -815,9 +814,9 @@ int main(int argc, char** argv)
 
 
    pystencils::InitializeEnergyDomain pdfSetterEnergy(
-      particleAndVolumeFractionSoA_energy.BsFieldID, particleAndVolumeFractionSoA_energy.BFieldID, densityConcentrationFieldCPUGPUID,
-      particleAndVolumeFractionSoA_energy.particleTemperaturesFieldID, pdfFieldEnergyCPUGPUID, velFieldFluidCPUGPUID,
-      Cp_f,Cp_s,omegaT_f,omegaT_s,dummy_ref,densityFluid, densityParticle);
+      particleAndVolumeFractionSoA_energy.BFieldID, densityConcentrationFieldCPUGPUID,
+      pdfFieldEnergyCPUGPUID, velFieldFluidCPUGPUID,
+      Cp_f,Cp_s,particleTemperature,rhoCpRef,densityFluid, densityParticle);
 
 
 #endif
@@ -881,8 +880,7 @@ int main(int argc, char** argv)
    pystencils::EnergyMacroGetter getterSweep_energy(energyFieldCPUGPUID,
                                                     pdfFieldEnergyCPUGPUID);
 
-   pystencils::compute_temperature_field compute_temperature_field(particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,Cp_f,Cp_s,omegaT_f,omegaT_s,densityFluid,densityParticle);
-
+   pystencils::compute_temperature_field compute_temperature_field(particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,Cp_f,Cp_s,densityFluid,densityParticle);
 
 #endif
 
@@ -1006,8 +1004,8 @@ int main(int argc, char** argv)
 
 
    pystencils::PSMEnergySweep psmEnergySweep(
-      particleAndVolumeFractionSoA_energy.BsFieldID, particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID,
-      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,  Cp_f,Cp_s,Qs,omegaT_f,omegaT_s,dummy_ref, densityFluid, densityParticle);
+      particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,
+      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,Cp_f,Cp_s,kf,ks,rhoCpRef, densityFluid, densityParticle);
 
 
    timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")
@@ -1016,8 +1014,6 @@ int main(int argc, char** argv)
                            "Boundary Handling (top fluid ubb)");
    timeloop.add() << Sweep(deviceSyncWrapper(ubb_fluid_bc_bottom.getSweep()),
                            "Boundary Handling (bottom fluid ubb)");
-   timeloop.add() << Sweep(deviceSyncWrapper(density_fluid_bc.getSweep()),
-                           "Boundary Handling (fluid density)");
    timeloop.add() << Sweep(deviceSyncWrapper(freeSlip_fluid_bc.getSweep()),
                            "Boundary Handling (Free slip fluid)");
 
@@ -1095,7 +1091,7 @@ int main(int argc, char** argv)
       // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
       timeloop.singleStep(timeloopTiming);
 
-      if(timeStep > 2000000==0){
+      if(timeStep >= 2000000){
          hfAverager.sampleStep(blocks, velFieldFluidCPUGPUID, densityConcentrationFieldCPUGPUID, particleAndVolumeFractionSoA_fluid.BFieldID,timeStep);
       }
       if (particleBarriers) WALBERLA_MPI_BARRIER();

@@ -51,7 +51,6 @@ class ThermalPSMConfig(LBMConfig):
     temperature_field_output: Field = None
     heat_source: Union[int, float, Type[sp.Symbol]] = None
     solid_conductivity: sp.Symbol = sp.Symbol("k_s")
-    combined_velocity_field: Field = None
 
 
 
@@ -79,10 +78,12 @@ def create_thermal_lb_method(lbm_config: ThermalPSMConfig):
 
 
     if lbm_config.method == Method.SRT:
+        print("SRT collision selected")
         moments = get_default_moment_set_for_stencil(stencil)
         moment_to_relaxation_rate_dict = OrderedDict((m, lbm_config.relaxation_rate) for m in moments)
 
     else:
+        print("TRT collision selected")
         moments = get_default_moment_set_for_stencil(stencil)
         relaxation_rate_odd_moments = lbm_config.relaxation_rate
         relaxation_rate_even_moments = relaxation_rate_from_magic_number(relaxation_rate_odd_moments, sp.Rational(1,4))
@@ -110,15 +111,7 @@ def create_thermal_lb_method(lbm_config: ThermalPSMConfig):
         density_symbol=rho_Cp_T
     )
     kwargs = {
-        #'compressible': lbm_config.compressible,
-        #'zero_centered': lbm_config.zero_centered,
-        #'delta_equilibrium': None,
-        #'equilibrium_order': 2,
-        #'force_model': None,
-        #'continuous_equilibrium': lbm_config.continuous_equilibrium,
-        #'c_s_sq': lbm_config.c_s_sq,
         'collision_space_info': lbm_config.collision_space_info,
-        #'fraction_field': lbm_config.fraction_field,
     }
     thermal_lb_method = create_from_equilibrium(stencil, equilibrium_cht, cqc_cht, moment_to_relaxation_rate_dict,
                                                 zero_centered=zero_centered, force_model=None, **kwargs)
@@ -127,21 +120,18 @@ def create_thermal_lb_method(lbm_config: ThermalPSMConfig):
 
 
 def create_psm_thermal_collision_rule(lbm_config):
-    #thermal_lb_method,cqc_cht = create_thermal_lb_method(lbm_config)
-    MaxParticlesPerCell = lbm_config.MaxParticlesPerCell
+
     psm_output = lbm_config.temperature_field_output
     # Symbols
     rho_f, omegaT_f, Cp_f = lbm_config.fluid_density, lbm_config.relaxation_rate, lbm_config.fluid_specific_heat
     rho_s, omegaT_s, Cp_s = lbm_config.particle_density, lbm_config.solid_relaxation_rate, lbm_config.particle_specific_heat
     B = lbm_config.fraction_field
     k_eff = (1 - B.center)*lbm_config.fluid_conductivity + B.center*lbm_config.solid_conductivity
-    rho_Cp_ref = rho_f*Cp_f#(2*rho_f*Cp_f*rho_s*Cp_s)/(rho_f*Cp_f + rho_s*Cp_s)
+    rho_Cp_ref = (2*rho_f*Cp_f*rho_s*Cp_s)/(rho_f*Cp_f + rho_s*Cp_s)
     thermal_diffusivity_eff = k_eff / rho_Cp_ref
     omega_eff = relaxation_rate_from_lattice_viscosity(thermal_diffusivity_eff)
     #   Update relaxation rates
-    #psm_lb_config = replace(
-    #    lbm_config, relaxation_rate=sp.Symbol("omegaT_eff")
-    #)
+
     thermal_lb_method, cqc_cht = create_thermal_lb_method(
         replace(lbm_config, relaxation_rate=omega_eff),
     )
@@ -177,10 +167,6 @@ def create_psm_thermal_collision_rule(lbm_config):
                 density_eq
             )
         )
-    cqc_cht_eqs = cqc_cht.equilibrium_input_equations_from_pdfs(pre_collision_pdf_symbols)
-    u_in = lbm_config.velocity_input
-    if u_in is not None and isinstance(u_in, Field):
-        u_in = u_in.center_vector
 
 
     #   Move fluid collision terms to subexprs
@@ -199,24 +185,20 @@ def create_psm_thermal_collision_rule(lbm_config):
         for f_post_f, i in zip(post_collision_pdf_symbols, range(stencil.Q))
     ]
 
-
-
     remaining_main_asms = [
         Assignment(lhs, rhs)
         for lhs, rhs in main_asms_dict.items()
         if lhs not in post_collision_pdf_symbols
     ]
-    print("remainign main asms are ", remaining_main_asms)
+    print("remaining main asms are ", remaining_main_asms)
 
     #   Finalize
     subexps = (
             [Assignment(sp.Symbol("rho_cp") , rho_cp_eff)]
             + raw_col.subexpressions
             + [Assignment(sp.Symbol("T") , temperature_symbol)]
-            + fluid_collisions
     )
-    mains =     fluid_collisions_with_heatsource + remaining_main_asms
-    #print("main asses are  ", output_asms)
+    mains =     fluid_collisions_with_heatsource  + output_asms + remaining_main_asms
     for item in mains:
         if not isinstance(item, Assignment):
             print("❌ Invalid main assignment:", item, type(item))

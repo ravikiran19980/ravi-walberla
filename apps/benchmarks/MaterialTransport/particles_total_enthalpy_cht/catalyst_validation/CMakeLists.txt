@@ -34,7 +34,6 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
                     compute_temperature_field_particle.h compute_temperature_field_particle.cpp
                     initializeConcentrationField.h initializeConcentrationField.cpp
                     GeneralInfoHeader.h
-                    compute_velocity_field.h compute_velocity_field.cpp
             )
             message(STATUS "generated in thermal PSM is: ${config}" )
             add_executable(catalyst_virtualfluid_cht_${config}  thermalPSMCHT.cpp ../../utilities/InitializerFunctions.cpp)

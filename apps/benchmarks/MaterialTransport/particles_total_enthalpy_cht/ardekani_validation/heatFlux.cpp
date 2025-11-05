@@ -216,7 +216,7 @@ struct HeatFluxAverager
 
       if(timeStep % 10000 == 0) {
 
-         for(int i =0; i < Ny; i++){
+         for(uint_t i =0; i < Ny; i++){
 
             WALBERLA_LOG_INFO_ON_ROOT(" q dtdy " << i << " is " << Qderivative[i]
                                                  << "  q fluctuation " << i << " is " << Qfluctuation[i]

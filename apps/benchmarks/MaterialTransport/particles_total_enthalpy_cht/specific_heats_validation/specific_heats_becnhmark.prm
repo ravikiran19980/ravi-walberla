@@ -11,9 +11,9 @@ PhysicalSetup // all to be specified in SI/ref units
 
     runtime 500;
     densityFluid 1.;
-    particleDiameter 0.03;
+    particleDiameter 0.02;
     densityParticle 1.00232.;
-    particleRe 30.5;
+    particleRe 10.5;
     dynamicFrictionCoefficient 0.4;  // wachs, 0.15 originally
     coefficientOfRestitution 0.7;    // wachs  , 0.6 originally
     collisionTimeFactor 1.0;
@@ -47,19 +47,19 @@ TemperatureSetup
     Tcold 0;
     Tref  1;
     Tparticle 0;
-    PrandtlNumber 7;
+    PrandtlNumber 0.7;
     Cpf 1;
-    Cps 1;
-    Kr  0.1;
+    Cps 8;
+    Kr  1;
     Gr 1000;
-    Qso 1;
+    Qso 0;
 }
 
 Output
 {
     infoSpacing 0.01; // in s
     vtkSpacingParticles 0; // in s
-    vtkSpacingFluid 0.1; // in s
+    vtkSpacingFluid 0; // in s
     vtkFolder vtk_out;
     performanceLogFrequency 5000000000;
 }

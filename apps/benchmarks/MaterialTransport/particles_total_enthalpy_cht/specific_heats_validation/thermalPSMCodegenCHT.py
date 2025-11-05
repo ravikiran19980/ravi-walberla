@@ -84,11 +84,6 @@ with CodeGeneration() as ctx:
         f"pdfs_fluid({stencil_fluid.Q}), pdfs_fluid_tmp({stencil_fluid.Q}), velocity_field({stencil_fluid.D}), density_field({1}): {data_type}[3D]",
         layout=layout,
     )
-    velcombined= ps.fields(
-        f"velcombined({stencil_fluid.D}): {data_type}[3D]",
-        layout=layout,
-    )
-    print("hello from outside there")
     # Concentration PDFs and fields
     concentration_field = ps.fields(
         f"concentration_field({1}): {data_type}[3D]",
@@ -179,8 +174,6 @@ with CodeGeneration() as ctx:
         relaxation_rate=omegaT_f,  # omega_f will be used for the fluid and omega_p will be used for the solid particles
         velocity_input=velocity_field,
         output={"density": energy_field},
-        ##collision_space_info=CollisionSpaceInfo(CollisionSpace.RAW_MOMENTS),
-        #relaxation_rates = [1,omegaT_f,omegaT_f,omegaT_f,omegaT_f,omegaT_f,omegaT_f],
         compressible=False,
         continuous_equilibrium=False,
         zero_centered=False,
@@ -198,7 +191,6 @@ with CodeGeneration() as ctx:
         heat_source=None,
         fluid_conductivity = k_f,
         solid_conductivity = k_s,
-        combined_velocity_field=velcombined,
     )
 
 
@@ -262,7 +254,6 @@ with CodeGeneration() as ctx:
 
     node_collection_fluid = create_psm_update_rule(lbm_config=psm_fluid_config, lbm_optimisation=lbm_fluid_opt)
     collision_rule_energy = create_psm_thermal_collision_rule(lbm_config=psm_energy_config)
-    #node_collection_energy = create_lb_update_rule(collision_rule=collision_rule_energy, lbm_config=psm_energy_config, lbm_optimisation=lbm_energy_opt)
 
     ## defining custom pystencils kernel that computes temperature from rho_cp_T
 
@@ -301,21 +292,7 @@ with CodeGeneration() as ctx:
     initializeConcentrationField_ac = ps.AssignmentCollection(initializeConcentrationField)
     generate_sweep(ctx, "initializeConcentrationField", initializeConcentrationField_ac)
 
-    ### combined vel field
-    acc_expr_vel = sum(
-        Bs.center(p) * particle_velocities.center(p)
-        for p in range(MaxParticlesPerCell)  # ensure this is an int
-    )
-    @ps.kernel
-    def compute_velocity_field():
-        velcombined.center @= (1-B.center)*velocity_field.center + acc_expr_vel
-    compute_vel_field_ac = ps.AssignmentCollection(
-        compute_velocity_field
-    )
-    generate_sweep(ctx, "compute_velocity_field", compute_vel_field_ac)
-
     # Generate files
-
 
     generate_sweep(
         ctx,
@@ -487,7 +464,6 @@ with CodeGeneration() as ctx:
         "GeneralInfoHeader",
         stencil_typedefs=stencil_typedefs,
         field_typedefs=field_typedefs,
-        #additional_code=additional_code,
     )
 
 

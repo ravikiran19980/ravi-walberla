@@ -1,9 +1,9 @@
 PhysicalSetup // all to be specified in SI/ref units
 {
 
-    xSize 0.288; // = width  // 4dp
-    ySize 0.144; // = depth  // 4dp
-    zSize 0.144; // = height  // 20dp
+    xSize 0.05; // = width  // 4dp
+    ySize 0.05; // = depth  // 4dp
+    zSize 0.05; // = height  // 20dp
 
     periodicInX true;
     periodicInY true;
@@ -11,7 +11,7 @@ PhysicalSetup // all to be specified in SI/ref units
 
     runtime 1000000;
     densityFluid 1.;
-    particleDiameter 0.024;
+    particleDiameter 0.008;
     densityParticle 1.;
     particleRe 0.5;
     dynamicFrictionCoefficient 0.15;  // wachs, 0.15 originally
@@ -24,23 +24,23 @@ NumericalSetup
 {
     dx 0.001; // in m
     dt 0.001;  // this is the dt_SI if at all uInflow is set to 0.
-    Uc 0.01;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
+    Uc 0.1;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
     // product of number of blocks should be equal to number of used processes
-    numXBlocks 5;
-    numYBlocks 5;
-    numZBlocks 5;
+    numXBlocks 2;
+    numYBlocks 2;
+    numZBlocks 1;
 
     use2DRefVel false;
     useLubricationForces true;
     numberOfParticleSubCycles 10;
     useParticles true;
     useIntegrators true;
-    particleSubBlockSize <8, 8, 8>;
+    particleSubBlockSize <5, 5, 5>;
     linkedCellWidthRation 1.01;
     particleBarriers true;
     generationDomainFraction <0.95,0.95,0.95>;
     SingleparticleLocation <0.064,0.064,0.128>;
-    volfraction 0.3;
+    volfraction 0.05;
 }
 
 TemperatureSetup
@@ -59,9 +59,9 @@ TemperatureSetup
 
 Output
 {
-    infoSpacing 100; // in s
-    vtkSpacingParticles 0; // in s
-    vtkSpacingFluid 0; // ins
+    infoSpacing 0.001; // in s
+    vtkSpacingParticles 0.1; // in s
+    vtkSpacingFluid 0.1; // ins
     vtkFolder vtk_out;
     performanceLogFrequency 5000000000;
 }

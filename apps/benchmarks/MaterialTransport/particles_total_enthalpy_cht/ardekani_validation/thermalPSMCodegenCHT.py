@@ -32,6 +32,8 @@ from lbmpy_walberla import generate_boundary
 from lbmpy_walberla.additional_data_handler import DiffusionDirichletAdditionalDataHandler
 from pystencils.cache import clear_cache
 from psmclass import ThermalPSMConfig,create_thermal_lb_method,create_psm_thermal_collision_rule
+from lbmpy.methods.creationfunctions import CollisionSpaceInfo
+from lbmpy.enums import Stencil, Method, CollisionSpace
 clear_cache()
 
 
@@ -48,23 +50,15 @@ const bool infoCsePdfs = {cse_pdfs};
 
 with CodeGeneration() as ctx:
     data_type = "float64" if ctx.double_accuracy else "float32"
-    stencil_fluid = LBStencil(Stencil.D3Q27)
-    stencil_energy = LBStencil(Stencil.D3Q27)
+    stencil_fluid = LBStencil(Stencil.D3Q19)
+    stencil_energy = LBStencil(Stencil.D3Q19)
     omega = sp.Symbol("omega")  # for now same for both the sweeps
     init_density_fluid = sp.Symbol("init_density_fluid")
-    init_velocity_fluid = sp.symbols("init_velocity_fluid_:3")
-    #init_velocity_concentration = sp.symbols("init_velocity_concentration_:3")
-    pdfs_inter_fluid = sp.symbols("pdfs_inter_fluid:" + str(stencil_fluid.Q))
     rho_0 = sp.Symbol("rho_0")
     T0 = sp.Symbol("T0")
     alpha = sp.Symbol("alpha")
     gravity_LBM = sp.Symbol("gravityLB")
-    Sv = sp.Symbol("Sv")
-    Sq = sp.Symbol("Sq")
     omega_f = sp.Symbol("omega_f")
-    omega_c = sp.Symbol("omega_c")
-
-
 
     layout = "fzyx"
     config_tokens = ctx.config.split("_")
@@ -80,7 +74,6 @@ with CodeGeneration() as ctx:
         "trt-smagorinsky": Method.TRT,
     }
 
-
     # Solid collision variant
     SC = int(config_tokens[1])
     qk = sp.Symbol("qk")
@@ -91,7 +84,6 @@ with CodeGeneration() as ctx:
         f"pdfs_fluid({stencil_fluid.Q}), pdfs_fluid_tmp({stencil_fluid.Q}), velocity_field({stencil_fluid.D}), density_field({1}): {data_type}[3D]",
         layout=layout,
     )
-    print("hello from outside there")
     # Concentration PDFs and fields
     concentration_field = ps.fields(
         f"concentration_field({1}): {data_type}[3D]",
@@ -104,7 +96,6 @@ with CodeGeneration() as ctx:
     )
 
     # particle related fields (considering for all the particle, i.e: MaxParticlesPerCell
-
     particle_velocities, particle_forces, Bs = ps.fields(
         f"particle_v({MaxParticlesPerCell * stencil_fluid.D}), particle_f({MaxParticlesPerCell * stencil_fluid.D}), Bs({MaxParticlesPerCell}): {data_type}[3D]",
         layout=layout,
@@ -115,9 +106,7 @@ with CodeGeneration() as ctx:
     # Solid fraction field
     B = ps.fields(f"b({1}): {data_type}[3D]", layout=layout)
 
-    #force_concentration_on_fluid = sp.Matrix([0, (rho_0)*alpha*(concentration_field.center - T0)*gravity_LBM,0])
-    force_concentration_on_fluid = sp.Matrix([0, 0, (rho_0) * alpha * gravity_LBM * (concentration_field.center - T0)])
-    #force_concentration_on_fluid = sp.Matrix([0, 0,sp.Symbol("Gr")*concentration_field.center/sp.Symbol("Re")**2])
+    force_concentration_on_fluid = sp.Matrix([0, 0,(rho_0)*alpha*(concentration_field.center - T0)*gravity_LBM])
 
     # Fluid LBM optimisation
     lbm_fluid_opt = LBMOptimisation(
@@ -169,22 +158,22 @@ with CodeGeneration() as ctx:
     )
 
     ## for CHT
-    omega_p = sp.Symbol("omega_p")  # for the particles in CHT
     rho_f = sp.Symbol("rho_f")
     rho_s = sp.Symbol("rho_s")
     omegaT_f = sp.Symbol("omegaT_f")
     omegaT_s = sp.Symbol("omegaT_s")
     Cp_f = sp.Symbol("Cp_f")
     Cp_s = sp.Symbol("Cp_s")
-
+    k_f = sp.Symbol("k_f")
+    k_s = sp.Symbol("k_s")
 
     # Energy PSM config
     psm_energy_config = ThermalPSMConfig(
         stencil=stencil_energy,
-        method=Method.SRT,
+        method=Method.TRT,
         relaxation_rate=omegaT_f,  # omega_f will be used for the fluid and omega_p will be used for the solid particles
         velocity_input=velocity_field,
-        #output={"density": energy_field},
+        output={"density": energy_field},
         compressible=False,
         continuous_equilibrium=False,
         zero_centered=False,
@@ -199,8 +188,9 @@ with CodeGeneration() as ctx:
         solid_relaxation_rate=omegaT_s,
         energy_field=energy_field,
         temperature_field_output=concentration_field,
-        heat_source=sp.Symbol("Qs"),
-
+        heat_source=None,
+        fluid_conductivity = k_f,
+        solid_conductivity = k_s,
     )
 
     if config_tokens[0] == "srt-smagorinsky" or config_tokens[0] == "trt-smagorinsky":
@@ -239,17 +229,16 @@ with CodeGeneration() as ctx:
 
 
 
-
     ## for energy
     sub_exp_energy = pdfs_energy_setter.subexpressions[0]
     rhs_energy = []
-    rhs_energy.append((rho_f*Cp_f*omegaT_f*(1-B.center)*concentration_field.center)/((1 - B.center)*omegaT_f + B.center*omegaT_s))
-    for p in range(2):
-        rhs_energy.append((particle_temperatures(p) * Bs.center(p) * rho_s * Cp_s * omegaT_s)/((1 - B.center)*omegaT_f + B.center*omegaT_s))
+    rhs_energy.append((rho_f*Cp_f*(1-B.center)*concentration_field.center) + ((B.center)*rho_s*Cp_s*sp.Symbol("Tp")))
     pdfs_energy_setter.subexpressions.remove(sub_exp_energy)
+    pdfs_energy_setter.subexpressions.append(Assignment(sp.Symbol("T"), (1-B.center)*concentration_field.center +(B.center)*sp.Symbol("Tp")))
     pdfs_energy_setter.subexpressions.append(Assignment(sub_exp_energy.lhs, Add(*rhs_energy)))
+    pdfs_energy_setter.subexpressions.append(Assignment(sp.Symbol("rho_cp"), (1-B.center)*rho_f*Cp_f + B.center*rho_s*Cp_s))
 
-    print("energy setter after manip ", pdfs_energy_setter.subexpressions)
+    #print("energy setter after manip ", pdfs_energy_setter.subexpressions)
 
     # specify the target
 
@@ -260,14 +249,13 @@ with CodeGeneration() as ctx:
 
     node_collection_fluid = create_psm_update_rule(lbm_config=psm_fluid_config, lbm_optimisation=lbm_fluid_opt)
     collision_rule_energy = create_psm_thermal_collision_rule(lbm_config=psm_energy_config)
-    #node_collection_energy = create_lb_update_rule(collision_rule=collision_rule_energy, lbm_config=psm_energy_config, lbm_optimisation=lbm_energy_opt)
 
     ## defining custom pystencils kernel that computes temperature from rho_cp_T
 
     rho_cp_eff = sp.Symbol("rho_cp_eff")
     @ps.kernel
     def compute_temperature_field():
-        rho_cp_eff = ((1.0 - B.center)* rho_f *Cp_f*omegaT_f + B.center*rho_s*Cp_s*omegaT_s)/((1-B.center)*omegaT_f + B.center*omegaT_s)
+        rho_cp_eff = ((1.0 - B.center)* rho_f *Cp_f + B.center*rho_s*Cp_s)
         concentration_field.center @= energy_field.center/rho_cp_eff
     compute_temperature_field_ac = ps.AssignmentCollection(
         compute_temperature_field
@@ -293,7 +281,7 @@ with CodeGeneration() as ctx:
 
     @ps.kernel
     def initializeConcentrationField():
-        concentration_field.center @=  (1 - B.center) * T_init_fluid + acc_expr
+        concentration_field.center @= (1 - B.center) * T_init_fluid + acc_expr
 
     initializeConcentrationField_ac = ps.AssignmentCollection(initializeConcentrationField)
     generate_sweep(ctx, "initializeConcentrationField", initializeConcentrationField_ac)
@@ -468,7 +456,6 @@ with CodeGeneration() as ctx:
         "GeneralInfoHeader",
         stencil_typedefs=stencil_typedefs,
         field_typedefs=field_typedefs,
-        #additional_code=additional_code,
     )
 
     # Getter & setter to compute moments from pdfs
