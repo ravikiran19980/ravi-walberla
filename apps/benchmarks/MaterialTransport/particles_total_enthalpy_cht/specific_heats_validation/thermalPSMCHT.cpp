@@ -275,7 +275,7 @@ FluidInfo evaluateFluidInfo(const shared_ptr< StructuredBlockStorage >& blocks, 
    return info;
 }
 
-void writeVelocityToFile(const ParticleInfo &info, uint_t time, const std::string &filename = "velocity_vs_time_specificHeats.txt")
+void writeVelocityToFile(const ParticleInfo &info, uint_t time, const std::string &filename = "velocity_vs_time_cp8_kr10_srt.txt")
 {
    // open file in append mode so new results get added each timestep
    std::ofstream file(filename, std::ios::app);
@@ -446,9 +446,9 @@ int main(int argc, char** argv)
    const real_t particleTemperature = Tparticle_SI;
    const real_t T0 = 0;
    const real_t delta_T = 1;  //Tref - T0;
-   const real_t omega_f = real_c(1.88);
-   const real_t kinematicViscosityLB  = lbm::collision_model::viscosityFromOmega(omega_f);
-   const real_t Uchar = (particleRe*kinematicViscosityLB)/(particleDiameter);
+   const real_t Uchar = Uc;
+   const real_t kinematicViscosityLB  = (Uchar*particleDiameter)/(particleRe);
+   const real_t omega_f = lbm::collision_model::omegaFromViscosity(kinematicViscosityLB);
    real_t gravitationalAcceleration = (3 * Uchar * Uchar * densityFluid) / (4 * particleDiameter * (densityParticle - densityFluid));
 
    if (use2DRefVel)

@@ -58,8 +58,8 @@ TemperatureSetup
 Output
 {
     infoSpacing 0.01; // in s
-    vtkSpacingParticles 0; // in s
-    vtkSpacingFluid 0; // in s
+    vtkSpacingParticles 0.01; // in s
+    vtkSpacingFluid 0.01; // in s
     vtkFolder vtk_out;
     performanceLogFrequency 5000000000;
 }
