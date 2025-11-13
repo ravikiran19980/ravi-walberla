@@ -128,10 +128,7 @@ def create_psm_thermal_collision_rule(lbm_config):
 
     zeroth_moment_symbol = thermal_lb_method.conserved_quantity_computation.zeroth_order_moment_symbol
     rho_cp_eff = ((1.0 - B.center)* rho_f *Cp_f*omegaT_f + B.center*rho_s*Cp_s*omegaT_s)/((1-B.center)*omegaT_f + B.center*omegaT_s)
-    #rho_cp_eff = (1 - B.center)*rho_f*Cp_f + (B.center)*rho_s*Cp_s
-    #temperature_symbol = zeroth_moment_symbol/rho_cp_eff
-    temperature_symbol = (1 - B.center)*(zeroth_moment_symbol) /(rho_f*Cp_f) + (B.center)*(zeroth_moment_symbol) /(rho_s*Cp_s) #zeroth_moment_symbol/(rho_cp_eff)
-
+    temperature_symbol = zeroth_moment_symbol/rho_cp_eff
     #   Output params
     output_asms = []
     if psm_output:

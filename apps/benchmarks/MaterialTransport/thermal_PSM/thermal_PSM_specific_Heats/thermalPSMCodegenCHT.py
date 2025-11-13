@@ -32,7 +32,9 @@ from lbmpy_walberla import generate_boundary
 from lbmpy_walberla.additional_data_handler import DiffusionDirichletAdditionalDataHandler
 from pystencils.cache import clear_cache
 from psmclass import ThermalPSMConfig,create_thermal_lb_method,create_psm_thermal_collision_rule
+from math import sqrt
 clear_cache()
+
 
 
 info_header = """
@@ -43,6 +45,8 @@ const char * infoCollisionSetup = "{collision_setup}";
 const bool infoCseGlobal = {cse_global};
 const bool infoCsePdfs = {cse_pdfs};
 """
+
+
 with CodeGeneration() as ctx:
     data_type = "float64" if ctx.double_accuracy else "float32"
     stencil_fluid = LBStencil(Stencil.D3Q19)

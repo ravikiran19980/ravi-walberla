@@ -416,7 +416,7 @@ int main(int argc, char** argv)
    const real_t Thot = Thot_SI;
    const real_t Tcold = Tcold_SI;
    real_t Cp_f =  Cp_f_SI;
-   real_t Cp_s = (densityFluid * Cp_f * Cp_s_SI)/(densityParticle);
+   real_t Cp_s = Cp_s_SI; //(densityFluid * Cp_f * Cp_s_SI)/(densityParticle);
    const real_t Tref = Tref_SI;  // this is the initial fluid temperature and we define Gr for the fluid
    const real_t particleTemperature = Tparticle_SI;
    const real_t T0 = 0;
@@ -439,11 +439,14 @@ int main(int argc, char** argv)
 
    const real_t dummy_ref = densityFluid*Cp_f;
    const real_t dummy_ref_2 = rho_Cp_ref;
+
    WALBERLA_LOG_INFO_ON_ROOT("rho cp reference is  " << dummy_ref);
    WALBERLA_LOG_INFO_ON_ROOT("rho cp reference 2 is  " << dummy_ref_2);
    const real_t thermalDiffusivityFluid_LB = kinematicViscosityLB / Pr;
-
-   const real_t thermalDiffusivityParticle_LB = thermalDiffusivityFluid_LB * Kr;
+   const real_t kf = dummy_ref*thermalDiffusivityFluid_LB;
+   const real_t ks = Kr*kf;
+   const real_t thermalDiffusivityParticle_LB = ks/(dummy_ref);
+   //const real_t thermalDiffusivityParticle_LB = thermalDiffusivityFluid_LB * Kr;
 
    const real_t alphaLB = (Gr * kinematicViscosityLB * kinematicViscosityLB) /
                           (delta_T * particleDiameter * particleDiameter *
@@ -514,9 +517,9 @@ int main(int argc, char** argv)
       WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.yMin(), real_t(0));
       WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.zMin(), real_t(0));
 
-      Vector3< uint_t > particleLocation(uint_c(std::ceil(SingleparticleLocation[0] / dx_SI)),
-                                         uint_c(std::ceil(SingleparticleLocation[1] / dx_SI)),
-                                         uint_c(std::ceil(SingleparticleLocation[2] / dx_SI)));
+      Vector3< uint_t > particleLocation(uint_c((SingleparticleLocation[0] / dx_SI)),
+                                         uint_c((SingleparticleLocation[1] / dx_SI)),
+                                         uint_c((SingleparticleLocation[2] / dx_SI)));
       auto pt = particleLocation;
       if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
       {
@@ -944,7 +947,7 @@ int main(int argc, char** argv)
       pdfFieldFluidCPUGPUID, Tref, alphaLB, gravitationalAcceleration, omega_f, rho_0);
 
    pystencils::PSMEnergySweep psmEnergySweep(
-      particleAndVolumeFractionSoA_energy.BsFieldID,particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,particleAndVolumeFractionSoA_energy.particleVelocitiesFieldID,
+      particleAndVolumeFractionSoA_energy.BsFieldID,particleAndVolumeFractionSoA_energy.BFieldID,energyFieldCPUGPUID,particleAndVolumeFractionSoA_energy.particleVelocitiesFieldID,
       pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,Cp_f,Cp_s,omegaT_f,omegaT_s,dummy_ref,densityFluid,densityParticle);
 
 
@@ -997,7 +1000,7 @@ int main(int argc, char** argv)
                               for (auto& block : *blocks)
                               {
                                  getterSweep_energy(&block);
-                                 //compute_temperature_field(&block);
+                                 compute_temperature_field(&block);
                               }
                            },
                            "Compute energy sweep");
