@@ -1,6 +1,1 @@
-add_subdirectory(thermal_PSM_CHT)
-add_subdirectory(thermal_PSM_Catalyst_Particles)
-add_subdirectory(thermal_PSM_CHT_High_Pr)
 add_subdirectory(thermal_PSM_specific_Heats)
-add_subdirectory(smooth_profile_lbm)
-
