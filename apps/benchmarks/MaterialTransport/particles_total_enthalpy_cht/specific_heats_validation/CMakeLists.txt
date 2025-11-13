@@ -44,5 +44,10 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
 
     endif ()
 endif ()
-
+if (WALBERLA_BUILD_WITH_GPU_SUPPORT AND (CMAKE_CUDA_ARCHITECTURES GREATER_EQUAL 60 OR WALBERLA_BUILD_WITH_HIP))
+    target_sources( walberla_lbm_mesapd_coupling
+            PRIVATE
+            ../../utilities/temperatureWrapperKernels.${CODEGEN_FILE_SUFFIX}
+    )
+endif ()
 

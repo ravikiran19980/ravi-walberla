@@ -3,7 +3,7 @@ PhysicalSetup // all to be specified in SI/ref units
 
     xSize 0.08; // = width  // 4dp
     ySize 0.08; // = depth  // 4dp
-    zSize 0.14; // = height  // 20dp
+    zSize 0.8; // = height  // 20dp
 
     periodicInX false;
     periodicInY false;
@@ -27,8 +27,8 @@ NumericalSetup
     Uc 0.0052;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
     // product of number of blocks should be equal to number of used processes
     numXBlocks 1;
-    numYBlocks 2;
-    numZBlocks 2;
+    numYBlocks 1;
+    numZBlocks 1;
 
     use2DRefVel false;
     useLubricationForces true;
@@ -38,7 +38,9 @@ NumericalSetup
     particleSubBlockSize <5, 5, 5>;
     linkedCellWidthRation 1.01;
     particleBarriers true;
-    SingleparticleLocation <0.04,0.04,0.11>;
+    SingleparticleLocation <0.04,0.04,0.77>;
+    writeSlice true;
+    sendDirectlyFromGPU false;
 }
 
 TemperatureSetup
@@ -58,8 +60,8 @@ TemperatureSetup
 Output
 {
     infoSpacing 0.01; // in s
-    vtkSpacingParticles 0.01; // in s
-    vtkSpacingFluid 0.01; // in s
-    vtkFolder vtk_out;
+    vtkSpacingParticles 0; // in s
+    vtkSpacingFluid 0; // in s
+    vtkFolder vtk_out_gpu;
     performanceLogFrequency 5000000000;
 }
