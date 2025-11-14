@@ -373,6 +373,9 @@ int main(int argc, char** argv)
 
    const bool useParticles = numericalSetup.getParameter< bool >("useParticles");
 
+   const real_t resThreshold =
+      numericalSetup.getParameter< real_t >("resThreshold");
+
 
    Config::BlockHandle TemperatureSetup         = cfgFile->getBlock("TemperatureSetup");
    const real_t Thot_SI           = TemperatureSetup.getParameter< real_t >("Thot");
@@ -1191,10 +1194,16 @@ int main(int argc, char** argv)
          real_t  maxresidual = computeResidual(blocks,
                                               olddensityConcentrationFieldCPUGPUID,densityConcentrationFieldID);
          WALBERLA_LOG_INFO_ON_ROOT("max residual for timestep " << timeStep << " is " << maxresidual);
+         if(maxresidual <= real_c(1e-2)){
+            WALBERLA_ABORT("simulation reached minimum residual threshold threshold  " << maxresidual << " aborting");
+         }
 #else
          real_t  maxresidual = computeResidual(blocks,
                                               olddensityConcentrationFieldCPUGPUID,densityConcentrationFieldCPUGPUID);
          WALBERLA_LOG_INFO_ON_ROOT("max residual for timestep " << timeStep << " is " << maxresidual);
+         if(maxresidual <= real_c(resThreshold)){
+            WALBERLA_ABORT("simulation reached minimum residual threshold threshold  " << maxresidual << " aborting");
+         }
 #endif
 
       }

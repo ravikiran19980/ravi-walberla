@@ -43,6 +43,7 @@ NumericalSetup
     particleGenerationSpacing 0.013;
     writeSlice true;
     sendDirectlyFromGPU false;
+    resThreshold 1e-5;
 }
 
 TemperatureSetup
