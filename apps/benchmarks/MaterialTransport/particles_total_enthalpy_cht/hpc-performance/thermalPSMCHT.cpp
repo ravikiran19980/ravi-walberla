@@ -1185,9 +1185,18 @@ int main(int argc, char** argv)
 
       timeloop.singleStep(timeloopTiming);
       if(timeStep % 1000 ==0){
+#ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
+         gpu::fieldCpy< DensityField_concentration_T, gpu::GPUField< real_t > >(blocks, densityConcentrationFieldID,
+                                                                                densityConcentrationFieldCPUGPUID);
          real_t  maxresidual = computeResidual(blocks,
-                         olddensityConcentrationFieldCPUGPUID,densityConcentrationFieldCPUGPUID);
+                                              olddensityConcentrationFieldCPUGPUID,densityConcentrationFieldID);
          WALBERLA_LOG_INFO_ON_ROOT("max residual for timestep " << timeStep << " is " << maxresidual);
+#else
+         real_t  maxresidual = computeResidual(blocks,
+                                              olddensityConcentrationFieldCPUGPUID,densityConcentrationFieldCPUGPUID);
+         WALBERLA_LOG_INFO_ON_ROOT("max residual for timestep " << timeStep << " is " << maxresidual);
+#endif
+
       }
 
       if (particleBarriers) WALBERLA_MPI_BARRIER();
