@@ -88,87 +88,6 @@ void initConcentrationFieldCoutte(const shared_ptr< StructuredBlockStorage >& bl
 
 } // initConcentrationField
 
-void initConcentrationFieldGaussian(const shared_ptr< StructuredBlockStorage >& blocks,
-                                    BlockDataID& ConcentrationFieldID, const math::AABB& domainAABB,
-                                    Vector3< uint_t > domainSize, const real_t sigma_0, const real_t sigma_D,
-                                    const Vector3< real_t > uInflow, const Vector3< real_t > x_0)
-{
-   for (auto& block : *blocks)
-   {
-      auto ConcentrationField = block.getData< DensityField_concentration_T >(ConcentrationFieldID);
-      Block& b                = dynamic_cast< Block& >(block);
-      uint_t level            = b.getLevel();
-      CellInterval xyz        = ConcentrationField->xyzSize();
-      double sum=0;
-      for (auto cellIt = xyz.begin(); cellIt != xyz.end(); ++cellIt)
-      {
-         Cell globalCell;
-         blocks->transformBlockLocalToGlobalCell(globalCell, block, *cellIt);
-
-         Vector3< real_t > pos = blocks->getCellCenter(globalCell, level);
-         ConcentrationField->get(*cellIt) = std::exp(
-            -(std::pow((pos[0] - x_0[0]), 2) + std::pow((pos[1] - x_0[1]), 2) + std::pow((pos[2]-x_0[2]),2)) /
-            (2 * sigma_0 * sigma_0));
-         //ConcentrationField->get(*cellIt) = std::max(ConcentrationField->get(*cellIt), 1e-15);
-
-      }
-   }
-}
-
-void initConcentrationFieldSinusoidal(const shared_ptr< StructuredBlockStorage >& blocks,
-                                    BlockDataID& ConcentrationFieldID, const math::AABB& domainAABB,
-                                    Vector3< uint_t > domainSize, const real_t sigma_0, const real_t sigma_D,
-                                    const Vector3< real_t > uInflow, const Vector3< real_t > x_0,const real_t dx,const real_t dt)
-{
-   const real_t pi = M_PI;
-   for (auto& block : *blocks)
-   {
-      auto ConcentrationField = block.getData< DensityField_concentration_T >(ConcentrationFieldID);
-      Block& b                = dynamic_cast< Block& >(block);
-      uint_t level            = b.getLevel();
-      CellInterval xyz        = ConcentrationField->xyzSize();
-
-      for (auto cellIt = xyz.begin(); cellIt != xyz.end(); ++cellIt)
-      {
-         Cell globalCell;
-         blocks->transformBlockLocalToGlobalCell(globalCell, block, *cellIt);
-
-         Vector3< real_t > pos = blocks->getCellCenter(globalCell, level);
-         ConcentrationField->get(*cellIt) = std::sin(pi*pos[0]*dx)*std::sin(pi*pos[1]*dx)*std::sin(pi*pos[2]*dx) +1 ;
-         ConcentrationField->get(*cellIt) = std::max(ConcentrationField->get(*cellIt), 1e-15);
-      }
-   }
-}
-
-void initConcentrationFieldPacket(const shared_ptr< StructuredBlockStorage >& blocks,
-                                      BlockDataID& ConcentrationFieldID, const math::AABB& domainAABB,
-                                      Vector3< uint_t > domainSize, const real_t sigma_0, const real_t sigma_D,
-                                      const Vector3< real_t > uInflow, const Vector3< real_t > x_0,const real_t dx,const real_t dt,const real_t diffusivity)
-{
-   const real_t pi = M_PI;
-   for (auto& block : *blocks)
-   {
-      auto ConcentrationField = block.getData< DensityField_concentration_T >(ConcentrationFieldID);
-      Block& b                = dynamic_cast< Block& >(block);
-      uint_t level            = b.getLevel();
-      CellInterval xyz        = ConcentrationField->xyzSize();
-
-      for (auto cellIt = xyz.begin(); cellIt != xyz.end(); ++cellIt)
-      {
-         Cell globalCell;
-         blocks->transformBlockLocalToGlobalCell(globalCell, block, *cellIt);
-
-         Vector3< real_t > pos = blocks->getCellCenter(globalCell, level);
-         if(pos[0]*dx < x_0[0]*dx + 0.5*dx && pos[0]*dx > x_0[0]*dx - 0.5*dx && pos[1]*dx < x_0[1]*dx + 0.5*dx && pos[1]*dx > x_0[1]*dx - 0.5*dx && pos[2]*dx < x_0[2]*dx + 0.5*dx && pos[2]*dx > x_0[2]*dx - 0.5*dx){
-            ConcentrationField->get(*cellIt) = 1/std::sqrt(4*pi*diffusivity*dt) + 1;
-            WALBERLA_LOG_INFO("True ");
-         }
-         else{
-            ConcentrationField->get(*cellIt) = real_c(1);
-         }
-      }
-   }
-}
 
 void initFluidField(const shared_ptr< StructuredBlockStorage >& blocks, BlockDataID& FluidFieldID,
                     const Vector3< real_t > uInflow,Vector3< uint_t > domainSize)
@@ -229,130 +148,6 @@ void initFluidFieldPoiseuille(const shared_ptr< StructuredBlockStorage >& blocks
 }
 
 
-
-void analyticalSolGaussian(const shared_ptr< StructuredBlockStorage >& blocks,
-                           BlockDataID& AnalyticalConcentrationFieldID, const math::AABB& domainAABB,
-                           Vector3< uint_t > domainSize, const real_t sigma_0, const real_t diffusivity,
-                           const Vector3< real_t > uInflow, const Vector3< real_t > x_0, const real_t time,uint_t advection_period)
-{
-   real_t sigma_D2 = (2 * diffusivity * time);
-
-   for (auto& block : *blocks)
-   {
-      auto AnalyticalConcentrationField = block.getData< DensityField_concentration_T >(AnalyticalConcentrationFieldID);
-      Block& b                          = dynamic_cast< Block& >(block);
-      uint_t level                      = b.getLevel();
-      CellInterval xyz                  = AnalyticalConcentrationField->xyzSize();
-      double sum = 0.0;
-      for (auto cellIt = xyz.begin(); cellIt != xyz.end(); ++cellIt)
-      {
-         Cell globalCell;
-         blocks->transformBlockLocalToGlobalCell(globalCell, block, *cellIt);
-
-         Vector3< real_t > pos = blocks->getCellCenter(globalCell, level);
-         // WALBERLA_LOG_INFO("posx " << pos[0]);
-         real_t prefactor = (sigma_0 * sigma_0) / (sigma_0 * sigma_0 + sigma_D2);
-         //real_t prefactor = (std::pow(sigma_0,3)) /(std::pow((sigma_0 * sigma_0 + sigma_D2),1.5));
-
-         double x_eff = pos[0] - x_0[0] - uInflow[0] * time;
-         double y_eff = pos[1] - x_0[1] - uInflow[1] * time;
-         /*if(x_eff < -advection_period*domainSize[0]/2){
-            x_eff = x_eff + advection_period*domainSize[0];
-         }
-         if(y_eff < -advection_period*domainSize[1]/2){
-            y_eff = y_eff + advection_period*domainSize[1];
-         }
-         if(x_eff > advection_period*domainSize[0]/2){
-            x_eff = x_eff - advection_period*domainSize[0];
-         }
-         if(y_eff > advection_period*domainSize[1]/2){
-            y_eff = y_eff - advection_period*domainSize[1];
-         }*/
-
-
-         /*AnalyticalConcentrationField->get(*cellIt) =
-            prefactor * std::exp(-(std::pow((x_eff + advection_period*domainSize[0]), 2) +
-                                   std::pow((y_eff + advection_period*domainSize[1]),
-                                            2)) /
-                                 (2 * (sigma_0 * sigma_0 + sigma_D2)));*/
-
-      }
-   } /*+ std::pow((pos[2] - x_0[2] - uInflow[2]*time),2)*/
-}
-
-void analyticalSolSinusoidal(const shared_ptr< StructuredBlockStorage >& blocks,
-                           BlockDataID& AnalyticalConcentrationFieldID, const math::AABB& domainAABB,
-                           Vector3< uint_t > domainSize, const real_t sigma_0, const real_t diffusivity,
-                           const Vector3< real_t > uInflow, const Vector3< real_t > x_0, const real_t time,const real_t dx,const real_t dt)
-{
-   const real_t pi = M_PI;
-   real_t sigma_D2 = (2 * diffusivity * time);
-
-   for (auto& block : *blocks)
-   {
-      auto AnalyticalConcentrationField = block.getData< DensityField_concentration_T >(AnalyticalConcentrationFieldID);
-      Block& b                          = dynamic_cast< Block& >(block);
-      uint_t level                      = b.getLevel();
-      CellInterval xyz                  = AnalyticalConcentrationField->xyzSize();
-
-      for (auto cellIt = xyz.begin(); cellIt != xyz.end(); ++cellIt)
-      {
-         Cell globalCell;
-         blocks->transformBlockLocalToGlobalCell(globalCell, block, *cellIt);
-
-         Vector3< real_t > pos = blocks->getCellCenter(globalCell, level);
-         AnalyticalConcentrationField->get(*cellIt) = (std::sin(pi*(pos[0]*dx - 2.5*time*dt))*std::sin(pi*(pos[1]*dx - 2.5*time*dt))*std::sin(pi*(pos[2]*dx - 2.5*time*dt)))*std::exp(-3*pi*pi*time*dt*diffusivity) + 1;
-
-      }
-   }
-}
-
-void analyticalSolPacket(const shared_ptr< StructuredBlockStorage >& blocks,
-                             BlockDataID& AnalyticalConcentrationFieldID, const math::AABB& domainAABB,
-                             Vector3< uint_t > domainSize, const real_t sigma_0, const real_t diffusivity,
-                             const Vector3< real_t > uInflow, const Vector3< real_t > x_0, const real_t time,const real_t dx,const real_t dt)
-{
-   const real_t pi = M_PI;
-   real_t sigma_D2 = (2 * diffusivity * time);
-
-   for (auto& block : *blocks)
-   {
-      auto AnalyticalConcentrationField = block.getData< DensityField_concentration_T >(AnalyticalConcentrationFieldID);
-      Block& b                          = dynamic_cast< Block& >(block);
-      uint_t level                      = b.getLevel();
-      CellInterval xyz                  = AnalyticalConcentrationField->xyzSize();
-
-      for (auto cellIt = xyz.begin(); cellIt != xyz.end(); ++cellIt)
-      {
-         Cell globalCell;
-         blocks->transformBlockLocalToGlobalCell(globalCell, block, *cellIt);
-         Vector3< real_t > pos = blocks->getCellCenter(globalCell, level);
-         double sum = 0.0;
-         if(time*dt == 0){
-            const real_t expression = (pos[0] - x_0[0] - std::floor((pos[0] - x_0[0])/domainSize[0])*domainSize[0]) + (pos[1] - x_0[1] - std::floor((pos[1] - x_0[1])/domainSize[1])*domainSize[1]) + (pos[2] - x_0[2] - std::floor((pos[2] - x_0[2])/domainSize[2])*domainSize[2]);
-            if(expression <= abs(1e-6)){AnalyticalConcentrationField->get(*cellIt) = real_c(1);}
-            else{AnalyticalConcentrationField->get(*cellIt) = real_c(0);}
-         }
-         /*else{
-            const real_t k = std::floor((pos[0] - x_0[0])/domainSize[0]);
-            AnalyticalConcentrationField->get(*cellIt) = (1/(std::sqrt(4*pi*diffusivity*time*dt)))*std::exp(-((pos[0]*dx - x_0[0]*dx - 2.5*time*dt + k*domainSize[0]*dx) + (pos[1]*dx - x_0[1]*dx - 2.5*time*dt + k*domainSize[1]*dx) +(pos[2]*dx - x_0[2]*dx - 2.5*time*dt + k*domainSize[2]*dx))/(4*diffusivity*time*dt))+ 1;
-         }*/
-
-         // Sum over periodic images
-         else
-         {
-
-
-               sum += (1/(std::sqrt(4*pi*diffusivity*time*dt)))*std::exp(-((pos[0]*dx - x_0[0]*dx - 2.5*time*dt + std::floor((pos[0] - x_0[0])/domainSize[0])*domainSize[0]*dx) + (pos[1]*dx - x_0[1]*dx - 2.5*time*dt + std::floor((pos[0] - x_0[0])/domainSize[0])*domainSize[1]*dx) +(pos[2]*dx - x_0[2]*dx - 2.5*time*dt + std::floor((pos[0] - x_0[0])/domainSize[0])*domainSize[2]*dx))/(4*diffusivity*time*dt))+ 1;
-
-
-            AnalyticalConcentrationField->get(*cellIt) = sum;
-         }
-
-      }
-   }
-}
-
 std::vector< real_t > computeErrorL2(const shared_ptr< StructuredBlockStorage >& blocks,
                                      BlockDataID& NumericalSolFieldID, BlockDataID& AnalyticalSolFieldID,
                                      BlockDataID& ErrorFieldID, const math::AABB& domainAABB)
@@ -397,124 +192,49 @@ std::vector< real_t > computeErrorL2(const shared_ptr< StructuredBlockStorage >&
    return Errors;
 }
 
-std::vector< real_t > NusseltNumbers(const shared_ptr< StructuredBlockStorage >& blocks,
-                             BlockDataID& ConcentrationFieldID,BlockDataID& VelocityFieldID, const math::AABB& domainAABB,
-                             Vector3< uint_t > domainSize,const real_t delta_theta,const real_t ratio)
+ real_t computeResidual(const shared_ptr< StructuredBlockStorage >& blocks,
+                                     BlockDataID& oldtemperatureFieldID, BlockDataID& currenttemperatureFieldID
+                                     )
 {
-   std::vector< real_t > nusseltNumbers{ 0, 0, 0 };
-   real_t nusseltx_domain = 0;
-   real_t nusseltx_zero = 0; //Simpsons (real_c(128),real_c(0),ConcentrationFieldID,blocks);;
-   real_t nusseltx_half = 0;
-   const real_t Nx = real_c(domainSize[0]);
-   const real_t Ny = real_c(domainSize[1]);
+   real_t Linf{ 0.0 };
+   real_t L1{ 0.0 };
+   real_t L2{ 0.0 };
+   uint_t residual{ 0 };
+   uint_t cells{ 0 };
+   real_t maxresidual{0};
 
-   for (auto& block : *blocks)
+   for (auto block = blocks->begin(); block != blocks->end(); ++block)
    {
-      auto ConcentrationField = block.getData< DensityField_concentration_T >(ConcentrationFieldID);
-      auto VelocityField = block.getData< VelocityField_fluid_T >(VelocityFieldID);
-      Block& b                          = dynamic_cast< Block& >(block);
-      uint_t level                      = b.getLevel();
-      CellInterval xyz                  = ConcentrationField->xyzSize();
+      auto oldtemperatureField  = block->getData< DensityField_concentration_T >(oldtemperatureFieldID);
+      auto currenttemperatureField = block->getData< DensityField_concentration_T >(currenttemperatureFieldID);
+      Block& b                     = dynamic_cast< Block& >(*block);
+      uint_t level                 = b.getLevel();
+      CellInterval xyz             = currenttemperatureField->xyzSize();
 
       for (auto cellIt = xyz.begin(); cellIt != xyz.end(); ++cellIt)
       {
-         Cell globalCell;
-         blocks->transformBlockLocalToGlobalCell(globalCell, block, *cellIt);
-         Vector3< real_t > pos = blocks->getCellCenter(globalCell, level);
-         const cell_idx_t i = cellIt->x();
-         const cell_idx_t j = cellIt->y();
-         const cell_idx_t k = cellIt->z();
-         //WALBERLA_LOG_INFO_ON_ROOT("i " << i << " " << "j " << j << " " << "k " << k);
-         //const non_dim_temp = ConcentrationField->get(1,j,k) - 0.5;
-         //const real_t differential_x_0 = 2*Nx*(ConcentrationField->get(0,j,k) - 1.0);
-         //const real_t differential_x_half = Nx*(ConcentrationField->get(cell_idx_c(Nx/2),j,k) - ConcentrationField->get(cell_idx_c(Nx/2)-1,j,k));
-         //const real_t differential_x_domain = Nx*(ConcentrationField->get(i+1,j,k) - ConcentrationField->get(i-1,j,k))/2;
-         //const real_t differential_x_nondomain = Nx*(ConcentrationField->get(i+1,j,k) + ConcentrationField->get(i,j,k) - 2*ConcentrationField->get(i,j,k))/2;
-
-
-         const real_t differential_x_0 = Nx*(-3*ConcentrationField->get(i,j,k) + 4*ConcentrationField->get(i+1,j,k) - ConcentrationField->get(i+2,j,k))/2;
-         //const real_t differential_x_half = Nx*(-ConcentrationField->get(i+2,j,k) + 8*ConcentrationField->get(i+1,j,k) - 8*ConcentrationField->get(i-1,j,k) + ConcentrationField->get(i-2,j,k))/12;
-         const real_t differential_x_half = Nx*(ConcentrationField->get(i+1,j,k) - ConcentrationField->get(i,j,k));
-         const real_t differential_x_domain_hot = Nx*(-3*ConcentrationField->get(i,j,k) + 4*ConcentrationField->get(i+1,j,k) - ConcentrationField->get(i+2,j,k))/2;
-         const real_t differential_x_domain_cold = Nx*(3*ConcentrationField->get(i,j,k) - 4*ConcentrationField->get(i-1,j,k) + ConcentrationField->get(i-2,j,k))/2;
-
-        // const real_t differential_x_domain_hot = Nx*((real_c(-25/12))*ConcentrationField->get(i,j,k) + 4*ConcentrationField->get(i+1,j,k) - 3*ConcentrationField->get(i+2,j,k) + (real_c(4/3))*ConcentrationField->get(i+3,j,k) - (real_c(1/4))*ConcentrationField->get(i+4,j,k));
-        // const real_t differential_x_domain_cold = Nx*((real_c(+25/12))*ConcentrationField->get(i,j,k) - 4*ConcentrationField->get(i+1,j,k) + 3*ConcentrationField->get(i+2,j,k) - (real_c(4/3))*ConcentrationField->get(i+3,j,k) + (real_c(1/4))*ConcentrationField->get(i+4,j,k));
-
-         if(pos[0] == 0.5){
-            nusseltx_zero += -differential_x_domain_hot;
-            //WALBERLA_LOG_INFO_ON_ROOT("conc at i=0 is " << ConcentrationField->get(i,j,k));
-         }
-
-         if(pos[0] == (real_c(domainSize[0]/2) + 0.5)){
-
-            //WALBERLA_LOG_INFO_ON_ROOT("temp at 32 is " << (ConcentrationField->get(33,j,k)) << " " << "temp at 30 is " << (ConcentrationField->get(34,j,k))  );
-            nusseltx_half += ratio*VelocityField->get(*cellIt,0)*(ConcentrationField->get(*cellIt))  - differential_x_half ;
-
-         }
-
-         if(pos[0] == 0.5) {
-            nusseltx_domain += ratio*VelocityField->get(*cellIt,0)*(ConcentrationField->get(*cellIt)) - differential_x_domain_hot;
-         }
-         if(pos[0] == (real_c(domainSize[0]) + 0.5))
-         {
-            nusseltx_domain += ratio*VelocityField->get(*cellIt,0)*(ConcentrationField->get(*cellIt)) - differential_x_domain_cold;
-         }
-         else{
-            nusseltx_domain += ratio*VelocityField->get(*cellIt,0)*(ConcentrationField->get(*cellIt)) - differential_x_half;
-         }
-
+         real_t currErr = (currenttemperatureField->get(*cellIt) - oldtemperatureField->get(*cellIt));
+         
+         L1 += std::abs(currErr);
+         L2 += currErr * currErr;
+         Linf = std::max(Linf, std::abs(currErr));
+         cells += 1;
+         // after computing the residuals, assign old temperature with current temperature
+         oldtemperatureField->get(*cellIt) = currenttemperatureField->get(*cellIt);
       }
    }
-   mpi::allReduceInplace(nusseltx_domain, mpi::SUM);
-   //mpi::allReduceInplace(nusseltx_zero, mpi::SUM);
-   mpi::allReduceInplace(nusseltx_half, mpi::SUM);
-   WALBERLA_LOG_INFO_ON_ROOT("Nx is " << Nx << "Ny is " << Ny);
-   nusseltx_domain = nusseltx_domain/(Nx*Ny*delta_theta);
-   nusseltx_zero   = nusseltx_zero/(Ny*delta_theta);
-   nusseltx_half   = nusseltx_half/(Nx*delta_theta);
-   nusseltNumbers[0] = nusseltx_zero;
-   nusseltNumbers[1] = nusseltx_half;
-   nusseltNumbers[2] = nusseltx_domain;
+   mpi::allReduceInplace(L1, mpi::SUM);
+   mpi::allReduceInplace(L2, mpi::SUM);
+   mpi::allReduceInplace(Linf, mpi::MAX);
+   mpi::allReduceInplace(cells, mpi::SUM);
+   //Errors[0] = Linf;
+   //Errors[1] = L1 / cells;
+   //Errors[2] = std::sqrt(L2 / analytical_squared);
+   maxresidual = Linf;
 
-   return nusseltNumbers;
+   return maxresidual;
 }
 
-real_t Simpsons (real_t bb, real_t aa, BlockDataID& ConcentrationFieldID,const shared_ptr< StructuredBlockStorage >& blocks){
-   real_t nusselt_0;
-   for (auto& block : *blocks)
-   {
-      auto ConcentrationField = block.getData< DensityField_concentration_T >(ConcentrationFieldID);
-      Block& b                          = dynamic_cast< Block& >(block);
-      CellInterval xyz                  = ConcentrationField->xyzSize();
-      uint_t level                      = b.getLevel();
-      for (auto cellIt = xyz.begin(); cellIt != xyz.end(); ++cellIt)
-      {
-         Cell globalCell;
-         blocks->transformBlockLocalToGlobalCell(globalCell, block, *cellIt);
-         Vector3< real_t > pos = blocks->getCellCenter(globalCell, level);
-         const cell_idx_t i    = cellIt->x();
-         const cell_idx_t j    = cellIt->y();
-         const cell_idx_t k    = cellIt->z();
-         if(pos[0] == real_c(0.5)){
-            WALBERLA_LOG_INFO_ON_ROOT("temperature on hot wall is " << ConcentrationField->get(*cellIt));
-            if(pos[1] == real_c(0.5)){
-               nusselt_0 += ConcentrationField->get(*cellIt);
-            }
-            if(pos[1] == real_c(128.5)){
-               nusselt_0 += ConcentrationField->get(*cellIt);
-            }
-            if(pos[1] == real_c(64.5)){
-               nusselt_0 += 4 * ConcentrationField->get(*cellIt);
-            }
-         }
-         nusselt_0 = (nusselt_0);
-         //WALBERLA_LOG_INFO_ON_ROOT("nuseelt here is " << nusselt_0);
 
-      }
-
-   }
-   return nusselt_0;
-}
 
 } // namespace walberla
