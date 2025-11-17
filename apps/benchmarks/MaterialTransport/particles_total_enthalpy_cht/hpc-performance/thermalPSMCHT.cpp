@@ -656,9 +656,6 @@ int main(int argc, char** argv)
    BlockDataID densityConcentrationFieldCPUGPUID = field::addToStorage< DensityField_concentration_T >(
       blocks, "density concentration field", real_t(0), field::fzyx);
 
-   BlockDataID olddensityConcentrationFieldCPUGPUID = field::addToStorage< DensityField_concentration_T >(
-      blocks, "density concentration field old", real_t(0), field::fzyx);
-
    // Energy PDFs on CPU
    BlockDataID pdfFieldEnergyCPUGPUID = field::addToStorage< PdfField_energy_T >(
       blocks, "pdf energy field CPU", real_c(std::nan("")), field::fzyx);
@@ -677,6 +674,8 @@ int main(int argc, char** argv)
       field::addFlagFieldToStorage< FlagField_T >(blocks, "concentration flag field");
    BlockDataID flagFieldEnergyID =
       field::addFlagFieldToStorage< FlagField_T >(blocks, "energy flag field");
+   BlockDataID olddensityConcentrationFieldCPUGPUID = field::addToStorage< DensityField_concentration_T >(
+      blocks, "density concentration field old", real_t(0), field::fzyx);
 
    // Synchronize particles between the blocks for the correct mapping of ghost particles
    // set up RPD functionality
