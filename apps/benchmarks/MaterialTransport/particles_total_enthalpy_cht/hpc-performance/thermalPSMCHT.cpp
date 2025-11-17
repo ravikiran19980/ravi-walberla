@@ -1193,7 +1193,7 @@ int main(int argc, char** argv)
          real_t  maxresidual = computeResidual(blocks,
                                               olddensityConcentrationFieldCPUGPUID,densityConcentrationFieldID);
          WALBERLA_LOG_INFO_ON_ROOT("max residual for timestep " << timeStep << " is " << maxresidual);
-         if(maxresidual <= real_c(1e-2)){
+         if(maxresidual <= real_c(resThreshold)){
             WALBERLA_ABORT("simulation reached minimum residual threshold threshold  " << maxresidual << " aborting");
          }
 #else
