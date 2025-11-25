@@ -483,7 +483,7 @@ int main(int argc, char** argv)
                            particleDiameter * gravitationalAcceleration);
 
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
-
+   const real_t Qs = (Qso)*densityFluid*Cp_f*Uc*delta_T/particleDiameter;
    const real_t kf = rhoCpRef*thermalDiffusivityFluid_LB;
    const real_t ks = Kr*kf;
    const real_t thermalDiffusivityParticle_LB = ks/rhoCpRef;
@@ -1088,7 +1088,7 @@ int main(int argc, char** argv)
 
    pystencils::PSMEnergySweep psmEnergySweep(
       particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,
-      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,Cp_f,Cp_s,kf,ks,rhoCpRef, densityFluid, densityParticle);
+      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,Cp_f,Cp_s,Qs,kf,ks,rhoCpRef, densityFluid, densityParticle);
 
 
    timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")

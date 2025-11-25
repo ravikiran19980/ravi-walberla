@@ -373,9 +373,14 @@ int main(int argc, char** argv)
 
    const bool useParticles = numericalSetup.getParameter< bool >("useParticles");
 
+   const bool writeSlice =
+      numericalSetup.getParameter< bool >("writeSlice");
+   const bool sendDirectlyFromGPU =
+      numericalSetup.getParameter< bool >("sendDirectlyFromGPU");
+
    const real_t resThreshold =
       numericalSetup.getParameter< real_t >("resThreshold");
-
+   const real_t volfraction = numericalSetup.getParameter< real_t >("volfraction");
 
    Config::BlockHandle TemperatureSetup         = cfgFile->getBlock("TemperatureSetup");
    const real_t Thot_SI           = TemperatureSetup.getParameter< real_t >("Thot");
@@ -395,10 +400,6 @@ int main(int argc, char** argv)
    const real_t vtkSpacingFluid_SI      = outputSetup.getParameter< real_t >("vtkSpacingFluid");
    const std::string vtkFolder          = outputSetup.getParameter< std::string >("vtkFolder");
    const uint_t performanceLogFrequency = outputSetup.getParameter< uint_t >("performanceLogFrequency");
-   const bool writeSlice =
-      numericalSetup.getParameter< bool >("writeSlice");
-   const bool sendDirectlyFromGPU =
-      numericalSetup.getParameter< bool >("sendDirectlyFromGPU");
 
 
 
@@ -454,7 +455,9 @@ int main(int argc, char** argv)
    Vector3< uint_t > domainSizeLB;
    Vector3< real_t > Uinitialize(0, 0,0);
 
-
+   const real_t domainVolume = real_c(domainSize[0] * domainSize[1] * domainSize[2]);
+   const uint_t numParticles = uint_c((volfraction*domainVolume)/(particleVolume));
+   WALBERLA_LOG_INFO_ON_ROOT(numParticles << " particles will be created");
 
    const real_t T_conversion = real_t(1);
    // conversion for the various temperature quantities:
@@ -462,10 +465,9 @@ int main(int argc, char** argv)
    const real_t Thot = Thot_SI;
    const real_t Tcold = Tcold_SI;
    real_t Cp_f =  Cp_f_SI;
-   real_t Cp_s = Cp_s_SI;//(densityFluid * Cp_f * Cp_s_SI)/(densityParticle);
-   const real_t Tref = Tref_SI;  // this is the initial fluid temperature and we define Gr for the fluid
+   real_t Cp_s = Cp_s_SI;
+   const real_t Tref = Tref_SI;
    const real_t particleTemperature = Tparticle_SI;
-   const real_t T0 = 0;
    const real_t delta_T = Thot - Tcold;
    const real_t Uchar = Uc;
    const real_t kinematicViscosityLB  = (Uchar*particleDiameter)/(particleRe);
@@ -493,7 +495,7 @@ int main(int argc, char** argv)
                            particleDiameter * gravitationalAcceleration);
 
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
-
+   const real_t Qs = (Qso)*densityFluid*Cp_f*Uc*delta_T/particleDiameter;
    const real_t kf = rhoCpRef*thermalDiffusivityFluid_LB;
    const real_t ks = Kr*kf;
    const real_t thermalDiffusivityParticle_LB = ks/rhoCpRef;
@@ -560,21 +562,24 @@ int main(int argc, char** argv)
    WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.yMin(), real_t(0));
    WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.zMin(), real_t(0));
 
-      Vector3< real_t > particleLocation(uint_c(std::ceil(SingleparticleLocation[0] / dx_SI)),
-                                         uint_c(std::ceil(SingleparticleLocation[1] / dx_SI)),
-                                         uint_c(std::ceil(SingleparticleLocation[2] / dx_SI)));
-      const real_t spacing  = uint_c(std::ceil(particleGenerationSpacing / dx_SI));
-      if (useParticles)
+   const real_t spacing  = uint_c(std::ceil(particleGenerationSpacing / dx_SI));
+   auto generationDomain = math::AABB::createFromMinMaxCorner(
+      math::Vector3< real_t >(simulationDomain.xMax() * (real_t(1) - generationDomainFraction[0]) / real_t(2),
+                              simulationDomain.yMax() * (real_t(1) - generationDomainFraction[1]) / real_t(2),
+                              simulationDomain.zMax() * (real_t(1) - generationDomainFraction[2]) / real_t(2)),
+      math::Vector3< real_t >(simulationDomain.xMax() * (real_t(1) + generationDomainFraction[0]) / real_t(2),
+                              simulationDomain.yMax() * (real_t(1) + generationDomainFraction[1]) / real_t(2),
+                              simulationDomain.zMax() * (real_t(1) + generationDomainFraction[2]) / real_t(2)));
+   if (useParticles)
       {
          // Ensure that generation domain is computed correctly
          WALBERLA_LOG_INFO_ON_ROOT("generating particles");
-         WALBERLA_LOG_INFO_ON_ROOT("spacing " << spacing);
          WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.xMin(), real_t(0));
          WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.yMin(), real_t(0));
          WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.zMin(), real_t(0));
          uint_t nump = 0;
          for (auto pt :
-              grid_generator::SCGrid(simulationDomain, simulationDomain.center(),
+              grid_generator::SCGrid(generationDomain, generationDomain.center(),
                                      spacing))
          {
             if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
@@ -588,10 +593,13 @@ int main(int argc, char** argv)
                p.setTemperature(particleTemperature);
             }
             nump +=1;
-            WALBERLA_LOG_INFO_ON_ROOT("generating particle " << nump);
+            if(nump == numParticles){
+               break;
+               WALBERLA_LOG_INFO_ON_ROOT("generating particles done");
+            }
          }
       }
-      WALBERLA_LOG_INFO_ON_ROOT("generating particles done");
+
 
    ////////////////////////
    // ADD DATA TO BLOCKS //
@@ -736,20 +744,20 @@ int main(int argc, char** argv)
 
    boundariesBlockString += "\n BoundariesEnergy";
    boundariesBlockString += "{"
-                            "Border { direction W;    walldistance -1;  flag Density_Energy_static_hot; }"
+                            "Border { direction W;    walldistance -1;  flag Density_Energy_static_cold; }"
                             "Border { direction E;    walldistance -1;  flag Density_Energy_static_cold; }";
 
    if (!periodicInY)
    {
-      boundariesBlockString += "Border { direction S;    walldistance -1;  flag Neumann_Energy; }"
-                               "Border { direction N;    walldistance -1;  flag Neumann_Energy; }";
+      boundariesBlockString += "Border { direction S;    walldistance -1;  flag Density_Energy_static_cold; }"
+                               "Border { direction N;    walldistance -1;  flag Density_Energy_static_cold; }";
    }
 
    if (!periodicInZ)
    {
       boundariesBlockString +=
-         "Border { direction T;    walldistance -1;  flag Neumann_Energy; }"
-         "Border { direction B;    walldistance -1;  flag Neumann_Energy; }"; // Neumann_Energy
+         "Border { direction T;    walldistance -1;  flag Density_Energy_static_cold; }"
+         "Border { direction B;    walldistance -1;  flag Density_Energy_static_cold; }"; // Neumann_Energy
    }
    boundariesBlockString += "}";
 
@@ -1118,7 +1126,7 @@ int main(int argc, char** argv)
 
    pystencils::PSMEnergySweep psmEnergySweep(
       particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,
-      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,Cp_f,Cp_s,kf,ks,rhoCpRef, densityFluid, densityParticle);
+      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,Cp_f,Cp_s,Qs,kf,ks,rhoCpRef, densityFluid, densityParticle);
 
 
    timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")
@@ -1186,7 +1194,7 @@ int main(int argc, char** argv)
       // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
 
       timeloop.singleStep(timeloopTiming);
-      if(timeStep % 1000 ==0){
+      /*if(timeStep % 1000 ==0){
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
          gpu::fieldCpy< DensityField_concentration_T, gpu::GPUField< real_t > >(blocks, densityConcentrationFieldID,
                                                                                 densityConcentrationFieldCPUGPUID);
@@ -1205,7 +1213,7 @@ int main(int argc, char** argv)
          }
 #endif
 
-      }
+      }*/
 
       if (particleBarriers) WALBERLA_MPI_BARRIER();
       timeloopTiming["RPD forEachParticle assoc"].start();

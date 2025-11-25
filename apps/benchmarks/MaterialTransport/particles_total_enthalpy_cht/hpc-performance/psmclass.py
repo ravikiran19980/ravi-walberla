@@ -175,6 +175,14 @@ def create_psm_thermal_collision_rule(lbm_config):
         for f_post_f, f_post in zip(fluid_post_symbols, post_collision_pdf_symbols)
     ]
 
+    stencil_weights = get_weights(stencil)
+    heat_source = lbm_config.heat_source
+    fluid_post_symbols_with_heatsource = sp.symbols(f"f_post_fluid_heat_:{stencil.Q}")
+    fluid_collisions_with_heatsource = [
+        Assignment(f_post_f, main_asms_dict[f_post_f] + stencil_weights[i] * heat_source * B.center)
+        for f_post_f, i in zip(post_collision_pdf_symbols, range(stencil.Q))
+    ]
+
     remaining_main_asms = [
         Assignment(lhs, rhs)
         for lhs, rhs in main_asms_dict.items()
@@ -187,9 +195,8 @@ def create_psm_thermal_collision_rule(lbm_config):
             [Assignment(sp.Symbol("rho_cp") , rho_cp_eff)]
             + raw_col.subexpressions
             + [Assignment(sp.Symbol("T") , temperature_symbol)]
-            + fluid_collisions
     )
-    mains =  raw_col.main_assignments  + output_asms
+    mains =     fluid_collisions_with_heatsource  + output_asms + remaining_main_asms
     for item in mains:
         if not isinstance(item, Assignment):
             print("❌ Invalid main assignment:", item, type(item))
