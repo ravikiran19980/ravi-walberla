@@ -678,8 +678,6 @@ int main(int argc, char** argv)
    BlockDataID densityFluidFieldID =
       field::addToStorage< DensityField_fluid_T >(blocks, "density fluid field", real_t(0), field::fzyx);
    BlockDataID flagFieldFluidID = field::addFlagFieldToStorage< FlagField_T >(blocks, "fluid flag field");
-   BlockDataID flagFieldConcentrationID =
-      field::addFlagFieldToStorage< FlagField_T >(blocks, "concentration flag field");
    BlockDataID flagFieldEnergyID =
       field::addFlagFieldToStorage< FlagField_T >(blocks, "energy flag field");
    BlockDataID olddensityConcentrationFieldCPUGPUID = field::addToStorage< DensityField_concentration_T >(
@@ -1155,7 +1153,7 @@ int main(int argc, char** argv)
 
    timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.setParticleVelocitiesSweep),
                            "Set particle velocities from fluid sweepcollection");
-   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping Thermal"); // always uses a weighting of 1
+   //timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping Thermal"); // always uses a weighting of 1
 
    timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep");
 
@@ -1169,11 +1167,18 @@ int main(int argc, char** argv)
 
 
 
-   // Add performance logging
-   lbm::PerformanceLogger< FlagField_T > performanceLogger(blocks, flagFieldFluidID, Fluid_Flag, performanceLogFrequency);
+   // Add performance logging for fluid
+   lbm::PerformanceLogger< FlagField_T > performanceLoggerFluid(blocks, flagFieldFluidID, Fluid_Flag, performanceLogFrequency);
    if (performanceLogFrequency > 0)
    {
-      timeloop.addFuncAfterTimeStep(performanceLogger, "Evaluate performance logging");
+      timeloop.addFuncAfterTimeStep(performanceLoggerFluid, "Evaluate performance logging fluid");
+   }
+
+   // Add performance logging for energy
+   lbm::PerformanceLogger< FlagField_T > performanceLoggerEnergy(blocks, flagFieldEnergyID, Energy_Flag, performanceLogFrequency);
+   if (performanceLogFrequency > 0)
+   {
+      timeloop.addFuncAfterTimeStep(performanceLoggerEnergy, "Evaluate performance logging energy");
    }
 
    ////////////////////////
