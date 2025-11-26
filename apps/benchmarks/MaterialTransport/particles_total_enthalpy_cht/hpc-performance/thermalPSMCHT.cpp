@@ -93,6 +93,7 @@
 #include <fstream>
 #include <iomanip>
 #include "../../utilities/settemperaturesweep.h"
+#include "randomPoints.cpp"
 
 namespace MaterialTransport
 {
@@ -368,8 +369,8 @@ int main(int argc, char** argv)
       numericalSetup.getParameter< Vector3< real_t > >("SingleparticleLocation");
    const Vector3< real_t > generationDomainFraction =
       numericalSetup.getParameter< Vector3< real_t > >("generationDomainFraction");
-   const real_t particleGenerationSpacing =
-      numericalSetup.getParameter< real_t >("particleGenerationSpacing");
+   const Vector3< real_t > particleGenerationSpacing =
+      numericalSetup.getParameter<Vector3< real_t >>("particleGenerationSpacing");
 
    const bool useParticles = numericalSetup.getParameter< bool >("useParticles");
 
@@ -381,6 +382,7 @@ int main(int argc, char** argv)
    const real_t resThreshold =
       numericalSetup.getParameter< real_t >("resThreshold");
    const real_t volfraction = numericalSetup.getParameter< real_t >("volfraction");
+   const bool randomParticles = numericalSetup.getParameter< bool >("randomParticles");
 
    Config::BlockHandle TemperatureSetup         = cfgFile->getBlock("TemperatureSetup");
    const real_t Thot_SI           = TemperatureSetup.getParameter< real_t >("Thot");
@@ -562,7 +564,13 @@ int main(int argc, char** argv)
    WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.yMin(), real_t(0));
    WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.zMin(), real_t(0));
 
-   const real_t spacing  = uint_c(std::ceil(particleGenerationSpacing / dx_SI));
+   //const real_t spacing  = uint_c(std::ceil(particleGenerationSpacing / dx_SI));
+   const Vector3<real_t> spacingVector(
+      uint_c(std::ceil(particleGenerationSpacing[0] / dx_SI)),
+      uint_c(std::ceil(particleGenerationSpacing[1] / dx_SI)),
+      uint_c(std::ceil(particleGenerationSpacing[2] / dx_SI))
+   );
+
    auto generationDomain = math::AABB::createFromMinMaxCorner(
       math::Vector3< real_t >(simulationDomain.xMax() * (real_t(1) - generationDomainFraction[0]) / real_t(2),
                               simulationDomain.yMax() * (real_t(1) - generationDomainFraction[1]) / real_t(2),
@@ -570,7 +578,7 @@ int main(int argc, char** argv)
       math::Vector3< real_t >(simulationDomain.xMax() * (real_t(1) + generationDomainFraction[0]) / real_t(2),
                               simulationDomain.yMax() * (real_t(1) + generationDomainFraction[1]) / real_t(2),
                               simulationDomain.zMax() * (real_t(1) + generationDomainFraction[2]) / real_t(2)));
-   if (useParticles)
+   if (useParticles && randomParticles == false)
       {
          // Ensure that generation domain is computed correctly
          WALBERLA_LOG_INFO_ON_ROOT("generating particles");
@@ -580,7 +588,7 @@ int main(int argc, char** argv)
          uint_t nump = 0;
          for (auto pt :
               grid_generator::SCGrid(generationDomain, generationDomain.center(),
-                                     spacing))
+                                     spacingVector))
          {
             if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
             {
@@ -589,14 +597,53 @@ int main(int argc, char** argv)
                p.setInteractionRadius(particleDiameter * real_t(0.5));
                p.setOwner(mpi::MPIManager::instance()->rank());
                p.setShapeID(sphereShape);
-               p.setType(0);
+               p.setType(1);
                p.setTemperature(particleTemperature);
+               p.setLinearVelocity(0.1_r * Vector3< real_t >(math::realRandom(
+                                              -Uc, Uc)));
             }
             nump +=1;
             if(nump == numParticles){
                break;
                WALBERLA_LOG_INFO_ON_ROOT("generating particles done");
             }
+         }
+      }
+      if(useParticles && randomParticles ==true){
+         const int rank = mpi::MPIManager::instance()->rank();
+
+         std::vector< math::Vector3<real_t> > positions;
+         if (rank == 0) {
+            const unsigned base_seed = 123456u;           // no rank in the seed!
+            std::seed_seq seq{ base_seed };
+            std::mt19937 gen(seq);
+
+            // min center-to-center distance = particleDiameter (or a bit more)
+            const real_t minCenterDistance = particleDiameter;
+            real_t boundarymargin = minCenterDistance/2;
+            positions = generatePositionsSimple(generationDomain, numParticles, minCenterDistance,boundarymargin, gen);
+
+            if (positions.size() != numParticles) {
+               WALBERLA_ABORT("Requested " << numParticles
+                                           << " but only placed " << positions.size()
+                                           << " with min spacing " << minCenterDistance
+                                           << ". Enlarge domain or reduce spacing.");
+            }
+         }
+         walberla::mpi::broadcastObject(positions);
+         uint_t particlecount = 0;
+         for (const auto& pos : positions) {
+            if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pos)) {
+               mesa_pd::data::Particle&& p = *ps->create();
+               p.setPosition(pos);
+               p.setInteractionRadius(particleDiameter * real_t(0.5));
+               p.setOwner(mpi::MPIManager::instance()->rank());
+               p.setShapeID(sphereShape);
+               p.setType(1);
+               p.setTemperature(particleTemperature);
+            }
+            particlecount += 1;
+            if (particlecount == numParticles) break;
          }
       }
 
@@ -734,8 +781,8 @@ int main(int argc, char** argv)
 
    if (!periodicInZ)
    {
-      boundariesBlockString += "Border { direction T;    walldistance -1;  flag NoSlip_Fluid; }"
-                               "Border { direction B;    walldistance -1;  flag NoSlip_Fluid; }";
+      boundariesBlockString += "Border { direction T;    walldistance -1;  flag Density_Fluid; }"
+                               "Border { direction B;    walldistance -1;  flag Inflow_Fluid; }";
    }
 
    boundariesBlockString += "}";
@@ -778,11 +825,10 @@ int main(int argc, char** argv)
    geometry::setNonBoundaryCellsToDomain< FlagField_T >(*blocks, flagFieldFluidID, Fluid_Flag);
    lbm::BC_Fluid_NoSlip noSlip_fluid_bc(blocks, pdfFieldFluidCPUGPUID);
    noSlip_fluid_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldFluidID, NoSlip_Fluid_Flag, Fluid_Flag);
-   lbm::BC_Fluid_UBB ubb_fluid_bc(blocks, pdfFieldFluidCPUGPUID, real_t(0), real_t(0), real_t(0));
+   lbm::BC_Fluid_UBB ubb_fluid_bc(blocks, pdfFieldFluidCPUGPUID, real_t(0), real_t(0), Uc);
    ubb_fluid_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldFluidID, Inflow_Fluid_Flag, Fluid_Flag);
    lbm::BC_Fluid_FreeSlip freeSlip_fluid_bc(blocks, pdfFieldFluidCPUGPUID);
    freeSlip_fluid_bc.fillFromFlagField<FlagField_T>(blocks, flagFieldFluidID, FreeSlip_Fluid_Flag, Fluid_Flag);
-
    // map boundaries into the energy field simulation
 
    geometry::initBoundaryHandling< FlagField_T >(*blocks, flagFieldEnergyID, boundariesConfigEnergy);
@@ -889,6 +935,10 @@ int main(int argc, char** argv)
 
    pystencils::initializeConcentrationField initializeConcentrationField(particleAndVolumeFractionSoA_energy.BsFieldID,particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,particleTemperaturesFieldCPUGPUID, 0);
 
+   // fluid density boundary condition:
+
+   lbm::BC_Fluid_Density density_fluid_bc(blocks, particleAndVolumeFractionSoA_fluid.BFieldID,densityConcentrationFieldCPUGPUID,pdfFieldFluidCPUGPUID,Tref,alphaLB,real_t(1),gravitationalAcceleration,rho_0);
+   density_fluid_bc.fillFromFlagField<FlagField_T>(blocks, flagFieldFluidID, Density_Fluid_Flag, Fluid_Flag);
    // Initialize PDFs
 
    pystencils::InitializeFluidDomain pdfSetterFluid(
@@ -1133,7 +1183,7 @@ int main(int argc, char** argv)
                            "Boundary Handling (fluid ubb)");
    timeloop.add() << Sweep(deviceSyncWrapper(freeSlip_fluid_bc.getSweep()),
                            "Boundary Handling (Free slip fluid)");
-
+   timeloop.add() << Sweep(deviceSyncWrapper(density_fluid_bc.getSweep()), "fluid density boundary condition at top");
    // add the energy to the time loop
 
    timeloop.add() << BeforeFunction(communication_energy, "LBM energy Communication")
@@ -1172,13 +1222,6 @@ int main(int argc, char** argv)
    if (performanceLogFrequency > 0)
    {
       timeloop.addFuncAfterTimeStep(performanceLoggerFluid, "Evaluate performance logging fluid");
-   }
-
-   // Add performance logging for energy
-   lbm::PerformanceLogger< FlagField_T > performanceLoggerEnergy(blocks, flagFieldEnergyID, Energy_Flag, performanceLogFrequency);
-   if (performanceLogFrequency > 0)
-   {
-      timeloop.addFuncAfterTimeStep(performanceLoggerEnergy, "Evaluate performance logging energy");
    }
 
    ////////////////////////

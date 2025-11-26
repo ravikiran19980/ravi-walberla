@@ -110,7 +110,6 @@ class SetParticleTemperaturesSweepp
       }
 
       real_t* temperatures;
-      WALBERLA_LOG_INFO_ON_ROOT("set temperatures reached till here on GPU");
       WALBERLA_GPU_CHECK(gpuMalloc(&temperatures, arraySizes));
       WALBERLA_GPU_CHECK(gpuMemcpy(temperatures, temperatures_h, arraySizes, gpuMemcpyHostToDevice));
       auto nOverlappingParticlesField =
@@ -202,7 +201,6 @@ class SetParticleTemperaturesSweepp
          {
 
             temperatures[idxMapped] = ac_->getTemperature(idx);
-            WALBERLA_LOG_INFO_ON_ROOT("got the particle temperatures " << ac_->getTemperature(idx));
             idxMapped++;
          }
       }
