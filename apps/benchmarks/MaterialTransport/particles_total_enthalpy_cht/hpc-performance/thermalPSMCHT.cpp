@@ -937,8 +937,7 @@ int main(int argc, char** argv)
 
    // fluid density boundary condition:
 
-   lbm::BC_Fluid_Density density_fluid_bc(blocks, particleAndVolumeFractionSoA_fluid.BFieldID,densityConcentrationFieldCPUGPUID,pdfFieldFluidCPUGPUID,Tref,alphaLB,real_t(1),gravitationalAcceleration,rho_0);
-   density_fluid_bc.fillFromFlagField<FlagField_T>(blocks, flagFieldFluidID, Density_Fluid_Flag, Fluid_Flag);
+
    // Initialize PDFs
 
    pystencils::InitializeFluidDomain pdfSetterFluid(
@@ -954,6 +953,9 @@ int main(int argc, char** argv)
 
 
 #endif
+
+   lbm::BC_Fluid_Density density_fluid_bc(blocks, particleAndVolumeFractionSoA_fluid.BFieldID,densityConcentrationFieldCPUGPUID,pdfFieldFluidCPUGPUID,Tref,alphaLB,real_t(1),gravitationalAcceleration,rho_0);
+   density_fluid_bc.fillFromFlagField<FlagField_T>(blocks, flagFieldFluidID, Density_Fluid_Flag, Fluid_Flag);
 
    for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
    {
