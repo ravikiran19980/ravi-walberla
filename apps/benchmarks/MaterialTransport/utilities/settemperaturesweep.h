@@ -115,10 +115,8 @@ class SetParticleTemperaturesSweepp
       auto nOverlappingParticlesField =
          block->getData< nOverlappingParticlesFieldGPU_T >(particleAndVolumeFractionSoA_.nOverlappingParticlesFieldID);
       auto idxField = block->getData< idxFieldGPU_T >(particleAndVolumeFractionSoA_.idxFieldID);
-      WALBERLA_LOG_INFO_ON_ROOT("set temperatures reached till here on GPU 2");
       auto particleTemperaturesField =
          block->getData< particleTemperaturesFieldGPU_T >(particleTemperatureFieldCPUGPUID_);
-      WALBERLA_LOG_INFO_ON_ROOT("set temperatures reached till here on GPU 3");
       auto BsField =
          block->getData< BsFieldGPU_T >(particleAndVolumeFractionSoA_.BsFieldID);
 
