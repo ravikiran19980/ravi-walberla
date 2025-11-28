@@ -9,7 +9,7 @@ PhysicalSetup // all to be specified in SI/ref units
     periodicInY false;
     periodicInZ false;
 
-    runtime 500;
+    runtime 3;
     densityFluid 1.;
     particleDiameter 0.016;
     densityParticle 1.1;
@@ -31,21 +31,21 @@ NumericalSetup
     numZBlocks 2;
 
     use2DRefVel false;
-    useLubricationForces true;
+    useLubricationForces false;
     numberOfParticleSubCycles 10;
     useParticles true;
     useIntegrators true;
     particleSubBlockSize <8, 8, 8>;
     linkedCellWidthRation 1.01;
     particleBarriers true;
-    generationDomainFraction <1,1,1>;
+    generationDomainFraction <0.85,0.85,0.85>;
     SingleparticleLocation <0.064,0.064,0.128>;
     particleGenerationSpacing <0.016,0.016,0.016>;
     writeSlice true;
-    sendDirectlyFromGPU false;
+    sendDirectlyFromGPU true;
     resThreshold 1e-5;
-    volfraction 0.3;
-    randomParticles true;
+    volfraction 0.5;
+    randomParticles false;
 }
 
 TemperatureSetup
@@ -68,5 +68,5 @@ Output
     vtkSpacingParticles 0; // in s
     vtkSpacingFluid 0; // in s
     vtkFolder vtk_out;
-    performanceLogFrequency 1000;
+    performanceLogFrequency 3000;
 }
