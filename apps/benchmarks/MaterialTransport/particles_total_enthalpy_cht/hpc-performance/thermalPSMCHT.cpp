@@ -1185,7 +1185,7 @@ int main(int argc, char** argv)
                            "Boundary Handling (fluid ubb)");
    timeloop.add() << Sweep(deviceSyncWrapper(freeSlip_fluid_bc.getSweep()),
                            "Boundary Handling (Free slip fluid)");
-   timeloop.add() << Sweep(deviceSyncWrapper(density_fluid_bc.getSweep()), "fluid density boundary condition at top");
+   timeloop.add() << Sweep(deviceSyncWrapper(density_fluid_bc.getSweep()), "Boundary Handling (fluid density)");
    // add the energy to the time loop
 
    timeloop.add() << BeforeFunction(communication_energy, "LBM energy Communication")
