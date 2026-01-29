@@ -94,6 +94,7 @@
 #include <iomanip>
 #include "heatFlux.cpp"
 #include "randomPoints.cpp"
+#include "../../utilities/settemperaturesweep.h"
 
 namespace MaterialTransport
 {
@@ -612,6 +613,9 @@ int main(int argc, char** argv)
 
    BlockDataID energyFieldCPUGPUID =
       field::addToStorage< DensityField_energy_T >(blocks, "energy field", real_t(0), field::fzyx);
+   BlockDataID particleTemperaturesFieldCPUGPUID = field::addToStorage< particleTemperaturesField_T >(blocks, "particle temperatures field CPU", real_t(0),
+                                                                                                      field::fzyx, uint_t(1), true);
+
 
 #endif
    BlockDataID densityFluidFieldID =
@@ -802,9 +806,11 @@ int main(int argc, char** argv)
    PSMSweepCollection psmSweepCollectionTemperature(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
                                                     particleAndVolumeFractionSoA_energy, densityConcentrationFieldCPUGPUID,
                                                     particleSubBlockSize, true);
+   SetParticleTemperaturesSweepp settemperatureparticles(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
+                                                         particleAndVolumeFractionSoA_energy, densityConcentrationFieldCPUGPUID,particleTemperaturesFieldCPUGPUID,
+                                                         true);
 
-
-   pystencils::initializeConcentrationField initializeConcentrationField(particleAndVolumeFractionSoA_energy.BsFieldID,particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,particleAndVolumeFractionSoA_energy.particleTemperaturesFieldID, Tref);
+   pystencils::initializeConcentrationField initializeConcentrationField(particleAndVolumeFractionSoA_energy.BsFieldID,particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,particleTemperaturesFieldCPUGPUID, Tref);
 
    // Initialize PDFs
 
@@ -832,7 +838,7 @@ int main(int argc, char** argv)
    for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
    {
       psmSweepCollectionFluid.setParticleVelocitiesSweep(&(*blockIt));
-      psmSweepCollectionTemperature.setParticleTemperaturesSweep(&(*blockIt)); // the initial temperatures of particles are always uniform initializeConcentrationField(&(*blockIt));
+      settemperatureparticles(&(*blockIt)); // the initial temperatures of particles are always uniform initializeConcentrationField(&(*blockIt));
       pdfSetterFluid(&(*blockIt));
       pdfSetterEnergy(&(*blockIt));
    }
@@ -952,8 +958,7 @@ int main(int argc, char** argv)
          make_shared< field::VTKWriter< FlagField_T > >(flagFieldFluidID, "FluidFlagField"));
       vtkOutput_Fluid->addCellDataWriter(
          make_shared< field::VTKWriter< BField_T > >(particleAndVolumeFractionSoA_fluid.BFieldID, "OverlapFraction"));
-      vtkOutput_Fluid->addCellDataWriter(
-         make_shared< field::VTKWriter< particleTemperaturesField_T > >(particleAndVolumeFractionSoA_energy.particleTemperaturesFieldID, "particle temp filed"));
+
 
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
       vtkOutput_Energy->addCellDataWriter(
