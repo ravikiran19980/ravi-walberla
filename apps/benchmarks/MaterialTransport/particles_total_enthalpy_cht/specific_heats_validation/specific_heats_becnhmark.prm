@@ -26,9 +26,9 @@ NumericalSetup
     dt 0.001;  // this is the dt_SI if at all uInflow is set to 0.
     Uc 0.0052;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
     // product of number of blocks should be equal to number of used processes
-    numXBlocks 1;
-    numYBlocks 1;
-    numZBlocks 1;
+    numXBlocks 2;
+    numYBlocks 8;
+    numZBlocks 16;
 
     use2DRefVel false;
     useLubricationForces true;
@@ -38,9 +38,7 @@ NumericalSetup
     particleSubBlockSize <5, 5, 5>;
     linkedCellWidthRation 1.01;
     particleBarriers true;
-    SingleparticleLocation <0.04,0.04,0.77>;
-    writeSlice true;
-    sendDirectlyFromGPU false;
+    SingleparticleLocation <0.04,0.04,0.76>;
 }
 
 TemperatureSetup
@@ -59,9 +57,9 @@ TemperatureSetup
 
 Output
 {
-    infoSpacing 0.01; // in s
+    infoSpacing 0.1; // in s
     vtkSpacingParticles 0; // in s
     vtkSpacingFluid 0; // in s
-    vtkFolder vtk_out_gpu;
+    vtkFolder vtk_out;
     performanceLogFrequency 5000000000;
 }
