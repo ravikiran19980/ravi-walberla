@@ -30,11 +30,9 @@ from pystencils_walberla import (
 )
 from lbmpy_walberla import generate_boundary
 from lbmpy_walberla.additional_data_handler import DiffusionDirichletAdditionalDataHandler
-from pystencils.cache import clear_cache
 from psmclass import ThermalPSMConfig,create_thermal_lb_method,create_psm_thermal_collision_rule
 from lbmpy.methods.creationfunctions import CollisionSpaceInfo
 from lbmpy.enums import Stencil, Method, CollisionSpace
-clear_cache()
 
 
 
