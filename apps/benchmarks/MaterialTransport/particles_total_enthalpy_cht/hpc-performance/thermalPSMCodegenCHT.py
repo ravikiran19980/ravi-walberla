@@ -334,6 +334,14 @@ with CodeGeneration() as ctx:
         target=target,
         inner_outer_split=True,
     )
+    generate_sweep(
+        ctx,
+        "PSMEnergySweepSplit",
+        create_lb_update_rule(collision_rule=collision_rule_energy, lbm_config=psm_energy_config, lbm_optimisation=lbm_energy_opt),
+        field_swaps=[(pdfs_energy, pdfs_energy_tmp)],
+        target=target,
+        inner_outer_split=True,
+    )
 
     generate_pack_info_from_kernel(
         ctx,

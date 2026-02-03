@@ -383,6 +383,7 @@ int main(int argc, char** argv)
       numericalSetup.getParameter< real_t >("resThreshold");
    const real_t volfraction = numericalSetup.getParameter< real_t >("volfraction");
    const bool randomParticles = numericalSetup.getParameter< bool >("randomParticles");
+   const bool useCommunicationHiding = numericalSetup.getParameter< bool >("useCommunicationHiding");
 
    Config::BlockHandle TemperatureSetup         = cfgFile->getBlock("TemperatureSetup");
    const real_t Thot_SI           = TemperatureSetup.getParameter< real_t >("Thot");
@@ -1178,19 +1179,63 @@ int main(int argc, char** argv)
       particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,
       pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,Cp_f,Cp_s,Qs,kf,ks,rhoCpRef, densityFluid, densityParticle);
 
+   pystencils::PSMFluidSweepSplit psmFluidSweepSplit(
+      particleAndVolumeFractionSoA_fluid.BsFieldID, particleAndVolumeFractionSoA_fluid.BFieldID, densityConcentrationFieldCPUGPUID,
+      particleAndVolumeFractionSoA_fluid.particleForcesFieldID, particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID,
+      pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID,Tref, alphaLB, gravitationalAcceleration, omega_f, rho_0);
 
+   pystencils::PSMEnergySweepSplit psmEnergySweepSplit(
+      particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,
+      pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,Cp_f,Cp_s,Qs,kf,ks,rhoCpRef, densityFluid, densityParticle);
+
+if(useCommunicationHiding){
+
+   // hydro BCs
+   timeloop.add() << Sweep(deviceSyncWrapper(noSlip_fluid_bc.getSweep()), "Boundary Handling (No slip fluid)");
+   timeloop.add() << Sweep(deviceSyncWrapper(ubb_fluid_bc.getSweep()), "Boundary Handling (fluid ubb)");
+   timeloop.add() << Sweep(deviceSyncWrapper(freeSlip_fluid_bc.getSweep()), "Boundary Handling (Free slip fluid)");
+   timeloop.add() << Sweep(deviceSyncWrapper(density_fluid_bc.getSweep()), "Boundary Handling (fluid density)");
+
+   // thermal BCs
+   timeloop.add() << Sweep(deviceSyncWrapper(neumann_energy_bc.getSweep()), "Boundary Handling (Energy Neumann)");
+   timeloop.add() << Sweep(deviceSyncWrapper(energy_static_bc_hot.getSweep()),
+                           "Boundary Handling (Energy static bc hot)");
+
+   timeloop.add() << Sweep(deviceSyncWrapper(energy_static_bc_cold.getSweep()),
+                           "Boundary Handling (Energy static bc cold)");
+
+   // hydro sweeps and communication
+   timeloop.add() << BeforeFunction([&]() { com_fluid.startCommunication(); })
+                      << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.particleMappingSweep), "Particle mapping fluid");
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.setParticleVelocitiesSweep),
+                               "Set particle velocities");
+   timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweepSplit.getInnerSweep()), "PSM inner sweep fluid")
+                      << AfterFunction([&]() { com_fluid.wait(); }, "LBM Communication fluid (wait)");
+   timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweepSplit.getOuterSweep()), "PSM outer sweep fluid");
+
+   // thermal sweeps and communication
+
+   timeloop.add() << BeforeFunction([&]() { com_energy.startCommunication(); })
+                      << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping thermal");
+   timeloop.add() << Sweep(deviceSyncWrapper(psmEnergySweepSplit.getInnerSweep()), "PSM inner sweep thermal")
+                      << AfterFunction([&]() { com_energy.wait(); }, "LBM Communication thermal (wait)");
+   timeloop.add() << Sweep(deviceSyncWrapper(psmEnergySweepSplit.getOuterSweep()), "PSM outer sweep thermal");
+
+
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.reduceParticleForcesSweep),
+                           "Reduce particle forces");
+}
+else
+{
    timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")
                   << Sweep(deviceSyncWrapper(noSlip_fluid_bc.getSweep()), "Boundary Handling (No slip fluid)");
-   timeloop.add() << Sweep(deviceSyncWrapper(ubb_fluid_bc.getSweep()),
-                           "Boundary Handling (fluid ubb)");
-   timeloop.add() << Sweep(deviceSyncWrapper(freeSlip_fluid_bc.getSweep()),
-                           "Boundary Handling (Free slip fluid)");
+   timeloop.add() << Sweep(deviceSyncWrapper(ubb_fluid_bc.getSweep()), "Boundary Handling (fluid ubb)");
+   timeloop.add() << Sweep(deviceSyncWrapper(freeSlip_fluid_bc.getSweep()), "Boundary Handling (Free slip fluid)");
    timeloop.add() << Sweep(deviceSyncWrapper(density_fluid_bc.getSweep()), "Boundary Handling (fluid density)");
    // add the energy to the time loop
 
    timeloop.add() << BeforeFunction(communication_energy, "LBM energy Communication")
-                  << Sweep(deviceSyncWrapper(neumann_energy_bc.getSweep()),
-                           "Boundary Handling (Energy Neumann)");
+                  << Sweep(deviceSyncWrapper(neumann_energy_bc.getSweep()), "Boundary Handling (Energy Neumann)");
 
    timeloop.add() << Sweep(deviceSyncWrapper(energy_static_bc_hot.getSweep()),
                            "Boundary Handling (Energy static bc hot)");
@@ -1198,14 +1243,12 @@ int main(int argc, char** argv)
    timeloop.add() << Sweep(deviceSyncWrapper(energy_static_bc_cold.getSweep()),
                            "Boundary Handling (Energy static bc cold)");
 
-
-   //addCHTPSMSweepToTimeloop(timeloop, psmSweepCollectionFluid,psmSweepCollectionTemperature, psmFluidSweep,psmEnergySweep);
-
-   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.particleMappingSweep), "Particle mapping Fluid"); // uses weighting for hydrodynamics specified in Cmakelists file
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.particleMappingSweep),
+                           "Particle mapping Fluid"); // uses weighting for hydrodynamics specified in Cmakelists file
 
    timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.setParticleVelocitiesSweep),
                            "Set particle velocities from fluid sweepcollection");
-   //timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping Thermal"); // always uses a weighting of 1
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping Thermal"); // always uses a weighting of 1
 
    timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep");
 
@@ -1216,8 +1259,7 @@ int main(int argc, char** argv)
    // after both the sweeps, reduce the particle forces.
    timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.reduceParticleForcesSweep),
                            "Reduce particle forces");
-
-
+}
 
    // Add performance logging for fluid
    lbm::PerformanceLogger< FlagField_T > performanceLoggerFluid(blocks, flagFieldFluidID, Fluid_Flag, performanceLogFrequency);
@@ -1242,7 +1284,6 @@ int main(int argc, char** argv)
    for (uint_t timeStep = 0; timeStep < numTimeSteps; ++timeStep)
    {
       // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
-
       timeloop.singleStep(timeloopTiming);
       /*if(timeStep % 1000 ==0){
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
