@@ -1,3 +1,4 @@
+add_subdirectory(codegenThermal)
 add_subdirectory(ardekani_validation)
 add_subdirectory(catalyst_validation)
 add_subdirectory(specific_heats_validation)

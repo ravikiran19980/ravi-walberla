@@ -219,7 +219,7 @@ ParticleInfo evaluateParticleInfo(const Accessor_T& ac)
       info.heightOfMass += particleVolume * height;
    }
 
-   info.allReduce();
+   WALBERLA_MPI_SECTION() { info.allReduce(); }
 
    return info;
 }
@@ -270,7 +270,7 @@ FluidInfo evaluateFluidInfo(const shared_ptr< StructuredBlockStorage >& blocks, 
          info.averageVelocity += velMagnitude; info.maximumVelocity = std::max(info.maximumVelocity, velMagnitude);
          info.averageDensity += density; info.maximumDensity        = std::max(info.maximumDensity, density);)
    }
-   info.allReduce();
+   WALBERLA_MPI_SECTION() { info.allReduce(); }
    return info;
 }
 
@@ -999,7 +999,7 @@ int main(int argc, char** argv)
    pystencils::PSMFluidSweep psmFluidSweep(
       particleAndVolumeFractionSoA_fluid.BsFieldID, particleAndVolumeFractionSoA_fluid.BFieldID, densityConcentrationFieldCPUGPUID,
       particleAndVolumeFractionSoA_fluid.particleForcesFieldID, particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID,
-      pdfFieldFluidCPUGPUID, Tref, alphaLB, gravitationalAcceleration, omega_f, rho_0);
+      pdfFieldFluidCPUGPUID,velFieldFluidCPUGPUID, Tref, alphaLB, gravitationalAcceleration, omega_f, rho_0);
 
 
    pystencils::PSMEnergySweep psmEnergySweep(
@@ -1035,7 +1035,7 @@ int main(int argc, char** argv)
                            "Set particle velocities from fluid sweepcollection");
    timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping Thermal"); // always uses a weighting of 1
 
-   timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep")
+   /*timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep")
                   << AfterFunction(
                         [&blocks, &getterSweep_fluid]() {
                            for (auto& block : *blocks)
@@ -1051,11 +1051,9 @@ int main(int argc, char** argv)
                            for (auto& block : *blocks)
                            {
                               getterSweep_energy(&block);
-                              //compute_temperature_field(&block);
-                              //compute_velocity_field(&block);
                            }
                         },
-                        "Compute energy sweep");
+                        "Compute energy sweep");*/
 
 
    // after both the sweeps, reduce the particle forces.
@@ -1233,7 +1231,7 @@ int main(int argc, char** argv)
 
          auto particleInfo = evaluateParticleInfo(*accessor);
          WALBERLA_LOG_INFO_ON_ROOT(particleInfo);
-         if (mpi::MPIManager::instance()->rank() == 0) { (writeVelocityToFile(particleInfo, timeStep)); }
+         WALBERLA_ROOT_SECTION() { (writeVelocityToFile(particleInfo, timeStep)); }
 
          auto fluidInfo = evaluateFluidInfo(blocks, densityFluidFieldID, velFieldFluidCPUGPUID);
          for (auto& block : *blocks)

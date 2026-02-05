@@ -227,7 +227,7 @@ ParticleInfo evaluateParticleInfo(const Accessor_T& ac)
       info.heightOfMass += particleVolume * height;
    }
 
-   info.allReduce();
+   WALBERLA_MPI_SECTION() { info.allReduce(); }
 
    return info;
 }
@@ -278,7 +278,7 @@ FluidInfo evaluateFluidInfo(const shared_ptr< StructuredBlockStorage >& blocks, 
          info.averageVelocity += velMagnitude; info.maximumVelocity = std::max(info.maximumVelocity, velMagnitude);
          info.averageDensity += density; info.maximumDensity        = std::max(info.maximumDensity, density);)
    }
-   info.allReduce();
+   WALBERLA_MPI_SECTION() { info.allReduce(); }
    return info;
 }
 
@@ -1300,7 +1300,7 @@ int main(int argc, char** argv)
 
          auto particleInfo = evaluateParticleInfo(*accessor);
          WALBERLA_LOG_INFO_ON_ROOT(particleInfo);
-         if (mpi::MPIManager::instance()->rank() == 0) { (writeVelocityToFile(particleInfo, timeStep)); }
+         WALBERLA_ROOT_SECTION() { (writeVelocityToFile(particleInfo,timeStep)); }
 
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
          gpu::fieldCpy< PdfField_fluid_T, gpu::GPUField< real_t > >(blocks, pdfFieldFluidID, pdfFieldFluidCPUGPUID);
@@ -1318,11 +1318,12 @@ int main(int argc, char** argv)
          auto fluidInfo = evaluateFluidInfo(blocks, densityFluidFieldID, velFieldFluidID);
          WALBERLA_LOG_INFO_ON_ROOT(fluidInfo);
 #else
-         auto fluidInfo = evaluateFluidInfo(blocks, densityFluidFieldID, velFieldFluidCPUGPUID);
+
          for (auto& block : *blocks)
          {
             getterSweep_fluid(&block);
          }
+         auto fluidInfo = evaluateFluidInfo(blocks, densityFluidFieldID, velFieldFluidCPUGPUID);
          WALBERLA_LOG_INFO_ON_ROOT(fluidInfo);
 #endif
 
