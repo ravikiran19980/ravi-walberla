@@ -34,6 +34,7 @@ from pystencils.cache import clear_cache
 from psmclass import ThermalPSMConfig,create_thermal_lb_method,create_psm_thermal_collision_rule
 from lbmpy.methods.creationfunctions import CollisionSpaceInfo
 from lbmpy.enums import Stencil, Method, CollisionSpace
+clear_cache()
 
 info_header = """
 const char * infoStencil_fluid = "{stencil}";
@@ -169,7 +170,7 @@ with CodeGeneration() as ctx:
     # Energy PSM config
     psm_energy_config = ThermalPSMConfig(
         stencil=stencil_energy,
-        method=Method.SRT,
+        method=Method.TRT,
         relaxation_rate=omegaT_f,  # omega_f will be used for the fluid and omega_p will be used for the solid particles
         velocity_input=velocity_field,
         output={"density": energy_field},
