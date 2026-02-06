@@ -35,6 +35,8 @@ from psmclass import ThermalPSMConfig,create_thermal_lb_method,create_psm_therma
 from lbmpy.methods.creationfunctions import CollisionSpaceInfo
 from lbmpy.enums import Stencil, Method, CollisionSpace
 
+
+
 info_header = """
 const char * infoStencil_fluid = "{stencil}";
 const char * infoStencil_concentration = "{stencil}";
@@ -81,7 +83,6 @@ with CodeGeneration() as ctx:
         f"pdfs_fluid({stencil_fluid.Q}), pdfs_fluid_tmp({stencil_fluid.Q}), velocity_field({stencil_fluid.D}), density_field({1}): {data_type}[3D]",
         layout=layout,
     )
-
     # Concentration PDFs and fields
     concentration_field = ps.fields(
         f"concentration_field({1}): {data_type}[3D]",
@@ -155,7 +156,6 @@ with CodeGeneration() as ctx:
         psm_config=psm_config_F,
     )
 
-
     ## for CHT
     rho_f = sp.Symbol("rho_f")
     rho_s = sp.Symbol("rho_s")
@@ -187,10 +187,11 @@ with CodeGeneration() as ctx:
         solid_relaxation_rate=omegaT_s,
         energy_field=energy_field,
         temperature_field_output=concentration_field,
-        heat_source=sp.Symbol("Qs"),
+        heat_source=None,
         fluid_conductivity = k_f,
         solid_conductivity = k_s,
     )
+
 
     if config_tokens[0] == "srt-smagorinsky" or config_tokens[0] == "trt-smagorinsky":
         lbm_fluid_config.smagorinsky = True
@@ -265,6 +266,7 @@ with CodeGeneration() as ctx:
         compute_temperature_field
     )
     generate_sweep(ctx, "compute_temperature_field", compute_temperature_field_ac)
+
     assignments = []
     assignments.append(method_energy.conserved_quantity_computation.equilibrium_input_equations_from_pdfs(pdfs_energy.center_vector))
     for k in range(MaxParticlesPerCell):
@@ -289,9 +291,7 @@ with CodeGeneration() as ctx:
     initializeConcentrationField_ac = ps.AssignmentCollection(initializeConcentrationField)
     generate_sweep(ctx, "initializeConcentrationField", initializeConcentrationField_ac)
 
-
     # Generate files
-
 
     generate_sweep(
         ctx,
@@ -463,7 +463,6 @@ with CodeGeneration() as ctx:
         "GeneralInfoHeader",
         stencil_typedefs=stencil_typedefs,
         field_typedefs=field_typedefs,
-        #additional_code=additional_code,
     )
 
 

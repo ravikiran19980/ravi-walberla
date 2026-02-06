@@ -88,7 +88,7 @@ def create_thermal_lb_method(lbm_config: ThermalPSMConfig):
         relaxation_rate_odd_moments = lbm_config.relaxation_rate
         relaxation_rate_even_moments = relaxation_rate_from_magic_number(relaxation_rate_odd_moments, sp.Rational(1,4))
         moment_to_relaxation_rate_dict = OrderedDict([(m, relaxation_rate_even_moments if is_even(m) else relaxation_rate_odd_moments)
-                            for m in moments])
+                                                      for m in moments])
 
 
     equilibrium_cht = DiscreteThermalMaxwellianCHT(
@@ -98,7 +98,6 @@ def create_thermal_lb_method(lbm_config: ThermalPSMConfig):
         order=2,
         c_s_sq=lbm_config.c_s_sq,
         substitutions=None,
-        #temperature=T,
         Cp_ref=sp.Symbol("rho_Cp_ref")
     )
 
@@ -130,7 +129,6 @@ def create_psm_thermal_collision_rule(lbm_config):
     rho_Cp_ref = (2*rho_f*Cp_f*rho_s*Cp_s)/(rho_f*Cp_f + rho_s*Cp_s)
     thermal_diffusivity_eff = k_eff / rho_Cp_ref
     omega_eff = relaxation_rate_from_lattice_viscosity(thermal_diffusivity_eff)
-    #   Update relaxation rates
 
     thermal_lb_method, cqc_cht = create_thermal_lb_method(
         replace(lbm_config, relaxation_rate=omega_eff),
@@ -171,28 +169,11 @@ def create_psm_thermal_collision_rule(lbm_config):
 
     #   Move fluid collision terms to subexprs
     main_asms_dict = raw_col.main_assignments_dict
-    #print("main ass dict ", main_asms_dict)
     fluid_post_symbols = sp.symbols(f"f_post_fluid_:{stencil.Q}")
     fluid_collisions = [
         Assignment(f_post_f, main_asms_dict[f_post])
         for f_post_f, f_post in zip(fluid_post_symbols, post_collision_pdf_symbols)
     ]
-
-    stencil_weights = get_weights(stencil)
-    heat_source = lbm_config.heat_source
-    fluid_post_symbols_with_heatsource = sp.symbols(f"f_post_fluid_heat_:{stencil.Q}")
-    fluid_collisions_with_heatsource = [
-        Assignment(f_post_f, main_asms_dict[f_post_f] + stencil_weights[i] * heat_source * B.center)
-        for f_post_f, i in zip(post_collision_pdf_symbols, range(stencil.Q))
-    ]
-
-    # Have this for debugging and understanding purpose:
-
-    #for f_post_f, i in zip(post_collision_pdf_symbols, range(stencil.Q)):
-    #    print(main_asms_dict[f_post_f])
-
-    #print(fluid_collisions)
-    #print(fluid_collisions_with_heatsource)
 
     remaining_main_asms = [
         Assignment(lhs, rhs)
@@ -206,8 +187,9 @@ def create_psm_thermal_collision_rule(lbm_config):
             [Assignment(sp.Symbol("rho_cp") , rho_cp_eff)]
             + raw_col.subexpressions
             + [Assignment(sp.Symbol("T") , temperature_symbol)]
+            + fluid_collisions
     )
-    mains =     fluid_collisions_with_heatsource  + output_asms + remaining_main_asms
+    mains =  raw_col.main_assignments  + output_asms
     for item in mains:
         if not isinstance(item, Assignment):
             print("❌ Invalid main assignment:", item, type(item))

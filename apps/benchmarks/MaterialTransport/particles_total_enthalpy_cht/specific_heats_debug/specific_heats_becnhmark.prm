@@ -1,9 +1,9 @@
 PhysicalSetup // all to be specified in SI/ref units
 {
 
-    xSize 0.128; // = width  // 4dp
-    ySize 0.128; // = depth  // 4dp
-    zSize 0.256; // = height  // 20dp
+    xSize 0.08; // = width  // 4dp
+    ySize 0.08; // = depth  // 4dp
+    zSize 0.8; // = height  // 20dp
 
     periodicInX false;
     periodicInY false;
@@ -11,9 +11,9 @@ PhysicalSetup // all to be specified in SI/ref units
 
     runtime 500;
     densityFluid 1.;
-    particleDiameter 0.016;
-    densityParticle 1.1.;
-    particleRe 40;
+    particleDiameter 0.02;
+    densityParticle 1.00232.;
+    particleRe 10.5;
     dynamicFrictionCoefficient 0.4;  // wachs, 0.15 originally
     coefficientOfRestitution 0.7;    // wachs  , 0.6 originally
     collisionTimeFactor 1.0;
@@ -24,7 +24,7 @@ NumericalSetup
 {
     dx 0.001; // in m
     dt 0.001;  // this is the dt_SI if at all uInflow is set to 0.
-    Uc 0.01;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
+    Uc 0.0052;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
     // product of number of blocks should be equal to number of used processes
     numXBlocks 2;
     numYBlocks 8;
@@ -35,29 +35,29 @@ NumericalSetup
     numberOfParticleSubCycles 10;
     useParticles true;
     useIntegrators true;
-    particleSubBlockSize <8, 8, 8>;
+    particleSubBlockSize <5, 5, 5>;
     linkedCellWidthRation 1.01;
     particleBarriers true;
-    SingleparticleLocation <0.064,0.064,0.128>;
+    SingleparticleLocation <0.04,0.04,0.76>;
 }
 
 TemperatureSetup
 {
     Thot 1;   // ThotSI = ThotLB   (concentration conversion from SI to LB)
     Tcold 0;
-    Tref  0;
+    Tref  1;
     Tparticle 0;
     PrandtlNumber 0.7;
     Cpf 1;
-    Cps 1;
-    Kr  15;
+    Cps 8;
+    Kr  1;
     Gr 1000;
-    Qso 1;
+    Qso 0;
 }
 
 Output
 {
-    infoSpacing 0.001; // in s
+    infoSpacing 0.1; // in s
     vtkSpacingParticles 0; // in s
     vtkSpacingFluid 0; // in s
     vtkFolder vtk_out;
