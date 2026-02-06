@@ -282,7 +282,7 @@ FluidInfo evaluateFluidInfo(const shared_ptr< StructuredBlockStorage >& blocks, 
    return info;
 }
 
-void writeVelocityToFile(const ParticleInfo &info, uint_t time, const std::string &filename = "velocity_vs_time_gpu_trt.txt")
+void writeVelocityToFile(const ParticleInfo &info, uint_t time, const std::string &filename)
 {
    // open file in append mode so new results get added each timestep
    std::ofstream file(filename, std::ios::app);
@@ -367,6 +367,11 @@ int main(int argc, char** argv)
    const Vector3< real_t > SingleparticleLocation =
       numericalSetup.getParameter< Vector3< real_t > >("SingleparticleLocation");
 
+   const bool writeSlice =
+      numericalSetup.getParameter< bool >("writeSlice");
+   const bool sendDirectlyFromGPU =
+      numericalSetup.getParameter< bool >("sendDirectlyFromGPU");
+
    Config::BlockHandle TemperatureSetup         = cfgFile->getBlock("TemperatureSetup");
    const real_t Thot_SI           = TemperatureSetup.getParameter< real_t >("Thot");
    const real_t Tcold_SI          = TemperatureSetup.getParameter< real_t >("Tcold");
@@ -385,10 +390,9 @@ int main(int argc, char** argv)
    const real_t vtkSpacingFluid_SI      = outputSetup.getParameter< real_t >("vtkSpacingFluid");
    const std::string vtkFolder          = outputSetup.getParameter< std::string >("vtkFolder");
    const uint_t performanceLogFrequency = outputSetup.getParameter< uint_t >("performanceLogFrequency");
-   const bool writeSlice =
-      numericalSetup.getParameter< bool >("writeSlice");
-   const bool sendDirectlyFromGPU =
-      numericalSetup.getParameter< bool >("sendDirectlyFromGPU");
+
+   const std::string filename           = outputSetup.getParameter< std::string >("filename");
+
 
 
 
@@ -1318,7 +1322,7 @@ int main(int argc, char** argv)
 
          auto particleInfo = evaluateParticleInfo(*accessor);
          WALBERLA_LOG_INFO_ON_ROOT(particleInfo);
-         WALBERLA_ROOT_SECTION() { (writeVelocityToFile(particleInfo,timeStep)); }
+         WALBERLA_ROOT_SECTION() { (writeVelocityToFile(particleInfo,timeStep,filename)); }
 
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
          gpu::fieldCpy< PdfField_fluid_T, gpu::GPUField< real_t > >(blocks, pdfFieldFluidID, pdfFieldFluidCPUGPUID);

@@ -39,6 +39,8 @@ NumericalSetup
     linkedCellWidthRation 1.01;
     particleBarriers true;
     SingleparticleLocation <0.04,0.04,0.76>;
+    writeSlice true;
+    sendDirectlyFromGPU false;
 }
 
 TemperatureSetup
@@ -62,4 +64,5 @@ Output
     vtkSpacingFluid 0; // in s
     vtkFolder vtk_out;
     performanceLogFrequency 5000000000;
+    filename  velocity_vs_time_cp8.txt;
 }
