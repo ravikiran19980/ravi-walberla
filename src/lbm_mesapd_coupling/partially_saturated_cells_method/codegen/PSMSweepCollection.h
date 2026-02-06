@@ -65,7 +65,9 @@ class PSMSweepCollection
         setParticleVelocitiesSweep(SetParticleVelocitiesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >(
            bs, ac, ps, particleAndVolumeFractionSoA)),
         reduceParticleForcesSweep(ReduceParticleForcesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >(
-           bs, ac, ps, particleAndVolumeFractionSoA))
+           bs, ac, ps, particleAndVolumeFractionSoA)),
+        setParticleTemperaturesSweep( SetParticleTemperaturesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >(
+           bs, ac, ps, particleAndVolumeFractionSoA, densityConcentrationFieldCPUGPUID,uniformParticleTemperature))
 
    {}
 
@@ -73,6 +75,7 @@ class PSMSweepCollection
    SphereFractionMappingSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T > particleMappingSweep;
    SetParticleVelocitiesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T > setParticleVelocitiesSweep;
    ReduceParticleForcesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T > reduceParticleForcesSweep;
+   SetParticleTemperaturesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >setParticleTemperaturesSweep;
 };
 
 template< typename SweepCollection, typename PSMSweepFluid,typename PSMSweepTemperature >
@@ -93,7 +96,22 @@ void addThermalPSMSweepToTimeloop(SweepTimeloop& timeloop, SweepCollection& psmS
                            "Reduce particle forces");
 }
 
+template< typename SweepCollectionFluid,typename SweepCollectionTemperature,typename PSMSweepFluid,typename PSMSweepCHT>
+void addCHTPSMSweepToTimeloop(SweepTimeloop& timeloop, SweepCollectionFluid& psmSweepCollectionFluid, SweepCollectionTemperature& psmSweepCollectionTemperature,PSMSweepFluid& psmFluidSweep,PSMSweepCHT& psmEnergySweep)
+{
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.particleMappingSweep), "Particle mapping Fluid"); // uses weighting for hydrodynamics specified in Cmakelists file
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping Thermal"); // always uses a weighting of 1
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.setParticleVelocitiesSweep),
+                           "Set particle velocities");
 
+   timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep");
+
+   timeloop.add() << Sweep(deviceSyncWrapper(psmEnergySweep), "PSM Energy sweep");
+
+   // after both the sweeps, reduce the particle forces.
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.reduceParticleForcesSweep),
+                           "Reduce particle forces");
+}
 
 
 

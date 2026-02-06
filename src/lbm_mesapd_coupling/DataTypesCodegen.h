@@ -56,6 +56,7 @@ using idxField_T                   = GhostLayerField< size_t, MaxParticlesPerCel
 using BField_T                     = GhostLayerField< real_t, 1 >;
 using particleVelocitiesField_T    = GhostLayerField< real_t, MaxParticlesPerCell * 3 >;
 using particleForcesField_T        = GhostLayerField< real_t, MaxParticlesPerCell * 3 >;
+using particleTemperaturesField_T  = GhostLayerField< real_t, MaxParticlesPerCell*1 >;
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
 using nOverlappingParticlesFieldGPU_T = walberla::gpu::GPUField< uint_t >;
 using BsFieldGPU_T                    = walberla::gpu::GPUField< real_t >;
@@ -75,6 +76,7 @@ struct ParticleAndVolumeFractionSoA_T
    BlockDataID BFieldID;
    BlockDataID particleVelocitiesFieldID;
    BlockDataID particleForcesFieldID;
+   BlockDataID particleTemperaturesFieldID;
    // relaxation rate omega is used for Weighting_T != 1
    real_t omega_;
    // UIDs of the particles are stored during mapping, and it is checked that they are the same during the PSM kernel.
@@ -91,9 +93,9 @@ struct ParticleAndVolumeFractionSoA_T
       nOverlappingParticlesFieldID = walberla::gpu::addGPUFieldToStorage< nOverlappingParticlesFieldGPU_T >(
          bs, "number of overlapping particles field GPU", uint_t(1), field::fzyx, uint_t(1), true);
       BsFieldID  = walberla::gpu::addGPUFieldToStorage< BsFieldGPU_T >(bs, "Bs field GPU", MaxParticlesPerCell,
-                                                                       field::fzyx, uint_t(1), true);
+                                                                                      field::fzyx, uint_t(1), true);
       idxFieldID = walberla::gpu::addGPUFieldToStorage< idxFieldGPU_T >(bs, "idx field GPU", MaxParticlesPerCell,
-                                                                        field::fzyx, uint_t(1), true);
+                                                                                       field::fzyx, uint_t(1), true);
       BFieldID = walberla::gpu::addGPUFieldToStorage< BFieldGPU_T >(bs, "B field GPU", 1, field::fzyx, uint_t(1), true);
       particleVelocitiesFieldID = walberla::gpu::addGPUFieldToStorage< particleVelocitiesFieldGPU_T >(
          bs, "particle velocities field GPU", MaxParticlesPerCell * 3, field::fzyx, uint_t(1), true);
@@ -108,7 +110,9 @@ struct ParticleAndVolumeFractionSoA_T
       particleVelocitiesFieldID = field::addToStorage< particleVelocitiesField_T >(
          bs, "particle velocities field CPU", real_t(0), field::fzyx, uint_t(1), true);
       particleForcesFieldID = field::addToStorage< particleForcesField_T >(bs, "particle forces field CPU", real_t(0),
-                                                                           field::fzyx, uint_t(1), true);
+                                                                                 field::fzyx, uint_t(1), true);
+      particleTemperaturesFieldID = field::addToStorage< particleTemperaturesField_T >(bs, "particle temperatures field CPU", real_t(0),
+                                                                                       field::fzyx, uint_t(1), true);
 #endif
       omega_ = omega;
    }

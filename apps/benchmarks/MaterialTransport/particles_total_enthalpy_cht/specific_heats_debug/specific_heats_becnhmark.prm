@@ -39,6 +39,8 @@ NumericalSetup
     linkedCellWidthRation 1.01;
     particleBarriers true;
     SingleparticleLocation <0.04,0.04,0.76>;
+    writeSlice true;
+    sendDirectlyFromGPU false;
 }
 
 TemperatureSetup
