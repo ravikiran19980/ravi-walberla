@@ -1087,7 +1087,7 @@ int main(int argc, char** argv)
    pystencils::PSMFluidSweep psmFluidSweep(
       particleAndVolumeFractionSoA_fluid.BsFieldID, particleAndVolumeFractionSoA_fluid.BFieldID, densityConcentrationFieldCPUGPUID,
       particleAndVolumeFractionSoA_fluid.particleForcesFieldID, particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID,
-      pdfFieldFluidCPUGPUID,Tref, alphaLB, gravitationalAcceleration, omega_f, rho_0);
+      pdfFieldFluidCPUGPUID,velFieldFluidCPUGPUID,Tref, alphaLB, gravitationalAcceleration, omega_f, rho_0);
 
 
    pystencils::PSMEnergySweep psmEnergySweep(
@@ -1123,28 +1123,9 @@ int main(int argc, char** argv)
                            "Set particle velocities from fluid sweepcollection");
    timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping Thermal"); // always uses a weighting of 1
 
-   timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep")
-                  << AfterFunction(
-                        [&blocks, &getterSweep_fluid]() {
-                           for (auto& block : *blocks)
-                           {
-                              getterSweep_fluid(&block);
-                           }
-                        },
-                        "Compute fluid sweep");
+   timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep");
 
-   timeloop.add() << Sweep(deviceSyncWrapper(psmEnergySweep), "PSM Energy sweep")
-                  << AfterFunction(
-                        [&blocks, &getterSweep_energy,&compute_temperature_field]() {
-                           for (auto& block : *blocks)
-                           {
-                              getterSweep_energy(&block);
-                              //compute_temperature_field(&block);
-                              //compute_velocity_field(&block);
-                           }
-                        },
-                        "Compute energy sweep");
-
+   timeloop.add() << Sweep(deviceSyncWrapper(psmEnergySweep), "PSM Energy sweep");
 
 
    // after both the sweeps, reduce the particle forces.
