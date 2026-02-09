@@ -93,7 +93,6 @@
 #include <fstream>
 #include <iomanip>
 #include "../../utilities/settemperaturesweep.h"
-#include "randomPoints.cpp"
 
 namespace MaterialTransport
 {
@@ -608,43 +607,6 @@ int main(int argc, char** argv)
                break;
                WALBERLA_LOG_INFO_ON_ROOT("generating particles done");
             }
-         }
-      }
-      if(useParticles && randomParticles ==true){
-         const int rank = mpi::MPIManager::instance()->rank();
-
-         std::vector< math::Vector3<real_t> > positions;
-         if (rank == 0) {
-            const unsigned base_seed = 123456u;           // no rank in the seed!
-            std::seed_seq seq{ base_seed };
-            std::mt19937 gen(seq);
-
-            // min center-to-center distance = particleDiameter (or a bit more)
-            const real_t minCenterDistance = particleDiameter;
-            real_t boundarymargin = minCenterDistance/2;
-            positions = generatePositionsSimple(generationDomain, numParticles, minCenterDistance,boundarymargin, gen);
-
-            if (positions.size() != numParticles) {
-               WALBERLA_ABORT("Requested " << numParticles
-                                           << " but only placed " << positions.size()
-                                           << " with min spacing " << minCenterDistance
-                                           << ". Enlarge domain or reduce spacing.");
-            }
-         }
-         walberla::mpi::broadcastObject(positions);
-         uint_t particlecount = 0;
-         for (const auto& pos : positions) {
-            if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pos)) {
-               mesa_pd::data::Particle&& p = *ps->create();
-               p.setPosition(pos);
-               p.setInteractionRadius(particleDiameter * real_t(0.5));
-               p.setOwner(mpi::MPIManager::instance()->rank());
-               p.setShapeID(sphereShape);
-               p.setType(1);
-               p.setTemperature(particleTemperature);
-            }
-            particlecount += 1;
-            if (particlecount == numParticles) break;
          }
       }
 

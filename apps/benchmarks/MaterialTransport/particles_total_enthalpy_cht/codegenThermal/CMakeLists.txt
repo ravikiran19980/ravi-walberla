@@ -11,6 +11,7 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
                     LBMFluidSplitSweep.h LBMFluidSplitSweep.${CODEGEN_FILE_SUFFIX}
                     PSMFluidSweepSplit.h PSMFluidSweepSplit.${CODEGEN_FILE_SUFFIX}
                     PSMEnergySweep.h PSMEnergySweep.${CODEGEN_FILE_SUFFIX}
+                    PSMEnergySweepSplit.h PSMEnergySweepSplit.${CODEGEN_FILE_SUFFIX}
                     PackInfoFluid.h PackInfoFluid.${CODEGEN_FILE_SUFFIX}
                     PackInfoEnergy.h PackInfoEnergy.${CODEGEN_FILE_SUFFIX}
                     InitializeFluidDomain.h InitializeFluidDomain.${CODEGEN_FILE_SUFFIX}

@@ -46,7 +46,7 @@ NumericalSetup
     resThreshold 1e-5;
     volfraction 0.4;
     randomParticles false;
-    useCommunicationHiding false;
+    useCommunicationHiding true;
 }
 
 TemperatureSetup
