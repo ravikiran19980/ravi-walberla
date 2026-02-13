@@ -95,6 +95,7 @@
 #include "heatFlux.cpp"
 #include "randomPoints.cpp"
 #include "../../utilities/settemperaturesweep.h"
+#include "HeatEvaluators.h"
 
 namespace MaterialTransport
 {
@@ -288,26 +289,7 @@ FluidInfo evaluateFluidInfo(const shared_ptr< StructuredBlockStorage >& blocks, 
    return info;
 }
 
-void writeVelocityToFile(const ParticleInfo &info, uint_t time, const std::string &filename = "velocity_vs_time_specificHeats.txt")
-{
-   // open file in append mode so new results get added each timestep
-   std::ofstream file(filename, std::ios::app);
 
-   if (!file.is_open())
-   {
-      throw std::runtime_error("Could not open file " + filename);
-   }
-
-   // write: time  averageVelocity  maximumVelocity
-   if(time == 0){
-      file << "time averagevel position\n";
-   }
-
-   file << std::fixed << std::setprecision(6)
-        << time << "  "
-        << info.averageVelocity << " "
-        << info.heightOfMass << "\n";
-}
 
 
 //////////
@@ -1081,7 +1063,7 @@ int main(int argc, char** argv)
    ////////////////////////
    // EXECUTE SIMULATION //
    ////////////////////////
-
+   WallNormalHeatFlux wallNormalHeatFlux(domainSize[2], 1,thermalDiffusivityFluid_LB,thermalDiffusivityParticle_LB);
    WcTimingPool timeloopTiming;
    const bool useOpenMP = true;
 
@@ -1096,9 +1078,17 @@ int main(int argc, char** argv)
       // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
       timeloop.singleStep(timeloopTiming);
 
-      if(timeStep >= 2000000){
-         hfAverager.sampleStep(blocks, velFieldFluidCPUGPUID, densityConcentrationFieldCPUGPUID, particleAndVolumeFractionSoA_fluid.BFieldID,timeStep);
+      wallNormalHeatFlux.RunningMeanHeatFluxOutput(blocks, densityConcentrationFieldCPUGPUID,
+                                        particleAndVolumeFractionSoA_energy.BFieldID, timeStep,50000);
+
+      wallNormalHeatFlux.checkForConvergence(3e-1, timeStep,50000);
+
+      if (wallNormalHeatFlux.convergenceStatus() == true)
+      {
+         WALBERLA_LOG_INFO_ON_ROOT("Wall normal heat flux has converged at timestep " << timeStep);
+         // here is where the code to collect statistics has to come.
       }
+
       if (particleBarriers) WALBERLA_MPI_BARRIER();
       timeloopTiming["RPD forEachParticle assoc"].start();
       ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, assoc, *accessor);
@@ -1242,7 +1232,6 @@ int main(int argc, char** argv)
 
          auto particleInfo = evaluateParticleInfo(*accessor);
          WALBERLA_LOG_INFO_ON_ROOT(particleInfo);
-         if (mpi::MPIManager::instance()->rank() == 0) { (writeVelocityToFile(particleInfo, timeStep)); }
 
          auto fluidInfo = evaluateFluidInfo(blocks, densityFluidFieldID, velFieldFluidCPUGPUID,densityConcentrationFieldCPUGPUID);
          for (auto& block : *blocks)

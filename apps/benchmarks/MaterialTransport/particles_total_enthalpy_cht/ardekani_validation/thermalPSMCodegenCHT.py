@@ -148,12 +148,12 @@ with CodeGeneration() as ctx:
 
     psm_fluid_config = LBMConfig(
         stencil=stencil_fluid,
-        method=Method.SRT,
+        method=Method.CUMULANT,
         relaxation_rate=omega_f,
         #output={"velocity": velocity_field},
         #force= force_concentration_on_fluid,
         force_model=ForceModel.GUO,
-        compressible=False,
+        compressible=True,
         psm_config=psm_config_F,
     )
 
