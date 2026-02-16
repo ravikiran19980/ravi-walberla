@@ -1072,6 +1072,9 @@ int main(int argc, char** argv)
                                           linkedCellWidth);
    mesa_pd::kernel::InsertParticleIntoLinkedCells ipilc;
    HeatFluxAverager hfAverager(domainSize[0], domainSize[1], domainSize[2], 1,thermalDiffusivityFluid_LB, thermalDiffusivityParticle_LB);
+   MeanPlaneAverager meanPlaneAverager(uint_c(domainSize[2]));
+   HeatFluxBudgets heatFluxBudgets(uint_c(domainSize[2]),1, thermalDiffusivityFluid_LB, thermalDiffusivityParticle_LB);
+   uint_t averageCounter = 0;
    // time loop
    for (uint_t timeStep = 0; timeStep < numTimeSteps; ++timeStep)
    {
@@ -1085,8 +1088,15 @@ int main(int argc, char** argv)
 
       if (wallNormalHeatFlux.convergenceStatus() == true)
       {
-         WALBERLA_LOG_INFO_ON_ROOT("Wall normal heat flux has converged at timestep " << timeStep);
-         // here is where the code to collect statistics has to come.
+         while (averageCounter <= 50000)
+         {
+            meanPlaneAverager(blocks, velFieldFluidCPUGPUID, densityConcentrationFieldCPUGPUID, particleAndVolumeFractionSoA_energy.BFieldID);
+            averageCounter += 1;
+         }
+         if (averageCounter == 50000)
+         {
+            heatFluxBudgets(blocks, velFieldFluidCPUGPUID, densityConcentrationFieldCPUGPUID, particleAndVolumeFractionSoA_energy.BFieldID);
+         }
       }
 
       if (particleBarriers) WALBERLA_MPI_BARRIER();
