@@ -380,6 +380,10 @@ int main(int argc, char** argv)
    const std::string vtkFolder          = outputSetup.getParameter< std::string >("vtkFolder");
    const uint_t performanceLogFrequency = outputSetup.getParameter< uint_t >("performanceLogFrequency");
 
+   const real_t convergenceTolerance = outputSetup.getParameter< uint_t >("convergenceTolerance");
+   const uint_t timeBlock = outputSetup.getParameter< uint_t >("timeBlock");
+   const uint_t outputFrequency = outputSetup.getParameter< uint_t >("outputFrequency");
+
    // convert SI units to simulation (LBM) units and check setup
 
    Vector3< uint_t > domainSize(uint_c(std::ceil(xSize_SI / dx_SI)), uint_c(std::ceil(ySize_SI / dx_SI)),
@@ -1073,7 +1077,7 @@ int main(int argc, char** argv)
    mesa_pd::kernel::InsertParticleIntoLinkedCells ipilc;
    HeatFluxAverager hfAverager(domainSize[0], domainSize[1], domainSize[2], 1,thermalDiffusivityFluid_LB, thermalDiffusivityParticle_LB);
    MeanPlaneAverager meanPlaneAverager(uint_c(domainSize[2]));
-   HeatFluxBudgets heatFluxBudgets(uint_c(domainSize[2]),1, thermalDiffusivityFluid_LB, thermalDiffusivityParticle_LB);
+   HeatFluxBudgets heatFluxBudgets(uint_c(domainSize[2]),1, thermalDiffusivityFluid_LB, thermalDiffusivityParticle_LB,meanPlaneAverager);
    uint_t averageCounter = 0;
    // time loop
    for (uint_t timeStep = 0; timeStep < numTimeSteps; ++timeStep)
@@ -1082,18 +1086,19 @@ int main(int argc, char** argv)
       timeloop.singleStep(timeloopTiming);
 
       wallNormalHeatFlux.RunningMeanHeatFluxOutput(blocks, densityConcentrationFieldCPUGPUID,
-                                        particleAndVolumeFractionSoA_energy.BFieldID, timeStep,50000);
+                                        particleAndVolumeFractionSoA_energy.BFieldID, timeStep,outputFrequency );
 
-      wallNormalHeatFlux.checkForConvergence(3e-1, timeStep,50000);
+      wallNormalHeatFlux.checkForConvergence(convergenceTolerance, timeStep,timeBlock);
 
       if (wallNormalHeatFlux.convergenceStatus() == true)
       {
+         WALBERLA_LOG_INFO_ON_ROOT("converged at timestep " << timeStep);
          while (averageCounter <= 50000)
          {
             meanPlaneAverager(blocks, velFieldFluidCPUGPUID, densityConcentrationFieldCPUGPUID, particleAndVolumeFractionSoA_energy.BFieldID);
             averageCounter += 1;
          }
-         if (averageCounter == 50000)
+         if (averageCounter > 50000 && averageCounter <=100000)
          {
             heatFluxBudgets(blocks, velFieldFluidCPUGPUID, densityConcentrationFieldCPUGPUID, particleAndVolumeFractionSoA_energy.BFieldID);
          }

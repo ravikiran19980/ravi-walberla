@@ -24,7 +24,7 @@ NumericalSetup
 {
     dx 0.001; // in m
     dt 0.001;  // this is the dt_SI if at all uInflow is set to 0.
-    Uc 0.1;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
+    Uc 0.05;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
     // product of number of blocks should be equal to number of used processes
     numXBlocks 2;
     numYBlocks 2;
@@ -49,7 +49,7 @@ TemperatureSetup
     Tcold -0.5;
     Tref  0;
     Tparticle 0;
-    PrandtlNumber 20;
+    PrandtlNumber 1;
     Cpf 1;
     Cps 1;
     Kr  1;
@@ -64,4 +64,8 @@ Output
     vtkSpacingFluid 0.1; // ins
     vtkFolder vtk_out;
     performanceLogFrequency 5000000000;
+
+    convergenceTolerance 3;
+    timeBlock 100;
+    outputFrequency 100;
 }
