@@ -380,7 +380,7 @@ int main(int argc, char** argv)
    const std::string vtkFolder          = outputSetup.getParameter< std::string >("vtkFolder");
    const uint_t performanceLogFrequency = outputSetup.getParameter< uint_t >("performanceLogFrequency");
 
-   const real_t convergenceTolerance = outputSetup.getParameter< uint_t >("convergenceTolerance");
+   const real_t convergenceTolerance = outputSetup.getParameter< real_t >("convergenceTolerance");
    const uint_t timeBlock = outputSetup.getParameter< uint_t >("timeBlock");
    const uint_t outputFrequency = outputSetup.getParameter< uint_t >("outputFrequency");
 
@@ -1093,14 +1093,16 @@ int main(int argc, char** argv)
       if (wallNormalHeatFlux.convergenceStatus() == true)
       {
          WALBERLA_LOG_INFO_ON_ROOT("converged at timestep " << timeStep);
-         while (averageCounter <= 50000)
+
+         if (meanPlaneAverager.getTimeCounter() < timeBlock)
          {
-            meanPlaneAverager(blocks, velFieldFluidCPUGPUID, densityConcentrationFieldCPUGPUID, particleAndVolumeFractionSoA_energy.BFieldID);
-            averageCounter += 1;
+            meanPlaneAverager(blocks, velFieldFluidCPUGPUID, densityConcentrationFieldCPUGPUID,
+                              particleAndVolumeFractionSoA_energy.BFieldID);
          }
-         if (averageCounter > 50000 && averageCounter <=100000)
+         if (meanPlaneAverager.getTimeCounter() == timeBlock)
          {
-            heatFluxBudgets(blocks, velFieldFluidCPUGPUID, densityConcentrationFieldCPUGPUID, particleAndVolumeFractionSoA_energy.BFieldID);
+            heatFluxBudgets(blocks, velFieldFluidCPUGPUID, densityConcentrationFieldCPUGPUID,
+                            particleAndVolumeFractionSoA_energy.BFieldID);
          }
       }
 
