@@ -62,12 +62,13 @@ class WallNormalHeatFlux
                ntop += 1.0;
             })
       }
-
-      mpi::allReduceInplace(qbot, mpi::SUM);
-      mpi::allReduceInplace(qtop, mpi::SUM);
-      mpi::allReduceInplace(nbot, mpi::SUM);
-      mpi::allReduceInplace(ntop, mpi::SUM);
-
+      WALBERLA_MPI_SECTION()
+      {
+         mpi::allReduceInplace(qbot, mpi::SUM);
+         mpi::allReduceInplace(qtop, mpi::SUM);
+         mpi::allReduceInplace(nbot, mpi::SUM);
+         mpi::allReduceInplace(ntop, mpi::SUM);
+      }
       return 0.5 * (qbot / nbot + qtop / ntop);
    }
 
@@ -197,18 +198,12 @@ class MeanPlaneAverager
 
       for (uint_t k = 0; k < Nz_; ++k)
       {
-         velocityFluid_time_[k] += (velocityFluid_plane_[k] - velocityFluid_time_[k]) / timeCount_;
-         temperatureFluid_time_[k] += (temperatureFluid_plane_[k] - temperatureFluid_time_[k]) / timeCount_;
+         velocityFluid_time_[k] += (velocityFluid_plane_[k] - velocityFluid_time_[k]) / real_c(timeCount_);
+         temperatureFluid_time_[k] += (temperatureFluid_plane_[k] - temperatureFluid_time_[k]) / real_c(timeCount_);
 
-         velocityParticle_time_[k] += (velocityParticle_plane_[k] - velocityParticle_time_[k]) / timeCount_;
-         temperatureParticle_time_[k] += (temperatureParticle_plane_[k] - temperatureParticle_time_[k]) / timeCount_;
+         velocityParticle_time_[k] += (velocityParticle_plane_[k] - velocityParticle_time_[k]) / real_c(timeCount_);
+         temperatureParticle_time_[k] += (temperatureParticle_plane_[k] - temperatureParticle_time_[k]) / real_c(timeCount_);
       }
-      if (timeCount_ == 100)
-      {
-         WALBERLA_LOG_INFO_ON_ROOT("quit the meanPlaneaverager class inside " << timeCount_);
-         return;
-      }
-      WALBERLA_LOG_INFO_ON_ROOT("quit the meanPlaneaverager class outside is " << timeCount_);
    }
 
    const std::vector< real_t >& getFluidSliceVelocityAvg() const { return velocityFluid_time_; }
@@ -243,6 +238,8 @@ class MeanPlaneAverager
 
       resetToZero(velocityParticle_plane_);
       resetToZero(temperatureParticle_plane_);
+
+      resetToZero(numPlaneCells_);
    }
 };
 
@@ -256,14 +253,14 @@ class HeatFluxBudgets
         phi_f_plane(Nz_, 0), cell_count_plane_(Nz_, 0),
 
         particleFluctuation_time_(Nz_, 0), fluidFluctuation_time_(Nz_, 0), dTparticle_time_(Nz_, 0),
-        dTfluid_time_(Nz_, 0), phi_p_time(Nz_, 0), phi_f_time(Nz_, 0),
+        dTfluid_time_(Nz_, 0), phi_p_time(Nz_, 0), phi_f_time(Nz_, 0),Qtotal_(Nz_,0),
 
         meanPlaneAverager_(meanPlaneAverager)
    {
       WALBERLA_ROOT_SECTION()
       {
          outFile_.open("heatFluxBudget.txt", std::ios::out);
-         outFile_ << "height fluidfluctuation  particlefluctuation fluidDT particleDT phi_f phi_p" << std::endl;
+         outFile_ << "height  fluidfluctuation   particlefluctuation  fluidDT  particleDT  phi_f  phi_p  Qtotal" << std::endl;
       }
    }
 
@@ -305,30 +302,30 @@ class HeatFluxBudgets
             const real_t Tf_dash = (1 - B) * temperature - temperature_fluid_avg[j];
             const real_t Vf_dash = (1 - B) * velocity_z - velocity_fluid_avg[j];
 
-            particleFluctuation_plane_[j] += Tp_dash * Vp_dash; fluidFluctuation_plane_[j] += Tf_dash * Vf_dash;
+            particleFluctuation_plane_[j] += -Tp_dash * Vp_dash; fluidFluctuation_plane_[j] += -Tf_dash * Vf_dash;
 
             phi_p_plane[j] += B; phi_f_plane[j] += (1 - B); cell_count_plane_[j] += 1.0;
 
             // for the conductive part of particles and fluid
             real_t dTdz_p = 0.0;
-            real_t dTdz_f = 0.0; if (j > 0 && j < Nz_ - 1) {
+            real_t dTdz_f = 0.0;
                // for the INNER mpi blocks of the domain but the FIRST or the LAST cells use one sided FD
                // for the INNER mpi blocks of the domain and all middle cells use central FD
-
+            if (j > 0 && j < Nz_ - 1) {
                if (z == 0)
                {
                   // particles conductive flux
-                  const real_t T0_p = B * Tfield->get(x, y, z);
-                  const real_t T1_p = B * Tfield->get(x, y, z + 1);
-                  const real_t T2_p = B * Tfield->get(x, y, z + 2);
+                  const real_t T0_p = Bfield->get(x,y,z) * Tfield->get(x, y, z);
+                  const real_t T1_p = Bfield->get(x,y,z+1) * Tfield->get(x, y, z + 1);
+                  const real_t T2_p = Bfield->get(x,y,z+2) * Tfield->get(x, y, z + 2);
                   dTdz_p            = (-3.0 * T0_p + 4.0 * T1_p - T2_p) / (2.0 * dz_);
                   dTdz_p            = alpha_p_ * dTdz_p;
                   dTparticle_plane_[j] += dTdz_p;
 
                   // fluid conductive flux
-                  const real_t T0_f = (1 - B) * Tfield->get(x, y, z);
-                  const real_t T1_f = (1 - B) * Tfield->get(x, y, z + 1);
-                  const real_t T2_f = (1 - B) * Tfield->get(x, y, z + 2);
+                  const real_t T0_f = (1 - Bfield->get(x,y,z)) * Tfield->get(x, y, z);
+                  const real_t T1_f = (1 - Bfield->get(x,y,z+1)) * Tfield->get(x, y, z + 1);
+                  const real_t T2_f = (1 - Bfield->get(x,y,z+2)) * Tfield->get(x, y, z + 2);
                   dTdz_f            = (-3.0 * T0_f + 4.0 * T1_f - T2_f) / (2.0 * dz_);
                   dTdz_f            = alpha_f_ * dTdz_f;
                   dTfluid_plane_[j] += dTdz_f;
@@ -336,17 +333,17 @@ class HeatFluxBudgets
                else if (z == cell_idx_c(blocks->getNumberOfZCells(block) - 1))
                {
                   // particles conductive flux
-                  const real_t T0_p = B * Tfield->get(x, y, z);
-                  const real_t T1_p = B * Tfield->get(x, y, z - 1);
-                  const real_t T2_p = B * Tfield->get(x, y, z - 2);
+                  const real_t T0_p = Bfield->get(x,y,z) * Tfield->get(x, y, z);
+                  const real_t T1_p = Bfield->get(x,y,z-1) * Tfield->get(x, y, z - 1);
+                  const real_t T2_p = Bfield->get(x,y,z-2) * Tfield->get(x, y, z - 2);
                   dTdz_p            = (3.0 * T0_p - 4.0 * T1_p + T2_p) / (2.0 * dz_);
                   dTdz_p            = alpha_p_ * dTdz_p;
                   dTparticle_plane_[j] += dTdz_p;
 
                   // fluid conductive flux
-                  const real_t T0_f = (1 - B) * Tfield->get(x, y, z);
-                  const real_t T1_f = (1 - B) * Tfield->get(x, y, z - 1);
-                  const real_t T2_f = (1 - B) * Tfield->get(x, y, z - 2);
+                  const real_t T0_f = (1 - Bfield->get(x,y,z)) * Tfield->get(x, y, z);
+                  const real_t T1_f = (1 - Bfield->get(x,y,z-1)) * Tfield->get(x, y, z - 1);
+                  const real_t T2_f = (1 - Bfield->get(x,y,z-2)) * Tfield->get(x, y, z - 2);
                   dTdz_f            = (3.0 * T0_f - 4.0 * T1_f + T2_f) / (2.0 * dz_);
                   dTdz_f            = alpha_f_ * dTdz_f;
                   dTfluid_plane_[j] += dTdz_f;
@@ -354,15 +351,15 @@ class HeatFluxBudgets
                else
                {
                   // particles conductive flux
-                  const real_t T0_p = B * Tfield->get(x, y, z - 1);
-                  const real_t T1_p = B * Tfield->get(x, y, z + 1);
+                  const real_t T0_p = Bfield->get(x,y,z-1) * Tfield->get(x, y, z - 1);
+                  const real_t T1_p = Bfield->get(x,y,z+1) * Tfield->get(x, y, z + 1);
                   dTdz_p            = (T1_p - T0_p) / (2.0 * dz_);
                   dTdz_p            = alpha_p_ * dTdz_p;
                   dTparticle_plane_[j] += dTdz_p;
 
                   // fluid conductive flux
-                  const real_t T0_f = B * Tfield->get(x, y, z - 1);
-                  const real_t T1_f = B * Tfield->get(x, y, z + 1);
+                  const real_t T0_f = Bfield->get(x,y,z-1) * Tfield->get(x, y, z - 1);
+                  const real_t T1_f = Bfield->get(x,y,z+1) * Tfield->get(x, y, z + 1);
                   dTdz_f            = (T1_f - T0_f) / (2.0 * dz_);
                   dTdz_f            = alpha_f_ * dTdz_f;
                   dTfluid_plane_[j] += dTdz_f;
@@ -373,17 +370,17 @@ class HeatFluxBudgets
                if (j == 0)
                {
                   // particles conductive flux
-                  const real_t T0_p = B * Tfield->get(x, y, z);
-                  const real_t T1_p = B * Tfield->get(x, y, z + 1);
-                  const real_t T2_p = B * Tfield->get(x, y, z + 2);
+                  const real_t T0_p = Bfield->get(x,y,z) * Tfield->get(x, y, z);
+                  const real_t T1_p = Bfield->get(x,y,z+1) * Tfield->get(x, y, z + 1);
+                  const real_t T2_p = Bfield->get(x,y,z+2) * Tfield->get(x, y, z + 2);
                   dTdz_p            = (-3.0 * T0_p + 4.0 * T1_p - T2_p) / (2.0 * dz_);
                   dTdz_p            = alpha_p_ * dTdz_p;
                   dTparticle_plane_[j] += dTdz_p;
 
                   // fluid conductive flux
-                  const real_t T0_f = (1 - B) * Tfield->get(x, y, z);
-                  const real_t T1_f = (1 - B) * Tfield->get(x, y, z + 1);
-                  const real_t T2_f = (1 - B) * Tfield->get(x, y, z + 2);
+                  const real_t T0_f =  (1-Bfield->get(x,y,z)) * Tfield->get(x, y, z);
+                  const real_t T1_f =  (1-Bfield->get(x,y,z+1)) * Tfield->get(x, y, z + 1);
+                  const real_t T2_f =  (1-Bfield->get(x,y,z+2)) * Tfield->get(x, y, z + 2);
                   dTdz_f            = (-3.0 * T0_f + 4.0 * T1_f - T2_f) / (2.0 * dz_);
                   dTdz_f            = alpha_f_ * dTdz_f;
                   dTfluid_plane_[j] += dTdz_f;
@@ -391,17 +388,17 @@ class HeatFluxBudgets
                if (j == Nz_ - 1)
                {
                   // particles conductive flux
-                  const real_t T0_p = B * Tfield->get(x, y, z);
-                  const real_t T1_p = B * Tfield->get(x, y, z - 1);
-                  const real_t T2_p = B * Tfield->get(x, y, z - 2);
+                  const real_t T0_p = Bfield->get(x,y,z) * Tfield->get(x, y, z);
+                  const real_t T1_p = Bfield->get(x,y,z-1) * Tfield->get(x, y, z - 1);
+                  const real_t T2_p = Bfield->get(x,y,z-2) * Tfield->get(x, y, z - 2);
                   dTdz_p            = (3.0 * T0_p - 4.0 * T1_p + T2_p) / (2.0 * dz_);
                   dTdz_p            = alpha_p_ * dTdz_p;
                   dTparticle_plane_[j] += dTdz_p;
 
                   // fluid conductive flux
-                  const real_t T0_f = (1 - B) * Tfield->get(x, y, z);
-                  const real_t T1_f = (1 - B) * Tfield->get(x, y, z - 1);
-                  const real_t T2_f = (1 - B) * Tfield->get(x, y, z - 2);
+                  const real_t T0_f = (1 - Bfield->get(x,y,z)) * Tfield->get(x, y, z);
+                  const real_t T1_f = (1 - Bfield->get(x,y,z-1)) * Tfield->get(x, y, z - 1);
+                  const real_t T2_f = (1 - Bfield->get(x,y,z-2)) * Tfield->get(x, y, z - 2);
                   dTdz_f            = (3.0 * T0_f - 4.0 * T1_f + T2_f) / (2.0 * dz_);
                   dTdz_f            = alpha_f_ * dTdz_f;
                   dTfluid_plane_[j] += dTdz_f;
@@ -437,7 +434,6 @@ class HeatFluxBudgets
 
             dTparticle_plane_[k] /= cell_count_plane_[k];
             dTfluid_plane_[k] /= cell_count_plane_[k];
-
             phi_p_plane[k] /= cell_count_plane_[k];
             phi_f_plane[k] /= cell_count_plane_[k];
          }
@@ -456,13 +452,15 @@ class HeatFluxBudgets
          phi_p_time[k] += (phi_p_plane[k] - phi_p_time[k]) / timeSamples_;
          phi_f_time[k] += (phi_f_plane[k] - phi_f_time[k]) / timeSamples_;
 
-         if (timeSamples_ == 1000)
+         if (timeSamples_ == 10000)
          {
+            Qtotal_[k] = phi_f_time[k]*fluidFluctuation_time_[k] + phi_f_time[k]*dTfluid_time_[k] +
+                        phi_p_time[k] * particleFluctuation_time_[k] + phi_p_time[k] * dTparticle_time_[k];
             WALBERLA_ROOT_SECTION()
             {
                outFile_ << k << " " << fluidFluctuation_time_[k] << " " << particleFluctuation_time_[k] << " "
                         << dTfluid_time_[k] << " " << dTparticle_time_[k] << " " << phi_f_time[k] << " "
-                        << phi_p_time[k] << std::endl;
+                        << phi_p_time[k]  << " " << Qtotal_[k] << std::endl;
             }
          }
       }
@@ -487,6 +485,8 @@ class HeatFluxBudgets
    std::vector< double > dTparticle_time_, dTfluid_time_;
    std::vector< double > phi_p_time, phi_f_time;
 
+   std::vector< double > Qtotal_;
+
    MeanPlaneAverager& meanPlaneAverager_;
 
    void resetFluxPlanes_()
@@ -501,6 +501,8 @@ class HeatFluxBudgets
 
       resetToZero(phi_p_plane);
       resetToZero(phi_f_plane);
+
+      resetToZero(cell_count_plane_);
    }
 };
 
