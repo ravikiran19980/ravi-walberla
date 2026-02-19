@@ -615,7 +615,7 @@ int main(int argc, char** argv)
 
    BlockDataID particleTemperaturesFieldID = field::addToStorage< particleTemperaturesField_T >(blocks, "particle temperatures field CPU", real_t(0),
                                                                                                      field::fzyx, uint_t(1), true);
-   BlockDataID particleTemperatureFieldCPUGPUID = gpu::addGPUFieldToStorage< particleTemperaturesFieldGPU_T >(
+   BlockDataID particleTemperaturesFieldCPUGPUID = gpu::addGPUFieldToStorage< particleTemperaturesFieldGPU_T >(
       blocks, "particle forces field GPU", MaxParticlesPerCell, field::fzyx, uint_t(1), true);
 #else
 
@@ -811,7 +811,7 @@ int main(int argc, char** argv)
                                                     particleSubBlockSize, true);
 
    SetParticleTemperaturesSweepp settemperatureparticles(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
-                                particleAndVolumeFractionSoA_energy, densityConcentrationFieldCPUGPUID,particleTemperatureFieldCPUGPUID,true);
+                                particleAndVolumeFractionSoA_energy, densityConcentrationFieldCPUGPUID,particleTemperaturesFieldCPUGPUID,true);
 
 
 
@@ -889,7 +889,7 @@ int main(int argc, char** argv)
       settemperatureparticles(&(*blockIt));
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
       gpu::fieldCpy< particleTemperaturesField_T , particleTemperaturesFieldGPU_T >(blocks, particleTemperaturesFieldID,
-                                                                             particleTemperatureFieldCPUGPUID);
+                                                                             particleTemperaturesFieldCPUGPUID);
 #endif
 
       initializeConcentrationField(&(*blockIt));
@@ -996,7 +996,7 @@ int main(int argc, char** argv)
          gpu::fieldCpy< PdfField_energy_T , gpu::GPUField< real_t > >(blocks, pdfFieldEnergyID,
                                                                          pdfFieldFluidCPUGPUID);
          gpu::fieldCpy< particleTemperaturesField_T , gpu::GPUField< real_t > >(blocks, particleTemperaturesFieldID,
-                                                                     particleTemperatureFieldCPUGPUID);
+                                                                     particleTemperaturesFieldCPUGPUID);
 #endif
          for (auto& block : *blocks)
          {
