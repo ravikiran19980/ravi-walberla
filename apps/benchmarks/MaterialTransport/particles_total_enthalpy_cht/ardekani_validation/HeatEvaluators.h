@@ -140,8 +140,7 @@ class MeanPlaneAverager
 {
  public:
    MeanPlaneAverager(uint_t Nz)
-      : Nz_(Nz), velocityFluid_plane_(Nz_, 0.0), temperatureFluid_plane_(Nz_, 0.0), velocityParticle_plane_(Nz_, 0.0),
-        temperatureParticle_plane_(Nz_, 0.0), numPlaneCells_(Nz_, 0), velocityFluid_time_(Nz, 0.0),
+      : Nz_(Nz), velocity_plane_(Nz_, 0.0), temperature_plane_(Nz_, 0.0), numPlaneCells_(Nz_, 0), velocityFluid_time_(Nz, 0.0),
         temperatureFluid_time_(Nz, 0.0), velocityParticle_time_(Nz, 0.0), temperatureParticle_time_(Nz, 0.0),
         timeCount_(0)
 
@@ -164,20 +163,16 @@ class MeanPlaneAverager
             Tfield, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
             const uint_t j = uint_c(cell.z());
 
-            velocityFluid_plane_[j] += (1 - Bfield->get(x, y, z)) * velF->get(x, y, z, 2);
-            temperatureFluid_plane_[j] += (1 - Bfield->get(x, y, z)) * Tfield->get(x, y, z);
+            velocity_plane_[j] +=   velF->get(x, y, z, 2);
+            temperature_plane_[j] +=  Tfield->get(x, y, z);
 
-            velocityParticle_plane_[j] += (Bfield->get(x, y, z)) * velF->get(x, y, z, 2);
-            temperatureParticle_plane_[j] += (Bfield->get(x, y, z)) * Tfield->get(x, y, z); numPlaneCells_[j] += 1;)
+            numPlaneCells_[j] += 1;)
       }
 
       WALBERLA_MPI_SECTION()
       {
-         mpi::allReduceInplace(velocityFluid_plane_, mpi::SUM);
-         mpi::allReduceInplace(temperatureFluid_plane_, mpi::SUM);
-
-         mpi::allReduceInplace(velocityParticle_plane_, mpi::SUM);
-         mpi::allReduceInplace(temperatureParticle_plane_, mpi::SUM);
+         mpi::allReduceInplace(velocity_plane_, mpi::SUM);
+         mpi::allReduceInplace(temperature_plane_, mpi::SUM);
          mpi::allReduceInplace(numPlaneCells_, mpi::SUM);
       }
 
@@ -185,11 +180,9 @@ class MeanPlaneAverager
       {
          if (numPlaneCells_[k] > 0)
          {
-            velocityFluid_plane_[k] /= numPlaneCells_[k];
-            temperatureFluid_plane_[k] /= numPlaneCells_[k];
+            velocity_plane_[k] /= numPlaneCells_[k];
+            temperature_plane_[k] /= numPlaneCells_[k];
 
-            velocityParticle_plane_[k] /= numPlaneCells_[k];
-            temperatureParticle_plane_[k] /= numPlaneCells_[k];
          }
       }
 
@@ -198,29 +191,24 @@ class MeanPlaneAverager
 
       for (uint_t k = 0; k < Nz_; ++k)
       {
-         velocityFluid_time_[k] += (velocityFluid_plane_[k] - velocityFluid_time_[k]) / real_c(timeCount_);
-         temperatureFluid_time_[k] += (temperatureFluid_plane_[k] - temperatureFluid_time_[k]) / real_c(timeCount_);
+         velocityFluid_time_[k] += (velocity_plane_[k] - velocityFluid_time_[k]) / real_c(timeCount_);
+         temperatureFluid_time_[k] += (temperature_plane_[k] - temperatureFluid_time_[k]) / real_c(timeCount_);
 
-         velocityParticle_time_[k] += (velocityParticle_plane_[k] - velocityParticle_time_[k]) / real_c(timeCount_);
-         temperatureParticle_time_[k] += (temperatureParticle_plane_[k] - temperatureParticle_time_[k]) / real_c(timeCount_);
       }
    }
 
-   const std::vector< real_t >& getFluidSliceVelocityAvg() const { return velocityFluid_time_; }
-   const std::vector< real_t >& getFluidSliceTemperatureAvg() const { return temperatureFluid_time_; }
+   const std::vector< real_t >& getVelocitySliceAvg() const { return velocityFluid_time_; }
+   const std::vector< real_t >& getTemperatureSliceAvg() const { return temperatureFluid_time_; }
 
-   const std::vector< real_t >& getParticleSliceVelocityAvg() const { return velocityParticle_time_; }
-   const std::vector< real_t >& getParticleSliceTemperatureAvg() const { return temperatureParticle_time_; }
 
    const uint_t getTimeCounter() { return timeCount_; }
 
  private:
    uint_t Nz_;
 
-   std::vector< real_t > velocityFluid_plane_;
-   std::vector< real_t > temperatureFluid_plane_;
-   std::vector< real_t > velocityParticle_plane_;
-   std::vector< real_t > temperatureParticle_plane_;
+   std::vector< real_t > velocity_plane_;
+   std::vector< real_t > temperature_plane_;
+
    std::vector< uint_t > numPlaneCells_;
 
    uint_t timeCount_;
@@ -233,11 +221,9 @@ class MeanPlaneAverager
    {
       auto resetToZero = [](auto& v) { std::fill(v.begin(), v.end(), 0.0); };
 
-      resetToZero(velocityFluid_plane_);
-      resetToZero(temperatureFluid_plane_);
+      resetToZero(velocity_plane_);
+      resetToZero(temperature_plane_);
 
-      resetToZero(velocityParticle_plane_);
-      resetToZero(temperatureParticle_plane_);
 
       resetToZero(numPlaneCells_);
    }
@@ -246,9 +232,9 @@ class MeanPlaneAverager
 class HeatFluxBudgets
 {
  public:
-   HeatFluxBudgets(const uint_t Nz, const real_t dz, const real_t alpha_f, const real_t alpha_p,
+   HeatFluxBudgets(const uint_t Nz, const real_t dz, const real_t alpha_f, const real_t alpha_p,const uint_t averagingTimeBlock,
                    MeanPlaneAverager& meanPlaneAverager)
-      : Nz_(Nz), dz_(dz), alpha_f_(alpha_f), alpha_p_(alpha_p), particleFluctuation_plane_(Nz_, 0),
+      : Nz_(Nz), dz_(dz), alpha_f_(alpha_f), alpha_p_(alpha_p), averagingTimeBlock_(averagingTimeBlock),particleFluctuation_plane_(Nz_, 0),
         fluidFluctuation_plane_(Nz_, 0), dTparticle_plane_(Nz_, 0), dTfluid_plane_(Nz_, 0), phi_p_plane(Nz_, 0),
         phi_f_plane(Nz_, 0), cell_count_plane_(Nz_, 0),
 
@@ -260,7 +246,7 @@ class HeatFluxBudgets
       WALBERLA_ROOT_SECTION()
       {
          outFile_.open("heatFluxBudget.txt", std::ios::out);
-         outFile_ << "height  fluidfluctuation   particlefluctuation  fluidDT  particleDT  phi_f  phi_p  Qtotal" << std::endl;
+         outFile_ << "height  fluidConvectiveFlux   particleConvectiveFlux  fluidConductiveFlux  particleConductiveFlux  fluidFraction  particleFraction  totalFlux" << std::endl;
       }
    }
 
@@ -284,10 +270,9 @@ class HeatFluxBudgets
 
          // get the plane averages of velocity and temperature:
 
-         auto velocity_fluid_avg       = meanPlaneAverager_.getFluidSliceVelocityAvg();
-         auto velocity_particle_avg    = meanPlaneAverager_.getParticleSliceVelocityAvg();
-         auto temperature_fluid_avg    = meanPlaneAverager_.getFluidSliceTemperatureAvg();
-         auto temperature_particle_avg = meanPlaneAverager_.getParticleSliceTemperatureAvg();
+         auto velocity_fluid_avg       = meanPlaneAverager_.getVelocitySliceAvg();
+         auto temperature_fluid_avg    = meanPlaneAverager_.getTemperatureSliceAvg();
+
          WALBERLA_FOR_ALL_CELLS_XYZ(
 
             Tfield, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
@@ -296,13 +281,13 @@ class HeatFluxBudgets
             const real_t B = Bfield->get(x, y, z); const real_t temperature = Tfield->get(x, y, z);
             const real_t velocity_z                                         = velF->get(x, y, z, 2);
 
-            const real_t Tp_dash = (B) *temperature - temperature_particle_avg[j];
-            const real_t Vp_dash = B * velocity_z - velocity_particle_avg[j];
 
-            const real_t Tf_dash = (1 - B) * temperature - temperature_fluid_avg[j];
-            const real_t Vf_dash = (1 - B) * velocity_z - velocity_fluid_avg[j];
 
-            particleFluctuation_plane_[j] += -Tp_dash * Vp_dash; fluidFluctuation_plane_[j] += -Tf_dash * Vf_dash;
+            const real_t T_dash =  temperature - temperature_fluid_avg[j];
+            const real_t V_dash =   velocity_z - velocity_fluid_avg[j];
+
+            particleFluctuation_plane_[j] += -(B)*T_dash * V_dash;
+            fluidFluctuation_plane_[j] += -(1-B)*T_dash * V_dash;
 
             phi_p_plane[j] += B; phi_f_plane[j] += (1 - B); cell_count_plane_[j] += 1.0;
 
@@ -358,8 +343,8 @@ class HeatFluxBudgets
                   dTparticle_plane_[j] += dTdz_p;
 
                   // fluid conductive flux
-                  const real_t T0_f = Bfield->get(x,y,z-1) * Tfield->get(x, y, z - 1);
-                  const real_t T1_f = Bfield->get(x,y,z+1) * Tfield->get(x, y, z + 1);
+                  const real_t T0_f = (1 - Bfield->get(x, y, z - 1)) * Tfield->get(x, y, z - 1);
+                  const real_t T1_f = (1 - Bfield->get(x, y, z + 1)) * Tfield->get(x, y, z + 1);
                   dTdz_f            = (T1_f - T0_f) / (2.0 * dz_);
                   dTdz_f            = alpha_f_ * dTdz_f;
                   dTfluid_plane_[j] += dTdz_f;
@@ -451,19 +436,25 @@ class HeatFluxBudgets
 
          phi_p_time[k] += (phi_p_plane[k] - phi_p_time[k]) / timeSamples_;
          phi_f_time[k] += (phi_f_plane[k] - phi_f_time[k]) / timeSamples_;
+      }
 
-         if (timeSamples_ == 10000)
+      if (timeSamples_ == averagingTimeBlock_)
+      {
+         for (uint_t k = 0; k < Nz_; ++k)
          {
-            Qtotal_[k] = phi_f_time[k]*fluidFluctuation_time_[k] + phi_f_time[k]*dTfluid_time_[k] +
-                        phi_p_time[k] * particleFluctuation_time_[k] + phi_p_time[k] * dTparticle_time_[k];
+            Qtotal_[k] =
+               fluidFluctuation_time_[k] + dTfluid_time_[k] + particleFluctuation_time_[k] + dTparticle_time_[k];
             WALBERLA_ROOT_SECTION()
             {
                outFile_ << k << " " << fluidFluctuation_time_[k] << " " << particleFluctuation_time_[k] << " "
                         << dTfluid_time_[k] << " " << dTparticle_time_[k] << " " << phi_f_time[k] << " "
-                        << phi_p_time[k]  << " " << Qtotal_[k] << std::endl;
+                        << phi_p_time[k] << " " << Qtotal_[k] << std::endl;
             }
          }
+         WALBERLA_ABORT(
+            "simulation completed and the averaged results have been written to the file:  heatFluxBudgets.txt");
       }
+
    }
 
  private:
@@ -471,13 +462,14 @@ class HeatFluxBudgets
    real_t dz_;
    uint_t timeSamples_ = 0;
    std::ofstream outFile_;
+   const uint_t averagingTimeBlock_;
 
    // constants
-   real_t alpha_f_, alpha_p_;                               // thermal diffusivities (LB units)
-   std::vector< double > particleFluctuation_plane_;        // particle temperature and velocity averages
-   std::vector< double > fluidFluctuation_plane_;           // fluid temperature and velocity averages
-   std::vector< double > dTparticle_plane_, dTfluid_plane_; // fluid temperature velocity product averages
-   std::vector< double > phi_p_plane, phi_f_plane;          // fraction fields of particle and fluid
+   real_t alpha_f_, alpha_p_;
+   std::vector< double > particleFluctuation_plane_;
+   std::vector< double > fluidFluctuation_plane_;
+   std::vector< double > dTparticle_plane_, dTfluid_plane_;
+   std::vector< double > phi_p_plane, phi_f_plane;
    std::vector< double > cell_count_plane_;
 
    std::vector< double > particleFluctuation_time_;

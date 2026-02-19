@@ -150,7 +150,7 @@ with CodeGeneration() as ctx:
         stencil=stencil_fluid,
         method=Method.CUMULANT,
         relaxation_rate=omega_f,
-        #output={"velocity": velocity_field},
+        output={"velocity": velocity_field},
         #force= force_concentration_on_fluid,
         force_model=ForceModel.GUO,
         compressible=True,
