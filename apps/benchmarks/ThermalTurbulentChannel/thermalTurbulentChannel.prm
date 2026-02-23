@@ -1,0 +1,77 @@
+PhysicalSetup // all to be specified in SI/ref units
+{
+
+    xSize 0.288; // = width  // 4dp
+    ySize 0.144; // = depth  // 4dp
+    zSize 0.144; // = height  // 20dp
+
+    periodicInX true;
+    periodicInY true;
+    periodicInZ false;
+
+    runtime 1000000000;
+    densityFluid 1.;
+    particleDiameter 0.024;
+    densityParticle 1.;
+    particleRe 1;                                              // to be modified from 1 to 16 (16 values)
+    dynamicFrictionCoefficient 0.15;
+    coefficientOfRestitution 0.97;
+    collisionTimeFactor 1.0;
+
+}
+
+NumericalSetup
+{
+    dx 0.001; // in m
+    dt 0.001;  // this is the dt_SI if at all uInflow is set to 0.
+    Uc 0.01;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
+
+
+    // product of number of blocks should be equal to number of used processes
+    numXBlocks 6;
+    numYBlocks 6;
+    numZBlocks 8;
+
+    use2DRefVel false;
+    useLubricationForces true;
+    numberOfParticleSubCycles 10;
+    useParticles true;
+    useIntegrators true;
+    particleSubBlockSize <6, 6, 6>;
+    linkedCellWidthRation 1.01;
+    particleBarriers true;
+    generationDomainFraction <0.95,0.95,0.95>;
+    SingleparticleLocation <0.064,0.064,0.128>;
+    volfraction 0.3;                                            // to be modified between 0.1, 0.2, 0.3 ( 3 values)
+    writeSlice true;
+    sendDirectlyFromGPU true;
+
+}
+
+TemperatureSetup
+{
+    Thot 0.5;   // ThotSI = ThotLB   (concentration conversion from SI to LB)
+    Tcold -0.5;
+    Tref  0;
+    Tparticle 0;
+    PrandtlNumber 1;
+    Cpf 1;
+    Cps 1;
+    Kr  1;
+    Gr 1000;
+    Qso 0;
+}
+
+Output
+{
+    infoSpacing 0; // in s
+    vtkSpacingParticles 0; // in s
+    vtkSpacingFluid 0; // ins
+    vtkFolder vtk_out;
+    performanceLogFrequency 5000000000;
+
+    convergenceTolerance 0.5;
+    timeBlock 120000;                //  2400*25 = 120000   (2400 is the ratio of particle diameter and Uc 24/0.01)
+    outputFrequency 120000;         // outputfrequency of the meanFlux.txt file
+    averagingTimeBlock 2400000;   // typically take it 1000 * 2400 to ensure good amount of averaging
+}

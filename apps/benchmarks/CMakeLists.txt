@@ -15,6 +15,7 @@ add_subdirectory( ProbeVsExtraMessage )
 add_subdirectory( SchaeferTurek )
 add_subdirectory( UniformGrid )
 add_subdirectory( MaterialTransport )
+add_subdirectory(ThermalTurbulentChannel)
 
 if ( WALBERLA_BUILD_WITH_PYTHON )
    add_subdirectory( FieldCommunication )
