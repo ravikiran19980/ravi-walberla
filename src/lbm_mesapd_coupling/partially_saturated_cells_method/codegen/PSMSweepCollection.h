@@ -65,9 +65,9 @@ class PSMSweepCollection
         setParticleVelocitiesSweep(SetParticleVelocitiesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >(
            bs, ac, ps, particleAndVolumeFractionSoA)),
         reduceParticleForcesSweep(ReduceParticleForcesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >(
-           bs, ac, ps, particleAndVolumeFractionSoA)),
-        setParticleTemperaturesSweep( SetParticleTemperaturesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >(
-           bs, ac, ps, particleAndVolumeFractionSoA, densityConcentrationFieldCPUGPUID,uniformParticleTemperature))
+           bs, ac, ps, particleAndVolumeFractionSoA))
+        //setParticleTemperaturesSweep( SetParticleTemperaturesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >(
+        //   bs, ac, ps, particleAndVolumeFractionSoA, densityConcentrationFieldCPUGPUID,uniformParticleTemperature))
 
    {}
 
@@ -75,7 +75,7 @@ class PSMSweepCollection
    SphereFractionMappingSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T > particleMappingSweep;
    SetParticleVelocitiesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T > setParticleVelocitiesSweep;
    ReduceParticleForcesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T > reduceParticleForcesSweep;
-   SetParticleTemperaturesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >setParticleTemperaturesSweep;
+   //SetParticleTemperaturesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >setParticleTemperaturesSweep;
 };
 
 template< typename SweepCollection, typename PSMSweepFluid,typename PSMSweepTemperature >
