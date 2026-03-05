@@ -648,7 +648,7 @@ namespace walberla {
       ///////////////////////////////////////////////////////
 
       WALBERLA_LOG_INFO_ON_ROOT("Creating block forest...")
-
+      WALBERLA_LOG_INFO_ON_ROOT("the direction is   "<< stencil::dirToString[stencil::directionFromAxis(1, false)]);
       const auto channelParameter = walberlaEnv.config()->getOneBlock("TurbulentChannel");
       SimulationParameters simulationParameters(channelParameter);
 

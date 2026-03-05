@@ -9,36 +9,31 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
             waLBerla_generate_target_from_python(NAME ThermalTurbulentChannel_CodeGeneration_${config}
                     FILE thermalPSMCodegenCHT.py
                     CODEGEN_CFG ${config}
-                    OUT_FILES LBMFluidSweep.h LBMFluidSweep.${CODEGEN_FILE_SUFFIX}
-                    PSMFluidSweep.h PSMFluidSweep.${CODEGEN_FILE_SUFFIX}
-                    LBMFluidSplitSweep.h LBMFluidSplitSweep.${CODEGEN_FILE_SUFFIX}
-                    PSMFluidSweepSplit.h PSMFluidSweepSplit.${CODEGEN_FILE_SUFFIX}
-                    PSMEnergySweep.h PSMEnergySweep.${CODEGEN_FILE_SUFFIX}
+                    OUT_FILES PSMFluidSweep.h PSMFluidSweep.${CODEGEN_FILE_SUFFIX}
+                    PSMTemperatureSweep.h PSMTemperatureSweep.${CODEGEN_FILE_SUFFIX}
                     PackInfoFluid.h PackInfoFluid.${CODEGEN_FILE_SUFFIX}
-                    PackInfoEnergy.h PackInfoEnergy.${CODEGEN_FILE_SUFFIX}
+                    PackInfoTemperature.h PackInfoTemperature.${CODEGEN_FILE_SUFFIX}
                     InitializeFluidDomain.h InitializeFluidDomain.${CODEGEN_FILE_SUFFIX}
-                    InitializeEnergyDomain.h InitializeEnergyDomain.${CODEGEN_FILE_SUFFIX}
+                    InitializeTemperatureDomain.h InitializeTemperatureDomain.${CODEGEN_FILE_SUFFIX}
                     BC_Fluid_NoSlip.h BC_Fluid_NoSlip.${CODEGEN_FILE_SUFFIX}
                     BC_Fluid_UBB.h BC_Fluid_UBB.${CODEGEN_FILE_SUFFIX}
                     BC_Fluid_Density.h BC_Fluid_Density.${CODEGEN_FILE_SUFFIX}
                     BC_Fluid_FreeSlip.h BC_Fluid_FreeSlip.${CODEGEN_FILE_SUFFIX}
                     BC_Fluid_Outflow.h BC_Fluid_Outflow.${CODEGEN_FILE_SUFFIX}
-                    BC_energy_DiffusionDirichlet_dynamic.h BC_energy_DiffusionDirichlet_dynamic.${CODEGEN_FILE_SUFFIX}
-                    BC_Energy_Neumann.h BC_Energy_Neumann.${CODEGEN_FILE_SUFFIX}
-                    BC_energy_DiffusionDirichlet_static.h BC_energy_DiffusionDirichlet_static.${CODEGEN_FILE_SUFFIX}
+                    BC_Temperature_DiffusionDirichlet_dynamic.h BC_Temperature_DiffusionDirichlet_dynamic.${CODEGEN_FILE_SUFFIX}
+                    BC_Temperature_Neumann.h BC_Temperature_Neumann.${CODEGEN_FILE_SUFFIX}
+                    BC_Temperature_DiffusionDirichlet_static.h BC_Temperature_DiffusionDirichlet_static.${CODEGEN_FILE_SUFFIX}
                     FluidMacroSetter.h FluidMacroSetter.cpp
                     FluidMacroGetter.h FluidMacroGetter.cpp
-                    EnergyMacroSetter.h EnergyMacroSetter.cpp
-                    EnergyMacroGetter.h EnergyMacroGetter.cpp
-                    compute_temperature_field.h compute_temperature_field.cpp
-                    compute_temperature_field_particle.h compute_temperature_field_particle.cpp
-                    initializeConcentrationField.h initializeConcentrationField.cpp
+                    TemperatureMacroSetter.h TemperatureMacroSetter.cpp
+                    TemperatureMacroGetter.h TemperatureMacroGetter.cpp
+                    initializeTemperatureField.h initializeTemperatureField.cpp
                     GeneralInfoHeader.h
         )
             message(STATUS "generated in thermal PSM is: ${config}" )
             add_executable( ThermalTurbulentChannel_${config}  thermalPSMCHT.cpp ./utilities/InitializerFunctions.cpp
-                    heatFlux.cpp)
-            target_link_libraries(ThermalTurbulentChannel_${config} walberla::blockforest walberla::core walberla::field walberla::geometry walberla::gpu walberla::lbm walberla::lbm_mesapd_coupling walberla::mesa_pd walberla::sqlite walberla::vtk ThermalTurbulentChannel_CodeGeneration_{config})
+            )
+            target_link_libraries(ThermalTurbulentChannel_${config} walberla::blockforest walberla::core walberla::field walberla::geometry walberla::gpu walberla::lbm walberla::lbm_mesapd_coupling walberla::mesa_pd walberla::sqlite walberla::vtk ThermalTurbulentChannel_CodeGeneration_${config})
             target_compile_definitions(ThermalTurbulentChannel_${config} PRIVATE Weighting=1)
         endforeach ()
 

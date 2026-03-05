@@ -31,6 +31,7 @@
 #include "GeneralInfoHeader.h"
 #include "InitializerFunctions.h"
 #pragma once
+using DensityField_concentration_T = DensityField_temperature_T;
 
 namespace walberla
 {

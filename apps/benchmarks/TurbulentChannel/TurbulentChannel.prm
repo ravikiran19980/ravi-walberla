@@ -2,9 +2,9 @@
 TurbulentChannel {
 
     channel_half_width           20;
-    full_channel                  0;
+    full_channel                  1;
 
-    wall_boundary_condition     WFB;
+    wall_boundary_condition     NoSlip;
 
     target_friction_Reynolds    395;
     target_bulk_velocity        0.1;
@@ -19,7 +19,7 @@ TurbulentChannel {
 
     // vtk_start_timesteps        50;
     // vtk_start_periods          1000;
-    // plot_start_timesteps       50;
+     plot_start_timesteps       50;
     // plot_start_periods         1000;
     vtk_frequency              10;
     plot_frequency             10;

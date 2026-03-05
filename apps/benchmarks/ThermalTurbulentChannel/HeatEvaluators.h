@@ -8,6 +8,7 @@
 #include "core/math/all.h"
 #include "GeneralInfoHeader.h"
 
+using DensityField_concentration_T = DensityField_temperature_T;
 namespace MaterialTransport
 {
 using namespace walberla;

@@ -1,6 +1,7 @@
 import copy
 import sympy as sp
 import pystencils as ps
+from lbmpy.methods import CollisionSpaceInfo
 from sympy.core.add import Add
 from sympy.codegen.ast import Assignment
 import sys
@@ -31,8 +32,8 @@ from pystencils_walberla import (
 from lbmpy_walberla import generate_boundary
 from lbmpy_walberla.additional_data_handler import DiffusionDirichletAdditionalDataHandler
 from pystencils.cache import clear_cache
-from psmclass import ThermalPSMConfig,create_thermal_lb_method,create_psm_thermal_collision_rule
-from lbmpy.methods.creationfunctions import CollisionSpaceInfo
+from thermalMethods import create_thermal_lb_method#,create_psm_thermal_collision_rule
+from lbmpy.maxwellian_equilibrium import get_weights
 from lbmpy.enums import Stencil, Method, CollisionSpace
 clear_cache()
 
@@ -40,7 +41,7 @@ clear_cache()
 
 info_header = """
 const char * infoStencil_fluid = "{stencil}";
-const char * infoStencil_concentration = "{stencil}";
+const char * infoStencil_temperature = "{stencil}";
 const char * infoStreamingPattern = "{streaming_pattern}";
 const char * infoCollisionSetup = "{collision_setup}";
 const bool infoCseGlobal = {cse_global};
@@ -51,7 +52,7 @@ const bool infoCsePdfs = {cse_pdfs};
 with CodeGeneration() as ctx:
     data_type = "float64" if ctx.double_accuracy else "float32"
     stencil_fluid = LBStencil(Stencil.D3Q19)
-    stencil_energy = LBStencil(Stencil.D3Q19)
+    stencil_temperature = LBStencil(Stencil.D3Q19)
     omega = sp.Symbol("omega")  # for now same for both the sweeps
     init_density_fluid = sp.Symbol("init_density_fluid")
     rho_0 = sp.Symbol("rho_0")
@@ -59,6 +60,8 @@ with CodeGeneration() as ctx:
     alpha = sp.Symbol("alpha")
     gravity_LBM = sp.Symbol("gravityLB")
     omega_f = sp.Symbol("omega_f")
+    omega_t = sp.Symbol("omega_t")
+
 
     layout = "fzyx"
     config_tokens = ctx.config.split("_")
@@ -76,24 +79,22 @@ with CodeGeneration() as ctx:
 
     # Solid collision variant
     SC = int(config_tokens[1])
-    qk = sp.Symbol("qk")
-    qe = sp.Symbol("qe")
+
 
     # Fluid PDFs and fields
     pdfs_fluid, pdfs_fluid_tmp, velocity_field, density_field = ps.fields(
         f"pdfs_fluid({stencil_fluid.Q}), pdfs_fluid_tmp({stencil_fluid.Q}), velocity_field({stencil_fluid.D}), density_field({1}): {data_type}[3D]",
         layout=layout,
     )
-    # Concentration PDFs and fields
-    concentration_field = ps.fields(
-        f"concentration_field({1}): {data_type}[3D]",
+    # temperature PDFs and fields
+    temperature_field = ps.fields(
+        f"temperature_field({1}): {data_type}[3D]",
         layout=layout,
     )
 
-    pdfs_energy, pdfs_energy_tmp, energy_field = ps.fields(
-        f"pdfs_energy({stencil_energy.Q}), pdfs_energy_tmp({stencil_energy.Q}), energy_field({1}): {data_type}[3D]",
-        layout=layout,
-    )
+    pdfs_temperature, pdfs_temperature_tmp = ps.fields(
+        f"pdfs_temperature({stencil_temperature.Q}), pdfs_temperature_tmp({stencil_temperature.Q}): {data_type}[3D]",
+        layout=layout,)
 
     # particle related fields (considering for all the particle, i.e: MaxParticlesPerCell
     particle_velocities, particle_forces, Bs = ps.fields(
@@ -101,12 +102,12 @@ with CodeGeneration() as ctx:
         layout=layout,
     )
     particle_temperatures = ps.fields(f"particle_t({MaxParticlesPerCell}) :{data_type}[3D]", layout=layout)
-    particle_energies = ps.fields(f"particle_energy({MaxParticlesPerCell}) :{data_type}[3D]", layout=layout)
+
 
     # Solid fraction field
     B = ps.fields(f"b({1}): {data_type}[3D]", layout=layout)
 
-    force_concentration_on_fluid = sp.Matrix([0, 0,(rho_0)*alpha*(concentration_field.center - T0)*gravity_LBM])
+    force_temperature_on_fluid = sp.Matrix([0, 0,(rho_0)*alpha*(temperature_field.center - T0)*gravity_LBM])
 
     # Fluid LBM optimisation
     lbm_fluid_opt = LBMOptimisation(
@@ -117,24 +118,14 @@ with CodeGeneration() as ctx:
     )
 
 
-    # Energy LBM optimisation
-    lbm_energy_opt = LBMOptimisation(
+    # temperature LBM optimisation
+    lbm_temperature_opt = LBMOptimisation(
         cse_global=True,
-        symbolic_field=pdfs_energy,
-        symbolic_temporary_field=pdfs_energy_tmp,
+        symbolic_field=pdfs_temperature,
+        symbolic_temporary_field=pdfs_temperature_tmp,
         field_layout=layout,
     )
 
-    # Fluid LBM config
-    lbm_fluid_config = LBMConfig(
-        stencil=stencil_fluid,
-        method=Method.SRT,
-        relaxation_rate=omega_f,
-        output={"velocity": velocity_field},
-        force= force_concentration_on_fluid,
-        force_model=ForceModel.GUO,
-        compressible=True,
-    )
 
     # Fluid PSM config
     psm_config_F = PSMConfig(
@@ -151,66 +142,40 @@ with CodeGeneration() as ctx:
         method=Method.CUMULANT,
         relaxation_rate=omega_f,
         output={"velocity": velocity_field},
-        #force= force_concentration_on_fluid,
+        #force= force_temperature_on_fluid,
         force_model=ForceModel.GUO,
         compressible=True,
         psm_config=psm_config_F,
     )
 
-    ## for CHT
-    rho_f = sp.Symbol("rho_f")
-    rho_s = sp.Symbol("rho_s")
-    omegaT_f = sp.Symbol("omegaT_f")
-    omegaT_s = sp.Symbol("omegaT_s")
-    Cp_f = sp.Symbol("Cp_f")
-    Cp_s = sp.Symbol("Cp_s")
-    k_f = sp.Symbol("k_f")
-    k_s = sp.Symbol("k_s")
-
-    # Energy PSM config
-    psm_energy_config = ThermalPSMConfig(
-        stencil=stencil_energy,
-        method=Method.TRT,
-        relaxation_rate=omegaT_f,  # omega_f will be used for the fluid and omega_p will be used for the solid particles
+    relaxation_rates = list(sp.symbols(f'omega_t_{n+1}') for n in range(stencil_temperature.Q))
+    # temperature PSM config
+    psm_temperature_config = LBMConfig(
+        stencil=stencil_temperature,
+        method=Method.CENTRAL_MOMENT,
+        relaxation_rates=relaxation_rates,
         velocity_input=velocity_field,
-        output={"density": energy_field},
-        compressible=False,
-        continuous_equilibrium=False,
+        output={"density": temperature_field},
+        compressible=True,
+        continuous_equilibrium=True,
         zero_centered=False,
-        fraction_field=B,
-        object_velocity_field=particle_velocities,
-        SC=int(5),
-        MaxParticlesPerCell=MaxParticlesPerCell,
-        individual_fraction_field=Bs,
-        particle_temperature_field=particle_temperatures,
-        particle_density=rho_s,
-        particle_specific_heat=Cp_s,
-        solid_relaxation_rate=omegaT_s,
-        energy_field=energy_field,
-        temperature_field_output=concentration_field,
-        heat_source=None,
-        fluid_conductivity = k_f,
-        solid_conductivity = k_s,
     )
-
-    if config_tokens[0] == "srt-smagorinsky" or config_tokens[0] == "trt-smagorinsky":
-        lbm_fluid_config.smagorinsky = True
 
     # =====================
     # Generate method
     # =====================
 
     method_fluid = create_lb_method(lbm_config=psm_fluid_config)
-    method_energy = create_thermal_lb_method(lbm_config=psm_energy_config)[0]
-
+    method_temperature = create_thermal_lb_method(lbm_config=psm_temperature_config)
+    method_temperature.override_weights(get_weights(stencil_temperature))
     init_velocity = sp.symbols("init_velocity_:3")
 
     pdfs_fluid_setter = macroscopic_values_setter(
         method_fluid, density=init_density_fluid, velocity=velocity_field.center_vector, pdfs=pdfs_fluid.center_vector
     )
 
-    pdfs_energy_setter = macroscopic_values_setter(
-        method_energy, density=energy_field.center, velocity= velocity_field.center_vector,pdfs=pdfs_energy.center_vector
+    pdfs_temperature_setter = macroscopic_values_setter(
+        method_temperature, density=temperature_field.center, velocity= velocity_field.center_vector,pdfs=pdfs_temperature.center_vector
     )
 
     # Use average velocity of all intersecting particles when setting PDFs (mandatory for SC=3)
@@ -229,16 +194,17 @@ with CodeGeneration() as ctx:
 
 
 
-    ## for energy
-    sub_exp_energy = pdfs_energy_setter.subexpressions[0]
-    rhs_energy = []
-    rhs_energy.append((rho_f*Cp_f*(1-B.center)*concentration_field.center) + ((B.center)*rho_s*Cp_s*sp.Symbol("Tp")))
-    pdfs_energy_setter.subexpressions.remove(sub_exp_energy)
-    pdfs_energy_setter.subexpressions.append(Assignment(sp.Symbol("T"), (1-B.center)*concentration_field.center +(B.center)*sp.Symbol("Tp")))
-    pdfs_energy_setter.subexpressions.append(Assignment(sub_exp_energy.lhs, Add(*rhs_energy)))
-    pdfs_energy_setter.subexpressions.append(Assignment(sp.Symbol("rho_cp"), (1-B.center)*rho_f*Cp_f + B.center*rho_s*Cp_s))
+    ## for temperature
 
-    #print("energy setter after manip ", pdfs_energy_setter.subexpressions)
+    sub_exp_temperature = pdfs_temperature_setter.subexpressions[0]
+    rhs_temperature = []
+    rhs_temperature.append((1 - B.center) * temperature_field.center + (B.center) * sp.Symbol("Tp"))
+    pdfs_temperature_setter.subexpressions.remove(sub_exp_temperature)
+    pdfs_temperature_setter.subexpressions.append(Assignment(sub_exp_temperature.lhs, Add(*rhs_temperature)))
+    #pdfs_temperature_setter.subexpressions.append(Assignment(sp.Symbol("c_s"), 1/sp.sqrt(3)))
+
+
+    #print("temperature setter after manip ", pdfs_temperature_setter.subexpressions)
 
     # specify the target
 
@@ -248,28 +214,9 @@ with CodeGeneration() as ctx:
         target = ps.Target.CPU
 
     node_collection_fluid = create_psm_update_rule(lbm_config=psm_fluid_config, lbm_optimisation=lbm_fluid_opt)
-    collision_rule_energy = create_psm_thermal_collision_rule(lbm_config=psm_energy_config)
-
-    ## defining custom pystencils kernel that computes temperature from rho_cp_T
-
-    rho_cp_eff = sp.Symbol("rho_cp_eff")
-    @ps.kernel
-    def compute_temperature_field():
-        rho_cp_eff = ((1.0 - B.center)* rho_f *Cp_f + B.center*rho_s*Cp_s)
-        concentration_field.center @= energy_field.center/rho_cp_eff
-    compute_temperature_field_ac = ps.AssignmentCollection(
-        compute_temperature_field
-    )
-    generate_sweep(ctx, "compute_temperature_field", compute_temperature_field_ac)
-
-    assignments = []
-    assignments.append(method_energy.conserved_quantity_computation.equilibrium_input_equations_from_pdfs(pdfs_energy.center_vector))
-    for k in range(MaxParticlesPerCell):
-        assignments.append(
-            ps.Assignment(particle_temperatures.center(k), method_energy.conserved_quantity_computation.density_symbol)
-        )
-    ac = ps.AssignmentCollection(assignments)
-    generate_sweep(ctx, "compute_temperature_field_particle", ac)
+    collision_rule_temperature = create_lb_collision_rule(lb_method = method_temperature,lbm_config=psm_temperature_config,lbm_optimisation=lbm_temperature_opt)
+    print("collision rule temp is  ", collision_rule_temperature)
+    print("symbol   ", method_temperature.first_order_equilibrium_moment_symbols)
 
     # Build the accumulation as a pure SymPy expression (no kernel assignments involved)
     acc_expr = sum(
@@ -280,21 +227,12 @@ with CodeGeneration() as ctx:
     T_init_fluid = sp.Symbol("T_init_fluid")  # kernel parameter
 
     @ps.kernel
-    def initializeConcentrationField():
-        concentration_field.center @= (1 - B.center) * T_init_fluid + acc_expr
+    def initializetemperatureField():
+        temperature_field.center @= (1 - B.center) * T_init_fluid + acc_expr
 
-    initializeConcentrationField_ac = ps.AssignmentCollection(initializeConcentrationField)
-    generate_sweep(ctx, "initializeConcentrationField", initializeConcentrationField_ac)
+    initializetemperatureField_ac = ps.AssignmentCollection(initializetemperatureField)
+    generate_sweep(ctx, "initializeTemperatureField", initializetemperatureField_ac)
 
-
-    # Generate files
-    generate_sweep(
-        ctx,
-        "LBMFluidSweep",
-        create_lb_update_rule(lbm_config=lbm_fluid_config, lbm_optimisation=lbm_fluid_opt),
-        field_swaps=[(pdfs_fluid, pdfs_fluid_tmp)],
-        target=target,
-    )
 
     generate_sweep(
         ctx,
@@ -306,27 +244,10 @@ with CodeGeneration() as ctx:
 
     generate_sweep(
         ctx,
-        "PSMEnergySweep",
-        create_lb_update_rule(collision_rule=collision_rule_energy, lbm_config=psm_energy_config, lbm_optimisation=lbm_energy_opt),
-        field_swaps=[(pdfs_energy, pdfs_energy_tmp)],
+        "PSMTemperatureSweep",
+        create_lb_update_rule(collision_rule=collision_rule_temperature, lbm_config=psm_temperature_config, lbm_optimisation=lbm_temperature_opt),
+        field_swaps=[(pdfs_temperature, pdfs_temperature_tmp)],
         target=target,
-    )
-    generate_sweep(
-        ctx,
-        "LBMFluidSplitSweep",
-        create_lb_update_rule(lbm_config=lbm_fluid_config, lbm_optimisation=lbm_fluid_opt),
-        field_swaps=[(pdfs_fluid, pdfs_fluid_tmp)],
-        target=target,
-        inner_outer_split=True,
-    )
-
-    generate_sweep(
-        ctx,
-        "PSMFluidSweepSplit",
-        node_collection_fluid,
-        field_swaps=[(pdfs_fluid, pdfs_fluid_tmp)],
-        target=target,
-        inner_outer_split=True,
     )
 
     generate_pack_info_from_kernel(
@@ -339,13 +260,13 @@ with CodeGeneration() as ctx:
 
     generate_pack_info_from_kernel(
         ctx,
-        "PackInfoEnergy",
-        create_lb_update_rule(lbm_config=psm_energy_config, lbm_optimisation=lbm_energy_opt),
+        "PackInfoTemperature",
+        create_lb_update_rule(lbm_config=psm_temperature_config, lbm_optimisation=lbm_temperature_opt),
         target=target,
     )
 
     generate_sweep(ctx, "InitializeFluidDomain", pdfs_fluid_setter, target=target)
-    generate_sweep(ctx, "InitializeEnergyDomain", pdfs_energy_setter, target=target)
+    generate_sweep(ctx, "InitializeTemperatureDomain", pdfs_temperature_setter, target=target)
 
     # Fluid Boundary conditions
     generate_boundary(
@@ -400,55 +321,48 @@ with CodeGeneration() as ctx:
         target=target,
     )
 
-    # energy boundary conditions
+    # temperature boundary conditions
     dirichlet_bc_dynamic = DiffusionDirichlet(lambda *args: None, velocity_field, data_type=data_type)
-    diffusion_data_handler = DiffusionDirichletAdditionalDataHandler(stencil_energy, dirichlet_bc_dynamic)
-    generate_boundary(ctx, 'BC_energy_DiffusionDirichlet_dynamic', dirichlet_bc_dynamic, method_energy,
+    diffusion_data_handler = DiffusionDirichletAdditionalDataHandler(stencil_temperature, dirichlet_bc_dynamic)
+    generate_boundary(ctx, 'BC_Temperature_DiffusionDirichlet_dynamic', dirichlet_bc_dynamic, method_temperature,
                       additional_data_handler=diffusion_data_handler,
                       target=target, streaming_pattern='pull', data_type=data_type)
 
-    bc_density_energy = sp.Symbol("bc_density_energy")
+    bc_density_temperature = sp.Symbol("bc_density_temperature")
     generate_boundary(
         ctx,
-        "BC_energy_DiffusionDirichlet_static",
-        DiffusionDirichlet(bc_density_energy),
-        method_energy,
-        field_name=pdfs_energy.name,
+        "BC_Temperature_DiffusionDirichlet_static",
+        DiffusionDirichlet(bc_density_temperature),
+        method_temperature,
+        field_name=pdfs_temperature.name,
         streaming_pattern="pull",
         target=target,
     )
 
     generate_boundary(
         ctx,
-        "BC_Energy_Neumann",
-        NeumannByCopy(stencil_energy),
-        method_energy,
-        field_name=pdfs_energy.name,
+        "BC_Temperature_Neumann",
+        NeumannByCopy(stencil_temperature),
+        method_temperature,
+        field_name=pdfs_temperature.name,
         streaming_pattern="pull",
         target=target,
     )
 
 
 
-    # Info header containing correct template definitions for stencil and fields
-    infoHeaderParams = {
-        "stencil_fluid": stencil_fluid.name,
-        "streaming_pattern": lbm_fluid_config.streaming_pattern,
-        "collision_setup": Method.SRT,
-        "cse_global": int(lbm_fluid_opt.cse_global),
-        "cse_pdfs": int(lbm_fluid_opt.cse_pdfs),
-    }
+
 
 
     stencil_typedefs = {"Stencil_Fluid_T": stencil_fluid, "CommunicationStencil_Fluid_T": stencil_fluid
-        , "Stencil_Energy_T":stencil_energy, "CommunicationStencil_Energy_T":stencil_energy}
+        , "Stencil_Temperature_T":stencil_temperature, "CommunicationStencil_Temperature_T":stencil_temperature}
     field_typedefs = {
         "PdfField_fluid_T": pdfs_fluid,
         "DensityField_fluid_T": density_field,
         "VelocityField_fluid_T": velocity_field,
-        "DensityField_concentration_T": concentration_field,
-        "PdfField_energy_T": pdfs_energy,
-        "DensityField_energy_T": energy_field,
+        "DensityField_temperature_T": temperature_field,
+        "PdfField_temperature_T": pdfs_temperature,
+        "DensityField_temperature_T": temperature_field,
     }
 
     generate_info_header(
@@ -463,11 +377,11 @@ with CodeGeneration() as ctx:
         method_fluid, density=density_field, velocity=velocity_field.center_vector,pdfs=pdfs_fluid.center_vector
     )
 
-    pdfs_energy_getter = macroscopic_values_getter(
-        method_energy, density=energy_field, velocity=None,pdfs=pdfs_energy.center_vector
+    pdfs_temperature_getter = macroscopic_values_getter(
+        method_temperature, density=temperature_field, velocity=None,pdfs=pdfs_temperature.center_vector
     )
 
     generate_sweep(ctx, "FluidMacroSetter", pdfs_fluid_setter)
     generate_sweep(ctx, "FluidMacroGetter", pdfs_fluid_getter)
-    generate_sweep(ctx, "EnergyMacroSetter", pdfs_energy_setter)
-    generate_sweep(ctx, "EnergyMacroGetter", pdfs_energy_getter)
+    generate_sweep(ctx, "TemperatureMacroSetter", pdfs_temperature_setter)
+    generate_sweep(ctx, "TemperatureMacroGetter", pdfs_temperature_getter)
