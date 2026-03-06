@@ -35,7 +35,7 @@ from pystencils.cache import clear_cache
 from thermalMethods import create_thermal_lb_method#,create_psm_thermal_collision_rule
 from lbmpy.maxwellian_equilibrium import get_weights
 from lbmpy.enums import Stencil, Method, CollisionSpace
-clear_cache()
+#clear_cache()
 
 
 
@@ -61,6 +61,7 @@ with CodeGeneration() as ctx:
     gravity_LBM = sp.Symbol("gravityLB")
     omega_f = sp.Symbol("omega_f")
     omega_t = sp.Symbol("omega_t")
+    forcex = sp.Symbol("forcex")
 
 
     layout = "fzyx"
@@ -109,6 +110,10 @@ with CodeGeneration() as ctx:
 
     force_temperature_on_fluid = sp.Matrix([0, 0,(rho_0)*alpha*(temperature_field.center - T0)*gravity_LBM])
 
+    flow_axis = 0
+
+    force_on_fluid  = [forcex,0,0]
+    print("force on fluid vec is  ", force_on_fluid[0], " ", force_on_fluid[1], " " ,force_on_fluid[2])
     # Fluid LBM optimisation
     lbm_fluid_opt = LBMOptimisation(
         cse_global=True,
@@ -139,11 +144,11 @@ with CodeGeneration() as ctx:
 
     psm_fluid_config = LBMConfig(
         stencil=stencil_fluid,
-        method=Method.CUMULANT,
+        method=Method.SRT,
         relaxation_rate=omega_f,
         output={"velocity": velocity_field},
-        #force= force_temperature_on_fluid,
         force_model=ForceModel.GUO,
+        force= tuple(force_on_fluid),
         compressible=True,
         psm_config=psm_config_F,
     )

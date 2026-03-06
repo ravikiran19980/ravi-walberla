@@ -95,6 +95,7 @@
 #include "randomPoints.h"
 #include "./utilities/settemperaturesweep.h"
 #include "HeatEvaluators.h"
+#include "turbulentFlowUtilities.h"
 
 namespace MaterialTransport
 {
@@ -109,6 +110,11 @@ typedef pystencils::PackInfoTemperature PackInfoTemperature_T;
 
 using flag_t      = walberla::uint8_t;
 using FlagField_T = FlagField< flag_t >;
+
+// Field Types
+using ScalarField_T = field::GhostLayerField< real_t, 1 >;
+using VectorField_T = field::GhostLayerField< real_t, Stencil_Fluid_T::D >;
+using TensorField_T = field::GhostLayerField< real_t, Stencil_Fluid_T::D*Stencil_Fluid_T::D >;
 
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
 using particleTemperaturesFieldGPU_T        = walberla::gpu::GPUField< real_t >;
@@ -293,15 +299,7 @@ FluidInfo evaluateFluidInfo(const shared_ptr< StructuredBlockStorage >& blocks, 
 }
 
 
-struct ForceCalculatorParameters
-{
-   Vector3<uint_t> domainSize;
-   uint_t wallAxis;
 
-   real_t channelHalfWidth;
-   real_t targetBulkVelocity;
-   real_t targetFrictionVelocity;
-};
 
 //////////
 // MAIN //
@@ -757,6 +755,17 @@ int main(int argc, char** argv)
    temperature_static_bc_hot.fillFromFlagField< FlagField_T >(blocks, flagFieldTemperatureID,
                                                          Density_Temperature_Flag_static_hot, Temperature_Flag);
 
+
+   // create the force and bulkvelocity calculating object of ForceCalculator class:
+
+   ForceCalculator<VectorField_T> forceCalculator(blocks, velFieldFluidCPUGPUID, forceParams);
+
+   // calculate the initial force the initialization purpose:
+
+   forceCalculator.setBulkVelocity(forceParams.targetBulkVelocity);
+   const auto initialForce = forceCalculator.getCurrentDrivingForce();
+
+
 ////////////////////////////////////
 // Initialize the PDFs and Fields //
 ///////////////////////////////////
@@ -817,7 +826,7 @@ int main(int argc, char** argv)
 
    pystencils::InitializeFluidDomain pdfSetterFluid(
       particleAndVolumeFractionSoA_fluid.BsFieldID, particleAndVolumeFractionSoA_fluid.BFieldID,
-      particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID, pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID,real_t(1));
+      particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID, pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID,initialForce,real_t(1));
 
    pystencils::InitializeTemperatureDomain pdfSetterTemperature(particleAndVolumeFractionSoA_temperature.BFieldID,
                                                                 pdfFieldTemperatureCPUGPUID, temperatureFieldCPUGPUID,
@@ -887,14 +896,14 @@ int main(int argc, char** argv)
    // objects to get the macroscopic quantities
 
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
-   pystencils::FluidMacroGetter getterSweep_fluid(densityFluidFieldID,
+   pystencils::FluidMacroGetter getterSweep_fluid(BFieldID,densityFluidFieldID,
                                                   pdfFieldFluidID, velFieldFluidID);
 
    pystencils::TemperatureMacroGetter getterSweep_temperature(temperatureFieldID,
                                                     pdfFieldTemperatureID);
 #else
-   pystencils::FluidMacroGetter getterSweep_fluid(densityFluidFieldID,
-                                                  pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID);
+   pystencils::FluidMacroGetter getterSweep_fluid(particleAndVolumeFractionSoA_fluid.BFieldID,densityFluidFieldID,
+                                                  pdfFieldFluidCPUGPUID, velFieldFluidCPUGPUID,initialForce);
 
    pystencils::TemperatureMacroGetter getterSweep_temperature(pdfFieldTemperatureCPUGPUID,temperatureFieldCPUGPUID
                                                     );
@@ -1022,20 +1031,25 @@ int main(int argc, char** argv)
    if (vtkSpacingFluid != uint_t(0)) { vtk::writeDomainDecomposition(blocks, "domain_decomposition", vtkFolder); }
 
    ////////////////////////////////////////////////////////////////////////////////////////////////
-   // add LBM communication, boundary handling and the LBM sweeps to the time loop  for codegen //
+   // add LBM communication, boundary handling and the LBM sweeps to the time loop              //
    //////////////////////////////////////////////////////////////////////////////////////////////
-
 
    pystencils::PSMFluidSweep psmFluidSweep(
       particleAndVolumeFractionSoA_fluid.BsFieldID, particleAndVolumeFractionSoA_fluid.BFieldID,
       particleAndVolumeFractionSoA_fluid.particleForcesFieldID, particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID,
-      pdfFieldFluidCPUGPUID,velFieldFluidCPUGPUID,omega_f);
+      pdfFieldFluidCPUGPUID,velFieldFluidCPUGPUID,initialForce,omega_f);
 
 
    pystencils::PSMTemperatureSweep psmTemperatureSweep(
       pdfFieldTemperatureCPUGPUID,temperatureFieldCPUGPUID,
       velFieldFluidCPUGPUID,omegaT_f,1,1,1);
 
+
+   // setting new force:
+
+   auto setNewForce = [&](const real_t newForce) {
+      psmFluidSweep.setForcex(newForce);
+   };
 
    timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")
                   << Sweep(deviceSyncWrapper(noSlip_fluid_bc.getSweep()), "Boundary Handling (No slip fluid)");
@@ -1063,8 +1077,19 @@ int main(int argc, char** argv)
                            "Set particle velocities from fluid sweepcollection");
    timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping Thermal"); // always uses a weighting of 1
 
-   timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep");
+   // compute the force before the psm fluid sweep.
 
+   timeloop.add() << BeforeFunction([&]() { forceCalculator.calculateBulkVelocity(); }, "bulk velocity calculation")
+                  << BeforeFunction(
+                        [&]() {
+                           forceCalculator.calculateDrivingForce();
+                           const auto newForce = forceCalculator.getCurrentDrivingForce();
+                           setNewForce(newForce);
+                        },
+                        "new force setter")
+                  << Sweep([](IBlock*) {}, "new force setter");
+
+   timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep");
 
    timeloop.add() << Sweep(deviceSyncWrapper(psmTemperatureSweep), "PSM Temperature sweep");
 
