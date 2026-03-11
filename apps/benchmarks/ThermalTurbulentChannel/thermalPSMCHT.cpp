@@ -1123,63 +1123,77 @@ int main(int argc, char** argv)
    MeanPlaneAverager meanPlaneAverager(uint_c(domainSize[2]));
    HeatFluxBudgets heatFluxBudgets(uint_c(domainSize[2]),1, thermalDiffusivityFluid_LB, thermalDiffusivityParticle_LB,averagingTimeBlock,meanPlaneAverager);
 
-   // time loop
-   for (uint_t timeStep = 0; timeStep < numTimeSteps; ++timeStep)
-   {
-      // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
-      timeloop.singleStep(timeloopTiming);
+   // Timestep tracking for lambda functions
 
+   // Add GPU fields copy function
+   auto gpuFieldsCopy = [&]() {
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
       gpu::fieldCpy< DensityField_temperature_T, gpu::GPUField< real_t > >(blocks, temperatureFieldID,
-                                                                           temperatureFieldCPUGPUID);
+                                                                            temperatureFieldCPUGPUID);
       gpu::fieldCpy< VelocityField_fluid_T, gpu::GPUField< real_t > >(blocks, velFieldFluidID,
-                                                                      velFieldFluidCPUGPUID);
+                                                                       velFieldFluidCPUGPUID);
       gpu::fieldCpy< GhostLayerField< real_t, 1 >, BFieldGPU_T >(blocks, BFieldID,
-                                                                 particleAndVolumeFractionSoA_temperature.BFieldID);
+                                                                  particleAndVolumeFractionSoA_temperature.BFieldID);
+#endif
+   };
 
-      wallNormalHeatFlux.RunningMeanHeatFluxOutput(blocks, temperatureFieldID,
-                                                   BFieldID, timeStep,outputFrequency );
+   timeloop.addFuncAfterTimeStep(gpuFieldsCopy, "GPU Fields Copy");
 
-      wallNormalHeatFlux.checkForConvergence(convergenceTolerance, timeStep,timeBlock);
+   // Add heat flux computation function
+   auto HeatFluxLamdas = [&]() {
+#ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
+      wallNormalHeatFlux.RunningMeanHeatFluxOutput(blocks, temperatureFieldID, BFieldID, timeloop.getCurrentTimeStep(),
+                                                   outputFrequency);
+
+      wallNormalHeatFlux.checkForConvergence(convergenceTolerance, timeloop.getCurrentTimeStep(), timeBlock);
 
       if (wallNormalHeatFlux.convergenceStatus() == true)
       {
-         //WALBERLA_LOG_INFO_ON_ROOT("converged at timestep " << timeStep);
-
-         if (meanPlaneAverager.getTimeCounter() < 2*timeBlock)
+         if (meanPlaneAverager.getTimeCounter() < 2 * timeBlock)
          {
-            if(meanPlaneAverager.getTimeCounter() % 1000 == 0) { WALBERLA_LOG_INFO_ON_ROOT("still i0n  the pre part  " << meanPlaneAverager.getTimeCounter()) }
-            meanPlaneAverager(blocks, velFieldFluidID, temperatureFieldID,
-                              BFieldID);
+            if (meanPlaneAverager.getTimeCounter() % 1000 == 0)
+            {
+               WALBERLA_LOG_INFO_ON_ROOT("still i0n  the pre part  " << meanPlaneAverager.getTimeCounter())
+            }
+            meanPlaneAverager(blocks, velFieldFluidID, temperatureFieldID, BFieldID);
          }
-         if (meanPlaneAverager.getTimeCounter() == 2*timeBlock)
+         if (meanPlaneAverager.getTimeCounter() == 2 * timeBlock)
          {
             WALBERLA_LOG_INFO_ON_ROOT("entered the averagin part")
-            heatFluxBudgets(blocks, velFieldFluidID, temperatureFieldID,
-                            BFieldID);
+            heatFluxBudgets(blocks, velFieldFluidID, temperatureFieldID, BFieldID);
          }
       }
-
 #else
       wallNormalHeatFlux.RunningMeanHeatFluxOutput(blocks, temperatureFieldCPUGPUID,
-                                                   particleAndVolumeFractionSoA_temperature.BFieldID, timeStep,outputFrequency );
+                                                   particleAndVolumeFractionSoA_temperature.BFieldID,
+                                                   timeloop.getCurrentTimeStep(), outputFrequency);
 
-      wallNormalHeatFlux.checkForConvergence(convergenceTolerance, timeStep,timeBlock);
+      wallNormalHeatFlux.checkForConvergence(convergenceTolerance, timeloop.getCurrentTimeStep(), timeBlock);
 
       if (wallNormalHeatFlux.convergenceStatus() == true)
       {
-         if (meanPlaneAverager.getTimeCounter() < 2*timeBlock)
+         if (meanPlaneAverager.getTimeCounter() < 2 * timeBlock)
          {
             meanPlaneAverager(blocks, velFieldFluidCPUGPUID, temperatureFieldCPUGPUID,
                               particleAndVolumeFractionSoA_temperature.BFieldID);
          }
-         if (meanPlaneAverager.getTimeCounter() == 2*timeBlock)
+         if (meanPlaneAverager.getTimeCounter() == 2 * timeBlock)
          {
             heatFluxBudgets(blocks, velFieldFluidCPUGPUID, temperatureFieldCPUGPUID,
                             particleAndVolumeFractionSoA_temperature.BFieldID);
          }
       }
 #endif
+   };
+
+   timeloop.addFuncAfterTimeStep(HeatFluxLamdas, "Compute Convergence and heat flux budgets");
+
+   // time loop
+   for (uint_t timeStep = 0; timeStep < numTimeSteps; ++timeStep)
+   {
+
+      // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
+      timeloop.singleStep(timeloopTiming);
 
       if (particleBarriers) WALBERLA_MPI_BARRIER();
       timeloopTiming["RPD forEachParticle assoc"].start();

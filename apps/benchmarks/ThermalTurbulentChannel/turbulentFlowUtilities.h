@@ -102,4 +102,98 @@ class ForceCalculator
    real_t force_{};
    real_t oldforce_{};
 };
-}
+
+/// PLANE-AVERAGED PROFILES
+/**
+ * \brief Computes simple plane-averaged values along the wall normal axis.
+ *
+ * For scalar fields: Returns vector of averaged scalars at each height.
+ * For vector fields: Returns vector of wall-normal component at each height.
+ *
+ * Averaging is done in streamwise and spanwise directions only.
+ */
+template< typename Field_T >
+class PlaneAveragedProfile
+{
+ public:
+
+   PlaneAveragedProfile(const std::shared_ptr< StructuredBlockStorage >& blocks,
+                       const BlockDataID fieldId,
+                       const uint_t wallAxis,
+                       const Vector3<real_t>& domainSize)
+      : blocks_(blocks), fieldId_(fieldId), wallAxis_(wallAxis), numHeights_(uint_c(domainSize[ wallAxis]))
+   {
+      profile_.resize(numHeights_, 0_r);
+      counts_.resize(numHeights_, 0);
+      timeAveragedProfile_.resize(numHeights_, 0_r);
+      timeStepCount_ = 0;
+   }
+
+   void computeAveragedProfiles()
+   {
+      std::fill(profile_.begin(), profile_.end(), 0_r);
+      std::fill(counts_.begin(), counts_.end(), 0);
+
+      for (auto blockIt = blocks_->begin(); blockIt != blocks_->end(); ++blockIt)
+      {
+         auto* field = blockIt->template getData< Field_T >(fieldId_);
+         WALBERLA_CHECK_NOT_NULLPTR(field);
+
+         const auto ci = field->xyzSize();
+
+         for (auto cellIt = ci.begin(); cellIt != ci.end(); ++cellIt)
+         {
+            Cell globalCell(*cellIt);
+            blocks_->transformBlockLocalToGlobalCell(globalCell, *blockIt);
+
+            uint_t heightIdx = uint_c(globalCell[wallAxis_]);
+
+            if (heightIdx < numHeights_)
+            {
+               real_t value = 0_r;
+
+               if (Field_T::F_Size == 3)
+               {
+                  // For velocity: get wall-normal component (wallAxis direction)
+                  value = field->get(*cellIt, wallAxis_);
+               }
+               else
+               {
+                  // For scalar: get the value
+                  value = field->get(*cellIt);
+               }
+
+               profile_[heightIdx] += value;
+               counts_[heightIdx]++;
+            }
+         }
+      }
+
+      mpi::allReduceInplace(profile_, mpi::SUM);
+      mpi::allReduceInplace(counts_, mpi::SUM);
+
+      timeStepCount_++;
+      for (uint_t h = 0; h < numHeights_; ++h)
+      {
+         if (counts_[h] > 0)
+         {
+            profile_[h] /= real_c(counts_[h]);
+            timeAveragedProfile_[h] += (profile_[h] - timeAveragedProfile_[h])/real_c(timeStepCount_);
+         }
+      }
+   }
+
+ private:
+   const std::shared_ptr< StructuredBlockStorage > blocks_;
+   const BlockDataID fieldId_;
+   const uint_t wallAxis_;
+   const uint_t numHeights_;
+
+   std::vector< real_t > profile_;
+   std::vector< uint_t > counts_;
+   std::vector< real_t > timeAveragedProfile_;
+   uint_t timeStepCount_;
+};
+
+}  // namespace walberla
+

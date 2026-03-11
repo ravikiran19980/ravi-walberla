@@ -499,4 +499,98 @@ class HeatFluxBudgets
    }
 };
 
+class WallNusseltNumber
+{
+ public:
+   WallNusseltNumber(uint_t Nz, real_t dz, const std::string& nusseltFileName = "nusseltNumber.txt") : Nz_(Nz), dz_(dz)
+   {
+      WALBERLA_ROOT_SECTION()
+      {
+         outFile_.open(nusseltFileName, std::ios::out);
+         outFile_ << "timeStep Nu_bottom Nu_top Nu_time_avg" << std::endl;
+      }
+   }
+
+   ~WallNusseltNumber()
+   {
+      WALBERLA_ROOT_SECTION() { outFile_.close(); };
+   };
+
+   void operator()(const shared_ptr< StructuredBlockStorage >& blocks, const BlockDataID& tempFieldID, uint_t timeStep,
+                   uint_t outputFrequency, const real_t T_wall_top, const real_t T_wall_bottom)
+   {
+      real_t nuBottom                   = 0.0;
+      real_t nuTop                      = 0.0;
+      uint_t countBottom                = 0;
+      uint_t countTop                   = 0;
+      real_t instantaneousNusseltNumber = 0.0;
+
+      for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
+      {
+         auto& block = *blockIt;
+         auto Tfield = block.getData< DensityField_concentration_T >(tempFieldID);
+
+         WALBERLA_FOR_ALL_CELLS_XYZ(
+            Tfield, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
+
+            const uint_t j = uint_c(cell.z());
+
+            // Bottom wall (j = 0): dT/dz = (-8*T0 + 9*T1 - T2) / (3*dz)  since wall situated at half distance from center of bottom cell
+            if (j == 0) {
+               const real_t T0   = T_wall_bottom;
+               const real_t T1   = Tfield->get(x, y, z + 1);
+               const real_t T2   = Tfield->get(x, y, z + 2);
+               const real_t dTdz = (-8.0 * T0 + 9.0 * T1 - T2) / (3.0 * dz_);
+               nuBottom += dTdz;
+               countBottom++;
+            }
+            // Top wall (j = Nz - 1): dT/dz = (8*T0 - 9*T1 + T2) / (3*dz) since wall situated at half distance from center of top cell
+            else if (j == Nz_ - 1) {
+               const real_t T0   = T_wall_top;
+               const real_t T1   = Tfield->get(x, y, z - 1);
+               const real_t T2   = Tfield->get(x, y, z - 2);
+               const real_t dTdz = (8.0 * T0 - 9.0 * T1 + T2) / (3.0 * dz_);
+               nuTop += dTdz;
+               countTop++;
+            })
+      }
+
+      // MPI reduction
+      WALBERLA_MPI_SECTION()
+      {
+         mpi::allReduceInplace(nuBottom, mpi::SUM);
+         mpi::allReduceInplace(nuTop, mpi::SUM);
+         mpi::allReduceInplace(countBottom, mpi::SUM);
+         mpi::allReduceInplace(countTop, mpi::SUM);
+      }
+
+      // Average over cells at wall
+      if (countBottom > 0) nuBottom /= real_c(countBottom);
+      if (countTop > 0) nuTop /= real_c(countTop);
+      instantaneousNusseltNumber = (std::abs(nuBottom) + std::abs(nuTop)) / real_c(2);
+      sampleCount_ += 1;
+      runningNusseltAvg_ += (instantaneousNusseltNumber - runningNusseltAvg_) / real_c(sampleCount_);
+      if (timeStep % outputFrequency == 0)
+      {
+         WALBERLA_ROOT_SECTION() { outFile_ << timeStep << " " << nuBottom << " " << nuTop << " " << runningNusseltAvg_ << std::endl; }
+      }
+   }
+
+   real_t getWallAveragedNusseltNumber() const { return runningNusseltAvg_; }
+
+ private:
+   uint_t Nz_;
+   real_t dz_;
+   std::ofstream outFile_;
+   real_t runningNusseltAvg_ = 0.0;
+   uint_t sampleCount_       = 0.0;
+};
+
+
+
+
+
+
+
+
 } // namespace MaterialTransport

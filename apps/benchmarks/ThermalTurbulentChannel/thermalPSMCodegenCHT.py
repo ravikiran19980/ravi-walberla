@@ -48,6 +48,10 @@ const bool infoCseGlobal = {cse_global};
 const bool infoCsePdfs = {cse_pdfs};
 """
 
+def check_axis(flow_axis, wall_axis):
+    assert flow_axis != wall_axis, "Axes must be distinct."
+    assert all(0 <= axis < 3 for axis in (flow_axis, wall_axis)), "Axes must be between 0 and 2."
+
 
 with CodeGeneration() as ctx:
     data_type = "float64" if ctx.double_accuracy else "float32"
@@ -81,6 +85,12 @@ with CodeGeneration() as ctx:
     # Solid collision variant
     SC = int(config_tokens[1])
 
+    flow_axis  = 0
+    wall_axis  = 1
+
+    check_axis(flow_axis=flow_axis, wall_axis=wall_axis)
+    force_on_fluid = [0] * 3
+    force_on_fluid[flow_axis] = forcex
 
     # Fluid PDFs and fields
     pdfs_fluid, pdfs_fluid_tmp, velocity_field, density_field = ps.fields(
@@ -110,10 +120,6 @@ with CodeGeneration() as ctx:
 
     force_temperature_on_fluid = sp.Matrix([0, 0,(rho_0)*alpha*(temperature_field.center - T0)*gravity_LBM])
 
-    flow_axis = 0
-
-    force_on_fluid  = [forcex,0,0]
-    print("force on fluid vec is  ", force_on_fluid[0], " ", force_on_fluid[1], " " ,force_on_fluid[2])
     # Fluid LBM optimisation
     lbm_fluid_opt = LBMOptimisation(
         cse_global=True,
