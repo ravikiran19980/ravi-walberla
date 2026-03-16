@@ -57,61 +57,21 @@ class PSMSweepCollection
    PSMSweepCollection(const shared_ptr< StructuredBlockStorage >& bs, const shared_ptr< ParticleAccessor_T >& ac,
                       const ParticleSelector_T& ps,
                       ParticleAndVolumeFractionSoA_T< Weighting_T >& particleAndVolumeFractionSoA,
-                      BlockDataID & densityConcentrationFieldCPUGPUID,
-                      const Vector3< uint_t > particleSubBlockSize = Vector3< uint_t >(10),
-                      bool uniformParticleTemperature = false)
+                      const Vector3< uint_t > particleSubBlockSize = Vector3< uint_t >(10))
       : particleMappingSweep(SphereFractionMappingSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >(
            bs, ac, ps, particleAndVolumeFractionSoA, particleSubBlockSize)),
         setParticleVelocitiesSweep(SetParticleVelocitiesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >(
            bs, ac, ps, particleAndVolumeFractionSoA)),
         reduceParticleForcesSweep(ReduceParticleForcesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >(
            bs, ac, ps, particleAndVolumeFractionSoA))
-        //setParticleTemperaturesSweep( SetParticleTemperaturesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >(
-        //   bs, ac, ps, particleAndVolumeFractionSoA, densityConcentrationFieldCPUGPUID,uniformParticleTemperature))
 
    {}
-
 
    SphereFractionMappingSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T > particleMappingSweep;
    SetParticleVelocitiesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T > setParticleVelocitiesSweep;
    ReduceParticleForcesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T > reduceParticleForcesSweep;
-   //SetParticleTemperaturesSweep< ParticleAccessor_T, ParticleSelector_T, Weighting_T >setParticleTemperaturesSweep;
 };
 
-template< typename SweepCollection, typename PSMSweepFluid,typename PSMSweepTemperature >
-void addThermalPSMSweepToTimeloop(SweepTimeloop& timeloop, SweepCollection& psmSweepCollection, PSMSweepFluid& psmFluidSweep,PSMSweepTemperature& psmTempSweep)
-{
-   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollection.particleMappingSweep), "Particle mapping");
-   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollection.setParticleVelocitiesSweep),
-                           "Set particle velocities");
-   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollection.setParticleTemperaturesSweep),
-                           "Set particle temperatures");
-
-   timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep");
-
-   timeloop.add() << Sweep(deviceSyncWrapper(psmTempSweep), "PSM Concentration sweep");
-
-   // after both the sweeps, reduce the particle forces.
-   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollection.reduceParticleForcesSweep),
-                           "Reduce particle forces");
-}
-
-template< typename SweepCollectionFluid,typename SweepCollectionTemperature,typename PSMSweepFluid,typename PSMSweepCHT>
-void addCHTPSMSweepToTimeloop(SweepTimeloop& timeloop, SweepCollectionFluid& psmSweepCollectionFluid, SweepCollectionTemperature& psmSweepCollectionTemperature,PSMSweepFluid& psmFluidSweep,PSMSweepCHT& psmEnergySweep)
-{
-   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.particleMappingSweep), "Particle mapping Fluid"); // uses weighting for hydrodynamics specified in Cmakelists file
-   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping Thermal"); // always uses a weighting of 1
-   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.setParticleVelocitiesSweep),
-                           "Set particle velocities");
-
-   timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep");
-
-   timeloop.add() << Sweep(deviceSyncWrapper(psmEnergySweep), "PSM Energy sweep");
-
-   // after both the sweeps, reduce the particle forces.
-   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.reduceParticleForcesSweep),
-                           "Reduce particle forces");
-}
 
 
 
