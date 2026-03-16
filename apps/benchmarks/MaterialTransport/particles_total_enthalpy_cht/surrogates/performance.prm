@@ -1,0 +1,73 @@
+PhysicalSetup // all to be specified in SI/ref units
+{
+
+    xSize 0.256; // = width  // 4dp
+    ySize 0.256; // = depth  // 4dp
+    zSize 0.512; // = height  // 20dp
+
+    periodicInX false;
+    periodicInY false;
+    periodicInZ false;
+
+    runtime 3;
+    densityFluid 1.;
+    particleDiameter 0.016;
+    densityParticle 1.1;
+    particleRe 0.5;
+    dynamicFrictionCoefficient 0.15;  // wachs, 0.15 originally
+    coefficientOfRestitution 0.6;    // wachs  , 0.6 originally
+    collisionTimeFactor 1.0;
+
+}
+
+NumericalSetup
+{
+    dx 0.001; // in m
+    dt 0.001;  // this is the dt_SI if at all uInflow is set to 0.
+    Uc 0.005;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
+    // product of number of blocks should be equal to number of used processes
+    numXBlocks 2;
+    numYBlocks 1;
+    numZBlocks 4;
+
+    use2DRefVel false;
+    useLubricationForces true;
+    numberOfParticleSubCycles 1;
+    useParticles true;
+    useIntegrators true;
+    particleSubBlockSize <8, 8, 8>;
+    linkedCellWidthRation 1.01;
+    particleBarriers true;
+    generationDomainFraction <0.85,0.85,0.75>;
+    SingleparticleLocation <0.064,0.064,0.128>;
+    particleGenerationSpacing <0.016,0.016,0.016>;
+    writeSlice true;
+    sendDirectlyFromGPU true;
+    resThreshold 1e-5;
+    volfraction 0.4;
+    randomParticles false;
+    useCommunicationHiding true;
+}
+
+TemperatureSetup
+{
+    Thot 1;   // ThotSI = ThotLB   (concentration conversion from SI to LB)
+    Tcold 0;
+    Tref  0;
+    Tparticle 0;
+    PrandtlNumber 0.7;
+    Cpf 1;
+    Cps 1;
+    Kr  15;
+    Gr 1000;
+    Qso 0.001;
+}
+
+Output
+{
+    infoSpacing 0; // in s
+    vtkSpacingParticles 0; // in s
+    vtkSpacingFluid 0; // in s
+    vtkFolder vtk_out;
+    performanceLogFrequency 3000;
+}
