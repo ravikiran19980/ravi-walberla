@@ -35,6 +35,7 @@ from pystencils.cache import clear_cache
 from thermalMethods import create_thermal_lb_method#,create_psm_thermal_collision_rule
 from lbmpy.maxwellian_equilibrium import get_weights
 from lbmpy.enums import Stencil, Method, CollisionSpace
+from lbmpy.flow_statistics import welford_assignments
 #clear_cache()
 
 
@@ -97,11 +98,18 @@ with CodeGeneration() as ctx:
         f"pdfs_fluid({stencil_fluid.Q}), pdfs_fluid_tmp({stencil_fluid.Q}), velocity_field({stencil_fluid.D}), density_field({1}): {data_type}[3D]",
         layout=layout,
     )
+    mean_velocity_field = ps.fields(f"mean_velocity_field({stencil_fluid.D}): {data_type}[{stencil_fluid.D}D]", layout=layout)
+    sum_of_squares_velocity_field = ps.fields(f"sum_of_squares_velocity_field({stencil_fluid.D**2}): {data_type}[{stencil_fluid.D}D]", layout=layout)
+
     # temperature PDFs and fields
     temperature_field = ps.fields(
         f"temperature_field({1}): {data_type}[3D]",
         layout=layout,
     )
+
+    mean_temperature_field = ps.fields(f"mean_temperature_field({1}): {data_type}[{stencil_fluid.D}D]", layout=layout)
+    sum_of_squares_temperature_field = ps.fields(f"sum_of_squares_temperature_field({1}): {data_type}[{stencil_fluid.D}D]", layout=layout)
+
 
     pdfs_temperature, pdfs_temperature_tmp = ps.fields(
         f"pdfs_temperature({stencil_temperature.Q}), pdfs_temperature_tmp({stencil_temperature.Q}): {data_type}[3D]",
@@ -362,7 +370,57 @@ with CodeGeneration() as ctx:
 
 
 
+    # welford for the fluid:
 
+    masked_velocity_field_fluid = ps.fields(f"masked_velocity_field_fluid({stencil_fluid.D}): {data_type}[{stencil_fluid.D}D]", layout=layout)
+    masked_temperature_field_fluid = ps.fields(f"masked_temperature_field_fluid({1}): {data_type}[{stencil_fluid.D}D]", layout=layout)
+
+    mean_velocity_fluid = ps.fields(f"mean_velocity_fluid({stencil_fluid.D}): {data_type}[{stencil_fluid.D}D]", layout=layout)
+    sos_velocity_fluid = ps.fields(f"sos_velocity_fluid({stencil_fluid.D**2}): {data_type}[{stencil_fluid.D}D]", layout=layout)
+
+    mean_temperature_fluid = ps.fields(f"mean_temperature_fluid({1}): {data_type}[{stencil_fluid.D}D]", layout=layout)
+    sos_temperature_fluid = ps.fields(f"sos_temperature_fluid({1}): {data_type}[{stencil_fluid.D}D]", layout=layout)
+
+
+
+    welford_update_velocity_fluid = welford_assignments(field=masked_velocity_field_fluid, mean_field=mean_velocity_fluid,
+                                                  sum_of_squares_field=sos_velocity_fluid)
+    generate_sweep(ctx, "WelfordVelocity_Fluid", welford_update_velocity_fluid, target=target)
+
+    welford_update_temperature_fluid = welford_assignments(field=masked_temperature_field_fluid, mean_field=mean_temperature_fluid,
+                                                     sum_of_squares_field=sos_temperature_fluid)
+    generate_sweep(ctx, "WelfordTemperature_Fluid", welford_update_temperature_fluid, target=target)
+
+
+
+
+    # welford for the particles
+    masked_velocity_field_particle = ps.fields(f"masked_velocity_field_particle({stencil_fluid.D}): {data_type}[{stencil_fluid.D}D]", layout=layout)
+    masked_temperature_field_particle = ps.fields(f"masked_temperature_field_particle({1}): {data_type}[{stencil_fluid.D}D]", layout=layout)
+
+    mean_velocity_particle = ps.fields(f"mean_velocity_particle({stencil_fluid.D}): {data_type}[{stencil_fluid.D}D]", layout=layout)
+    sos_velocity_particle = ps.fields(f"sos_velocity_particle({stencil_fluid.D**2}): {data_type}[{stencil_fluid.D}D]", layout=layout)
+
+    mean_temperature_particle = ps.fields(f"mean_temperature_particle({1}): {data_type}[{stencil_fluid.D}D]", layout=layout)
+    sos_temperature_particle = ps.fields(f"sos_temperature_particle({1}): {data_type}[{stencil_fluid.D}D]", layout=layout)
+
+    welford_update_velocity_particle = welford_assignments(field=masked_velocity_field_particle, mean_field=mean_velocity_particle,
+                                                        sum_of_squares_field=sos_velocity_particle)
+    generate_sweep(ctx, "WelfordVelocity_particle", welford_update_velocity_particle, target=target)
+
+    welford_update_temperature_particle = welford_assignments(field=masked_temperature_field_particle, mean_field=mean_temperature_particle,
+                                                       sum_of_squares_field=sos_temperature_particle)
+    generate_sweep(ctx, "WelfordTemperature_particle", welford_update_temperature_particle, target=target)
+
+    @ps.kernel
+    def maskFields():
+        masked_velocity_field_fluid.center @= (1 - B.center) * velocity_field.center
+        masked_velocity_field_particle.center @= (B.center) *  velocity_field.center
+        masked_temperature_field_fluid.center @= (1 - B.center) * temperature_field.center
+        masked_temperature_field_particle.center @= (B.center) *  temperature_field.center
+
+    maskFields_ac = ps.AssignmentCollection(maskFields)
+    generate_sweep(ctx, "MaskFields", maskFields_ac)
 
 
     stencil_typedefs = {"Stencil_Fluid_T": stencil_fluid, "CommunicationStencil_Fluid_T": stencil_fluid
