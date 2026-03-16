@@ -29,8 +29,7 @@
 #include "vtk/Base64Writer.h"
 #include "vtk/UtilityFunctions.h"
 
-#include "core/Filesystem.h"
-
+#include <filesystem>
 #include <iostream>
 #include <vector>
 #include <set>
@@ -152,17 +151,17 @@ void VTKMeshWriter<MeshType>::writeVertexData( const T & vertexDataSources, cons
 {
    typedef typename T::value_type::element_type::value_type value_type;
 
-   for( auto dsIt = vertexDataSources.begin(); dsIt != vertexDataSources.end(); ++dsIt )
+   for( const auto &ds : vertexDataSources )
    {
       std::vector< value_type > data;
-      (*dsIt)->getData( *mesh_, vertices, data );
+      ds->getData( *mesh_, vertices, data );
 
-      WALBERLA_CHECK_EQUAL( vertices.size() * (*dsIt)->numComponents(), data.size(), "The vertex data source \"" << (*dsIt)->name() << "\" wrote the wrong amount of data!" );
+      WALBERLA_CHECK_EQUAL( vertices.size() * ds->numComponents(), data.size(), "The vertex data source \"" << ds->name() << "\" wrote the wrong amount of data!" );
 
-      os << "        <DataArray type=\"" << vtk::typeToString<value_type>() << "\" Name=\"" << (*dsIt)->name() << "\" NumberOfComponents=\"" << (*dsIt)->numComponents() << "\" format=\"binary\">\n";
+      os << "        <DataArray type=\"" << vtk::typeToString<value_type>() << "\" Name=\"" << ds->name() << "\" NumberOfComponents=\"" << ds->numComponents() << "\" format=\"binary\">\n";
       os << "          ";
-      for( auto it = data.begin(); it != data.end(); ++it )
-         b64 << *it;
+      for( const auto &value : data )
+         b64 << value;
       b64.toStream( os );
       os << "        </DataArray>\n";
    }
@@ -175,17 +174,17 @@ void VTKMeshWriter<MeshType>::writeFaceData( const T & faceDataSources, const Fa
 {
    typedef typename T::value_type::element_type::value_type value_type;
 
-   for( auto dsIt = faceDataSources.begin(); dsIt != faceDataSources.end(); ++dsIt )
+   for( const auto &ds : faceDataSources )
    {
       std::vector< value_type > data;
-      (*dsIt)->getData( *mesh_, faces, data );
+      ds->getData( *mesh_, faces, data );
 
-      WALBERLA_CHECK_EQUAL( faces.size() * (*dsIt)->numComponents(), data.size(), "The face data source \"" << (*dsIt)->name() << "\" wrote the wrong amount of data!" );
+      WALBERLA_CHECK_EQUAL( faces.size() * ds->numComponents(), data.size(), "The face data source \"" << ds->name() << "\" wrote the wrong amount of data!" );
 
-      os << "        <DataArray type=\"" << vtk::typeToString<value_type>() << "\" Name=\"" << (*dsIt)->name() << "\" NumberOfComponents=\"" << (*dsIt)->numComponents() << "\" format=\"binary\">\n";
+      os << "        <DataArray type=\"" << vtk::typeToString<value_type>() << "\" Name=\"" << ds->name() << "\" NumberOfComponents=\"" << ds->numComponents() << "\" format=\"binary\">\n";
       os << "          ";
-      for( auto it = data.begin(); it != data.end(); ++it )
-         b64 << *it;
+      for( const auto &value : data )
+         b64 << value;
       b64.toStream( os );
       os << "        </DataArray>\n";
    }
@@ -201,15 +200,15 @@ VTKMeshWriter<MeshType>::VTKMeshWriter( const shared_ptr<const MeshType> & mesh,
    {
       std::ostringstream folder;
       folder << baseFolder_ << '/' << identifier_;
-      if( filesystem::exists( folder.str() ) )
-         filesystem::remove_all( folder.str() );
+      if( std::filesystem::exists( folder.str() ) )
+         std::filesystem::remove_all( folder.str() );
 
       std::ostringstream pvdFile;
       pvdFile << baseFolder_ << '/' << identifier_ << ".pvd";
-      if( filesystem::exists( pvdFile.str() ) )
-         filesystem::remove( pvdFile.str() );
+      if( std::filesystem::exists( pvdFile.str() ) )
+         std::filesystem::remove( pvdFile.str() );
 
-      filesystem::create_directories( folder.str() );
+      std::filesystem::create_directories( folder.str() );
    }
    WALBERLA_MPI_BARRIER();
 }
@@ -260,13 +259,13 @@ void VTKMeshWriter<MeshType>::writePiece( std::ostream & os ) const
       << "        <DataArray type=\"" << vtk::typeToString<typename MeshType::Point::value_type>() << "\" NumberOfComponents=\"3\" format=\"binary\">\n";
 
    os << "          ";
-   std::map<typename MeshType::VertexHandle, int > vertexIndizes;
+   std::map<typename MeshType::VertexHandle, int > vertexIndices;
    int32_t vertexCounter = 0;
-   for( auto it = vertices.begin(); it != vertices.end(); ++it )
+   for( const auto &vertex : vertices )
    {
-      const auto & p = mesh_->point( *it );
+      const auto & p = mesh_->point( vertex );
       b64 << p[0] << p[1] << p[2];
-      vertexIndizes[ *it ] = vertexCounter++;
+      vertexIndices[ vertex ] = vertexCounter++;
    }
    b64.toStream( os );
 
@@ -280,12 +279,12 @@ void VTKMeshWriter<MeshType>::writePiece( std::ostream & os ) const
    std::vector<int32_t> offsets;
    offsets.reserve( numFaces );
    int32_t currentOffset = 0;
-   for( auto it = faces.begin(); it != faces.end(); ++it )
+   for( const auto &face : faces )
    {
       int32_t nv = 0;
-      for( auto v_it = mesh_->cfv_ccwbegin( *it ); v_it != mesh_->cfv_ccwend( *it ); ++v_it, ++nv )
+      for( auto v_it = mesh_->cfv_ccwbegin( face ); v_it != mesh_->cfv_ccwend( face ); ++v_it, ++nv )
       {
-         b64 << vertexIndizes[ *v_it ];
+         b64 << vertexIndices[ *v_it ];
       }
 
       currentOffset += nv;

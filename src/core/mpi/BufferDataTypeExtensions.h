@@ -1,15 +1,15 @@
 //======================================================================================================================
 //
-//  This file is part of waLBerla. waLBerla is free software: you can 
+//  This file is part of waLBerla. waLBerla is free software: you can
 //  redistribute it and/or modify it under the terms of the GNU General Public
-//  License as published by the Free Software Foundation, either version 3 of 
+//  License as published by the Free Software Foundation, either version 3 of
 //  the License, or (at your option) any later version.
-//  
-//  waLBerla is distributed in the hope that it will be useful, but WITHOUT 
-//  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
-//  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License 
+//
+//  waLBerla is distributed in the hope that it will be useful, but WITHOUT
+//  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+//  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 //  for more details.
-//  
+//
 //  You should have received a copy of the GNU General Public License along
 //  with waLBerla (see COPYING.txt). If not, see <http://www.gnu.org/licenses/>.
 //
@@ -28,9 +28,6 @@
 #include "core/Conversion.h"
 #include "core/DataTypes.h"
 #include "core/math/Uint.h"
-#if __cplusplus >= 201703L || defined(_MSC_VER)
-#include "core/Optional.h"
-#endif
 #include "core/RandomUUID.h"
 
 #include <array>
@@ -38,6 +35,7 @@
 #include <limits>
 #include <list>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -553,7 +551,6 @@ template<typename T, typename K, typename C, typename A>
 struct BufferSizeTrait< std::multimap<K,T,C,A> > { static const bool constantSize = false;  };
 
 
-#if __cplusplus >= 201703L || defined(_MSC_VER)
 // ---------------------------------------------------------------------------------------------------------------------
 // ------------------------------------------- optional Support --------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------------
@@ -561,12 +558,12 @@ struct BufferSizeTrait< std::multimap<K,T,C,A> > { static const bool constantSiz
 template< typename T,    // Element type of SendBuffer
           typename G,    // Growth policy of SendBuffer
           typename OT>   // Optional type
-GenericSendBuffer<T,G>& operator<<( GenericSendBuffer<T,G> & buf, const walberla::optional<OT> & o )
+GenericSendBuffer<T,G>& operator<<( GenericSendBuffer<T,G> & buf, const std::optional<OT> & o )
 {
    buf.addDebugMarker( "op" );
 
    bool hasContent = true;
-   if (o == walberla::nullopt)
+   if (o == std::nullopt)
       hasContent = false;
 
    buf << hasContent;
@@ -579,7 +576,7 @@ GenericSendBuffer<T,G>& operator<<( GenericSendBuffer<T,G> & buf, const walberla
 
 template< typename T,    // Element type of RecvBuffer
           typename OT>   // Optional type
-GenericRecvBuffer<T>& operator>>( GenericRecvBuffer<T> & buf, walberla::optional<OT> & o )
+GenericRecvBuffer<T>& operator>>( GenericRecvBuffer<T> & buf, std::optional<OT> & o )
 {
    buf.readDebugMarker( "op" );
 
@@ -599,12 +596,11 @@ GenericRecvBuffer<T>& operator>>( GenericRecvBuffer<T> & buf, walberla::optional
    }
    else
    {
-      o = walberla::nullopt;
+      o = std::nullopt;
    }
 
    return buf;
 }
-#endif
 
 // ---------------------------------------------------------------------------------------------------------------------
 // --------------------------------------- RandomUUID Support ----------------------------------------------------------

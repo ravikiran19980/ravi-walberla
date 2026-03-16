@@ -51,26 +51,30 @@ public:
 
 protected:
 
+// Suppressed because waLBerla relies on templated polymorphic interfaces (see Issue 305).
+// NOLINTNEXTLINE(portability-template-virtual-member-function)
    void configure() override
    {
       WALBERLA_ASSERT_NOT_NULLPTR( this->block_ );
       flagField_ = this->block_->template getData< FlagField_T >( flagId_ );
 
-      for( auto mapping = mapping_.begin(); mapping != mapping_.end(); ++mapping )
+      for( const auto &[uid, flag] : mapping_ )
       {
-         if( flagField_->flagExists( mapping->first ) ) {
-            flagMap_[ flagField_->getFlag( mapping->first ) ] = mapping->second;
+         if( flagField_->flagExists( uid ) ) {
+            flagMap_[ flagField_->getFlag( uid ) ] = flag;
          }
       }
    }
 
+// Suppressed because waLBerla relies on templated polymorphic interfaces (see Issue 305).
+// NOLINTNEXTLINE(portability-template-virtual-member-function)
    T evaluate( const cell_idx_t x, const cell_idx_t y, const cell_idx_t z, const cell_idx_t /*f*/ ) override
    {
       WALBERLA_ASSERT_NOT_NULLPTR( flagField_ );
       T result = 0;
-      for( auto mapping = flagMap_.begin(); mapping != flagMap_.end(); ++mapping )
-         if( flagField_->isFlagSet( x, y, z, mapping->first ) )
-            result = static_cast<T>( result | mapping->second );
+      for( const auto &[uid, flag] : flagMap_ )
+         if( flagField_->isFlagSet( x, y, z, uid ) )
+            result = static_cast<T>( result | flag );
       return result;
    }
 
@@ -94,11 +98,15 @@ public:
 
 protected:
 
+// Suppressed because waLBerla relies on templated polymorphic interfaces (see Issue 305).
+// NOLINTNEXTLINE(portability-template-virtual-member-function)
    void configure() override {
       WALBERLA_ASSERT_NOT_NULLPTR( this->block_ );
       field_ = this->block_->template getData< FieldType >( fieldID_ );
    }
 
+// Suppressed because waLBerla relies on templated polymorphic interfaces (see Issue 305).
+// NOLINTNEXTLINE(portability-template-virtual-member-function)
    TargetType evaluate( const cell_idx_t x, const cell_idx_t y, const cell_idx_t z, const cell_idx_t /*f*/ ) override
    {
       WALBERLA_ASSERT_NOT_NULLPTR( field_ );

@@ -48,9 +48,11 @@ waLBerla_add_test_executable ( FieldInterpolationTest interpolators/FieldInterpo
 target_link_libraries ( FieldInterpolationTest walberla::core walberla::field )
 waLBerla_execute_test( NAME FieldInterpolationTest )
 
-waLBerla_add_test_executable ( AdaptorTest adaptors/AdaptorTest.cpp )
-target_link_libraries ( AdaptorTest walberla::blockforest walberla::lbm walberla::core walberla::field )
-waLBerla_execute_test( NAME AdaptorTest )
+if( WALBERLA_BUILD_LEGACY_LBM )
+   waLBerla_add_test_executable ( AdaptorTest adaptors/AdaptorTest.cpp )
+   target_link_libraries ( AdaptorTest walberla::blockforest walberla::lbm walberla::core walberla::field )
+   waLBerla_execute_test( NAME AdaptorTest )
+endif( WALBERLA_BUILD_LEGACY_LBM )
 
 waLBerla_add_test_executable ( FieldGatherTest FieldGatherTest.cpp )
 target_link_libraries ( FieldGatherTest walberla::blockforest walberla::core walberla::field )
@@ -129,5 +131,6 @@ if( WALBERLA_BUILD_WITH_CODEGEN )
     waLBerla_add_test_executable ( GeneratedFieldNonUniformPackInfoTestCPU codegen/GeneratedFieldNonUniformPackInfoTestCPU.cpp )
     target_link_libraries ( GeneratedFieldNonUniformPackInfoTestCPU walberla::blockforest walberla::core walberla::field
             walberla::timeloop CodegenGeneratedNonUniformPackInfoTest )
-    waLBerla_execute_test( NAME GeneratedFieldNonUniformPackInfoTestCPU )
+    waLBerla_execute_test( NAME GeneratedFieldNonUniformPackInfoTestCPU1 COMMAND $<TARGET_FILE:GeneratedFieldNonUniformPackInfoTestCPU> PROCESSES 1 )
+    waLBerla_execute_test( NAME GeneratedFieldNonUniformPackInfoTestCPU4 COMMAND $<TARGET_FILE:GeneratedFieldNonUniformPackInfoTestCPU> PROCESSES 4 )
 endif()
