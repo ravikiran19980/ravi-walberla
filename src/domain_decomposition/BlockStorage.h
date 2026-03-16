@@ -25,7 +25,6 @@
 #include "IBlock.h"
 
 #include "core/DataTypes.h"
-#include "core/NonCopyable.h"
 #include "core/Set.h"
 #include "core/debug/Debug.h"
 #include "core/math/Vector3.h"
@@ -65,7 +64,7 @@ namespace domain_decomposition {
 */
 //**********************************************************************************************************************
 
-class BlockStorage : private NonCopyable {
+class BlockStorage {
 
    friend class IBlock;
    friend class StructuredBlockStorage;
@@ -89,7 +88,7 @@ public:
       iterator( const iterator & it )  = default;
 
       iterator & operator++()    { ++it_; checkStateAndAdapt(); return *this; }      // prefix ++X
-      iterator   operator++(int) { const iterator it( *this ); operator++(); return it; }; // postfix X++
+      iterator   operator++(int) { const iterator it( *this ); operator++(); return it; }  // postfix X++
 
       bool operator==( const iterator & rhs ) const { return it_ == rhs.it_; }
       bool operator!=( const iterator & rhs ) const { return it_ != rhs.it_; }
@@ -134,7 +133,7 @@ public:
       const_iterator( const const_iterator & it )  = default;
 
       const_iterator & operator++()    { ++it_; checkStateAndAdapt(); return *this; }            // prefix ++X
-      const_iterator   operator++(int) { const const_iterator it( *this ); operator++(); return it; }; // postfix X++
+      const_iterator   operator++(int) { const const_iterator it( *this ); operator++(); return it; }  // postfix X++
 
       bool operator==( const const_iterator & rhs ) const { return it_ == rhs.it_; }
       bool operator!=( const const_iterator & rhs ) const { return it_ != rhs.it_; }
@@ -171,6 +170,12 @@ public:
 
    /// Deleted default constructor
    BlockStorage() = delete;
+
+   /// Deleted copy constructor 
+   BlockStorage( const BlockStorage& ) = delete;
+
+   /// Deleted copy assignment operator 
+   BlockStorage& operator=( const BlockStorage& ) = delete;
 
    const AABB& getDomain() const { return domain_; } ///< returns an axis-aligned bounding box that covers the entire simulation space/domain
 
@@ -723,8 +728,8 @@ inline BlockDataID BlockStorage::loadBlockData( const std::string & file, const 
 //**********************************************************************************************************************
 inline void BlockStorage::clearBlockData( const BlockDataID & id )
 {
-   for( auto block = begin(); block != end(); ++block )
-      block->deleteData( id );
+   for( auto &block : *this )
+      block.deleteData( id );
 
    //also delete block data from data handling vector
    std::erase_if(blockDataItem_, [id](const internal::BlockDataItem& dataItem)

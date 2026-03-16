@@ -3,12 +3,10 @@ target_sources( walberla_core
         CheckFunctions.h
         CheckFunctions.impl.h
         Debug.h
-        OperatorCheck.h
         PrintStacktrace.h
         TestSubsystem.h
         all.h
         demangle.h
-        extern/StackWalker.h
 )
 
 target_sources( walberla_core
@@ -18,5 +16,4 @@ target_sources( walberla_core
         Debug.cpp
         PrintStacktrace.cpp
         TestSubsystem.cpp
-        extern/StackWalker.cpp
 )

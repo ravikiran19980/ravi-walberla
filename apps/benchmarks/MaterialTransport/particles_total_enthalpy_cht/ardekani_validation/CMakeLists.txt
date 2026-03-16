@@ -36,8 +36,7 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
                     GeneralInfoHeader.h
         )
             message(STATUS "generated in thermal PSM is: ${config}" )
-            add_executable( ardekani_virtualfluid_cht_${config}  thermalPSMCHT.cpp ../../utilities/InitializerFunctions.cpp
-                    heatFlux.cpp)
+            add_executable( ardekani_virtualfluid_cht_${config}  ardekani.cpp ../../utilities/InitializerFunctions.cpp)
             target_link_libraries(ardekani_virtualfluid_cht_${config} walberla::blockforest walberla::core walberla::field walberla::geometry walberla::gpu walberla::lbm walberla::lbm_mesapd_coupling walberla::mesa_pd walberla::sqlite walberla::vtk ardekani_particle_cht_${config})
             target_compile_definitions(ardekani_virtualfluid_cht_${config} PRIVATE Weighting=1)
         endforeach ()

@@ -64,6 +64,8 @@ namespace field {
    * See also \ref fieldPage
    */
    //*******************************************************************************************************************
+   // Suppressed because waLBerla relies on templated polymorphic interfaces (see Issue 305).
+   // NOLINTBEGIN(portability-template-virtual-member-function)
    template<typename T, uint_t fSize_>
    class Field
    {
@@ -271,7 +273,7 @@ namespace field {
       cell_idx_t zOff() const { return zOff_; }
 
       bool coordinatesValid( cell_idx_t x, cell_idx_t y, cell_idx_t z, cell_idx_t f = 0 ) const;
-      bool coordinatesValid( const Cell & c, cell_idx_t f = 0 ) const { return coordinatesValid(c[0], c[1], c[2], f); };
+      bool coordinatesValid( const Cell & c, cell_idx_t f = 0 ) const { return coordinatesValid(c[0], c[1], c[2], f); }
       //@}
       //****************************************************************************************************************
 
@@ -395,6 +397,7 @@ namespace field {
 #endif
 
    }; // class Field
+   // NOLINTEND(portability-template-virtual-member-function)
 
 
 } // namespace field

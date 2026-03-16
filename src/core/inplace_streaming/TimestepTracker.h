@@ -13,24 +13,38 @@
 //  You should have received a copy of the GNU General Public License along
 //  with waLBerla (see COPYING.txt). If not, see <http://www.gnu.org/licenses/>.
 //
-//! \file Regex.h
-//! \ingroup core
-//! \author Dominik Thoennes <dominik.thoennes@fau.de>
-//
+//! \file TimestepTracker.h
+//! \ingroup lbm
+//! \author Frederik Hennig <frederik.hennig@fau.de>
 //======================================================================================================================
 
 #pragma once
 
+#include "core/DataTypes.h"
 
-#include <regex>
+#include <functional>
 
+namespace walberla
+{
+class TimestepTracker
+{
+ private:
+   uint8_t counter_{ 0 };
 
-namespace walberla {
+ public:
+   TimestepTracker() = default;
+   TimestepTracker(uint8_t zeroth_timestep) : counter_(zeroth_timestep & 1) {}
 
-using std::regex;
-using std::regex_match;
-using std::regex_error;
-using std::regex_search;
-using std::regex_replace;
+   void advance() { counter_ = (counter_ + 1) & 1; }
 
-}
+   std::function< void() > getAdvancementFunction()
+   {
+      return [this]() { this->advance(); };
+   }
+
+   uint8_t getCounter() const { return counter_; }
+   uint8_t getCounterPlusOne() const { return (counter_ + 1) & 1; }
+
+}; // class TimestepTracker
+
+} // namespace walberla
