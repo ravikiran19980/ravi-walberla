@@ -1,7 +1,7 @@
 PhysicalSetup // all to be specified in SI/ref units
 {
 
-    xSize 0.05; // = width  // 4dp
+    xSize 0.1; // = width  // 4dp
     ySize 0.05; // = depth  // 4dp
     zSize 0.05; // = height  // 20dp
 
@@ -40,10 +40,13 @@ NumericalSetup
     particleBarriers true;
     SingleparticleLocation <0.025,0.025,0.025>;
     generationDomainFraction <0.8,0.8,0.8>;
-    particleGenerationSpacing 0.013;
+    particleGenerationSpacing 0.01;
     writeSlice true;
     sendDirectlyFromGPU false;
     resThreshold 1e-5;
+    volfraction 0;
+    randomParticles true;
+    useCommunicationHiding false;
 }
 
 TemperatureSetup
@@ -55,16 +58,16 @@ TemperatureSetup
     PrandtlNumber 0.7;
     Cpf 1;
     Cps 1;
-    Kr  0.0001;
-    Gr 1000;
+    Kr  1;
+    Gr 100000;
     Qso 0;
 }
 
 Output
 {
     infoSpacing 1; // in s
-    vtkSpacingParticles 0; // in s
+    vtkSpacingParticles 1; // in s
     vtkSpacingFluid 1; // in s
-    vtkFolder vtk_out_0.0001_pr0.7_moving;
+    vtkFolder vtk_out_surrogates_pr7;
     performanceLogFrequency 5000000000;
 }

@@ -93,6 +93,7 @@
 #include <fstream>
 #include <iomanip>
 #include "../../utilities/settemperaturesweep.h"
+#include "../../utilities/randomPoints.h"
 
 namespace MaterialTransport
 {
@@ -368,8 +369,8 @@ int main(int argc, char** argv)
       numericalSetup.getParameter< Vector3< real_t > >("SingleparticleLocation");
    const Vector3< real_t > generationDomainFraction =
       numericalSetup.getParameter< Vector3< real_t > >("generationDomainFraction");
-   const Vector3< real_t > particleGenerationSpacing =
-      numericalSetup.getParameter<Vector3< real_t >>("particleGenerationSpacing");
+   const real_t particleGenerationSpacing =
+      numericalSetup.getParameter<real_t >("particleGenerationSpacing");
 
    const bool useParticles = numericalSetup.getParameter< bool >("useParticles");
 
@@ -471,30 +472,21 @@ int main(int argc, char** argv)
    const real_t Tref = Tref_SI;
    const real_t particleTemperature = Tparticle_SI;
    const real_t delta_T = Thot - Tcold;
-   const real_t Uchar = Uc;
-   const real_t kinematicViscosityLB  = (Uchar*particleDiameter)/(particleRe);
+   const real_t Uchar = 0.1 * (std::sqrt(real_c(1 / 3.0)));;
+   const real_t length_conversion = domainSize[0];
+   const real_t kinematicViscosityLB  = (0.1 / std::sqrt(3)) * std::sqrt(Pr / 10000000) * length_conversion;;
    const real_t omega_f = lbm::collision_model::omegaFromViscosity(kinematicViscosityLB);
-   real_t gravitationalAcceleration = (3 * Uchar * Uchar * densityFluid) / (4 * particleDiameter * (densityParticle - densityFluid));
-
-   if (use2DRefVel)
-   {
-      WALBERLA_LOG_INFO_ON_ROOT("pi value is  " << math::pi);
-      gravitationalAcceleration =
-         (2 * Uc * Uc * densityFluid) / ( math::pi * particleDiameter * (densityParticle - densityFluid));
-   }
+   const real_t thermalDiffusivityFluid_LB = kinematicViscosityLB / Pr;
+   const real_t time_conversion = (length_conversion*length_conversion)/(thermalDiffusivityFluid_LB);
+   const real_t gravitationalAcceleration   = 9.81 * time_conversion * time_conversion / length_conversion;
+   const real_t alphaLB     = (Uchar * Uchar) / (gravitationalAcceleration * delta_T * length_conversion);
 
    const real_t rho_Cp_ref =
-      2 * densityFluid * Cp_f * densityParticle * Cp_s / (densityFluid * Cp_f + densityParticle * Cp_s);
+     2 * densityFluid * Cp_f * densityParticle * Cp_s / (densityFluid * Cp_f + densityParticle * Cp_s);
 
    const real_t rhoCpRef = rho_Cp_ref;
    WALBERLA_LOG_INFO_ON_ROOT("rho cp reference is  " << rhoCpRef);
-   const real_t thermalDiffusivityFluid_LB = kinematicViscosityLB / Pr;
 
-
-
-   const real_t alphaLB = (Gr * kinematicViscosityLB * kinematicViscosityLB) /
-                          (delta_T * particleDiameter * particleDiameter *
-                           particleDiameter * gravitationalAcceleration);
 
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
    const real_t Qs = (Qso)*densityFluid*Cp_f*Uc*delta_T/particleDiameter;
@@ -502,6 +494,8 @@ int main(int argc, char** argv)
    const real_t ks = Kr*kf;
    const real_t thermalDiffusivityParticle_LB = ks/rhoCpRef;
    const real_t omegaT_s = lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
+
+
    WALBERLA_LOG_INFO_ON_ROOT("Known Quantities are    ");
    WALBERLA_LOG_INFO_ON_ROOT("density particle LB is " << densityParticle);
    WALBERLA_LOG_INFO_ON_ROOT("density fluid LB is " << densityFluid);
@@ -566,9 +560,9 @@ int main(int argc, char** argv)
 
    //const real_t spacing  = uint_c(std::ceil(particleGenerationSpacing / dx_SI));
    const Vector3<real_t> spacingVector(
-      uint_c(std::ceil(particleGenerationSpacing[0] / dx_SI)),
-      uint_c(std::ceil(particleGenerationSpacing[1] / dx_SI)),
-      uint_c(std::ceil(particleGenerationSpacing[2] / dx_SI))
+      uint_c(std::ceil(particleGenerationSpacing / dx_SI)),
+      uint_c(std::ceil(particleGenerationSpacing / dx_SI)),
+      uint_c(std::ceil(particleGenerationSpacing / dx_SI))
    );
 
    auto generationDomain = math::AABB::createFromMinMaxCorner(
@@ -609,6 +603,49 @@ int main(int argc, char** argv)
             }
          }
       }
+
+   if (useParticles && randomParticles == true)
+   {
+      const int rank = mpi::MPIManager::instance()->rank();
+
+      std::vector< math::Vector3< real_t > > positions;
+      if (rank == 0)
+      {
+         const unsigned base_seed = 1963u; // no rank in the seed
+         std::seed_seq seq{ base_seed };
+         std::mt19937 gen(seq);
+
+         // Min center-to-center distance for generated particles.
+         const real_t minCenterDistance = particleDiameter;
+         const real_t boundarymargin    = minCenterDistance / real_t(2);
+         positions = generatePositionsSimple(simulationDomain, numParticles, minCenterDistance, boundarymargin, gen);
+
+         if (positions.size() != numParticles)
+         {
+            WALBERLA_ABORT("Requested " << numParticles << " but only placed " << positions.size()
+                                        << " with min spacing " << minCenterDistance
+                                        << ". Enlarge domain or reduce spacing.");
+         }
+      }
+
+      walberla::mpi::broadcastObject(positions);
+      uint_t particlecount = 0;
+      for (const auto& pos : positions)
+      {
+         if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pos))
+         {
+            mesa_pd::data::Particle&& p = *ps->create();
+            p.setPosition(pos);
+            p.setInteractionRadius(particleDiameter * real_t(0.5));
+            p.setOwner(mpi::MPIManager::instance()->rank());
+            p.setShapeID(sphereShape);
+            p.setType(1);
+            p.setTemperature(particleTemperature);
+         }
+         particlecount += 1;
+         if (particlecount == numParticles) break;
+      }
+   }
 
 
    ////////////////////////
@@ -744,28 +781,28 @@ int main(int argc, char** argv)
 
    if (!periodicInZ)
    {
-      boundariesBlockString += "Border { direction T;    walldistance -1;  flag Density_Fluid; }"
-                               "Border { direction B;    walldistance -1;  flag Inflow_Fluid; }";
+      boundariesBlockString += "Border { direction T;    walldistance -1;  flag NoSlip_Fluid; }"
+                               "Border { direction B;    walldistance -1;  flag NoSlip_Fluid; }";
    }
 
    boundariesBlockString += "}";
 
    boundariesBlockString += "\n BoundariesEnergy";
    boundariesBlockString += "{"
-                            "Border { direction W;    walldistance -1;  flag Density_Energy_static_cold; }"
+                            "Border { direction W;    walldistance -1;  flag Density_Energy_static_hot; }"
                             "Border { direction E;    walldistance -1;  flag Density_Energy_static_cold; }";
 
    if (!periodicInY)
    {
-      boundariesBlockString += "Border { direction S;    walldistance -1;  flag Density_Energy_static_cold; }"
-                               "Border { direction N;    walldistance -1;  flag Density_Energy_static_cold; }";
+      boundariesBlockString += "Border { direction S;    walldistance -1;  flag Neumann_Energy; }"
+                               "Border { direction N;    walldistance -1;  flag Neumann_Energy; }";
    }
 
    if (!periodicInZ)
    {
       boundariesBlockString +=
-         "Border { direction T;    walldistance -1;  flag Density_Energy_static_cold; }"
-         "Border { direction B;    walldistance -1;  flag Density_Energy_static_cold; }"; // Neumann_Energy
+         "Border { direction T;    walldistance -1;  flag Neumann_Energy; }"
+         "Border { direction B;    walldistance -1;  flag Neumann_Energy; }"; // Neumann_Energy
    }
    boundariesBlockString += "}";
 
@@ -1214,8 +1251,8 @@ int main(int argc, char** argv)
       timeloop.add() << Sweep(deviceSyncWrapper(energy_static_bc_cold.getSweep()),
                               "Boundary Handling (Energy static bc cold)");
 
-      //timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep),
-      //                        "Particle mapping Thermal"); // always uses a weighting of 1
+      timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep),
+                              "Particle mapping Thermal"); // always uses a weighting of 1
 
       timeloop.add() << Sweep(deviceSyncWrapper(psmEnergySweep), "PSM Energy sweep");
 
@@ -1248,7 +1285,7 @@ int main(int argc, char** argv)
    {
       // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
       timeloop.singleStep(timeloopTiming);
-      /*if(timeStep % 1000 ==0){
+      if(timeStep % 10000 ==0){
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
          gpu::fieldCpy< DensityField_concentration_T, gpu::GPUField< real_t > >(blocks, densityConcentrationFieldID,
                                                                                 densityConcentrationFieldCPUGPUID);
@@ -1267,7 +1304,7 @@ int main(int argc, char** argv)
          }
 #endif
 
-      }*/
+      }
 
       if (particleBarriers) WALBERLA_MPI_BARRIER();
       timeloopTiming["RPD forEachParticle assoc"].start();

@@ -8,9 +8,9 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
             message(STATUS "Config value in thermal PSM is: ${config}" )
 
             message(STATUS "generated in thermal PSM is: ${config}" )
-            add_executable(performance_cht_virtual${config}  hpcPerformance.cpp ../../utilities/InitializerFunctions.cpp)
-            target_link_libraries(performance_cht_virtual${config} walberla::blockforest walberla::core walberla::field walberla::geometry walberla::gpu walberla::lbm walberla::lbm_mesapd_coupling walberla::mesa_pd walberla::sqlite walberla::vtk codegenThermal_${config})
-            target_compile_definitions(performance_cht_virtual${config} PRIVATE Weighting=1)
+            add_executable(surrogates_cht_virtual${config} surrogates.cpp ../../utilities/InitializerFunctions.cpp)
+            target_link_libraries(surrogates_cht_virtual${config} walberla::blockforest walberla::core walberla::field walberla::geometry walberla::gpu walberla::lbm walberla::lbm_mesapd_coupling walberla::mesa_pd walberla::sqlite walberla::vtk codegenThermal_${config})
+            target_compile_definitions(surrogates_cht_virtual${config} PRIVATE Weighting=1)
         endforeach ()
 
 

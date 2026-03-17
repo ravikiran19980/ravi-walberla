@@ -36,7 +36,6 @@
 #include "timeloop/SweepTimeloop.h"
 
 #include <cassert>
-#include "GeneralInfoHeader.h"
 
 namespace walberla
 {
