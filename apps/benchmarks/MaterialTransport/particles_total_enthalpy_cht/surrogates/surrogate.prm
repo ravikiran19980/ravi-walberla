@@ -1,7 +1,7 @@
 PhysicalSetup // all to be specified in SI/ref units
 {
 
-    xSize 0.1; // = width  // 4dp
+    xSize 0.05; // = width  // 4dp
     ySize 0.05; // = depth  // 4dp
     zSize 0.05; // = height  // 20dp
 
@@ -24,13 +24,12 @@ NumericalSetup
 {
     dx 0.001; // in m
     dt 0.001;  // this is the dt_SI if at all uInflow is set to 0.
-    Uc 0.0052;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
+    Ma 0.1;   // mach number
     // product of number of blocks should be equal to number of used processes
     numXBlocks 1;
     numYBlocks 2;
     numZBlocks 2;
 
-    use2DRefVel false;
     useLubricationForces true;
     numberOfParticleSubCycles 10;
     useParticles true;
@@ -38,15 +37,13 @@ NumericalSetup
     particleSubBlockSize <5, 5, 5>;
     linkedCellWidthRation 1.01;
     particleBarriers true;
-    SingleparticleLocation <0.025,0.025,0.025>;
-    generationDomainFraction <0.8,0.8,0.8>;
-    particleGenerationSpacing 0.01;
     writeSlice true;
     sendDirectlyFromGPU false;
     resThreshold 1e-5;
-    volfraction 0;
+    volfraction 0.1;
     randomParticles true;
     useCommunicationHiding false;
+    base_seed 14456;
 }
 
 TemperatureSetup
@@ -58,9 +55,8 @@ TemperatureSetup
     PrandtlNumber 0.7;
     Cpf 1;
     Cps 1;
-    Kr  1;
-    Gr 100000;
-    Qso 0;
+    Kr  100;
+    RayleighNumber 1000000;
 }
 
 Output
@@ -68,6 +64,6 @@ Output
     infoSpacing 1; // in s
     vtkSpacingParticles 1; // in s
     vtkSpacingFluid 1; // in s
-    vtkFolder vtk_out_surrogates_pr7;
+    vtkFolder vtk_out_surrogates_1e8;
     performanceLogFrequency 5000000000;
 }

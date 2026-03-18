@@ -343,11 +343,10 @@ int main(int argc, char** argv)
    Config::BlockHandle numericalSetup = cfgFile->getBlock("NumericalSetup");
    const real_t dx_SI                 = numericalSetup.getParameter< real_t >("dx");
    const real_t dt_SI          = numericalSetup.getParameter< real_t >("dt");
-   const real_t Uc          = numericalSetup.getParameter< real_t >("Uc");
+   const real_t mach          = numericalSetup.getParameter< real_t >("Ma");
    const uint_t numXBlocks            = numericalSetup.getParameter< uint_t >("numXBlocks");
    const uint_t numYBlocks            = numericalSetup.getParameter< uint_t >("numYBlocks");
    const uint_t numZBlocks            = numericalSetup.getParameter< uint_t >("numZBlocks");
-   const bool use2DRefVel            = numericalSetup.getParameter< bool >("use2DRefVel");
    WALBERLA_CHECK_EQUAL(numXBlocks * numYBlocks * numZBlocks, uint_t(MPIManager::instance()->numProcesses()),
                         "When using GPUs, the number of blocks ("
                            << numXBlocks * numYBlocks * numZBlocks << ") has to match the number of MPI processes ("
@@ -365,12 +364,7 @@ int main(int argc, char** argv)
    const real_t linkedCellWidthRation = numericalSetup.getParameter< real_t >("linkedCellWidthRation");
    const bool particleBarriers        = numericalSetup.getParameter< bool >("particleBarriers");
 
-   const Vector3< real_t > SingleparticleLocation =
-      numericalSetup.getParameter< Vector3< real_t > >("SingleparticleLocation");
-   const Vector3< real_t > generationDomainFraction =
-      numericalSetup.getParameter< Vector3< real_t > >("generationDomainFraction");
-   const real_t particleGenerationSpacing =
-      numericalSetup.getParameter<real_t >("particleGenerationSpacing");
+
 
    const bool useParticles = numericalSetup.getParameter< bool >("useParticles");
 
@@ -382,8 +376,8 @@ int main(int argc, char** argv)
    const real_t resThreshold =
       numericalSetup.getParameter< real_t >("resThreshold");
    const real_t volfraction = numericalSetup.getParameter< real_t >("volfraction");
-   const bool randomParticles = numericalSetup.getParameter< bool >("randomParticles");
    const bool useCommunicationHiding = numericalSetup.getParameter< bool >("useCommunicationHiding");
+   const bool base_seed = numericalSetup.getParameter< unsigned >("base_seed");
 
    Config::BlockHandle TemperatureSetup         = cfgFile->getBlock("TemperatureSetup");
    const real_t Thot_SI           = TemperatureSetup.getParameter< real_t >("Thot");
@@ -394,8 +388,8 @@ int main(int argc, char** argv)
    const real_t Cp_f_SI                    = TemperatureSetup.getParameter<real_t>("Cpf");
    const real_t Cp_s_SI                    = TemperatureSetup.getParameter<real_t>("Cps");
    const real_t Kr                    = TemperatureSetup.getParameter<real_t>("Kr");
-   const real_t Gr                    = TemperatureSetup.getParameter<real_t>("Gr");
-   const real_t Qso                    = TemperatureSetup.getParameter<real_t>("Qso");
+   const real_t Ra                    = TemperatureSetup.getParameter<real_t>("RayleighNumber");
+
 
    Config::BlockHandle outputSetup      = cfgFile->getBlock("Output");
    const real_t infoSpacing_SI          = outputSetup.getParameter< real_t >("infoSpacing");
@@ -472,9 +466,9 @@ int main(int argc, char** argv)
    const real_t Tref = Tref_SI;
    const real_t particleTemperature = Tparticle_SI;
    const real_t delta_T = Thot - Tcold;
-   const real_t Uchar = 0.1 * (std::sqrt(real_c(1 / 3.0)));;
+   const real_t Uchar = mach * (std::sqrt(real_c(1 / 3.0)));;
    const real_t length_conversion = domainSize[0];
-   const real_t kinematicViscosityLB  = (0.1 / std::sqrt(3)) * std::sqrt(Pr / 10000000) * length_conversion;;
+   const real_t kinematicViscosityLB  = Uchar * std::sqrt(Pr / Ra) * length_conversion;;
    const real_t omega_f = lbm::collision_model::omegaFromViscosity(kinematicViscosityLB);
    const real_t thermalDiffusivityFluid_LB = kinematicViscosityLB / Pr;
    const real_t time_conversion = (length_conversion*length_conversion)/(thermalDiffusivityFluid_LB);
@@ -489,7 +483,7 @@ int main(int argc, char** argv)
 
 
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
-   const real_t Qs = (Qso)*densityFluid*Cp_f*Uc*delta_T/particleDiameter;
+   const real_t Qs = 0_r;
    const real_t kf = rhoCpRef*thermalDiffusivityFluid_LB;
    const real_t ks = Kr*kf;
    const real_t thermalDiffusivityParticle_LB = ks/rhoCpRef;
@@ -501,7 +495,7 @@ int main(int argc, char** argv)
    WALBERLA_LOG_INFO_ON_ROOT("density fluid LB is " << densityFluid);
    WALBERLA_LOG_INFO_ON_ROOT("Cp particle is " << Cp_s << " Cp fluid is  " << Cp_f);
    WALBERLA_LOG_INFO_ON_ROOT("Particle Reynolds Number Re_ref = " << particleRe);
-   WALBERLA_LOG_INFO_ON_ROOT("Grashof Number Gr = " << Gr);
+   WALBERLA_LOG_INFO_ON_ROOT("Rayleigh Number  = " << Ra);
    WALBERLA_LOG_INFO_ON_ROOT("Particle Diameter is = " << particleDiameter);
 
    WALBERLA_LOG_INFO_ON_ROOT("------------------------------");
@@ -516,7 +510,7 @@ int main(int argc, char** argv)
    WALBERLA_LOG_INFO_ON_ROOT("coeff of expansion alphaLB = " << alphaLB);
 
    WALBERLA_LOG_INFO_ON_ROOT("Sanity checks------------------------------");
-   WALBERLA_LOG_INFO_ON_ROOT("Grashof number from parameter file is = "  << Gr);
+   WALBERLA_LOG_INFO_ON_ROOT("Rayleigh number from parameter file is = "  << Ra);
    WALBERLA_LOG_INFO_ON_ROOT("Grashof number =    " << (alphaLB*gravitationalAcceleration*delta_T*particleDiameter*particleDiameter*particleDiameter)/(kinematicViscosityLB*kinematicViscosityLB));
    WALBERLA_LOG_INFO_ON_ROOT("Prandtl number = " <<  (kinematicViscosityLB/thermalDiffusivityFluid_LB) );
    WALBERLA_LOG_INFO_ON_ROOT("Reynolds number = "  << (Uchar*particleDiameter/kinematicViscosityLB) );
@@ -558,53 +552,7 @@ int main(int argc, char** argv)
    WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.yMin(), real_t(0));
    WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.zMin(), real_t(0));
 
-   //const real_t spacing  = uint_c(std::ceil(particleGenerationSpacing / dx_SI));
-   const Vector3<real_t> spacingVector(
-      uint_c(std::ceil(particleGenerationSpacing / dx_SI)),
-      uint_c(std::ceil(particleGenerationSpacing / dx_SI)),
-      uint_c(std::ceil(particleGenerationSpacing / dx_SI))
-   );
-
-   auto generationDomain = math::AABB::createFromMinMaxCorner(
-      math::Vector3< real_t >(simulationDomain.xMax() * (real_t(1) - generationDomainFraction[0]) / real_t(2),
-                              simulationDomain.yMax() * (real_t(1) - generationDomainFraction[1]) / real_t(2),
-                              simulationDomain.zMax() * (real_t(1) - generationDomainFraction[2]) / real_t(2)),
-      math::Vector3< real_t >(simulationDomain.xMax() * (real_t(1) + generationDomainFraction[0]) / real_t(2),
-                              simulationDomain.yMax() * (real_t(1) + generationDomainFraction[1]) / real_t(2),
-                              simulationDomain.zMax() * (real_t(1) + generationDomainFraction[2]) / real_t(2)));
-   if (useParticles && randomParticles == false)
-      {
-         // Ensure that generation domain is computed correctly
-         WALBERLA_LOG_INFO_ON_ROOT("generating particles");
-         WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.xMin(), real_t(0));
-         WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.yMin(), real_t(0));
-         WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.zMin(), real_t(0));
-         uint_t nump = 0;
-         for (auto pt :
-              grid_generator::SCGrid(generationDomain, generationDomain.center(),
-                                     spacingVector))
-         {
-            if (rpdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pt))
-            {
-               mesa_pd::data::Particle&& p = *ps->create();
-               p.setPosition(pt);
-               p.setInteractionRadius(particleDiameter * real_t(0.5));
-               p.setOwner(mpi::MPIManager::instance()->rank());
-               p.setShapeID(sphereShape);
-               p.setType(1);
-               p.setTemperature(particleTemperature);
-               p.setLinearVelocity(0.1_r * Vector3< real_t >(math::realRandom(
-                                              -Uc, Uc)));
-            }
-            nump +=1;
-            if(nump == numParticles){
-               break;
-               WALBERLA_LOG_INFO_ON_ROOT("generating particles done");
-            }
-         }
-      }
-
-   if (useParticles && randomParticles == true)
+   if (useParticles)
    {
       const int rank = mpi::MPIManager::instance()->rank();
 
@@ -825,7 +773,7 @@ int main(int argc, char** argv)
    geometry::setNonBoundaryCellsToDomain< FlagField_T >(*blocks, flagFieldFluidID, Fluid_Flag);
    lbm::BC_Fluid_NoSlip noSlip_fluid_bc(blocks, pdfFieldFluidCPUGPUID);
    noSlip_fluid_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldFluidID, NoSlip_Fluid_Flag, Fluid_Flag);
-   lbm::BC_Fluid_UBB ubb_fluid_bc(blocks, pdfFieldFluidCPUGPUID, real_t(0), real_t(0), Uc);
+   lbm::BC_Fluid_UBB ubb_fluid_bc(blocks, pdfFieldFluidCPUGPUID, real_t(0), real_t(0), Uchar);
    ubb_fluid_bc.fillFromFlagField< FlagField_T >(blocks, flagFieldFluidID, Inflow_Fluid_Flag, Fluid_Flag);
    lbm::BC_Fluid_FreeSlip freeSlip_fluid_bc(blocks, pdfFieldFluidCPUGPUID);
    freeSlip_fluid_bc.fillFromFlagField<FlagField_T>(blocks, flagFieldFluidID, FreeSlip_Fluid_Flag, Fluid_Flag);
