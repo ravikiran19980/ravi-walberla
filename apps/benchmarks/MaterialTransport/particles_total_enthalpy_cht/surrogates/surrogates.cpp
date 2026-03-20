@@ -1053,36 +1053,23 @@ int main(int argc, char** argv)
          make_shared< field::VTKWriter< VelocityField_fluid_T > >(velFieldFluidID, "Fluid Velocity"));
       vtkOutput_Fluid->addCellDataWriter(
          make_shared< field::VTKWriter< BField_T > >(BFieldID, "OverlapFraction"));
-      vtkOutput_Fluid->addCellDataWriter(
-         make_shared< field::VTKWriter< particleTemperaturesField_T > >(particleTemperaturesFieldID, "particle temperature field"));
 #else
       vtkOutput_Fluid->addCellDataWriter(
          make_shared< field::VTKWriter< VelocityField_fluid_T > >(velFieldFluidCPUGPUID, "Fluid Velocity"));
       vtkOutput_Fluid->addCellDataWriter(
          make_shared< field::VTKWriter< BField_T > >(particleAndVolumeFractionSoA_fluid.BFieldID, "OverlapFraction"));
-      vtkOutput_Fluid->addCellDataWriter(
-         make_shared< field::VTKWriter< particleTemperaturesField_T > >(particleTemperaturesFieldCPUGPUID, "particle temperature field"));
 #endif
       vtkOutput_Fluid->addCellDataWriter(
          make_shared< field::VTKWriter< DensityField_fluid_T > >(densityFluidFieldID, "Fluid Density"));
-      vtkOutput_Fluid->addCellDataWriter(
-         make_shared< field::VTKWriter< FlagField_T > >(flagFieldFluidID, "FluidFlagField"));
+
 
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
       vtkOutput_Energy->addCellDataWriter(
          make_shared< field::VTKWriter< DensityField_concentration_T > >(densityConcentrationFieldID, "temperature"));
-      vtkOutput_Energy->addCellDataWriter(
-         make_shared< field::VTKWriter< DensityField_energy_T > >(energyFieldID, "energy"));
 #else
-      vtkOutput_Energy->addCellDataWriter(
-         make_shared< field::VTKWriter< DensityField_energy_T > >(energyFieldCPUGPUID,"energy"));
-
       vtkOutput_Energy->addCellDataWriter(
          make_shared< field::VTKWriter< DensityField_concentration_T > >(densityConcentrationFieldCPUGPUID, "temperature"));
 #endif
-
-      vtkOutput_Energy->addCellDataWriter(
-         make_shared< field::VTKWriter< FlagField_T > >(flagFieldEnergyID, "EnergyFlagField"));
       if(!writeSlice)
       {
          timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Fluid), "VTK output Fluid");

@@ -1,7 +1,7 @@
 PhysicalSetup // all to be specified in SI/ref units
 {
 
-    xSize 0.05; // = width  // 4dp
+    xSize 0.1; // = width  // 4dp
     ySize 0.05; // = depth  // 4dp
     zSize 0.05; // = height  // 20dp
 
@@ -37,8 +37,8 @@ NumericalSetup
     particleSubBlockSize <5, 5, 5>;
     linkedCellWidthRation 1.01;
     particleBarriers true;
-    writeSlice true;
-    sendDirectlyFromGPU false;
+    writeSlice false;
+    sendDirectlyFromGPU true;
     resThreshold 1e-5;
     volfraction 0.1;
     randomParticles true;
