@@ -936,6 +936,17 @@ int main(int argc, char** argv)
 
    }
 
+   auto vtkOutput_Overlap = vtk::createVTKOutput_BlockData(blocks, "overlap fraction field", 1, 0, false, vtkFolder);
+#ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
+   gpu::fieldCpy< GhostLayerField< real_t, 1 >, BFieldGPU_T >(
+    blocks, BFieldID, particleAndVolumeFractionSoA_fluid.BFieldID);
+   vtkOutput_Overlap->addCellDataWriter(make_shared< field::VTKWriter< BField_T > >(BFieldID, "OverlapFraction"));
+#else
+   vtkOutput_Overlap->addCellDataWriter(
+      make_shared< field::VTKWriter< BField_T > >(particleAndVolumeFractionSoA_fluid.BFieldID, "OverlapFraction"));
+#endif
+
+
    ///////////////////////
    // ADD COMMUNICATION //
    //////////////////////
@@ -1021,8 +1032,6 @@ int main(int argc, char** argv)
                                                                          velFieldFluidCPUGPUID);
          gpu::fieldCpy< DensityField_concentration_T, gpu::GPUField< real_t > >(blocks, densityConcentrationFieldID,
                                                                                 densityConcentrationFieldCPUGPUID);
-         gpu::fieldCpy< GhostLayerField< real_t, 1 >, BFieldGPU_T >(blocks, BFieldID,
-                                                                    particleAndVolumeFractionSoA_fluid.BFieldID);
          gpu::fieldCpy< DensityField_energy_T , gpu::GPUField< real_t > >(blocks, energyFieldID,
                                                                          energyFieldCPUGPUID);
          gpu::fieldCpy< PdfField_energy_T , gpu::GPUField< real_t > >(blocks, pdfFieldEnergyID,
@@ -1051,16 +1060,16 @@ int main(int argc, char** argv)
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
       vtkOutput_Fluid->addCellDataWriter(
          make_shared< field::VTKWriter< VelocityField_fluid_T > >(velFieldFluidID, "Fluid Velocity"));
-      vtkOutput_Fluid->addCellDataWriter(
-         make_shared< field::VTKWriter< BField_T > >(BFieldID, "OverlapFraction"));
+      //vtkOutput_Fluid->addCellDataWriter(
+      //   make_shared< field::VTKWriter< BField_T > >(BFieldID, "OverlapFraction"));
 #else
       vtkOutput_Fluid->addCellDataWriter(
          make_shared< field::VTKWriter< VelocityField_fluid_T > >(velFieldFluidCPUGPUID, "Fluid Velocity"));
-      vtkOutput_Fluid->addCellDataWriter(
-         make_shared< field::VTKWriter< BField_T > >(particleAndVolumeFractionSoA_fluid.BFieldID, "OverlapFraction"));
+      //vtkOutput_Fluid->addCellDataWriter(
+      //   make_shared< field::VTKWriter< BField_T > >(particleAndVolumeFractionSoA_fluid.BFieldID, "OverlapFraction"));
 #endif
-      vtkOutput_Fluid->addCellDataWriter(
-         make_shared< field::VTKWriter< DensityField_fluid_T > >(densityFluidFieldID, "Fluid Density"));
+      //vtkOutput_Fluid->addCellDataWriter(
+      //   make_shared< field::VTKWriter< DensityField_fluid_T > >(densityFluidFieldID, "Fluid Density"));
 
 
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
@@ -1218,6 +1227,12 @@ int main(int argc, char** argv)
    // time loop
    for (uint_t timeStep = 0; timeStep < numTimeSteps; ++timeStep)
    {
+      if (timeStep == 0)
+      {
+
+         vtkOutput_Overlap->write();
+
+      }
       // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
       timeloop.singleStep(timeloopTiming);
       if(timeStep % 10000 ==0){
