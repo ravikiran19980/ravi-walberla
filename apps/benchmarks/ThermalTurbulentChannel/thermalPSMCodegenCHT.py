@@ -420,7 +420,7 @@ with CodeGeneration() as ctx:
         masked_temperature_field_particle.center @= (B.center) *  temperature_field.center
 
     maskFields_ac = ps.AssignmentCollection(maskFields)
-    generate_sweep(ctx, "MaskFields", maskFields_ac)
+    generate_sweep(ctx, "MaskFields", maskFields_ac, target=target)
 
 
     stencil_typedefs = {"Stencil_Fluid_T": stencil_fluid, "CommunicationStencil_Fluid_T": stencil_fluid

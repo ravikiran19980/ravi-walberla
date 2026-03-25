@@ -21,7 +21,7 @@
 //======================================================================================================================
 #include "lbm_mesapd_coupling/partially_saturated_cells_method/codegen/PSMUtilityGPU.h"
 #include "lbm_mesapd_coupling/partially_saturated_cells_method/codegen/PSMWrapperKernels.h"
-
+#include "temperatureWrapperKernels.h"
 
 namespace walberla
 {

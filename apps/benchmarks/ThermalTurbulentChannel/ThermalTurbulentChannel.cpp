@@ -96,8 +96,8 @@
 #include "./utilities/settemperaturesweep.h"
 #include "HeatEvaluators.h"
 #include "turbulentFlowUtilities.h"
-#include "WelfordVelocity.h"
-#include "WelfordTemperature.h"
+//#include "WelfordVelocity.h"
+//#include "WelfordTemperature.h"
 
 namespace MaterialTransport
 {
