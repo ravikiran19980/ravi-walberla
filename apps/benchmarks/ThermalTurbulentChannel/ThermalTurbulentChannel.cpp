@@ -478,9 +478,9 @@ int main(int argc, char** argv)
       uint_t(zSize)
    );
 
-   forceParams.wallAxis = 1;  // example if Y is wall direction
+   forceParams.wallAxis = 2;  // example if Y is wall direction
 
-   forceParams.channelHalfWidth = ySize / 2.0;
+   forceParams.channelHalfWidth = zSize / 2.0;
 
    forceParams.targetBulkVelocity = target_bulk_velocity;
 
@@ -768,18 +768,7 @@ int main(int argc, char** argv)
                                                          Density_Temperature_Flag_static_hot, Temperature_Flag);
 
 
-   // create the force and bulkvelocity calculating object of ForceCalculator class:
-
-   ForceCalculator<VectorField_T> forceCalculator(blocks, velFieldFluidID, forceParams);
-
-   // calculate the initial force the initialization purpose:
-
-   forceCalculator.setBulkVelocity(forceParams.targetBulkVelocity);
-   const auto initialForce = forceCalculator.getCurrentDrivingForce();
-
    // create the welford fluid and temperature sweep objects:
-   
-
 
    // create separate welford sweeps for particle and fluid phases
    WelfordSweepVelocityParticle_T welfordVelocityParticleSweep(meanVelFieldParticlePhaseID, sosVelFieldParticlePhaseID, velFieldFluidID, 0_r);
@@ -792,13 +781,15 @@ int main(int argc, char** argv)
 // Initialize the PDFs and Fields //
 ///////////////////////////////////
 
-   walberla::initFluidField(blocks, velFieldFluidID, Uinitialize,domainSize);
+   //walberla::initFluidField(blocks, velFieldFluidID, Uinitialize,domainSize);
 
    // Map particles into the fluid domain
    ParticleAndVolumeFractionSoA_T< Weighting > particleAndVolumeFractionSoA_fluid(blocks, omega_f);
    PSMSweepCollection psmSweepCollectionFluid(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
                                               particleAndVolumeFractionSoA_fluid,
                                               particleSubBlockSize);
+
+
 
    ParticleAndVolumeFractionSoA_T< 1 > particleAndVolumeFractionSoA_temperature(blocks,omegaT_f);
    PSMSweepCollection psmSweepCollectionTemperature(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
@@ -807,6 +798,16 @@ int main(int argc, char** argv)
    SetParticleTemperaturesSweepp settemperatureparticles(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
                                                          particleAndVolumeFractionSoA_temperature, temperatureFieldID,particleTemperaturesFieldID,
                                                          true);
+
+   // create the force and bulk velocity calculator:
+   // use B-field as mask to exclude particle-occupied fractions from bulk velocity.
+   ForceCalculator< VectorField_T, BField_T > forceCalculator(blocks, velFieldFluidID,
+                                                                    particleAndVolumeFractionSoA_temperature.BFieldID,
+                                                                    forceParams);
+
+   // calculate the initial force for initialization:
+   forceCalculator.setBulkVelocity(forceParams.targetBulkVelocity);
+   const auto initialForce = 0;//forceCalculator.getCurrentDrivingForce();
 
 
    // Initialize PDFs
@@ -979,7 +980,9 @@ int main(int argc, char** argv)
    auto setNewForce = [&](const real_t newForce) {
       psmFluidSweep.setForcex(newForce);
    };
-
+   auto psmFluidSweeplamda = [&psmFluidSweep](IBlock * block) {
+      psmFluidSweep(block);
+   };
 
 
 
@@ -1025,6 +1028,7 @@ int main(int argc, char** argv)
    auto HeatFluxLamdas = [&]() {
       wallNormalHeatFlux.RunningMeanHeatFluxOutput(blocks, temperatureFieldID,
                                                    particleAndVolumeFractionSoA_temperature.BFieldID,
+                                                   Tcold, Thot,
                                                    timeloop.getCurrentTimeStep(), outputFrequency);
 
       wallNormalHeatFlux.checkForConvergence(convergenceTolerance, timeloop.getCurrentTimeStep(), timeBlock);
@@ -1043,7 +1047,10 @@ int main(int argc, char** argv)
          if (meanPlaneAverager.getTimeCounter() == 2 * timeBlock)
          {
             welfordstart = true;
-            WALBERLA_LOG_INFO_ON_ROOT("entered the averagin part")
+            if (meanPlaneAverager.getTimeCounter() % 10000 == 0)
+            {
+               WALBERLA_LOG_INFO_ON_ROOT("entered the averagin part")
+            }
             heatFluxBudgets(blocks, velFieldFluidID, temperatureFieldID,
                             particleAndVolumeFractionSoA_temperature.BFieldID);
          }
@@ -1099,11 +1106,12 @@ int main(int argc, char** argv)
                            forceCalculator.calculateDrivingForce();
                            const auto newForce = forceCalculator.getCurrentDrivingForce();
                            setNewForce(newForce);
+                           //WALBERLA_LOG_INFO_ON_ROOT("bulk velocityx is  " << forceCalculator.getBulkVelocity());
                         },
                         "new force setter")
                   << Sweep([](IBlock*) {}, "new force setter");
 
-   timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep");
+   timeloop.add() << Sweep(psmFluidSweeplamda, "PSM Fluid sweep");
 
    timeloop.add() << Sweep(deviceSyncWrapper(psmTemperatureSweep), "PSM Temperature sweep");
 
@@ -1115,57 +1123,14 @@ int main(int argc, char** argv)
 
    timeloop.addFuncAfterTimeStep(HeatFluxLamdas, "HeatFlux convergence and budget computations");
 
-   // the welford sweeps for particle and fluid phases:
-   timeloop.add() << Sweep(deviceSyncWrapper(conditionalMaskFieldsSweep), "masking sweep for welford");
-   timeloop.add() << BeforeFunction(
-                        [&]() {
-                           if (welfordstart)
-                           {
-
-                              // Reset counters and SOS fields for particle phase
-                              welfordVelocityParticleSweep.setCounter(real_c(0.0));
-                              welfordTemperatureParticleSweep.setCounter(real_c(0.0));
-                              // Reset counters and SOS fields for fluid phase
-                              welfordVelocityFluidPhaseSweep.setCounter(real_c(0.0));
-                              welfordTemperatureFluidPhaseSweep.setCounter(real_c(0.0));
-
-                              for (auto& block : *blocks)
-                              {
-                                 // Particle phase velocity
-                                 auto* sosVelParticle = block.template getData< TensorField_T >(sosVelFieldParticlePhaseID);;
-                                 sosVelParticle->setWithGhostLayer(0.0);
-
-                                 // Fluid phase velocity
-                                 auto* sosVelFluidPhase = block.template getData< TensorField_T >(sosVelFieldFluidPhaseID);
-                                 sosVelFluidPhase->setWithGhostLayer(0.0);
-
-
-                                 // Particle phase temperature
-                                 auto* sosTempParticle = block.template getData< ScalarField_T >(sosTemperatureFieldParticlePhaseID);;
-                                 sosTempParticle->setWithGhostLayer(0.0);
-
-                                 // Fluid phase temperature
-                                 auto* sosTempFluidPhase = block.template getData< ScalarField_T >(sosTemperatureFieldFluidPhaseID);
-                                 sosTempFluidPhase->setWithGhostLayer(0.0);
-
-                              }
-
-                              // Increment counters
-                              welfordVelocityParticleSweep.setCounter(welfordVelocityParticleSweep.getCounter() + real_c(1.0));
-                              welfordTemperatureParticleSweep.setCounter(welfordTemperatureParticleSweep.getCounter() + real_c(1.0));
-                              welfordVelocityFluidPhaseSweep.setCounter(welfordVelocityFluidPhaseSweep.getCounter() + real_c(1.0));
-                              welfordTemperatureFluidPhaseSweep.setCounter(welfordTemperatureFluidPhaseSweep.getCounter() + real_c(1.0));
-                           }
-                        },
-                        "Welford particle and fluid phase setup and counter increment")
-                  << Sweep(deviceSyncWrapper(welfordPhasesSweepLambda), "Welford particle and fluid phase sweep");
-
+   WallNusseltNumber nusselt_number(domainSize[2], 1);
    for (uint_t timeStep = 0; timeStep < numTimeSteps; ++timeStep)
    {
 
       // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
       timeloop.singleStep(timeloopTiming);
-
+      nusselt_number(blocks,temperatureFieldID, timeStep,
+                   outputFrequency, Tcold, Thot);
       if (particleBarriers) WALBERLA_MPI_BARRIER();
       timeloopTiming["RPD forEachParticle assoc"].start();
       ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, assoc, *accessor);

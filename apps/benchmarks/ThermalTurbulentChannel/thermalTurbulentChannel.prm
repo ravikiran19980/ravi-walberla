@@ -1,9 +1,9 @@
 PhysicalSetup // all to be specified in SI/ref units
 {
 
-    xSize 100; // = width  // 4dp
-    ySize 50; // = depth  // 4dp
-    zSize 50; // = height  // 20dp
+    xSize 1080; // = width  // 4dp
+    ySize 540; // = depth  // 4dp
+    zSize 360; // = height  // 20dp
 
     periodicInX true;
     periodicInY true;
@@ -11,7 +11,7 @@ PhysicalSetup // all to be specified in SI/ref units
 
     runtime 1000000000;
     densityFluid 1.;
-    particleDiameter 10;
+    particleDiameter 24;
     densityParticle 1.;
     dynamicFrictionCoefficient 0.15;
     coefficientOfRestitution 0.97;
@@ -42,15 +42,15 @@ NumericalSetup
 
 TurbulenceSetup
 {
-    target_bulk_Reynolds        80;
+    target_bulk_Reynolds        4000;
     target_friction_Reynolds    180;
-    target_bulk_velocity        0.1;
+    target_bulk_velocity        0.05;
 }
 
 TemperatureSetup
 {
-    Thot 0.5;   // ThotSI = ThotLB   (concentration conversion from SI to LB)
-    Tcold -0.5;
+    Thot 1;   // ThotSI = ThotLB   (concentration conversion from SI to LB)
+    Tcold 0;
     Tref  0;
     Tparticle 0;
     PrandtlNumber 1;
@@ -60,14 +60,14 @@ TemperatureSetup
 
 Output
 {
-    infoSpacing 1; // in s
+    infoSpacing 1000; // in s
     vtkSpacingParticles 0; // in s
-    vtkSpacingFluid 1; // ins
+    vtkSpacingFluid 0; // ins
     vtkFolder vtk_out;
     performanceLogFrequency 5000000000;
 
     convergenceTolerance 0.5;
     timeBlock 120000;                //  2400*25 = 120000   (2400 is the ratio of particle diameter and Uc 24/0.01)
-    outputFrequency 120000;         // outputfrequency of the meanFlux.txt file
+    outputFrequency 10000;         // outputfrequency of the meanFlux.txt file
     averagingTimeBlock 2400000;   // typically take it 1000 * 2400 to ensure good amount of averaging
 }

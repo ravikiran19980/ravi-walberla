@@ -37,17 +37,26 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
         )
             message(STATUS "generated in thermal PSM is: ${config}" )
             if (WALBERLA_BUILD_WITH_HIP OR WALBERLA_BUILD_WITH_GPU_SUPPORT)
-                set(SRC ThermalTurbulentChannelGPU.cpp)
+                set(MAINSRC ThermalTurbulentChannelGPU.cpp)
+
             else()
-                set(SRC ThermalTurbulentChannel.cpp)
+                set(MAINSRC ThermalTurbulentChannel.cpp)
             endif()
 
-            add_executable(ThermalTurbulentChannel_${config}
-                    ${SRC}
+            set(BASE_SOURCES
+                    ${MAINSRC}
                     ./utilities/InitializerFunctions.h
                     ./utilities/InitializerFunctions.cpp
-                    ./utilities/temperatureWrapperKernels.h
-                    ./utilities/temperatureWrapperKernels.${CODEGEN_FILE_SUFFIX}
+            )
+            if (WALBERLA_BUILD_WITH_HIP OR WALBERLA_BUILD_WITH_GPU_SUPPORT)
+                list(APPEND BASE_SOURCES
+                        ./utilities/temperatureWrapperKernels.h
+                        ./utilities/temperatureWrapperKernels.${CODEGEN_FILE_SUFFIX}
+                )
+            endif()
+            add_executable(ThermalTurbulentChannel_${config}
+                    ${SRC}
+                    ${BASE_SOURCES}
             )
 
 

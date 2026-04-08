@@ -19,14 +19,16 @@ struct ForceCalculatorParameters
 };
 
 
-template< typename VelocityField_T >
+template< typename VelocityField_T, typename MaskField_T >
 class ForceCalculator
 {
  public:
    ForceCalculator(const std::weak_ptr< StructuredBlockStorage >& blocks, const BlockDataID meanVelocityId,
+                   const BlockDataID maskFieldId,
                    const ForceCalculatorParameters& forceParams)
       : blocks_(blocks), meanVelocityId_(meanVelocityId), channelHalfWidth_(real_c(forceParams.channelHalfWidth)),
-        targetBulkVelocity_(forceParams.targetBulkVelocity), targetFrictionVelocity_(forceParams.targetFrictionVelocity)
+        targetBulkVelocity_(forceParams.targetBulkVelocity), targetFrictionVelocity_(forceParams.targetFrictionVelocity),
+        maskFieldId_(maskFieldId)
    {
       const auto& domainSize = forceParams.domainSize;
 
@@ -37,7 +39,6 @@ class ForceCalculator
       maxCell[remainingIdx]       = int_c(domainSize[remainingIdx]) - 1;
       ci_                         = CellInterval(Cell{}, maxCell);
 
-      numCells_ = real_c(forceParams.channelHalfWidth * domainSize[flowDirection_] * domainSize[remainingIdx]);
    }
 
    real_t bulkVelocity() const { return bulkVelocity_; }
@@ -47,6 +48,7 @@ class ForceCalculator
    {
       // reset bulk velocity
       bulkVelocity_ = 0_r;
+      real_t numFluidCells = 0_r;
 
       auto blocks = blocks_.lock();
       WALBERLA_CHECK_NOT_NULLPTR(blocks)
@@ -54,30 +56,39 @@ class ForceCalculator
       for (auto block = blocks->begin(); block != blocks->end(); ++block)
       {
          auto* meanVelocityField = block->template getData< VelocityField_T >(meanVelocityId_);
+         auto* maskField = block->template getData< MaskField_T >(maskFieldId_);
          WALBERLA_CHECK_NOT_NULLPTR(meanVelocityField)
+         WALBERLA_CHECK_NOT_NULLPTR(maskField)
 
          auto fieldSize = meanVelocityField->xyzSize();
-         CellInterval localCi;
-         blocks->transformGlobalToBlockLocalCellInterval(localCi, *block, ci_);
-         fieldSize.intersect(localCi);
+         //CellInterval localCi;
+         //blocks->transformGlobalToBlockLocalCellInterval(localCi, *block, ci_);
+         //fieldSize.intersect(localCi);
 
-         auto* slicedField = meanVelocityField->getSlicedField(fieldSize);
-         WALBERLA_CHECK_NOT_NULLPTR(meanVelocityField)
-
-         for (auto fieldIt = slicedField->beginXYZ(); fieldIt != slicedField->end(); ++fieldIt)
+         for (auto cellIt = fieldSize.begin(); cellIt != fieldSize.end(); ++cellIt)
          {
-            const auto localMean = fieldIt[flowDirection_];
-            bulkVelocity_ += localMean;
+            const real_t localMean = meanVelocityField->get(*cellIt, 0);
+            const real_t B = maskField->get(*cellIt);
+            const real_t fluidWeight = (1-B);
+            if (fluidWeight > 0)
+            {
+               bulkVelocity_ += localMean * fluidWeight;
+               numFluidCells += fluidWeight;
+            }
          }
       }
 
       mpi::allReduceInplace< real_t >(bulkVelocity_, mpi::SUM);
-      bulkVelocity_ /= numCells_;
+      mpi::allReduceInplace< real_t >(numFluidCells, mpi::SUM);
+
+
+      bulkVelocity_ /= numFluidCells;
+
    }
 
    void calculateDrivingForce()
    {
-      force_ = oldforce_ + (targetBulkVelocity_ - bulkVelocity_) * targetBulkVelocity_ / channelHalfWidth_;
+      force_ =  (targetBulkVelocity_ - bulkVelocity_) * targetBulkVelocity_ / channelHalfWidth_;
       oldforce_ = force_;
    }
 
@@ -86,9 +97,15 @@ class ForceCalculator
       return  force_;
    }
 
+   real_t getBulkVelocity() const
+   {
+      return  bulkVelocity_;
+   }
+
  private:
    const std::weak_ptr< StructuredBlockStorage > blocks_{};
    const BlockDataID meanVelocityId_{};
+   const BlockDataID maskFieldId_{};
 
    const uint_t flowDirection_{};
    const real_t channelHalfWidth_{};
@@ -97,7 +114,6 @@ class ForceCalculator
 
    CellInterval ci_{};
 
-   real_t numCells_{};
    real_t bulkVelocity_{};
    real_t force_{};
    real_t oldforce_{};
