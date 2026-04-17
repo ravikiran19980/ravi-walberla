@@ -1,0 +1,76 @@
+PhysicalSetup // all to be specified in SI/ref units
+{
+
+    xSize 128;
+    ySize 64;
+    zSize 40;
+
+    periodicInX true;
+    periodicInY true;
+    periodicInZ false;
+
+    densityFluid 1.;
+    particleDiameter 10;
+    densityParticle 1.;
+    dynamicFrictionCoefficient 0.15;
+    coefficientOfRestitution 0.97;
+    collisionTimeFactor 1.0;
+
+}
+
+NumericalSetup
+{
+
+    // product of number of blocks should be equal to number of used processes
+    numXBlocks 2;
+    numYBlocks 2;
+    numZBlocks 2;
+
+    useLubricationForces true;
+    numberOfParticleSubCycles 10;
+    useIntegrators true;
+    particleSubBlockSize <2, 2, 2>;
+    linkedCellWidthRation 1.01;
+    particleBarriers true;
+    generationDomainFraction <0.95,0.95,0.95>;
+    volfraction 0;                  // no particles
+    writeSlice false;
+    sendDirectlyFromGPU false;
+
+}
+
+TurbulenceSetup
+{
+    target_bulk_Reynolds        5600;
+    target_friction_Reynolds    180;
+    target_bulk_velocity        0.1;
+    center_line_velocity        0.1;
+    nTurnovers                  20;
+}
+
+TemperatureSetup
+{
+    Thot 1;   // ThotSI = ThotLB   (concentration conversion from SI to LB)
+    Tcold 0;
+    Tref  0;
+    Tparticle 0;
+    PrandtlNumber 1;
+    diffusivityRatio  1;
+    Gr 1000;
+}
+
+Output
+{
+    infoSpacing 1000; // in s
+    vtkSpacingParticles 0; // in s
+    vtkSpacingFluid 0; // ins
+    vtkFolder vtk_out;
+    performanceLogFrequency 5000000000;
+
+    convergenceTolerance 0.0000001;
+    convergencetimeBlock 100;
+    planeAveragingtimeBlock 10000;
+    heatFluxAveragingtimeBlock 600000;
+    outputFrequency 1000;
+
+}

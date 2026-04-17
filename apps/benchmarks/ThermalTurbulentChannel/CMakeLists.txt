@@ -23,11 +23,8 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
                     BC_Temperature_DiffusionDirichlet_dynamic.h BC_Temperature_DiffusionDirichlet_dynamic.${CODEGEN_FILE_SUFFIX}
                     BC_Temperature_Neumann.h BC_Temperature_Neumann.${CODEGEN_FILE_SUFFIX}
                     BC_Temperature_DiffusionDirichlet_static.h BC_Temperature_DiffusionDirichlet_static.${CODEGEN_FILE_SUFFIX}
-                    WelfordVelocity_Fluid.h WelfordVelocity_Fluid.${CODEGEN_FILE_SUFFIX}
-                    WelfordTemperature_Fluid.h WelfordTemperature_Fluid.${CODEGEN_FILE_SUFFIX}
-                    WelfordVelocity_particle.h WelfordVelocity_particle.${CODEGEN_FILE_SUFFIX}
-                    WelfordTemperature_particle.h WelfordTemperature_particle.${CODEGEN_FILE_SUFFIX}
-                    MaskFields.h MaskFields.${CODEGEN_FILE_SUFFIX}
+                    WelfordVelocity.h WelfordVelocity.${CODEGEN_FILE_SUFFIX}
+                    WelfordTemperature.h WelfordTemperature.${CODEGEN_FILE_SUFFIX}
                     FluidMacroSetter.h FluidMacroSetter.cpp
                     FluidMacroGetter.h FluidMacroGetter.cpp
                     TemperatureMacroSetter.h TemperatureMacroSetter.cpp

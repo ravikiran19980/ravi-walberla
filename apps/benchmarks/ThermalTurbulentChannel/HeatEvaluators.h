@@ -13,179 +13,7 @@ namespace MaterialTransport
 {
 using namespace walberla;
 
-class WallNormalHeatFlux
-{
- public:
-   WallNormalHeatFlux(uint_t Nz, real_t dz, real_t alpha_f, real_t alpha_p,
-                      const std::string& wallNormalHeatFluxFileName = "meanFlux.txt")
-      : Nz_(Nz), dz_(dz), alpha_f_(alpha_f), alpha_p_(alpha_p)
-   {
-      WALBERLA_ROOT_SECTION()
-      {
-         outFile_.open(wallNormalHeatFluxFileName, std::ios::out);
-         outFile_ << "timeStep meanWallNusseltNumber" << std::endl;
-      }
-   }
 
-   ~WallNormalHeatFlux()
-   {
-      WALBERLA_ROOT_SECTION() { outFile_.close(); };
-   };
-
-   real_t computeMeanWallNormalFlux(const shared_ptr< StructuredBlockStorage >& blocks, const BlockDataID& tempFieldID,
-                                    const BlockDataID& BFieldID)
-   {
-      double qbot = 0.0, qtop = 0.0;
-      double nbot = 0.0, ntop = 0.0;
-
-      for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
-      {
-         auto& block = *blockIt;
-         auto Tfield = block.getData< DensityField_concentration_T >(tempFieldID);
-         auto Bfield = block.getData< GhostLayerField< real_t, 1 > >(BFieldID);
-
-         WALBERLA_FOR_ALL_CELLS_XYZ(
-            Tfield, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
-
-            const uint_t j = uint_c(cell.z()); const real_t B = Bfield->get(x, y, z);
-
-            if (j == 0) {
-               const real_t dTdz =
-                  (-3 * Tfield->get(x, y, z) + 4 * Tfield->get(x, y, z + 1) - Tfield->get(x, y, z + 2)) / (2 * dz_);
-
-               qbot += ((1 - B) * alpha_f_ + B * alpha_p_) * dTdz;
-               nbot += 1.0;
-            } else if (j == Nz_ - 1) {
-               const real_t dTdz =
-                  (3 * Tfield->get(x, y, z) - 4 * Tfield->get(x, y, z - 1) + Tfield->get(x, y, z - 2)) / (2 * dz_);
-
-               qtop += ((1 - B) * alpha_f_ + B * alpha_p_) * dTdz;
-               ntop += 1.0;
-            })
-      }
-      WALBERLA_MPI_SECTION()
-      {
-         mpi::allReduceInplace(qbot, mpi::SUM);
-         mpi::allReduceInplace(qtop, mpi::SUM);
-         mpi::allReduceInplace(nbot, mpi::SUM);
-         mpi::allReduceInplace(ntop, mpi::SUM);
-      }
-      return 0.5 * (qbot / nbot + qtop / ntop);
-   }
-
-   real_t computeWallAveragedNusseltNumber(const shared_ptr< StructuredBlockStorage >& blocks, const BlockDataID& tempFieldID,
-                                           real_t T_wall_top, real_t T_wall_bottom)
-   {
-      real_t nuBottom = real_t(0);
-      real_t nuTop    = real_t(0);
-      real_t nBottom  = real_t(0);
-      real_t nTop     = real_t(0);
-
-      for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
-      {
-         auto& block = *blockIt;
-         auto Tfield = block.getData< DensityField_concentration_T >(tempFieldID);
-
-         WALBERLA_FOR_ALL_CELLS_XYZ(
-            Tfield, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
-
-            const uint_t j = uint_c(cell.z());
-
-            if (j == 0) {
-               const real_t T0   = T_wall_bottom;
-               const real_t T1   = Tfield->get(x, y, z);
-               const real_t T2   = Tfield->get(x, y, z + 1);
-               const real_t dTdz = (-8.0 * T0 + 9.0 * T1 - T2) / (3.0 * dz_);
-               nuBottom += dTdz;
-               nBottom += real_t(1);
-            } else if (j == Nz_ - 1) {
-               const real_t T0   = T_wall_top;
-               const real_t T1   = Tfield->get(x, y, z);
-               const real_t T2   = Tfield->get(x, y, z - 1);
-               const real_t dTdz = (8.0 * T0 - 9.0 * T1 + T2) / (3.0 * dz_);
-               nuTop += dTdz;
-               nTop += real_t(1);
-            })
-      }
-
-      WALBERLA_MPI_SECTION()
-      {
-         mpi::allReduceInplace(nuBottom, mpi::SUM);
-         mpi::allReduceInplace(nuTop, mpi::SUM);
-         mpi::allReduceInplace(nBottom, mpi::SUM);
-         mpi::allReduceInplace(nTop, mpi::SUM);
-      }
-
-      nuBottom /= nBottom;
-      nuTop /= nTop;
-      return (std::abs(nuBottom) + std::abs(nuTop)) / real_t(2);
-   }
-
-   void RunningMeanHeatFluxOutput(const shared_ptr< StructuredBlockStorage >& blocks, const BlockDataID& tempFieldID,
-                                  const BlockDataID& BFieldID, real_t T_wall_top, real_t T_wall_bottom, uint_t timeStep,
-                                  uint_t outputFrequency)
-   {
-      WALBERLA_UNUSED(BFieldID);
-      const real_t currentflux = computeWallAveragedNusseltNumber(blocks, tempFieldID, T_wall_top, T_wall_bottom);
-      heatFlux_                = currentflux;
-      // update running mean
-      ++sampleCount_;
-      runningMeanFlux_ += (currentflux - runningMeanFlux_) / real_t(sampleCount_);
-
-      if (timeStep % outputFrequency == 0)
-      {
-         WALBERLA_ROOT_SECTION() { outFile_ << timeStep << " " << runningMeanFlux_ << std::endl; }
-      }
-   }
-
-   void checkForConvergence(real_t tolerance, uint_t timeStep, uint_t timeBlockSize)
-   {
-      // WALBERLA_LOG_INFO_ON_ROOT("time block size is " << timeBlockSize << "  "<< timeStep%timeBlockSize);
-      if (timeStep % timeBlockSize == 0 && timeStep > 0)
-      {
-         const real_t relDiff_percentage =
-            std::abs(runningMeanFlux_ - previousMeanFlux_) * 100 / std::max(std::abs(previousMeanFlux_), real_t(1e-14));
-
-         previousMeanFlux_ = runningMeanFlux_;
-
-         if (relDiff_percentage < tolerance) { ++convergenceCounter_; }
-         else
-         {
-            convergenceCounter_ = 0;
-         }
-         // WALBERLA_LOG_INFO_ON_ROOT("rel perentage difference from  " <<  timeStep - timeBlockSize  << "to  " <<
-         // timeStep << " is " << relDiff_percentage); WALBERLA_LOG_INFO_ON_ROOT("convergence counter is  " <<
-         // convergenceCounter_);
-         resetRunnningMeanFlux();
-      }
-   }
-
-   bool convergenceStatus(uint_t requiredSampleBlocks = 3)
-   {
-      if (convergenceCounter_ >= requiredSampleBlocks) { return true; }
-      else
-      {
-         return false;
-      }
-   }
-
-   void resetRunnningMeanFlux()
-   {
-      runningMeanFlux_ = real_t(0);
-      sampleCount_     = uint_t(0);
-   }
-
- private:
-   uint_t Nz_;
-   real_t dz_, alpha_f_, alpha_p_;
-
-   uint_t sampleCount_        = 0;
-   real_t runningMeanFlux_    = real_t(0);
-   real_t heatFlux_           = real_t(0);
-   real_t previousMeanFlux_   = real_t(0);
-   uint_t convergenceCounter_ = 0;
-   std::ofstream outFile_;
-};
 
 class MeanPlaneAverager
 {
@@ -452,11 +280,11 @@ class HeatFluxBudgets
                         << phi_p_time[k] << " " << Qtotal_[k] << std::endl;
             }
          }
-         WALBERLA_ABORT(
-            "simulation completed and the averaged results have been written to the file:  heatFluxBudgets.txt");
       }
 
    }
+
+   real_t getTimeSampleCount() const { return real_c(timeSamples_); }
 
  private:
    uint_t Nz_;
@@ -495,36 +323,36 @@ class HeatFluxBudgets
 };
 
 
-class WallNusseltNumber
+class WallStatistics
 {
  public:
-   WallNusseltNumber(uint_t Nz, real_t dz, const std::string& nusseltFileName = "nusseltNumber.txt") : Nz_(Nz), dz_(dz)
+   WallStatistics(uint_t Nz, real_t dz, real_t kinematicViscosity, uint_t outputFrequency,
+                     const std::string& nusseltFileName = "wallStatistics.txt")
+      : Nz_(Nz), dz_(dz), outputFrequency_(outputFrequency), kinematicViscosity_(kinematicViscosity)
    {
       WALBERLA_ROOT_SECTION()
       {
          outFile_.open(nusseltFileName, std::ios::out);
-         outFile_ << "timeStep Nu_bottom Nu_top Nu_time_avg" << std::endl;
+         outFile_ << "timeStep Nu_bottom Nu_top tauW_bottom tauW_top" << std::endl;
       }
    }
 
-   ~WallNusseltNumber()
+   ~WallStatistics()
    {
       WALBERLA_ROOT_SECTION() { outFile_.close(); };
    };
 
-   void operator()(const shared_ptr< StructuredBlockStorage >& blocks, const BlockDataID& tempFieldID, uint_t timeStep,
-                   uint_t outputFrequency, const real_t T_wall_top, const real_t T_wall_bottom)
+   void operator()(const shared_ptr< StructuredBlockStorage >& blocks, const BlockDataID& tempFieldID,
+                   const BlockDataID& velFieldID, uint_t timeStep, uint_t outputFrequency, const real_t T_wall_top,
+                   const real_t T_wall_bottom, const real_t tolerance)
    {
-      real_t nuBottom                   = 0.0;
-      real_t nuTop                      = 0.0;
-      uint_t countBottom                = 0;
-      uint_t countTop                   = 0;
-      real_t instantaneousNusseltNumber = 0.0;
+
 
       for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
       {
          auto& block = *blockIt;
          auto Tfield = block.getData< DensityField_concentration_T >(tempFieldID);
+         auto velF   = block.getData< VelocityField_fluid_T >(velFieldID);
 
          WALBERLA_FOR_ALL_CELLS_XYZ(
             Tfield, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
@@ -537,8 +365,14 @@ class WallNusseltNumber
                const real_t T1   = Tfield->get(x, y, z);
                const real_t T2   = Tfield->get(x, y, z + 1);
                const real_t dTdz = real_c(Nz_)*(-8.0 * T0 + 9.0 * T1 - T2) / (3.0 * dz_);
-               nuBottom += dTdz;
-               countBottom++;
+               nuBottom_ += dTdz;
+
+               const real_t U0   = real_t(0);
+               const real_t U1   = velF->get(x, y, z, 0);
+               const real_t U2   = velF->get(x, y, z + 1, 0);
+               const real_t dUdz = real_c(Nz_)*(-8.0 * U0 + 9.0 * U1 - U2) / (3.0 * dz_);
+               tauBottom_ += kinematicViscosity_ * dUdz;
+               countBottom_++;
             }
             // Top wall (j = Nz - 1): dT/dz = (8*T0 - 9*T1 + T2) / (3*dz) since wall situated at half distance from center of top cell
             else if (j == Nz_ - 1) {
@@ -546,40 +380,103 @@ class WallNusseltNumber
                const real_t T1   = Tfield->get(x, y, z);
                const real_t T2   = Tfield->get(x, y, z - 1);
                const real_t dTdz = real_c(Nz_)*(8.0 * T0 - 9.0 * T1 + T2) / (3.0 * dz_);
-               nuTop += dTdz;
-               countTop++;
+               nuTop_ += dTdz;
+
+               const real_t U0   = real_t(0);
+               const real_t U1   = velF->get(x, y, z, 0);
+               const real_t U2   = velF->get(x, y, z - 1, 0);
+               const real_t dUdz = real_c(Nz_)*(8.0 * U0 - 9.0 * U1 + U2) / (3.0 * dz_);
+               tauTop_ += kinematicViscosity_ * dUdz;
+               countTop_++;
             })
       }
 
       // MPI reduction
       WALBERLA_MPI_SECTION()
       {
-         mpi::allReduceInplace(nuBottom, mpi::SUM);
-         mpi::allReduceInplace(nuTop, mpi::SUM);
-         mpi::allReduceInplace(countBottom, mpi::SUM);
-         mpi::allReduceInplace(countTop, mpi::SUM);
+         mpi::allReduceInplace(nuBottom_, mpi::SUM);
+         mpi::allReduceInplace(nuTop_, mpi::SUM);
+         mpi::allReduceInplace(tauBottom_, mpi::SUM);
+         mpi::allReduceInplace(tauTop_, mpi::SUM);
+         mpi::allReduceInplace(countBottom_, mpi::SUM);
+         mpi::allReduceInplace(countTop_, mpi::SUM);
       }
 
       // Average over cells at wall
-      if (countBottom > 0) nuBottom /= real_c(countBottom);
-      if (countTop > 0) nuTop /= real_c(countTop);
-      instantaneousNusseltNumber = (std::abs(nuBottom) + std::abs(nuTop)) / real_c(2);
-      sampleCount_ += 1;
-      runningNusseltAvg_ += (instantaneousNusseltNumber - runningNusseltAvg_) / real_c(sampleCount_);
+      if (countBottom_ > 0) nuBottom_ /= real_c(countBottom_);
+      if (countTop_ > 0) nuTop_ /= real_c(countTop_);
+      if (countBottom_ > 0) tauBottom_ /= real_c(countBottom_);
+      if (countTop_ > 0) tauTop_ /= real_c(countTop_);
+
       if (timeStep % outputFrequency == 0)
       {
-         WALBERLA_ROOT_SECTION() { outFile_ << timeStep << " " << nuBottom << " " << nuTop << " " << runningNusseltAvg_ << std::endl; }
+         WALBERLA_ROOT_SECTION()
+         {
+            outFile_ << timeStep << " " << nuBottom_ << " " << nuTop_ << " "
+                     << tauBottom_ << " " << tauTop_ << std::endl;
+         }
+      }
+
+      wallStatisticsConvergence(tolerance, timeStep);
+      resetWallValues();
+   }
+
+   bool getWallStatisticsConvergence() { return wallstatistics_convergence_; }
+
+
+ private:
+
+   void resetWallValues() { nuBottom_ = 0.0; nuTop_ = 0.0; tauBottom_ = 0.0; tauTop_ = 0.0; countBottom_ = 0; countTop_ = 0; }
+
+   void wallStatisticsConvergence(real_t tolerance, uint_t timeStep)
+   {
+      // WALBERLA_LOG_INFO_ON_ROOT("time block size is " << timeBlockSize << "  "<< timeStep%timeBlockSize);
+      if (timeStep % outputFrequency_ == 0 && timeStep > 0)
+      {
+         const real_t currentNu = nuBottom_;
+         const real_t relDiff_percentage_nu =
+            std::abs(currentNu - oldNu_) * 100 / std::max(std::abs(oldNu_), real_t(1e-14));
+
+         oldNu_ = currentNu;
+
+         const real_t currentTau = tauBottom_;
+         const real_t relDiff_percentage_tau =
+            std::abs(currentTau - oldTau_) * 100 / std::max(std::abs(oldTau_), real_t(1e-14));
+
+         oldTau_ = currentTau;
+
+         if (relDiff_percentage_nu < tolerance   && relDiff_percentage_tau < tolerance) { ++convergenceCounter_; }
+         else
+         {
+            convergenceCounter_ = 0;
+         }
+
+         if (convergenceCounter_ == 20)
+         {
+            wallstatistics_convergence_ = true;
+            WALBERLA_LOG_INFO_ON_ROOT("converged wall stats");
+         }
       }
    }
 
-   real_t getWallAveragedNusseltNumber() const { return runningNusseltAvg_; }
 
- private:
+
    uint_t Nz_;
    real_t dz_;
+   real_t kinematicViscosity_;
    std::ofstream outFile_;
-   real_t runningNusseltAvg_ = 0.0;
-   uint_t sampleCount_       = 0.0;
+   real_t nuTop_;
+   real_t nuBottom_;
+   real_t tauTop_;
+   real_t tauBottom_;
+   uint_t countTop_ = 0;
+   uint_t countBottom_ = 0;
+
+   uint_t outputFrequency_ = 0;
+   real_t oldNu_ = 0.0;
+   real_t oldTau_ = 0.0;
+   uint_t convergenceCounter_ = 0;
+   bool wallstatistics_convergence_ = false;
 };
 
 

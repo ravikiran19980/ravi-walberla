@@ -117,10 +117,8 @@ using FlagField_T = FlagField< flag_t >;
 using ScalarField_T = field::GhostLayerField< real_t, 1 >;
 using VectorField_T = field::GhostLayerField< real_t, Stencil_Fluid_T::D >;
 using TensorField_T = field::GhostLayerField< real_t, Stencil_Fluid_T::D*Stencil_Fluid_T::D >;
-using WelfordSweepVelocityFluid_T = pystencils::WelfordVelocity_Fluid;
-using WelfordSweepVelocityParticle_T = pystencils::WelfordVelocity_particle;
-using WelfordSweepTemperatureFluid_T = pystencils::WelfordTemperature_Fluid;;
-using WelfordSweepTemperatureParticle_T = pystencils::WelfordTemperature_particle;
+using WelfordSweepVelocity_T = pystencils::WelfordVelocity;
+using WelfordSweepTemperature_T = pystencils::WelfordTemperature;
 
 
 ///////////
@@ -330,7 +328,6 @@ int main(int argc, char** argv)
    const bool periodicInX                  = physicalSetup.getParameter< bool >("periodicInX");
    const bool periodicInY                  = physicalSetup.getParameter< bool >("periodicInY");
    const bool periodicInZ                  = physicalSetup.getParameter< bool >("periodicInZ");
-   const real_t runtime                    = physicalSetup.getParameter< real_t >("runtime");
    const real_t densityFluid               = physicalSetup.getParameter< real_t >("densityFluid");
    const real_t particleDiameter           = physicalSetup.getParameter< real_t >("particleDiameter");
    const real_t densityParticle            = physicalSetup.getParameter< real_t >("densityParticle");
@@ -371,6 +368,8 @@ int main(int argc, char** argv)
    const real_t target_bulk_Reynolds     = turbulenceSetup.getParameter< real_t >("target_bulk_Reynolds");
    const real_t target_friction_Reynolds = turbulenceSetup.getParameter< real_t >("target_friction_Reynolds");
    const real_t target_bulk_velocity     = turbulenceSetup.getParameter< real_t >("target_bulk_velocity");
+   const real_t center_line_velocity     = turbulenceSetup.getParameter< real_t >("center_line_velocity");
+   const uint_t nTurnovers               = turbulenceSetup.getParameter< uint_t >("nTurnovers");
 
 
    Config::BlockHandle TemperatureSetup = cfgFile->getBlock("TemperatureSetup");
@@ -390,9 +389,10 @@ int main(int argc, char** argv)
    const uint_t performanceLogFrequency = outputSetup.getParameter< uint_t >("performanceLogFrequency");
 
    const real_t convergenceTolerance = outputSetup.getParameter< real_t >("convergenceTolerance");
-   const uint_t timeBlock            = outputSetup.getParameter< uint_t >("timeBlock");
+   const uint_t convergencetimeBlock   = outputSetup.getParameter< uint_t >("convergencetimeBlock");
+   const uint_t planeAveragingtimeBlock            = outputSetup.getParameter< uint_t >("planeAveragingtimeBlock");
+   const uint_t heatFluxAveragingtimeBlock            = outputSetup.getParameter< uint_t >("heatFluxAveragingtimeBlock");
    const uint_t outputFrequency      = outputSetup.getParameter< uint_t >("outputFrequency");
-   const uint_t averagingTimeBlock   = outputSetup.getParameter< uint_t >("averagingTimeBlock");
 
    // convert SI units to simulation (LBM) units and check setup
 
@@ -425,7 +425,6 @@ int main(int argc, char** argv)
    // in simulation units: dt = 1, dx = 1, densityFluid = 1
 
    const real_t particleVolume   = math::pi / 6_r * particleDiameter * particleDiameter * particleDiameter;
-   const uint_t numTimeSteps              = uint_c(runtime);
    const real_t poissonsRatio         = real_t(0.22);
    const real_t kappa                 = real_t(2) * (real_t(1) - poissonsRatio) / (real_t(2) - poissonsRatio);
    const real_t particleCollisionTime = collisionTimeFactor * particleDiameter;
@@ -440,9 +439,15 @@ int main(int argc, char** argv)
    const real_t rho_0               = densityFluid;
    const real_t particleTemperature = Tparticle;
    const real_t channel_half_width = real_c(domainSize[2]/2);
-   const real_t kinematicViscosityLB = (2*channel_half_width*target_bulk_velocity)/target_bulk_Reynolds;
 
+   // calculation of target friction velocity from the thesis of Eschghinejadfard
 
+   const real_t vonkarman_kappa = 2.5;
+   const real_t B = 5.5;
+   const real_t target_friction_velocity  = center_line_velocity/(vonkarman_kappa*std::log(target_friction_Reynolds) + B);
+   const real_t turnOverPeriod = channel_half_width/target_friction_velocity;
+
+   const real_t kinematicViscosityLB = (target_friction_velocity*channel_half_width)/target_friction_Reynolds;
 
    const real_t thermalDiffusivityFluid_LB = kinematicViscosityLB / Pr;
    const real_t thermalDiffusivityParticle_LB = thermalDiffusivityFluid_LB;
@@ -451,6 +456,11 @@ int main(int argc, char** argv)
    const real_t omega_f  = lbm::collision_model::omegaFromViscosity(kinematicViscosityLB);
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
    const real_t omegaT_s = lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
+   const uint_t numTimeSteps              = 120 * uint_c(turnOverPeriod);
+
+
+
+
    WALBERLA_LOG_INFO_ON_ROOT("Known Quantities are    ");
    WALBERLA_LOG_INFO_ON_ROOT("density particle LB is " << densityParticle);
    WALBERLA_LOG_INFO_ON_ROOT("density fluid LB is " << densityFluid);
@@ -467,9 +477,17 @@ int main(int argc, char** argv)
    WALBERLA_LOG_INFO_ON_ROOT("thermal diffusivity alpha particle = " <<  thermalDiffusivityParticle_LB);
 
 
-   /////////////////////////////////////
+
+   // outputting turbulent related parameters
+   WALBERLA_LOG_INFO_ON_ROOT("target friction Reynolds number = " <<  target_friction_Reynolds);
+   WALBERLA_LOG_INFO_ON_ROOT("target_friction_velocity = " <<  target_friction_velocity);
+   WALBERLA_LOG_INFO_ON_ROOT("turnOverPeriod = " <<  turnOverPeriod);
+   WALBERLA_LOG_INFO_ON_ROOT("kinematic viscosity = " <<  kinematicViscosityLB);
+   WALBERLA_LOG_INFO_ON_ROOT("viscous length scale = " <<  kinematicViscosityLB/target_friction_velocity);
+
+   /////////////////////////////////////////////
    //// driving force calculation parameters ///
-   ////////////////////////////////////
+   ////////////////////////////////////////////
 
    ForceCalculatorParameters forceParams;
    forceParams.domainSize = Vector3<uint_t>(
@@ -485,8 +503,11 @@ int main(int argc, char** argv)
    forceParams.targetBulkVelocity = target_bulk_velocity;
 
    // example conversion if needed
-   forceParams.targetFrictionVelocity =
-      target_bulk_velocity / target_bulk_Reynolds * target_friction_Reynolds;
+   forceParams.targetFrictionVelocity = target_friction_velocity;
+
+
+
+
 
    ///////////////////////////
    // BLOCK STRUCTURE SETUP //
@@ -581,12 +602,6 @@ int main(int argc, char** argv)
 
    BlockDataID flagFieldFluidID       = field::addFlagFieldToStorage< FlagField_T >(blocks, "fluid flag field");
 
-   BlockDataID maskedVelFieldFluidID =
-      field::addToStorage< VelocityField_fluid_T >(blocks, "masked velocity fluid field CPU", real_t(0), field::fzyx);
-
-   BlockDataID maskedVelFieldParticleID =
-      field::addToStorage< VelocityField_fluid_T >(blocks, "masked velocity particle field CPU", real_t(0), field::fzyx);
-
 
    ////////////////////////////////////////////////
    // Temperature related fields creation on CPU //
@@ -603,44 +618,26 @@ int main(int argc, char** argv)
 
    BlockDataID flagFieldTemperatureID = field::addFlagFieldToStorage< FlagField_T >(blocks, "temperature flag field");
 
-   BlockDataID maskedTemperatureFieldFluidID = field::addToStorage< DensityField_temperature_T >(
-      blocks, "masked temperature fluid field", real_t(0), field::fzyx);
 
-   BlockDataID maskedTemperatureFieldParticleID = field::addToStorage< DensityField_temperature_T >(
-      blocks, "masked temperature particle field", real_t(0), field::fzyx);
-
-   ////////////////////////////////////////////////////////////
-   // Separate Welford fields for particle and fluid phases //
-   ///////////////////////////////////////////////////////////
+   /////////////////////////////////////////////
+   // Welford fields for overall statistics  //
+   ///////////////////////////////////////////
 
 
-   // Particle phase velocity fields
-   BlockDataID meanVelFieldParticlePhaseID =
-      field::addToStorage< VelocityField_fluid_T >(blocks, "mean velocity particle field CPU", real_t(0), field::fzyx);
 
-   BlockDataID sosVelFieldParticlePhaseID =
-      field::addToStorage< TensorField_T >(blocks, "sum of squares velocity particle field CPU", real_t(0), field::fzyx);
+   // velocity fields
+   BlockDataID meanVelFieldID =
+      field::addToStorage< VelocityField_fluid_T >(blocks, "mean velocity field CPU", real_t(0), field::fzyx);
 
-   // Fluid phase velocity fields
-   BlockDataID meanVelFieldFluidPhaseID =
-      field::addToStorage< VelocityField_fluid_T >(blocks, "mean velocity fluid phase field CPU", real_t(0), field::fzyx);
+   BlockDataID sosVelFieldID =
+      field::addToStorage< TensorField_T >(blocks, "sum of squares velocity field CPU", real_t(0), field::fzyx);
 
-   BlockDataID sosVelFieldFluidPhaseID =
-      field::addToStorage< TensorField_T >(blocks, "sum of squares velocity fluid phase field CPU", real_t(0), field::fzyx);
+   // temperature fields
+   BlockDataID meanTemperatureFieldID =
+      field::addToStorage< DensityField_temperature_T >(blocks, "mean temperature field CPU", real_t(0), field::fzyx);
 
-   // Particle phase temperature fields
-   BlockDataID meanTemperatureFieldParticlePhaseID =
-      field::addToStorage< DensityField_temperature_T >(blocks, "mean temperature particle field CPU", real_t(0), field::fzyx);
-
-   BlockDataID sosTemperatureFieldParticlePhaseID =
-      field::addToStorage< DensityField_temperature_T >(blocks, "sum of squares temperature particle field CPU", real_t(0), field::fzyx);
-
-   // Fluid phase temperature fields
-   BlockDataID meanTemperatureFieldFluidPhaseID =
-      field::addToStorage< DensityField_temperature_T >(blocks, "mean temperature fluid phase field CPU", real_t(0), field::fzyx);
-
-   BlockDataID sosTemperatureFieldFluidPhaseID =
-      field::addToStorage< DensityField_temperature_T >(blocks, "sum of squares temperature fluid phase field CPU", real_t(0), field::fzyx);
+   BlockDataID sosTemperatureFieldID =
+      field::addToStorage< DensityField_temperature_T >(blocks, "sum of squares temperature field CPU", real_t(0), field::fzyx);
 
    // Synchronize particles between the blocks for the correct mapping of ghost particles
    // set up RPD functionality
@@ -770,18 +767,19 @@ int main(int argc, char** argv)
 
    // create the welford fluid and temperature sweep objects:
 
-   // create separate welford sweeps for particle and fluid phases
-   WelfordSweepVelocityParticle_T welfordVelocityParticleSweep(meanVelFieldParticlePhaseID, sosVelFieldParticlePhaseID, velFieldFluidID, 0_r);
-   WelfordSweepVelocityFluid_T welfordVelocityFluidPhaseSweep(meanVelFieldFluidPhaseID, sosVelFieldParticlePhaseID, velFieldFluidID, 0_r);
+   WelfordSweepVelocity_T welfordVelocitySweep(meanVelFieldID, sosVelFieldID, velFieldFluidID, 0_r);
+   WelfordSweepTemperature_T welfordTemperatureSweep(meanTemperatureFieldID, sosTemperatureFieldID, temperatureFieldID, 0_r);
 
-   WelfordSweepTemperatureParticle_T welfordTemperatureParticleSweep(meanTemperatureFieldParticlePhaseID, sosTemperatureFieldParticlePhaseID, temperatureFieldID, 0_r);
-   WelfordSweepTemperatureFluid_T welfordTemperatureFluidPhaseSweep(meanTemperatureFieldFluidPhaseID, sosTemperatureFieldFluidPhaseID, temperatureFieldID, 0_r);
+   ////////////////////////////////////
+   // Initialize the PDFs and Fields //
+   ///////////////////////////////////
 
-////////////////////////////////////
-// Initialize the PDFs and Fields //
-///////////////////////////////////
-
-   //walberla::initFluidField(blocks, velFieldFluidID, Uinitialize,domainSize);
+   // Velocity field setup
+   setVelocityFieldsAsmuth<VectorField_T>(
+      blocks, velFieldFluidID, meanVelFieldID,
+      target_friction_velocity, uint_c(forceParams.channelHalfWidth),
+      5.5_r, 0.4_r, kinematicViscosityLB,
+      forceParams.wallAxis, 0 );
 
    // Map particles into the fluid domain
    ParticleAndVolumeFractionSoA_T< Weighting > particleAndVolumeFractionSoA_fluid(blocks, omega_f);
@@ -807,7 +805,7 @@ int main(int argc, char** argv)
 
    // calculate the initial force for initialization:
    forceCalculator.setBulkVelocity(forceParams.targetBulkVelocity);
-   const auto initialForce = 0;//forceCalculator.getCurrentDrivingForce();
+   const auto initialForce = forceCalculator.getCurrentDrivingForce();
 
 
    // Initialize PDFs
@@ -911,7 +909,9 @@ int main(int argc, char** argv)
          }
       });
       vtkOutput_Fluid->addCellDataWriter(
-         make_shared< field::VTKWriter< VelocityField_fluid_T > >(velFieldFluidID, "Fluid Velocity"));
+         make_shared< field::VTKWriter< VelocityField_fluid_T > >(velFieldFluidID, "instantaneous Fluid Velocity"));
+      vtkOutput_Fluid->addCellDataWriter(
+         make_shared< field::VTKWriter< VelocityField_fluid_T > >(meanVelFieldID, "mean Fluid velocity"));
       vtkOutput_Fluid->addCellDataWriter(
          make_shared< field::VTKWriter< DensityField_fluid_T > >(densityFluidFieldID, "Fluid Density"));
       //vtkOutput_Fluid->addCellDataWriter(
@@ -927,13 +927,16 @@ int main(int argc, char** argv)
          flagOutput->write();
 
       vtkOutput_Temperature->addCellDataWriter(
-         make_shared< field::VTKWriter< DensityField_temperature_T > >(temperatureFieldID, "temperature"));  // temperature field
+         make_shared< field::VTKWriter< DensityField_temperature_T > >(temperatureFieldID, "instantaneous temperature field"));
 
       vtkOutput_Temperature->addCellDataWriter(
          make_shared< field::VTKWriter< FlagField_T > >(flagFieldTemperatureID, "TemperatureFlagField"));
-      timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Fluid), "VTK output Fluid");
+      vtkOutput_Temperature->addCellDataWriter(
+         make_shared< field::VTKWriter< DensityField_temperature_T > >(meanTemperatureFieldID, "mean temperature field"));
+
       timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Fluid), "VTK output Fluid");
       timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Temperature), "VTK output Temperature");
+
 
       if(writeSlice){
          const AABB sliceAABB(real_t(0), real_c(domainSize[1]) * real_t(0.5) - real_t(1), real_t(0),
@@ -994,10 +997,10 @@ int main(int argc, char** argv)
       timeloop.addFuncAfterTimeStep(performanceLogger, "Evaluate performance logging");
    }
 
-   ////////////////////////
-   // EXECUTE SIMULATION //
-   ////////////////////////
-   WallNormalHeatFlux wallNormalHeatFlux(domainSize[2], 1,thermalDiffusivityFluid_LB,thermalDiffusivityParticle_LB);
+   //////////////////////////////////////////
+   // Creating the necessary class objects //
+   //////////////////////////////////////////
+
    WcTimingPool timeloopTiming;
    const bool useOpenMP = true;
 
@@ -1006,70 +1009,262 @@ int main(int argc, char** argv)
                                           linkedCellWidth);
    mesa_pd::kernel::InsertParticleIntoLinkedCells ipilc;
 
+   ////////////////////////////////////////////////////////
+   /// needed to monitor stationary state or convergence ///
+   ////////////////////////////////////////////////////////
+   WallStatistics wall_statistics(domainSize[2], 1, kinematicViscosityLB, outputFrequency);
+
+   //////////////////////////////////////////////////////////////////////////////////////////////
+   /// for obtaining plane velocity and temperature averages required to compute heat budgets ///
+   //////////////////////////////////////////////////////////////////////////////////////////////
+
    MeanPlaneAverager meanPlaneAverager(uint_c(domainSize[2]));
-   HeatFluxBudgets heatFluxBudgets(uint_c(domainSize[2]),1, thermalDiffusivityFluid_LB, thermalDiffusivityParticle_LB,averagingTimeBlock,meanPlaneAverager);
+
+   //////////////////////////////////////////
+   // for computation of heatflux budgets //
+   ////////////////////////////////////////
+
+   HeatFluxBudgets heatFluxBudgets(uint_c(domainSize[2]),1, thermalDiffusivityFluid_LB, thermalDiffusivityParticle_LB,heatFluxAveragingtimeBlock,meanPlaneAverager);
+
+   //////////////////////////////////////////////////
+   /// for computing particle and fluid statistics //
+   /////////////////////////////////////////////////
+
+   PlaneAveragedProfiles<VectorField_T> planeAveragedProfiles_velocity(blocks,velFieldFluidID,
+                       2,domainSize);
+   PlaneAveragedProfiles<ScalarField_T> planeAveragedProfiles_temperature(blocks,temperatureFieldID,
+                       2,domainSize);
 
 
 
-   bool welfordstart = false;
-   // Instantiate the generated MaskFields sweep
-   pystencils::MaskFields maskFieldsSweep(
-      particleAndVolumeFractionSoA_temperature.BFieldID, maskedTemperatureFieldFluidID,maskedTemperatureFieldParticleID, maskedVelFieldFluidID,maskedVelFieldParticleID,temperatureFieldID,velFieldFluidID);
 
-   auto conditionalMaskFieldsSweep = std::function<void(IBlock*)>(
-      [&](IBlock* block)
+   auto postProcessingLamdas = [&]() {
+
+      //if (timeloop.getCurrentTimeStep() == uint_c(nTurnovers * turnOverPeriod)  )//&& wall_statistics.getWallStatisticsConvergence() == true)
+      //{
+         // spatial and temporal averaging of the particle and fluid statistics
+         planeAveragedProfiles_velocity.computeFluidParticleAveragedVectors(
+            particleAndVolumeFractionSoA_temperature.BFieldID);
+
+      //}
+
+      if (timeloop.getCurrentTimeStep() == uint_c(nTurnovers * turnOverPeriod))
       {
-         if (welfordstart)
+         // computation of fluid and particle avg, rms, reynolds stresses quantities
+         planeAveragedProfiles_velocity.computeFluidParticleRMS();
+
+         WALBERLA_ROOT_SECTION()
          {
-            maskFieldsSweep(block);
-         }
-      });
-
-   auto HeatFluxLamdas = [&]() {
-      wallNormalHeatFlux.RunningMeanHeatFluxOutput(blocks, temperatureFieldID,
-                                                   particleAndVolumeFractionSoA_temperature.BFieldID,
-                                                   Tcold, Thot,
-                                                   timeloop.getCurrentTimeStep(), outputFrequency);
-
-      wallNormalHeatFlux.checkForConvergence(convergenceTolerance, timeloop.getCurrentTimeStep(), timeBlock);
-
-      if (wallNormalHeatFlux.convergenceStatus() == true)
-      {
-         if (meanPlaneAverager.getTimeCounter() < 2 * timeBlock)
-         {
-            if (meanPlaneAverager.getTimeCounter() % 1000 == 0)
+            std::ofstream velocityOS;
+            velocityOS << std::fixed << std::setprecision(6);
+            velocityOS.open("phase_statistics.txt", std::ios::out);
+            auto printRow = [&](auto&&... args)
             {
-               WALBERLA_LOG_INFO_ON_ROOT("still i0n  the pre part  " << meanPlaneAverager.getTimeCounter())
+               ((velocityOS << std::setw(12) << args), ...);
+                velocityOS << "\n";
+            };
+
+            printRow("z","Ux_f","Uy_f","Uz_f","UU_f","UV_f","UW_f", "VU_f", "VV_f", "VW_f", "WU_f", "WV_f", "WW_f","Ux_p","Uy_p","Uz_p", "UU_p","UV_p","UW_p", "VU_p", "VV_p", "VW_p", "WU_p", "WV_p", "WW_p");
+
+            for (uint_t idx = 0; idx < domainSize[2]; ++idx)
+            {
+               velocityOS << std::setw(12) << idx;
+
+               // fluid averaged velocities
+               for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+               {
+                  velocityOS << std::setw(12) <<
+                  planeAveragedProfiles_velocity.getFluidAVGProfile()[idx * VectorField_T::F_SIZE + i];
+               }
+
+               // fluid rms profiles
+               for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+               {
+                  for (uint_t j = 0; j < VectorField_T::F_SIZE; ++j)
+                  {
+                     velocityOS << std::setw(12)
+                                << planeAveragedProfiles_velocity
+                                      .getFluidRMSProfile()[idx * VectorField_T::F_SIZE * VectorField_T::F_SIZE +
+                                                            i * VectorField_T::F_SIZE + j];
+                  }
+               }
+
+               // particle averaged velocities
+               for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+               {
+                  velocityOS << std::setw(12) <<
+                  planeAveragedProfiles_velocity.getParticleAVGProfile()[idx * VectorField_T::F_SIZE + i];
+               }
+
+               // particle rms profiles
+               for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+               {
+                  for (uint_t j = 0; j < VectorField_T::F_SIZE; ++j)
+                  {
+                     velocityOS << std::setw(12)
+                                << planeAveragedProfiles_velocity
+                                      .getParticleRMSProfile()[idx * VectorField_T::F_SIZE * VectorField_T::F_SIZE +
+                                                            i * VectorField_T::F_SIZE + j];
+                  }
+               }
+
+               velocityOS << "\n";
+            }
+            velocityOS.flush();
+            velocityOS.close();
+            WALBERLA_ABORT("simulation completed and the averaged results have been written to the file:  phase_statistics.txt");
+         }
+      }
+   };
+
+   auto postProcessingLamdaswithTemperature = [&]() {
+
+
+      if (timeloop.getCurrentTimeStep() >= nTurnovers*turnOverPeriod && wall_statistics.getWallStatisticsConvergence() ==true )
+      {
+         if (meanPlaneAverager.getTimeCounter() < 2 * planeAveragingtimeBlock)
+         {
+            if (meanPlaneAverager.getTimeCounter() % 1000 == 0) // just for debugging
+            {
+               WALBERLA_LOG_INFO_ON_ROOT("still in  the pre part  " << meanPlaneAverager.getTimeCounter())
             }
             meanPlaneAverager(blocks, velFieldFluidID, temperatureFieldID,
                               particleAndVolumeFractionSoA_temperature.BFieldID);
          }
-         if (meanPlaneAverager.getTimeCounter() == 2 * timeBlock)
+         if (meanPlaneAverager.getTimeCounter() == 2 * planeAveragingtimeBlock)
          {
-            welfordstart = true;
             if (meanPlaneAverager.getTimeCounter() % 10000 == 0)
             {
                WALBERLA_LOG_INFO_ON_ROOT("entered the averagin part")
             }
             heatFluxBudgets(blocks, velFieldFluidID, temperatureFieldID,
                             particleAndVolumeFractionSoA_temperature.BFieldID);
+
+            planeAveragedProfiles_velocity.computeFluidParticleAveragedVectors(
+               particleAndVolumeFractionSoA_temperature.BFieldID);
+            planeAveragedProfiles_temperature.computeFluidParticleAveragedVectors(
+               particleAndVolumeFractionSoA_temperature.BFieldID);
+
+            if (heatFluxBudgets.getTimeSampleCount() == real_c(heatFluxAveragingtimeBlock))
+            {
+               // averaging is done so write out the different quantities to text files here:
+
+               planeAveragedProfiles_velocity.computeFluidParticleRMS(); // compute the rms quantities
+               planeAveragedProfiles_temperature.computeFluidParticleRMS();
+               WALBERLA_ROOT_SECTION()
+               {
+                  std::ofstream velocityOS;
+                  velocityOS.open("statistics.txt", std::ios::out);
+                  velocityOS << "height\t Uf_x\t Uf_y\t Uf_z\t Up_x\t Up_y\t Up_z\t Urms_fx\t Urms_fy\t Urms_fz\t "
+                                "Urms_px\t Urms_py\t Urms_pz\t Tf\t Tp\t Trms_f\t Trms_p\t  \n";
+                  for (uint_t idx = 0; idx < domainSize[2]; ++idx)
+                  {
+                     velocityOS << idx << "\t";
+                     for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+                     {
+                        velocityOS
+                           << planeAveragedProfiles_velocity.getFluidAVGProfile()[idx * VectorField_T::F_SIZE + i]
+                           << "\t";
+                        velocityOS
+                           << planeAveragedProfiles_velocity.getParticleAVGProfile()[idx * VectorField_T::F_SIZE + i]
+                           << "\t";
+                        velocityOS
+                           << planeAveragedProfiles_velocity.getParticleRMSProfile()[idx * VectorField_T::F_SIZE + i]
+                           << "\t";
+                        velocityOS
+                           << planeAveragedProfiles_velocity.getParticleRMSProfile()[idx * VectorField_T::F_SIZE + i]
+                           << "\t";
+                     }
+
+                     velocityOS << planeAveragedProfiles_temperature.getFluidAVGProfile()[idx] << "\t";
+                     velocityOS << planeAveragedProfiles_temperature.getParticleAVGProfile()[idx] << "\t";
+                     velocityOS << planeAveragedProfiles_temperature.getParticleRMSProfile()[idx] << "\t";
+                     velocityOS << planeAveragedProfiles_temperature.getParticleRMSProfile()[idx] << "\t";
+
+                     velocityOS << "\n";
+                  }
+                  WALBERLA_ABORT("simulation completed and the averaged results have been written to the file:  statistics.txt");
+               }
+            }
          }
       }
    };
 
+   auto welfordPhasesSweepLambda =
+      std::function< void(IBlock*) >([&](IBlock* block) {
+            welfordVelocitySweep(block);
+            welfordTemperatureSweep(block);
+
+            if (timeloop.getCurrentTimeStep() == uint_c(nTurnovers * turnOverPeriod))
+            {
+               WALBERLA_LOG_INFO_ON_ROOT("entered  " << uint_c(nTurnovers * turnOverPeriod));
+               // computation of welford statistics
+
+               reduceWelfordFields<VectorField_T, TensorField_T> reduceWelford_velocity(blocks,meanVelFieldID,sosVelFieldID,
+                              2, uint_c(zSize), welfordVelocitySweep);
+               reduceWelford_velocity();
+               auto welford_mean_velocity = reduceWelford_velocity.getPlaneMeans();
+               auto welford_sos_velocity = reduceWelford_velocity.getPlaneSoSMeans();
+
+               // here a function to reduce welford fields to vectors is needed
+               WALBERLA_ROOT_SECTION()
+               {
+
+
+                  std::ofstream velocityOS;
+                  velocityOS << std::fixed << std::setprecision(6);
+                  velocityOS.open("welford_statistics.txt", std::ios::out);
+                  auto printRow = [&](auto&&... args) {
+                     ((velocityOS << std::setw(12) << args), ...);
+                     velocityOS << "\n";
+                  };
+
+                  printRow("z", "Ux_f", "Uy_f", "Uz_f", "UU", "UV", "UW", "VU", "VV", "VW", "WU", "WV",
+                           "WW");
+
+                  for (uint_t idx = 0; idx < domainSize[2]; ++idx)
+                  {
+                     velocityOS << std::setw(12) << idx;
+
+                     // fluid averaged velocities
+                     for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+                     {
+                        velocityOS
+                           << std::setw(12)
+                           << welford_mean_velocity[idx * VectorField_T::F_SIZE + i];
+                     }
+
+                     // fluid rms profiles
+                     for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+                     {
+                        for (uint_t j = 0; j < VectorField_T::F_SIZE; ++j)
+                        {
+                           velocityOS << std::setw(12)
+                                      << welford_sos_velocity[idx * VectorField_T::F_SIZE * VectorField_T::F_SIZE +
+                                                                  i * VectorField_T::F_SIZE + j];
+                        }
+                     }
+
+                     velocityOS << "\n";
+                  }
+                  velocityOS.flush();
+                  velocityOS.close();
+                 // WALBERLA_ABORT(
+                   //  "simulation completed and the averaged results have been written to the file:  welford_statistics.txt");
+               }
+            }
 
 
 
-   auto welfordPhasesSweepLambda = std::function< void(IBlock*) >([&welfordVelocityParticleSweep, &welfordVelocityFluidPhaseSweep, &welfordTemperatureParticleSweep, &welfordTemperatureFluidPhaseSweep](IBlock* block) {
+      });
 
-         welfordVelocityParticleSweep(block);
-         welfordVelocityFluidPhaseSweep(block);
-         welfordTemperatureParticleSweep(block);
-         welfordTemperatureFluidPhaseSweep(block);
+   auto wallstatisticsLamda = [&]() {
+      wall_statistics(blocks, meanTemperatureFieldID, meanVelFieldID, timeloop.getCurrentTimeStep(), outputFrequency, Tcold, Thot, convergenceTolerance);
 
-   });
-
-   // add everything to the timeloop:
+   };
+   ///////////////////////////////////
+   // add everything to the timeloop//
+   ///////////////////////////////////
 
 
    timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")
@@ -1106,7 +1301,6 @@ int main(int argc, char** argv)
                            forceCalculator.calculateDrivingForce();
                            const auto newForce = forceCalculator.getCurrentDrivingForce();
                            setNewForce(newForce);
-                           //WALBERLA_LOG_INFO_ON_ROOT("bulk velocityx is  " << forceCalculator.getBulkVelocity());
                         },
                         "new force setter")
                   << Sweep([](IBlock*) {}, "new force setter");
@@ -1121,16 +1315,42 @@ int main(int argc, char** argv)
    timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.reduceParticleForcesSweep),
                            "Reduce particle forces");
 
-   timeloop.addFuncAfterTimeStep(HeatFluxLamdas, "HeatFlux convergence and budget computations");
+   bool resetCounters = false;
+   timeloop.addFuncAfterTimeStep(postProcessingLamdas, "custom HeatFlux, velocity statistics and other post processing");
+   timeloop.add() << BeforeFunction(
+                        [&]() {
+                           if (wall_statistics.getWallStatisticsConvergence() == true && resetCounters == false)
+                           {
+                              WALBERLA_LOG_INFO_ON_ROOT("entering loop again should print only once")
+                              resetCounters = true;
+                              welfordVelocitySweep.setCounter(0);
+                              welfordTemperatureSweep.setCounter(0);
 
-   WallNusseltNumber nusselt_number(domainSize[2], 1);
+                              for (auto& block : *blocks)
+                              {
+                                 auto* sosTemperatureField =
+                                    block.template getData< ScalarField_T >(sosTemperatureFieldID);
+                                 sosTemperatureField->setWithGhostLayer(0.0);
+                                 auto* sosVelocityField = block.template getData< TensorField_T >(sosVelFieldID);
+                                 sosVelocityField->setWithGhostLayer(0.0);
+                              }
+                           }
+                           welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
+                           welfordTemperatureSweep.setCounter(welfordTemperatureSweep.getCounter() + real_c(1.0));
+                           //WALBERLA_LOG_INFO_ON_ROOT("current counter welfor is   " << welfordVelocitySweep.getCounter());
+                        },
+                        "welford velocity sweep")
+                  << Sweep(welfordPhasesSweepLambda, "welford velocity sweep");
+
+
+   timeloop.addFuncAfterTimeStep(wallstatisticsLamda, "wall statistics computations");
+
    for (uint_t timeStep = 0; timeStep < numTimeSteps; ++timeStep)
    {
 
       // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
       timeloop.singleStep(timeloopTiming);
-      nusselt_number(blocks,temperatureFieldID, timeStep,
-                   outputFrequency, Tcold, Thot);
+
       if (particleBarriers) WALBERLA_MPI_BARRIER();
       timeloopTiming["RPD forEachParticle assoc"].start();
       ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, assoc, *accessor);
