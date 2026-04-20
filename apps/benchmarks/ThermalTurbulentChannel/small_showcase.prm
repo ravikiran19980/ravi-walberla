@@ -1,21 +1,21 @@
 PhysicalSetup // all to be specified in SI/ref units
 {
 
-    xSize 600;
-    ySize 260;
-    zSize 260;
+    xSize 128;
+    ySize 64;
+    zSize 40;
 
     periodicInX true;
     periodicInY true;
     periodicInZ false;
 
     densityFluid 1.;
-    particleDiameter 16;
+    particleDiameter 10;
     densityParticle 1.;
     dynamicFrictionCoefficient 0.15;
     coefficientOfRestitution 0.97;
     collisionTimeFactor 1.0;
-    simulationTimeFactor 100;   // total timesteps of simulation = simulationTimeFactor * turnOverPeriod
+    simulationTimeFactor 3;   // total timesteps of simulation = simulationTimeFactor * turnOverPeriod
 
 }
 
@@ -34,7 +34,7 @@ NumericalSetup
     linkedCellWidthRation 1.01;
     particleBarriers true;
     generationDomainFraction <0.95,0.95,0.95>;
-    volfraction 0.1;                  // no particles
+    volfraction 0;                  // no particles
     writeSlice false;
     sendDirectlyFromGPU false;
 
@@ -46,7 +46,7 @@ TurbulenceSetup
     target_friction_Reynolds    180;
     target_bulk_velocity        0.1;
     center_line_velocity        0.1;
-    nTurnovers                  20;
+    nTurnovers                  1;
 }
 
 TemperatureSetup
@@ -71,8 +71,8 @@ Output
 }
 
 statistics_params{
-    convergenceTolerance 1;                      // percentage tolerance of wall shear and nusselt numbers
-    outputFrequency 10000;                        // how often you want to monitor convergence and output the wall statistics
+    convergenceTolerance 10;                      // percentage tolerance of wall shear and nusselt numbers
+    outputFrequency 10;                        // how often you want to monitor convergence and output the wall statistics
     planeAveragingtimeBlock 10000;               // required only for heat flux budgets
     heatFluxAveragingtimeBlock 600000;           // required only for heat flux budgets
 

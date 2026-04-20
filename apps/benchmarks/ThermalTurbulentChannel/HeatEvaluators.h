@@ -417,7 +417,11 @@ class WallStatistics
          }
       }
 
-      wallStatisticsConvergence(tolerance, timeStep);
+      if (!wallstatistics_convergence_)
+      {
+         wallStatisticsConvergence(tolerance, timeStep);
+
+      }
       resetWallValues();
    }
 

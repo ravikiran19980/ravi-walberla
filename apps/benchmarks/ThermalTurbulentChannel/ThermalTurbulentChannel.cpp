@@ -29,8 +29,9 @@
 #include "core/Environment.h"
 #include "core/grid_generator/SCIterator.h"
 #include "core/logging/all.h"
-#include "core/timing/RemainingTimeLogger.h"
 #include "core/math/all.h"
+#include "core/math/extern/exprtk.h"
+#include "core/timing/RemainingTimeLogger.h"
 
 #include "field/AddToStorage.h"
 #include "field/vtk/all.h"
@@ -82,22 +83,21 @@
 
 #include "vtk/all.h"
 
+#include <fstream>
+#include <iomanip>
+
 #include "./utilities/InitializerFunctions.h"
-#include "TemperatureMacroGetter.h"
+#include "./utilities/settemperaturesweep.h"
 #include "FluidMacroGetter.h"
 #include "GeneralInfoHeader.h"
+#include "HeatEvaluators.h"
 #include "PSMFluidSweep.h"
 #include "PackInfoFluid.h"
 #include "PackInfoTemperature.h"
+#include "TemperatureMacroGetter.h"
 #include "math.h"
-#include <fstream>
-#include <iomanip>
 #include "randomPoints.h"
-#include "./utilities/settemperaturesweep.h"
-#include "HeatEvaluators.h"
 #include "turbulentFlowUtilities.h"
-//#include "WelfordVelocity.h"
-//#include "WelfordTemperature.h"
 
 namespace MaterialTransport
 {
@@ -107,18 +107,18 @@ namespace MaterialTransport
 
 using namespace walberla;
 using namespace lbm_mesapd_coupling::psm::gpu;
-typedef pystencils::PackInfoFluid PackInfoFluid_T;
-typedef pystencils::PackInfoTemperature PackInfoTemperature_T;
+typedef PackInfoFluid PackInfoFluid_T;
+typedef PackInfoTemperature PackInfoTemperature_T;
 
-using flag_t      = walberla::uint8_t;
+using flag_t      = uint8_t;
 using FlagField_T = FlagField< flag_t >;
 
 // Field Types
-using ScalarField_T = field::GhostLayerField< real_t, 1 >;
-using VectorField_T = field::GhostLayerField< real_t, Stencil_Fluid_T::D >;
-using TensorField_T = field::GhostLayerField< real_t, Stencil_Fluid_T::D*Stencil_Fluid_T::D >;
-using WelfordSweepVelocity_T = pystencils::WelfordVelocity;
-using WelfordSweepTemperature_T = pystencils::WelfordTemperature;
+using ScalarField_T = GhostLayerField< real_t, 1 >;
+using VectorField_T = GhostLayerField< real_t, Stencil_Fluid_T::D >;
+using TensorField_T = GhostLayerField< real_t, Stencil_Fluid_T::D*Stencil_Fluid_T::D >;
+using WelfordSweepVelocity_T = WelfordVelocity;
+using WelfordSweepTemperature_T = WelfordTemperature;
 
 
 ///////////
@@ -334,6 +334,7 @@ int main(int argc, char** argv)
    const real_t dynamicFrictionCoefficient = physicalSetup.getParameter< real_t >("dynamicFrictionCoefficient");
    const real_t coefficientOfRestitution   = physicalSetup.getParameter< real_t >("coefficientOfRestitution");
    const real_t collisionTimeFactor        = physicalSetup.getParameter< real_t >("collisionTimeFactor");
+   const uint_t simulationTimeFactor       = physicalSetup.getParameter< uint_t >("simulationTimeFactor");
 
    Config::BlockHandle numericalSetup = cfgFile->getBlock("NumericalSetup");
    const uint_t numXBlocks            = numericalSetup.getParameter< uint_t >("numXBlocks");
@@ -388,11 +389,12 @@ int main(int argc, char** argv)
    const std::string vtkFolder          = outputSetup.getParameter< std::string >("vtkFolder");
    const uint_t performanceLogFrequency = outputSetup.getParameter< uint_t >("performanceLogFrequency");
 
-   const real_t convergenceTolerance = outputSetup.getParameter< real_t >("convergenceTolerance");
-   const uint_t convergencetimeBlock   = outputSetup.getParameter< uint_t >("convergencetimeBlock");
-   const uint_t planeAveragingtimeBlock            = outputSetup.getParameter< uint_t >("planeAveragingtimeBlock");
-   const uint_t heatFluxAveragingtimeBlock            = outputSetup.getParameter< uint_t >("heatFluxAveragingtimeBlock");
-   const uint_t outputFrequency      = outputSetup.getParameter< uint_t >("outputFrequency");
+   Config::BlockHandle statisticsParams    = cfgFile->getBlock("statistics_params");
+   const real_t convergenceTolerance       = statisticsParams.getParameter< real_t >("convergenceTolerance");
+   const uint_t outputFrequency            = statisticsParams.getParameter< uint_t >("outputFrequency");
+   const uint_t planeAveragingtimeBlock    = statisticsParams.getParameter< uint_t >("planeAveragingtimeBlock");
+   const uint_t heatFluxAveragingtimeBlock = statisticsParams.getParameter< uint_t >("heatFluxAveragingtimeBlock");
+
 
    // convert SI units to simulation (LBM) units and check setup
 
@@ -429,8 +431,6 @@ int main(int argc, char** argv)
    const real_t kappa                 = real_t(2) * (real_t(1) - poissonsRatio) / (real_t(2) - poissonsRatio);
    const real_t particleCollisionTime = collisionTimeFactor * particleDiameter;
 
-   Vector3< uint_t > domainSizeLB;
-   Vector3< real_t > Uinitialize(target_bulk_velocity, 0, 0);
    const real_t domainVolume = domainSize[0] * domainSize[1] * domainSize[2];
    const uint_t numParticles = uint_c((volfraction*domainVolume)/(particleVolume));
    WALBERLA_LOG_INFO_ON_ROOT(numParticles << " particles will be created");
@@ -438,7 +438,7 @@ int main(int argc, char** argv)
    // conversion for the various temperature quantities:
    const real_t rho_0               = densityFluid;
    const real_t particleTemperature = Tparticle;
-   const real_t channel_half_width = real_c(domainSize[2]/2);
+   const real_t channel_half_width = real_c(domainSize[codegen::wall_axis]/2);
 
    // calculation of target friction velocity from the thesis of Eschghinejadfard
 
@@ -456,12 +456,12 @@ int main(int argc, char** argv)
    const real_t omega_f  = lbm::collision_model::omegaFromViscosity(kinematicViscosityLB);
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
    const real_t omegaT_s = lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
-   const uint_t numTimeSteps              = 120 * uint_c(turnOverPeriod);
+   const uint_t numTimeSteps              =  uint_c(simulationTimeFactor *turnOverPeriod);
 
 
 
 
-   WALBERLA_LOG_INFO_ON_ROOT("Known Quantities are    ");
+   WALBERLA_LOG_INFO_ON_ROOT("total number of timeSteps in simulation " << numTimeSteps);
    WALBERLA_LOG_INFO_ON_ROOT("density particle LB is " << densityParticle);
    WALBERLA_LOG_INFO_ON_ROOT("density fluid LB is " << densityFluid);
    WALBERLA_LOG_INFO_ON_ROOT("Particle Diameter is = " << particleDiameter);
@@ -471,7 +471,6 @@ int main(int argc, char** argv)
    WALBERLA_LOG_INFO_ON_ROOT("Target Bulk Velocity is " << target_bulk_velocity);
    WALBERLA_LOG_INFO_ON_ROOT("Temperature Relaxation rate fluid is " << omegaT_f);
    WALBERLA_LOG_INFO_ON_ROOT("Hydrodynamic Relaxation rate  fluid is " << omega_f);
-   WALBERLA_LOG_INFO_ON_ROOT("Sanity checks------------------------------");
    WALBERLA_LOG_INFO_ON_ROOT("Prandtl number = " << (kinematicViscosityLB / thermalDiffusivityFluid_LB));
    WALBERLA_LOG_INFO_ON_ROOT("thermal diffusivity alpha fluid = " <<  thermalDiffusivityFluid_LB);
    WALBERLA_LOG_INFO_ON_ROOT("thermal diffusivity alpha particle = " <<  thermalDiffusivityParticle_LB);
@@ -496,7 +495,7 @@ int main(int argc, char** argv)
       uint_t(zSize)
    );
 
-   forceParams.wallAxis = 2;  // example if Y is wall direction
+   forceParams.wallAxis = codegen::wall_axis;  // example if Y is wall direction
 
    forceParams.channelHalfWidth = zSize / 2.0;
 
@@ -1012,44 +1011,52 @@ int main(int argc, char** argv)
    ////////////////////////////////////////////////////////
    /// needed to monitor stationary state or convergence ///
    ////////////////////////////////////////////////////////
-   WallStatistics wall_statistics(domainSize[2], 1, kinematicViscosityLB, outputFrequency);
+   WallStatistics wall_statistics(domainSize[codegen::wall_axis], 1, kinematicViscosityLB, outputFrequency);
 
    //////////////////////////////////////////////////////////////////////////////////////////////
    /// for obtaining plane velocity and temperature averages required to compute heat budgets ///
    //////////////////////////////////////////////////////////////////////////////////////////////
 
-   MeanPlaneAverager meanPlaneAverager(uint_c(domainSize[2]));
+   MeanPlaneAverager meanPlaneAverager(uint_c(domainSize[codegen::wall_axis]));
 
    //////////////////////////////////////////
    // for computation of heatflux budgets //
    ////////////////////////////////////////
 
-   HeatFluxBudgets heatFluxBudgets(uint_c(domainSize[2]),1, thermalDiffusivityFluid_LB, thermalDiffusivityParticle_LB,heatFluxAveragingtimeBlock,meanPlaneAverager);
+   HeatFluxBudgets heatFluxBudgets(uint_c(domainSize[codegen::wall_axis]),1, thermalDiffusivityFluid_LB, thermalDiffusivityParticle_LB,heatFluxAveragingtimeBlock,meanPlaneAverager);
 
    //////////////////////////////////////////////////
    /// for computing particle and fluid statistics //
    /////////////////////////////////////////////////
 
    PlaneAveragedProfiles<VectorField_T> planeAveragedProfiles_velocity(blocks,velFieldFluidID,
-                       2,domainSize);
+                       codegen::wall_axis,domainSize);
    PlaneAveragedProfiles<ScalarField_T> planeAveragedProfiles_temperature(blocks,temperatureFieldID,
-                       2,domainSize);
+                       codegen::wall_axis,domainSize);
 
 
 
-
+   uint_t printchecker = 0;
    auto postProcessingLamdas = [&]() {
 
-      //if (timeloop.getCurrentTimeStep() == uint_c(nTurnovers * turnOverPeriod)  )//&& wall_statistics.getWallStatisticsConvergence() == true)
-      //{
+      if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod)  && wall_statistics.getWallStatisticsConvergence() == true)
+      {
+         printchecker += 1;
+         if (printchecker == 1)
+         {
+            WALBERLA_LOG_INFO_ON_ROOT("starting the phase statistics ");
+
+         }
          // spatial and temporal averaging of the particle and fluid statistics
          planeAveragedProfiles_velocity.computeFluidParticleAveragedVectors(
             particleAndVolumeFractionSoA_temperature.BFieldID);
 
-      //}
+      }
 
-      if (timeloop.getCurrentTimeStep() == uint_c(nTurnovers * turnOverPeriod))
+      if (timeloop.getCurrentTimeStep() ==
+          numTimeSteps - uint_c(turnOverPeriod)) // presently does it only once and not for multiple timesteps
       {
+         WALBERLA_LOG_INFO_ON_ROOT("at time Step "<< timeloop.getCurrentTimeStep() << " writing the phase statistics to file: phase_statistics.txt  ")
          // computation of fluid and particle avg, rms, reynolds stresses quantities
          planeAveragedProfiles_velocity.computeFluidParticleRMS();
 
@@ -1058,65 +1065,56 @@ int main(int argc, char** argv)
             std::ofstream velocityOS;
             velocityOS << std::fixed << std::setprecision(6);
             velocityOS.open("phase_statistics.txt", std::ios::out);
-            auto printRow = [&](auto&&... args)
-            {
+            auto printRow = [&](auto&&... args) {
                ((velocityOS << std::setw(12) << args), ...);
-                velocityOS << "\n";
+               velocityOS << "\n";
             };
 
-            printRow("z","Ux_f","Uy_f","Uz_f","UU_f","UV_f","UW_f", "VU_f", "VV_f", "VW_f", "WU_f", "WV_f", "WW_f","Ux_p","Uy_p","Uz_p", "UU_p","UV_p","UW_p", "VU_p", "VV_p", "VW_p", "WU_p", "WV_p", "WW_p");
+            printRow("z", "Ux_f", "Uy_f", "Uz_f", "UU_f", "UV_f", "UW_f", "VU_f", "VV_f", "VW_f", "WU_f", "WV_f",
+                     "WW_f", "Ux_p", "Uy_p", "Uz_p", "UU_p", "UV_p", "UW_p", "VU_p", "VV_p", "VW_p", "WU_p", "WV_p",
+                     "WW_p");
 
-            for (uint_t idx = 0; idx < domainSize[2]; ++idx)
+            for (uint_t idx = 0; idx < domainSize[codegen::wall_axis]; ++idx)
             {
                velocityOS << std::setw(12) << idx;
 
                // fluid averaged velocities
-               for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+               for (uint_t i = 0; i < codegen::vectorSize; ++i)
                {
-                  velocityOS << std::setw(12) <<
-                  planeAveragedProfiles_velocity.getFluidAVGProfile()[idx * VectorField_T::F_SIZE + i];
+                  velocityOS << std::setw(12)
+                             << planeAveragedProfiles_velocity.getFluidAVGProfile()[idx * codegen::vectorSize + i];
                }
 
                // fluid rms profiles
-               for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+               for (uint_t i = 0; i < codegen::tensorSize; ++i)
                {
-                  for (uint_t j = 0; j < VectorField_T::F_SIZE; ++j)
-                  {
-                     velocityOS << std::setw(12)
-                                << planeAveragedProfiles_velocity
-                                      .getFluidRMSProfile()[idx * VectorField_T::F_SIZE * VectorField_T::F_SIZE +
-                                                            i * VectorField_T::F_SIZE + j];
-                  }
+                  velocityOS << std::setw(12)
+                             << planeAveragedProfiles_velocity.getFluidRMSProfile()[idx * codegen::tensorSize + i];
                }
 
                // particle averaged velocities
-               for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+               for (uint_t i = 0; i < codegen::vectorSize; ++i)
                {
-                  velocityOS << std::setw(12) <<
-                  planeAveragedProfiles_velocity.getParticleAVGProfile()[idx * VectorField_T::F_SIZE + i];
+                  velocityOS << std::setw(12)
+                             << planeAveragedProfiles_velocity.getParticleAVGProfile()[idx * codegen::vectorSize + i];
                }
 
                // particle rms profiles
-               for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+               for (uint_t i = 0; i < codegen::tensorSize; ++i)
                {
-                  for (uint_t j = 0; j < VectorField_T::F_SIZE; ++j)
-                  {
-                     velocityOS << std::setw(12)
-                                << planeAveragedProfiles_velocity
-                                      .getParticleRMSProfile()[idx * VectorField_T::F_SIZE * VectorField_T::F_SIZE +
-                                                            i * VectorField_T::F_SIZE + j];
-                  }
+                  velocityOS << std::setw(12)
+                             << planeAveragedProfiles_velocity.getParticleRMSProfile()[idx * codegen::tensorSize + i];
                }
 
                velocityOS << "\n";
             }
             velocityOS.flush();
             velocityOS.close();
-            WALBERLA_ABORT("simulation completed and the averaged results have been written to the file:  phase_statistics.txt");
          }
       }
    };
 
+   // TODO refine the postProcessingLamdaswithTemperature
    auto postProcessingLamdaswithTemperature = [&]() {
 
 
@@ -1157,7 +1155,7 @@ int main(int argc, char** argv)
                   velocityOS.open("statistics.txt", std::ios::out);
                   velocityOS << "height\t Uf_x\t Uf_y\t Uf_z\t Up_x\t Up_y\t Up_z\t Urms_fx\t Urms_fy\t Urms_fz\t "
                                 "Urms_px\t Urms_py\t Urms_pz\t Tf\t Tp\t Trms_f\t Trms_p\t  \n";
-                  for (uint_t idx = 0; idx < domainSize[2]; ++idx)
+                  for (uint_t idx = 0; idx < domainSize[codegen::wall_axis]; ++idx)
                   {
                      velocityOS << idx << "\t";
                      for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
@@ -1183,7 +1181,6 @@ int main(int argc, char** argv)
 
                      velocityOS << "\n";
                   }
-                  WALBERLA_ABORT("simulation completed and the averaged results have been written to the file:  statistics.txt");
                }
             }
          }
@@ -1195,9 +1192,9 @@ int main(int argc, char** argv)
             welfordVelocitySweep(block);
             welfordTemperatureSweep(block);
 
-            if (timeloop.getCurrentTimeStep() == uint_c(nTurnovers * turnOverPeriod))
+            if (timeloop.getCurrentTimeStep() == numTimeSteps - uint_c(turnOverPeriod))
             {
-               WALBERLA_LOG_INFO_ON_ROOT("entered  " << uint_c(nTurnovers * turnOverPeriod));
+               WALBERLA_LOG_INFO_ON_ROOT("at time Step "<< timeloop.getCurrentTimeStep() << " writing the welford statistics to file: welford_statistics.txt");
                // computation of welford statistics
 
                reduceWelfordFields<VectorField_T, TensorField_T> reduceWelford_velocity(blocks,meanVelFieldID,sosVelFieldID,
@@ -1205,6 +1202,9 @@ int main(int argc, char** argv)
                reduceWelford_velocity();
                auto welford_mean_velocity = reduceWelford_velocity.getPlaneMeans();
                auto welford_sos_velocity = reduceWelford_velocity.getPlaneSoSMeans();
+
+               // compute viscous stresses here dU_mean/dz ny using the "meanVelFieldID" vector from above.
+               auto viscousStress = computeViscousStress<VectorField_T>( blocks,meanVelFieldID ,domainSize);
 
                // here a function to reduce welford fields to vectors is needed
                WALBERLA_ROOT_SECTION()
@@ -1220,37 +1220,39 @@ int main(int argc, char** argv)
                   };
 
                   printRow("z", "Ux_f", "Uy_f", "Uz_f", "UU", "UV", "UW", "VU", "VV", "VW", "WU", "WV",
-                           "WW");
+                           "WW", "dUmean/dy");
 
-                  for (uint_t idx = 0; idx < domainSize[2]; ++idx)
+                  for (uint_t idx = 0; idx < domainSize[codegen::wall_axis]; ++idx)
                   {
                      velocityOS << std::setw(12) << idx;
 
-                     // fluid averaged velocities
-                     for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+                     // averaged velocities of fluid/ virtual fluid in case of particle-laden case
+                     for (uint_t i = 0; i < codegen::vectorSize; ++i)
                      {
                         velocityOS
                            << std::setw(12)
-                           << welford_mean_velocity[idx * VectorField_T::F_SIZE + i];
+                           << welford_mean_velocity[idx * codegen::vectorSize + i];
                      }
 
-                     // fluid rms profiles
-                     for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+                     // rms profiles of fluid/virtual fluid in case of particle-laden case
+                     for (uint_t i = 0; i < codegen::tensorSize; ++i)
                      {
-                        for (uint_t j = 0; j < VectorField_T::F_SIZE; ++j)
-                        {
                            velocityOS << std::setw(12)
-                                      << welford_sos_velocity[idx * VectorField_T::F_SIZE * VectorField_T::F_SIZE +
-                                                                  i * VectorField_T::F_SIZE + j];
-                        }
+                                      << welford_sos_velocity[idx * codegen::tensorSize
+                                                                  + i];
                      }
+
+                     // viscous stress
+
+                     velocityOS << std::setw(12) << viscousStress[idx];
+
+
 
                      velocityOS << "\n";
                   }
                   velocityOS.flush();
                   velocityOS.close();
-                 // WALBERLA_ABORT(
-                   //  "simulation completed and the averaged results have been written to the file:  welford_statistics.txt");
+
                }
             }
 
@@ -1319,9 +1321,9 @@ int main(int argc, char** argv)
    timeloop.addFuncAfterTimeStep(postProcessingLamdas, "custom HeatFlux, velocity statistics and other post processing");
    timeloop.add() << BeforeFunction(
                         [&]() {
-                           if (wall_statistics.getWallStatisticsConvergence() == true && resetCounters == false)
+                           if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod) && wall_statistics.getWallStatisticsConvergence() == true && resetCounters == false)
                            {
-                              WALBERLA_LOG_INFO_ON_ROOT("entering loop again should print only once")
+                              WALBERLA_LOG_INFO_ON_ROOT("Resetting Welford fields and counters")
                               resetCounters = true;
                               welfordVelocitySweep.setCounter(0);
                               welfordTemperatureSweep.setCounter(0);
@@ -1337,10 +1339,9 @@ int main(int argc, char** argv)
                            }
                            welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
                            welfordTemperatureSweep.setCounter(welfordTemperatureSweep.getCounter() + real_c(1.0));
-                           //WALBERLA_LOG_INFO_ON_ROOT("current counter welfor is   " << welfordVelocitySweep.getCounter());
                         },
-                        "welford velocity sweep")
-                  << Sweep(welfordPhasesSweepLambda, "welford velocity sweep");
+                        "welford sweep")
+                  << Sweep(welfordPhasesSweepLambda, "welford sweep");
 
 
    timeloop.addFuncAfterTimeStep(wallstatisticsLamda, "wall statistics computations");

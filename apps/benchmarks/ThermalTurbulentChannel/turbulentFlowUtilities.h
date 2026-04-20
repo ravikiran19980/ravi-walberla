@@ -64,9 +64,6 @@ class ForceCalculator
          WALBERLA_CHECK_NOT_NULLPTR(maskField)
 
          auto fieldSize = meanVelocityField->xyzSize();
-         //CellInterval localCi;
-         //blocks->transformGlobalToBlockLocalCellInterval(localCi, *block, ci_);
-         //fieldSize.intersect(localCi);
 
          for (auto cellIt = fieldSize.begin(); cellIt != fieldSize.end(); ++cellIt)
          {
@@ -141,18 +138,18 @@ class PlaneAveragedProfiles
                        const BlockDataID fieldId,
                        const uint_t wallAxis,
                        const Vector3<real_t>& domainSize)
-      : blocks_(blocks), fieldId_(fieldId), wallAxis_(wallAxis), numHeights_(uint_c(domainSize[ wallAxis])), fieldSize_(Field_T::F_SIZE)
+      : blocks_(blocks), fieldId_(fieldId), wallAxis_(wallAxis), numHeights_(uint_c(domainSize[ wallAxis])), fieldSize_(Field_T::F_SIZE),fieldSizeSquared_(Field_T::F_SIZE*Field_T::F_SIZE)
    {
 
       timeAveragedFluidProfile_.resize(fieldSize_*numHeights_, 0_r);
-      timeAveragedFluidSquaredProfile_.resize(fieldSize_*fieldSize_*numHeights_, 0_r);
-      fluidRMSProfile_.resize(fieldSize_*fieldSize_*numHeights_, 0_r);
+      timeAveragedFluidSquaredProfile_.resize(fieldSizeSquared_*numHeights_, 0_r);
+      fluidRMSProfile_.resize(fieldSizeSquared_*numHeights_, 0_r);
 
       timeAveragedParticleProfile_.resize(fieldSize_*numHeights_, 0_r);
-      timeAveragedParticleSquaredProfile_.resize(fieldSize_*fieldSize_*numHeights_, 0_r);
-      particleRMSProfile_.resize(fieldSize_*fieldSize_*numHeights_, 0_r);
+      timeAveragedParticleSquaredProfile_.resize(fieldSizeSquared_*numHeights_, 0_r);
+      particleRMSProfile_.resize(fieldSizeSquared_*numHeights_, 0_r);
 
-      timeStepCount_ = 0;  // Field_T::F_Size == 3
+      timeStepCount_ = 0;
    }
 
    /**
@@ -168,9 +165,9 @@ class PlaneAveragedProfiles
       // Initialize storage
 
       std::vector< real_t > fluidProfile(fieldSize_ * numHeights_, 0_r);
-      std::vector< real_t > fluidSquaredProfile(fieldSize_*fieldSize_ * numHeights_, 0_r);
+      std::vector< real_t > fluidSquaredProfile(fieldSizeSquared_ * numHeights_, 0_r);
       std::vector< real_t > particleProfile(fieldSize_ * numHeights_, 0_r);
-      std::vector< real_t > particleSquaredProfile(fieldSize_*fieldSize_ * numHeights_, 0_r);
+      std::vector< real_t > particleSquaredProfile(fieldSizeSquared_ * numHeights_, 0_r);
       std::vector< uint_t > fluidCounts(numHeights_, 0);
       std::vector< uint_t > particleCounts(numHeights_, 0);
 
@@ -200,10 +197,11 @@ class PlaneAveragedProfiles
                   real_t fluidQuantity_i = Field->get(*cellIt, i);
 
                   fluidProfile[idx * fieldSize_ + i] += fluidQuantity_i*(1.0_r - B);
-                  for (uint_t j = 0; j < Field_T::F_SIZE; ++j)
+
+                  for (uint_t j = 0; j < fieldSize_; ++j)
                   {
                      real_t fluidQuantity_j = Field->get(*cellIt, j);
-                     fluidSquaredProfile[idx * fieldSize_* fieldSize_ + i*fieldSize_ + j] += (1.0_r - B)*fluidQuantity_i * fluidQuantity_j;
+                     fluidSquaredProfile[idx * fieldSizeSquared_ + i*fieldSize_ + j] += (1.0_r - B)*fluidQuantity_i * fluidQuantity_j;
                   }
                }
                fluidCounts[idx]++;
@@ -217,10 +215,11 @@ class PlaneAveragedProfiles
                {
                   real_t particleQuantity_i = Field->get(*cellIt, i);
                   particleProfile[idx * fieldSize_ + i] += particleQuantity_i * B;
+
                   for (uint_t j = 0; j < fieldSize_; ++j)
                   {
                      real_t particleQuantity_j = Field->get(*cellIt, j);
-                     particleSquaredProfile[idx * fieldSize_* fieldSize_ + i*fieldSize_ + j] += B * particleQuantity_i * particleQuantity_j;
+                     particleSquaredProfile[idx * fieldSizeSquared_ + i*fieldSize_ + j] += B * particleQuantity_i * particleQuantity_j;
                   }
                }
                particleCounts[idx]++;
@@ -250,12 +249,13 @@ class PlaneAveragedProfiles
                timeAveragedFluidProfile_[h * fieldSize_ + i] +=
                   (fluidProfile[h * fieldSize_ + i] - timeAveragedFluidProfile_[h * fieldSize_ + i]) /
                   real_c(timeStepCount_);
+
                for (uint_t j=0; j < fieldSize_; j++)
                {
-                  fluidSquaredProfile[h * fieldSize_* fieldSize_ + i * fieldSize_ + j] /= real_c(fluidCounts[h]);
-                  timeAveragedFluidSquaredProfile_[h * fieldSize_* fieldSize_ + i * fieldSize_ + j] +=
-                     (fluidSquaredProfile[h * fieldSize_* fieldSize_ + i * fieldSize_ + j] -
-                      timeAveragedFluidSquaredProfile_[h * fieldSize_* fieldSize_ + i * fieldSize_ + j]) /
+                  fluidSquaredProfile[h * fieldSizeSquared_ + i * fieldSize_ + j] /= real_c(fluidCounts[h]);
+                  timeAveragedFluidSquaredProfile_[h * fieldSizeSquared_ + i * fieldSize_ + j] +=
+                     (fluidSquaredProfile[h * fieldSizeSquared_ + i * fieldSize_ + j] -
+                      timeAveragedFluidSquaredProfile_[h * fieldSizeSquared_ + i * fieldSize_ + j]) /
                      real_c(timeStepCount_);
                }
 
@@ -271,12 +271,13 @@ class PlaneAveragedProfiles
                timeAveragedParticleProfile_[h * fieldSize_ + i] +=
                   (particleProfile[h * fieldSize_ + i] - timeAveragedParticleProfile_[h * fieldSize_ + i]) /
                   real_c(timeStepCount_);
+
                for (uint_t j = 0; j < fieldSize_; j++)
                {
-                  particleSquaredProfile[h * fieldSize_* fieldSize_ + i * fieldSize_ + j] /= real_c(particleCounts[h]);
-                  timeAveragedParticleSquaredProfile_[h * fieldSize_* fieldSize_ + i * fieldSize_ + j] +=
-                     (particleSquaredProfile[h * fieldSize_* fieldSize_ + i * fieldSize_ + j] -
-                      timeAveragedParticleSquaredProfile_[h * fieldSize_* fieldSize_ + i * fieldSize_ + j]) /
+                  particleSquaredProfile[h * fieldSizeSquared_ + i * fieldSize_ + j] /= real_c(particleCounts[h]);
+                  timeAveragedParticleSquaredProfile_[h * fieldSizeSquared_ + i * fieldSize_ + j] +=
+                     (particleSquaredProfile[h * fieldSizeSquared_ + i * fieldSize_ + j] -
+                      timeAveragedParticleSquaredProfile_[h * fieldSizeSquared_ + i * fieldSize_ + j]) /
                      real_c(timeStepCount_);
                }
             }
@@ -287,8 +288,6 @@ class PlaneAveragedProfiles
 
    void computeFluidParticleRMS()
    {
-      //fluidRMSProfile_.resize(fieldSize_*numHeights_, 0_r);
-      //particleRMSProfile_.resize(fieldSize_*numHeights_, 0_r);
 
       for (uint_t h = 0; h < numHeights_; ++h)
       {
@@ -296,11 +295,11 @@ class PlaneAveragedProfiles
          {
             for(uint_t j = 0; j < fieldSize_; ++j){
 
-               real_t fluidVariance = timeAveragedFluidSquaredProfile_[h*fieldSize_* fieldSize_ + i*fieldSize_ + j] - timeAveragedFluidProfile_[h*fieldSize_ + i] * timeAveragedFluidProfile_[h*fieldSize_ + j];
-               fluidRMSProfile_[h*fieldSize_* fieldSize_ + i*fieldSize_ + j] = fluidVariance;//std::sqrt(abs(fluidVariance));
+               real_t fluidVariance = timeAveragedFluidSquaredProfile_[h*fieldSizeSquared_ + i*fieldSize_ + j] - timeAveragedFluidProfile_[h*fieldSize_ + i] * timeAveragedFluidProfile_[h*fieldSize_ + j];
+               fluidRMSProfile_[h*fieldSizeSquared_ + i*fieldSize_ + j] = fluidVariance;
 
-               real_t particleVariance = timeAveragedParticleSquaredProfile_[h*fieldSize_* fieldSize_ + i*fieldSize_ + j] - timeAveragedParticleProfile_[h*fieldSize_ + i] * timeAveragedParticleProfile_[h*fieldSize_ + j];
-               particleRMSProfile_[h*fieldSize_* fieldSize_ + i*fieldSize_ + j] = std::sqrt(std::max(particleVariance, 0_r));
+               real_t particleVariance = timeAveragedParticleSquaredProfile_[h*fieldSizeSquared_ + i*fieldSize_ + j] - timeAveragedParticleProfile_[h*fieldSize_ + i] * timeAveragedParticleProfile_[h*fieldSize_ + j];
+               particleRMSProfile_[h*fieldSizeSquared_ + i*fieldSize_ + j] = particleVariance;
             }
          }
       }
@@ -319,6 +318,7 @@ class PlaneAveragedProfiles
    const uint_t wallAxis_;
    const uint_t numHeights_;
    const uint_t fieldSize_;
+   const uint_t fieldSizeSquared_;
 
 
    std::vector< real_t > timeAveragedFluidProfile_;
@@ -480,6 +480,75 @@ class reduceWelfordFields
    std::vector< uint_t > planeCounts_;
       WelfordVelocity welfordSweep_;
 };
+
+template<typename FieldMean_T>
+const std::vector< real_t > computeViscousStress(const std::shared_ptr< StructuredBlockStorage >& blocks, const BlockDataID & meanVelocityFieldId ,const Vector3<real_t>& domainSize)
+{
+   std::vector< real_t > viscousStress(uint_c(domainSize[codegen::wall_axis]), 0_r);
+   for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
+   {
+      auto& block = *blockIt;
+      auto* meanfield = blockIt->template getData< FieldMean_T >(meanVelocityFieldId);
+      WALBERLA_FOR_ALL_CELLS_XYZ(
+
+         meanfield, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
+
+         const uint_t j = uint_c(cell.z()); if (j > 0 && j < uint_c(domainSize[codegen::wall_axis]) - 1) {
+            if (z == 0)
+            {
+               const real_t U0 = meanfield->get(x, y, z, 0);
+               const real_t U1 = meanfield->get(x, y, z + 1, 0);
+               const real_t U2 = meanfield->get(x, y, z + 2,0);
+               viscousStress[j] += (-3.0 *U0 + 4.0 * U1 - U2) / (2.0);
+            }
+            else if (z == cell_idx_c(blocks->getNumberOfZCells(block) - 1))
+            {
+               const real_t U0 = meanfield->get(x, y, z,0);
+               const real_t U1 = meanfield->get(x, y, z - 1,0);
+               const real_t U2 = meanfield->get(x, y, z - 2,0);
+               viscousStress[j] += (3.0 * U0 - 4.0 * U1 + U2) / (2.0);
+            }
+            else
+            {
+               const real_t U0 = meanfield->get(x, y, z - 1,0);
+               const real_t U1 = meanfield->get(x, y, z + 1,0);
+               viscousStress[j] += (U1 - U0) / (2.0);
+               ;
+            }
+         } else {
+            // wall flux (one-sided derivative), average over x,z on the two extreme planes
+
+            if (j == 0)
+            {
+               const real_t U0 = meanfield->get(x, y, z,0);
+               const real_t U1 = meanfield->get(x, y, z + 1,0);
+               const real_t U2 = meanfield->get(x, y, z + 2,0);
+               viscousStress[j] += (-3.0 * U0 + 4.0 * U1 - U2) / (2.0);
+               ;
+            }
+            if (j == uint_c(domainSize[codegen::wall_axis]) - 1)
+            {
+               const real_t U0 = meanfield->get(x, y, z,0);
+               const real_t U1 = meanfield->get(x, y, z - 1,0);
+               const real_t U2 = meanfield->get(x, y, z - 2,0);
+               viscousStress[j] += (3.0 * U0 - 4.0 * U1 + U2) / (2.0);
+            }
+         }
+
+      )
+   }
+   WALBERLA_MPI_SECTION()
+   {
+      mpi::allReduceInplace(viscousStress, mpi::SUM);
+
+   }
+   for (size_t k = 0; k < viscousStress.size(); ++k)
+   {
+      viscousStress[k] /= domainSize[codegen::flow_axis] * domainSize[codegen::remaining_axis];
+   }
+
+   return viscousStress;
+}
 
 }  // namespace walberla
 

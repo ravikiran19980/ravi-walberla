@@ -41,12 +41,19 @@ from lbmpy.flow_statistics import welford_assignments
 
 
 info_header = """
-const char * infoStencil_fluid = "{stencil}";
-const char * infoStencil_temperature = "{stencil}";
-const char * infoStreamingPattern = "{streaming_pattern}";
-const char * infoCollisionSetup = "{collision_setup}";
-const bool infoCseGlobal = {cse_global};
-const bool infoCsePdfs = {cse_pdfs};
+namespace walberla{{
+namespace codegen{{
+static constexpr uint_t flow_axis = {flow_axis};
+static constexpr uint_t wall_axis = {wall_axis};
+static constexpr uint_t remaining_axis= {remaining_axis};
+using ScalarField_T = GhostLayerField< real_t, 1 >;
+using VectorField_T = GhostLayerField< real_t, Stencil_Fluid_T::D >;
+using TensorField_T = GhostLayerField< real_t, Stencil_Fluid_T::D*Stencil_Fluid_T::D >;
+constexpr uint_t scalarSize= 1;
+constexpr uint_t vectorSize= 3;
+constexpr uint_t tensorSize= 9;
+}};
+}};
 """
 
 def check_axis(flow_axis, wall_axis):
@@ -87,7 +94,8 @@ with CodeGeneration() as ctx:
     SC = int(config_tokens[1])
 
     flow_axis  = 0
-    wall_axis  = 1
+    wall_axis  = 2
+    remaining_axis = 3 - (flow_axis + wall_axis)
 
     check_axis(flow_axis=flow_axis, wall_axis=wall_axis)
     force_on_fluid = [0] * 3
@@ -403,11 +411,18 @@ with CodeGeneration() as ctx:
         "DensityField_temperature_T": temperature_field,
     }
 
+
+    info_header_params={
+        'flow_axis': flow_axis,
+        'wall_axis': wall_axis,
+        'remaining_axis': remaining_axis,
+    }
     generate_info_header(
         ctx,
         "GeneralInfoHeader",
         stencil_typedefs=stencil_typedefs,
         field_typedefs=field_typedefs,
+        additional_code=info_header.format(**info_header_params)
     )
 
     # Getter & setter to compute moments from pdfs
