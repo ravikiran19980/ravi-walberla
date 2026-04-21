@@ -84,6 +84,7 @@
 #include "vtk/all.h"
 
 #include <fstream>
+#include <filesystem>
 #include <iomanip>
 
 #include "./utilities/InitializerFunctions.h"
@@ -311,6 +312,15 @@ int main(int argc, char** argv)
    Environment env(argc, argv);
    auto cfgFile = env.config();
    if (!cfgFile) { WALBERLA_ABORT("Usage: " << argv[0] << " path-to-configuration-file \n"); }
+
+   WALBERLA_ROOT_SECTION()
+   {
+      const std::filesystem::path outputPath("output");
+      if (!std::filesystem::exists(outputPath))
+      {
+         std::filesystem::create_directories(outputPath);
+      }
+   }
 
 
 
@@ -1056,7 +1066,7 @@ int main(int argc, char** argv)
       if (timeloop.getCurrentTimeStep() ==
           numTimeSteps - uint_c(turnOverPeriod)) // presently does it only once and not for multiple timesteps
       {
-         WALBERLA_LOG_INFO_ON_ROOT("at time Step "<< timeloop.getCurrentTimeStep() << " writing the phase statistics to file: phase_statistics.txt  ")
+         WALBERLA_LOG_INFO_ON_ROOT("at time Step "<< timeloop.getCurrentTimeStep() << " writing the phase statistics to file: output/phase_statistics.txt  ")
          // computation of fluid and particle avg, rms, reynolds stresses quantities
          planeAveragedProfiles_velocity.computeFluidParticleRMS();
 
@@ -1064,46 +1074,51 @@ int main(int argc, char** argv)
          {
             std::ofstream velocityOS;
             velocityOS << std::fixed << std::setprecision(6);
-            velocityOS.open("phase_statistics.txt", std::ios::out);
+            velocityOS.open("output/phase_statistics.txt", std::ios::out);
             auto printRow = [&](auto&&... args) {
                ((velocityOS << std::setw(12) << args), ...);
                velocityOS << "\n";
             };
 
-            printRow("z", "Ux_f", "Uy_f", "Uz_f", "UU_f", "UV_f", "UW_f", "VU_f", "VV_f", "VW_f", "WU_f", "WV_f",
+            // plotting everything in normalized wall units
+            printRow("z","z+", "Ux_f", "Uy_f", "Uz_f", "UU_f", "UV_f", "UW_f", "VU_f", "VV_f", "VW_f", "WU_f", "WV_f",
                      "WW_f", "Ux_p", "Uy_p", "Uz_p", "UU_p", "UV_p", "UW_p", "VU_p", "VV_p", "VW_p", "WU_p", "WV_p",
                      "WW_p");
+            // at the wall
 
+            printRow(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
             for (uint_t idx = 0; idx < domainSize[codegen::wall_axis]; ++idx)
             {
-               velocityOS << std::setw(12) << idx;
+               // z and z+
+               velocityOS << std::setw(12) << real_c(idx) + 0.5_r ;
+               velocityOS << std::setw(12) << ((real_c(idx) + 0.5_r)*target_friction_velocity)/kinematicViscosityLB ;
 
                // fluid averaged velocities
                for (uint_t i = 0; i < codegen::vectorSize; ++i)
                {
                   velocityOS << std::setw(12)
-                             << planeAveragedProfiles_velocity.getFluidAVGProfile()[idx * codegen::vectorSize + i];
+                             << planeAveragedProfiles_velocity.getFluidAVGProfile()[idx * codegen::vectorSize + i]/(target_friction_velocity);
                }
 
                // fluid rms profiles
                for (uint_t i = 0; i < codegen::tensorSize; ++i)
                {
                   velocityOS << std::setw(12)
-                             << planeAveragedProfiles_velocity.getFluidRMSProfile()[idx * codegen::tensorSize + i];
+                             << planeAveragedProfiles_velocity.getFluidRMSProfile()[idx * codegen::tensorSize + i]/(target_friction_velocity*target_friction_velocity);
                }
 
                // particle averaged velocities
                for (uint_t i = 0; i < codegen::vectorSize; ++i)
                {
                   velocityOS << std::setw(12)
-                             << planeAveragedProfiles_velocity.getParticleAVGProfile()[idx * codegen::vectorSize + i];
+                             << planeAveragedProfiles_velocity.getParticleAVGProfile()[idx * codegen::vectorSize + i]/(target_friction_velocity);
                }
 
                // particle rms profiles
                for (uint_t i = 0; i < codegen::tensorSize; ++i)
                {
                   velocityOS << std::setw(12)
-                             << planeAveragedProfiles_velocity.getParticleRMSProfile()[idx * codegen::tensorSize + i];
+                             << planeAveragedProfiles_velocity.getParticleRMSProfile()[idx * codegen::tensorSize + i]/(target_friction_velocity*target_friction_velocity);
                }
 
                velocityOS << "\n";
@@ -1152,7 +1167,7 @@ int main(int argc, char** argv)
                WALBERLA_ROOT_SECTION()
                {
                   std::ofstream velocityOS;
-                  velocityOS.open("statistics.txt", std::ios::out);
+                  velocityOS.open("output/statistics.txt", std::ios::out);
                   velocityOS << "height\t Uf_x\t Uf_y\t Uf_z\t Up_x\t Up_y\t Up_z\t Urms_fx\t Urms_fy\t Urms_fz\t "
                                 "Urms_px\t Urms_py\t Urms_pz\t Tf\t Tp\t Trms_f\t Trms_p\t  \n";
                   for (uint_t idx = 0; idx < domainSize[codegen::wall_axis]; ++idx)
@@ -1194,11 +1209,11 @@ int main(int argc, char** argv)
 
             if (timeloop.getCurrentTimeStep() == numTimeSteps - uint_c(turnOverPeriod))
             {
-               WALBERLA_LOG_INFO_ON_ROOT("at time Step "<< timeloop.getCurrentTimeStep() << " writing the welford statistics to file: welford_statistics.txt");
+               WALBERLA_LOG_INFO_ON_ROOT("at time Step "<< timeloop.getCurrentTimeStep() << " writing the welford statistics to file: output/welford_statistics.txt");
                // computation of welford statistics
 
                reduceWelfordFields<VectorField_T, TensorField_T> reduceWelford_velocity(blocks,meanVelFieldID,sosVelFieldID,
-                              2, uint_c(zSize), welfordVelocitySweep);
+                              codegen::wall_axis, uint_c(zSize), welfordVelocitySweep);
                reduceWelford_velocity();
                auto welford_mean_velocity = reduceWelford_velocity.getPlaneMeans();
                auto welford_sos_velocity = reduceWelford_velocity.getPlaneSoSMeans();
@@ -1213,25 +1228,29 @@ int main(int argc, char** argv)
 
                   std::ofstream velocityOS;
                   velocityOS << std::fixed << std::setprecision(6);
-                  velocityOS.open("welford_statistics.txt", std::ios::out);
+                  velocityOS.open("output/welford_statistics.txt", std::ios::out);
                   auto printRow = [&](auto&&... args) {
                      ((velocityOS << std::setw(12) << args), ...);
                      velocityOS << "\n";
                   };
 
-                  printRow("z", "Ux_f", "Uy_f", "Uz_f", "UU", "UV", "UW", "VU", "VV", "VW", "WU", "WV",
+                  // plotting everything in normalized wall units
+                  printRow("z","z+", "Ux", "Uy", "Uz", "UU", "UV", "UW", "VU", "VV", "VW", "WU", "WV",
                            "WW", "dUmean/dy");
-
+                  // at the wall:
+                  printRow(0,0,0,0,0,0,0,0,0,0,0,0,0,0,wall_statistics.getWallShearStress());
                   for (uint_t idx = 0; idx < domainSize[codegen::wall_axis]; ++idx)
                   {
-                     velocityOS << std::setw(12) << idx;
+                     velocityOS << std::setw(12) << real_c(idx) + 0.5_r;
+                     velocityOS << std::setw(12)
+                                << ((real_c(idx) + 0.5_r) * target_friction_velocity) / kinematicViscosityLB;
 
                      // averaged velocities of fluid/ virtual fluid in case of particle-laden case
                      for (uint_t i = 0; i < codegen::vectorSize; ++i)
                      {
                         velocityOS
                            << std::setw(12)
-                           << welford_mean_velocity[idx * codegen::vectorSize + i];
+                           << welford_mean_velocity[idx * codegen::vectorSize + i]/target_friction_velocity;
                      }
 
                      // rms profiles of fluid/virtual fluid in case of particle-laden case
@@ -1239,12 +1258,12 @@ int main(int argc, char** argv)
                      {
                            velocityOS << std::setw(12)
                                       << welford_sos_velocity[idx * codegen::tensorSize
-                                                                  + i];
+                                                                  + i]/(target_friction_velocity*target_friction_velocity);
                      }
 
                      // viscous stress
 
-                     velocityOS << std::setw(12) << viscousStress[idx];
+                     velocityOS << std::setw(12) << (viscousStress[idx] * kinematicViscosityLB)/(target_friction_velocity*target_friction_velocity);
 
 
 

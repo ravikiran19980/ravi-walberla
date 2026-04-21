@@ -15,7 +15,7 @@ PhysicalSetup // all to be specified in SI/ref units
     dynamicFrictionCoefficient 0.15;
     coefficientOfRestitution 0.97;
     collisionTimeFactor 1.0;
-    simulationTimeFactor 3;   // total timesteps of simulation = simulationTimeFactor * turnOverPeriod
+    simulationTimeFactor 10;   // total timesteps of simulation = simulationTimeFactor * turnOverPeriod
 
 }
 
@@ -30,7 +30,7 @@ NumericalSetup
     useLubricationForces true;
     numberOfParticleSubCycles 10;
     useIntegrators true;
-    particleSubBlockSize <2, 2, 2>;
+    particleSubBlockSize <2, 2, 5>;
     linkedCellWidthRation 1.01;
     particleBarriers true;
     generationDomainFraction <0.95,0.95,0.95>;
@@ -64,7 +64,7 @@ Output
 {
     infoSpacing 1000; // in s
     vtkSpacingParticles 0; // in s
-    vtkSpacingFluid 10000; // ins
+    vtkSpacingFluid 0; // ins
     vtkFolder vtk_out;
     performanceLogFrequency 5000000000;
 

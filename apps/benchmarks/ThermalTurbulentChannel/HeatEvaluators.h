@@ -123,7 +123,7 @@ class HeatFluxBudgets
    {
       WALBERLA_ROOT_SECTION()
       {
-         outFile_.open("heatFluxBudget.txt", std::ios::out);
+         outFile_.open("output/heatFluxBudget.txt", std::ios::out);
          outFile_ << "height  fluidConvectiveFlux   particleConvectiveFlux  fluidConductiveFlux  particleConductiveFlux  fluidFraction  particleFraction  totalFlux" << std::endl;
       }
    }
@@ -327,7 +327,7 @@ class WallStatistics
 {
  public:
    WallStatistics(uint_t Nz, real_t dz, real_t kinematicViscosity, uint_t outputFrequency,
-                     const std::string& nusseltFileName = "wallStatistics.txt")
+                     const std::string& nusseltFileName = "output/wallStatistics.txt")
       : Nz_(Nz), dz_(dz), outputFrequency_(outputFrequency), kinematicViscosity_(kinematicViscosity)
    {
       WALBERLA_ROOT_SECTION()
@@ -371,7 +371,7 @@ class WallStatistics
                const real_t U1   = velF->get(x, y, z, 0);
                const real_t U2   = velF->get(x, y, z + 1, 0);
                const real_t dUdz = real_c(Nz_)*(-8.0 * U0 + 9.0 * U1 - U2) / (3.0 * dz_);
-               tauBottom_ += kinematicViscosity_ * dUdz;
+               tauBottom_ +=  dUdz;
                countBottom_++;
             }
             // Top wall (j = Nz - 1): dT/dz = (8*T0 - 9*T1 + T2) / (3*dz) since wall situated at half distance from center of top cell
@@ -386,7 +386,7 @@ class WallStatistics
                const real_t U1   = velF->get(x, y, z, 0);
                const real_t U2   = velF->get(x, y, z - 1, 0);
                const real_t dUdz = real_c(Nz_)*(8.0 * U0 - 9.0 * U1 + U2) / (3.0 * dz_);
-               tauTop_ += kinematicViscosity_ * dUdz;
+               tauTop_ +=  dUdz;
                countTop_++;
             })
       }
@@ -426,11 +426,20 @@ class WallStatistics
    }
 
    bool getWallStatisticsConvergence() { return wallstatistics_convergence_; }
+   real_t getWallShearStress() { return tauBottomOld_; }
 
 
  private:
 
-   void resetWallValues() { nuBottom_ = 0.0; nuTop_ = 0.0; tauBottom_ = 0.0; tauTop_ = 0.0; countBottom_ = 0; countTop_ = 0; }
+   void resetWallValues() {
+      nuBottom_ = 0.0;
+      nuTop_ = 0.0;
+      tauBottomOld_ = tauBottom_;
+      tauBottom_ = 0.0;
+      tauTop_ = 0.0;
+      countBottom_ = 0;
+      countTop_ = 0;
+   }
 
    void wallStatisticsConvergence(real_t tolerance, uint_t timeStep)
    {
@@ -473,6 +482,7 @@ class WallStatistics
    real_t nuBottom_;
    real_t tauTop_;
    real_t tauBottom_;
+   real_t tauBottomOld_;
    uint_t countTop_ = 0;
    uint_t countBottom_ = 0;
 
