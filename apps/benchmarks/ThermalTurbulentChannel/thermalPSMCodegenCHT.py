@@ -175,24 +175,6 @@ with CodeGeneration() as ctx:
         psm_config=psm_config_F,
     )
 
-    lbm_config = LBMConfig(stencil=stencil_fluid,
-                           method=Method.SRT,
-                           force_model=ForceModel.GUO,
-                           force=tuple(force_on_fluid),
-                           relaxation_rate=omega,
-                           compressible=True,
-                           output={'velocity': velocity_field})
-    update_rule = create_lb_update_rule(lbm_config=lbm_config, lbm_optimisation=lbm_fluid_opt)
-    lbm_method = update_rule.method
-    pdfs_setter = macroscopic_values_setter(lbm_method,
-                                            1,
-                                            velocity_field.center_vector,
-                                            pdfs_fluid.center_vector)
-    #   Macroscopic Values Setter
-    generate_sweep(ctx, "TurbulentChannel_Setter", pdfs_setter, target=ps.Target.CPU, ghost_layers_to_include=1)
-
-    generate_sweep(ctx, "TurbulentChannel_Sweep", update_rule, field_swaps=[(pdfs_fluid, pdfs_fluid_tmp)],target= ps.Target.CPU)
-
     relaxation_rates = list(sp.symbols(f'omega_t_{n+1}') for n in range(stencil_temperature.Q))
     # temperature PSM config
     psm_temperature_config = LBMConfig(
