@@ -288,7 +288,7 @@ FluidInfo evaluateFluidInfo(const shared_ptr< StructuredBlockStorage >& blocks, 
       WALBERLA_FOR_ALL_CELLS_XYZ(
          densityField, ++info.numFluidCells; Vector3< real_t > velocity(
             velocityField->get(x, y, z, 0), velocityField->get(x, y, z, 1), velocityField->get(x, y, z, 2));
-         real_t density = densityField->get(x, y, z); real_t velMagnitude = velocity.length();
+         real_t density = densityField->get(x, y, z); real_t velMagnitude = std::abs(velocityField->get(x, y, z, 0));
          real_t temperature = temperatureField->get(x,y,z);
          info.averageVelocity += velMagnitude; info.maximumVelocity = std::max(info.maximumVelocity, velMagnitude);
          info.averageDensity += density; info.maximumDensity        = std::max(info.maximumDensity, density);
@@ -488,6 +488,7 @@ int main(int argc, char** argv)
 
 
    // outputting turbulent related parameters
+   WALBERLA_LOG_INFO_ON_ROOT("Channel half width  " << channel_half_width);
    WALBERLA_LOG_INFO_ON_ROOT("target friction Reynolds number = " <<  target_friction_Reynolds);
    WALBERLA_LOG_INFO_ON_ROOT("target_friction_velocity = " <<  target_friction_velocity);
    WALBERLA_LOG_INFO_ON_ROOT("turnOverPeriod = " <<  turnOverPeriod);

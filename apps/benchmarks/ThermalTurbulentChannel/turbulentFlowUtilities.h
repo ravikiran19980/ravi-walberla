@@ -31,7 +31,7 @@ class ForceCalculator
                    const ForceCalculatorParameters& forceParams)
       : blocks_(blocks), meanVelocityId_(meanVelocityId), channelHalfWidth_(real_c(forceParams.channelHalfWidth)),
         targetBulkVelocity_(forceParams.targetBulkVelocity), targetFrictionVelocity_(forceParams.targetFrictionVelocity),
-        maskFieldId_(maskFieldId)
+        maskFieldId_(maskFieldId), force_(targetFrictionVelocity_ * targetFrictionVelocity_ / channelHalfWidth_)
    {
       const auto& domainSize = forceParams.domainSize;
 
