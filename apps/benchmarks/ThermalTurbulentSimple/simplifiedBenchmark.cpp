@@ -90,7 +90,6 @@ using namespace walberla;
 using namespace lbm_mesapd_coupling::psm::gpu;
 using namespace pystencils;
 typedef PackInfoFluid PackInfoFluid_T;
-typedef PackInfoTemperature PackInfoTemperature_T;
 
 using flag_t      = uint8_t;
 using FlagField_T = FlagField< flag_t >;
@@ -100,7 +99,6 @@ using ScalarField_T = GhostLayerField< real_t, 1 >;
 using VectorField_T = GhostLayerField< real_t, Stencil_Fluid_T::D >;
 using TensorField_T = GhostLayerField< real_t, Stencil_Fluid_T::D*Stencil_Fluid_T::D >;
 using WelfordSweepVelocity_T = WelfordVelocity;
-using WelfordSweepTemperature_T = WelfordTemperature;
 
 
 ///////////
@@ -142,7 +140,7 @@ std::ostream& operator<<(std::ostream& os, FluidInfo const& m)
 }
 
 FluidInfo evaluateFluidInfo(const shared_ptr< StructuredBlockStorage >& blocks, const BlockDataID& densityFieldID,
-                            const BlockDataID& velocityFieldID, const BlockDataID &temperatureFieldID)
+                            const BlockDataID& velocityFieldID)
 {
    FluidInfo info;
 
@@ -150,17 +148,14 @@ FluidInfo evaluateFluidInfo(const shared_ptr< StructuredBlockStorage >& blocks, 
    {
       auto densityField  = blockIt->getData< DensityField_fluid_T >(densityFieldID);
       auto velocityField = blockIt->getData< VelocityField_fluid_T >(velocityFieldID);
-      auto temperatureField = blockIt->getData< DensityField_temperature_T >(temperatureFieldID);
-
       WALBERLA_FOR_ALL_CELLS_XYZ(
          densityField, ++info.numFluidCells; Vector3< real_t > velocity(
             velocityField->get(x, y, z, 0), velocityField->get(x, y, z, 1), velocityField->get(x, y, z, 2));
          real_t density = densityField->get(x, y, z); real_t velMagnitude = std::abs(velocityField->get(x, y, z, 0));//velocity.length();
-         real_t temperature = temperatureField->get(x,y,z);
+
          info.averageVelocity += velMagnitude; info.maximumVelocity = std::max(info.maximumVelocity, velMagnitude);
          info.averageDensity += density; info.maximumDensity        = std::max(info.maximumDensity, density);
-         info.maxTemperature = std::max(info.maxTemperature, temperature);
-         info.minTemperature = std::min(info.minTemperature, temperature);)
+         )
 
    }
    info.allReduce();
@@ -370,11 +365,6 @@ int main(int argc, char** argv)
    const bool periodicInY                  = physicalSetup.getParameter< bool >("periodicInY");
    const bool periodicInZ                  = physicalSetup.getParameter< bool >("periodicInZ");
    const real_t densityFluid               = physicalSetup.getParameter< real_t >("densityFluid");
-   const real_t particleDiameter           = physicalSetup.getParameter< real_t >("particleDiameter");
-   const real_t densityParticle            = physicalSetup.getParameter< real_t >("densityParticle");
-   const real_t dynamicFrictionCoefficient = physicalSetup.getParameter< real_t >("dynamicFrictionCoefficient");
-   const real_t coefficientOfRestitution   = physicalSetup.getParameter< real_t >("coefficientOfRestitution");
-   const real_t collisionTimeFactor        = physicalSetup.getParameter< real_t >("collisionTimeFactor");
    const uint_t simulationTimeFactor       = physicalSetup.getParameter< uint_t >("simulationTimeFactor");
 
    Config::BlockHandle numericalSetup = cfgFile->getBlock("NumericalSetup");
@@ -391,20 +381,8 @@ int main(int argc, char** argv)
       WALBERLA_ABORT("The number of blocks must be greater than 1 in periodic dimensions.")
    }
 
-   const bool useLubricationForces        = numericalSetup.getParameter< bool >("useLubricationForces");
-   const uint_t numberOfParticleSubCycles = numericalSetup.getParameter< uint_t >("numberOfParticleSubCycles");
-   const bool useIntegrators              = numericalSetup.getParameter< bool >("useIntegrators");
-   const Vector3< uint_t > particleSubBlockSize =
-      numericalSetup.getParameter< Vector3< uint_t > >("particleSubBlockSize");
-   const real_t linkedCellWidthRation = numericalSetup.getParameter< real_t >("linkedCellWidthRation");
-   const bool particleBarriers        = numericalSetup.getParameter< bool >("particleBarriers");
-   const Vector3< real_t > generationDomainFraction =
-      numericalSetup.getParameter< Vector3< real_t > >("generationDomainFraction");
-
-   const real_t volfraction = numericalSetup.getParameter< real_t >("volfraction");
 
    const bool writeSlice          = numericalSetup.getParameter< bool >("writeSlice");
-   const bool sendDirectlyFromGPU = numericalSetup.getParameter< bool >("sendDirectlyFromGPU");
 
    Config::BlockHandle turbulenceSetup   = cfgFile->getBlock("TurbulenceSetup");
    const real_t target_bulk_Reynolds     = turbulenceSetup.getParameter< real_t >("target_bulk_Reynolds");
@@ -414,28 +392,12 @@ int main(int argc, char** argv)
    const uint_t nTurnovers               = turbulenceSetup.getParameter< uint_t >("nTurnovers");
 
 
-   Config::BlockHandle TemperatureSetup = cfgFile->getBlock("TemperatureSetup");
-   const real_t Thot                    = TemperatureSetup.getParameter< real_t >("Thot");
-   const real_t Tcold                   = TemperatureSetup.getParameter< real_t >("Tcold");
-   const real_t Tref                    = TemperatureSetup.getParameter< real_t >("Tref");
-   const real_t Tparticle               = TemperatureSetup.getParameter< real_t >("Tparticle");
-   const real_t Pr                      = TemperatureSetup.getParameter< real_t >("PrandtlNumber");
-   const real_t diffusivityRatio        = TemperatureSetup.getParameter< real_t >("diffusivityRatio");
-   const real_t Gr                      = TemperatureSetup.getParameter< real_t >("Gr");
 
    Config::BlockHandle outputSetup      = cfgFile->getBlock("Output");
    const uint_t infoSpacing             = outputSetup.getParameter< real_t >("infoSpacing");
-   const real_t vtkSpacingParticles     = outputSetup.getParameter< real_t >("vtkSpacingParticles");
    const real_t vtkSpacingFluid         = outputSetup.getParameter< real_t >("vtkSpacingFluid");
    const std::string vtkFolder          = outputSetup.getParameter< std::string >("vtkFolder");
    const uint_t performanceLogFrequency = outputSetup.getParameter< uint_t >("performanceLogFrequency");
-
-   Config::BlockHandle statisticsParams    = cfgFile->getBlock("statistics_params");
-   const real_t convergenceTolerance       = statisticsParams.getParameter< real_t >("convergenceTolerance");
-   const uint_t outputFrequency            = statisticsParams.getParameter< uint_t >("outputFrequency");
-   const uint_t planeAveragingtimeBlock    = statisticsParams.getParameter< uint_t >("planeAveragingtimeBlock");
-   const uint_t heatFluxAveragingtimeBlock = statisticsParams.getParameter< uint_t >("heatFluxAveragingtimeBlock");
-
 
    // convert SI units to simulation (LBM) units and check setup
 
@@ -459,26 +421,12 @@ int main(int argc, char** argv)
                         "number of cells in z of " << domainSize[2]
                                                    << " is not divisible by given number of blocks in z direction");
 
-   WALBERLA_CHECK_GREATER_EQUAL(
-      particleDiameter, 5_r,
-      "Your numerical resolution is below 5 cells per diameter and thus too small for such simulations!");
 
-   real_t densityRatio = densityParticle / densityFluid;
 
    // in simulation units: dt = 1, dx = 1, densityFluid = 1
 
-   const real_t particleVolume   = math::pi / 6_r * particleDiameter * particleDiameter * particleDiameter;
-   const real_t poissonsRatio         = real_t(0.22);
-   const real_t kappa                 = real_t(2) * (real_t(1) - poissonsRatio) / (real_t(2) - poissonsRatio);
-   const real_t particleCollisionTime = collisionTimeFactor * particleDiameter;
 
    const real_t domainVolume = domainSize[0] * domainSize[1] * domainSize[2];
-   const uint_t numParticles = uint_c((volfraction*domainVolume)/(particleVolume));
-   WALBERLA_LOG_INFO_ON_ROOT(numParticles << " particles will be created");
-   const real_t T_conversion = real_t(1);
-   // conversion for the various temperature quantities:
-   const real_t rho_0               = densityFluid;
-   const real_t particleTemperature = Tparticle;
    const real_t channel_half_width = real_c(domainSize[codegen::wall_axis]/2);
 
    // calculation of target friction velocity from the thesis of Eschghinejadfard
@@ -490,33 +438,21 @@ int main(int argc, char** argv)
 
    const real_t kinematicViscosityLB = (target_friction_velocity*channel_half_width)/target_friction_Reynolds;
 
-   const real_t thermalDiffusivityFluid_LB = kinematicViscosityLB / Pr;
-   const real_t thermalDiffusivityParticle_LB = thermalDiffusivityFluid_LB;
-
 
    const real_t omega_f  = lbm::collision_model::omegaFromViscosity(kinematicViscosityLB);
-   const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
-   const real_t omegaT_s = lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
    const uint_t numTimeSteps              =  uint_c(simulationTimeFactor *turnOverPeriod);
 
 
 
 
    WALBERLA_LOG_INFO_ON_ROOT("total number of timeSteps in simulation " << numTimeSteps);
-   WALBERLA_LOG_INFO_ON_ROOT("density particle LB is " << densityParticle);
    WALBERLA_LOG_INFO_ON_ROOT("density fluid LB is " << densityFluid);
-   WALBERLA_LOG_INFO_ON_ROOT("Particle Diameter is = " << particleDiameter);
+
 
    WALBERLA_LOG_INFO_ON_ROOT("------------------------------");
    WALBERLA_LOG_INFO_ON_ROOT("Extracted Quantities are;   ");
    WALBERLA_LOG_INFO_ON_ROOT("Target Bulk Velocity is " << target_bulk_velocity);
-   WALBERLA_LOG_INFO_ON_ROOT("Temperature Relaxation rate fluid is " << omegaT_f);
    WALBERLA_LOG_INFO_ON_ROOT("Hydrodynamic Relaxation rate  fluid is " << omega_f);
-   WALBERLA_LOG_INFO_ON_ROOT("Prandtl number = " << (kinematicViscosityLB / thermalDiffusivityFluid_LB));
-   WALBERLA_LOG_INFO_ON_ROOT("thermal diffusivity alpha fluid = " <<  thermalDiffusivityFluid_LB);
-   WALBERLA_LOG_INFO_ON_ROOT("thermal diffusivity alpha particle = " <<  thermalDiffusivityParticle_LB);
-
-
 
    // outputting turbulent related parameters
    WALBERLA_LOG_INFO_ON_ROOT("Channel half width  " << channel_half_width);
@@ -630,10 +566,6 @@ int main(int argc, char** argv)
 
    BlockDataID flagFieldFluidID       = field::addFlagFieldToStorage< FlagField_T >(blocks, "fluid flag field");
 
-
-
-   BlockDataID temperatureFieldID = field::addToStorage< DensityField_temperature_T >(
-      blocks, "temperature field", real_t(0), field::fzyx);
 
    /////////////////////////////////////////////
    // Welford fields for overall statistics  //
@@ -784,8 +716,8 @@ int main(int argc, char** argv)
       // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
       timeloop.singleStep(timeloopTiming);
       auto fluidInfo =
-           evaluateFluidInfo(blocks,densityFluidFieldID ,velFieldFluidID,temperatureFieldID);
-      if (timeStep%1000 == 0)
+           evaluateFluidInfo(blocks,densityFluidFieldID ,velFieldFluidID);
+      if (timeStep%infoSpacing == 0)
       {
          WALBERLA_LOG_INFO_ON_ROOT(fluidInfo);
       }

@@ -2,60 +2,31 @@ waLBerla_link_files_to_builddir("*.prm")
 
 if (WALBERLA_BUILD_WITH_CODEGEN)
     if (NOT WALBERLA_BUILD_WITH_GPU_SUPPORT OR (WALBERLA_BUILD_WITH_GPU_SUPPORT AND (CMAKE_CUDA_ARCHITECTURES GREATER_EQUAL 60 OR WALBERLA_BUILD_WITH_HIP)))
-        foreach(solid_collision 1 2)
-            set(config sc_${solid_collision})
-            message(STATUS "Config value in thermal PSM is: ${config}" )
-            waLBerla_generate_target_from_python(NAME simplifiedChannel_CodeGeneration_${config}
-                    FILE thermalPSMCodegenCHT.py
-                    CODEGEN_CFG ${config}
-                    OUT_FILES PSMFluidSweep.h PSMFluidSweep.${CODEGEN_FILE_SUFFIX}
-                    PSMTemperatureSweep.h PSMTemperatureSweep.${CODEGEN_FILE_SUFFIX}
-                    TurbulentChannel_Setter.h TurbulentChannel_Setter.${CODEGEN_FILE_SUFFIX}
-                    TurbulentChannel_Sweep.h TurbulentChannel_Sweep.${CODEGEN_FILE_SUFFIX}
-                    PackInfoFluid.h PackInfoFluid.${CODEGEN_FILE_SUFFIX}
-                    PackInfoTemperature.h PackInfoTemperature.${CODEGEN_FILE_SUFFIX}
-                    InitializeFluidDomain.h InitializeFluidDomain.${CODEGEN_FILE_SUFFIX}
-                    InitializeTemperatureDomain.h InitializeTemperatureDomain.${CODEGEN_FILE_SUFFIX}
-                    BC_Fluid_NoSlip.h BC_Fluid_NoSlip.${CODEGEN_FILE_SUFFIX}
-                    BC_Fluid_UBB.h BC_Fluid_UBB.${CODEGEN_FILE_SUFFIX}
-                    BC_Fluid_Density.h BC_Fluid_Density.${CODEGEN_FILE_SUFFIX}
-                    BC_Fluid_FreeSlip.h BC_Fluid_FreeSlip.${CODEGEN_FILE_SUFFIX}
-                    BC_Fluid_Outflow.h BC_Fluid_Outflow.${CODEGEN_FILE_SUFFIX}
-                    BC_Temperature_DiffusionDirichlet_dynamic.h BC_Temperature_DiffusionDirichlet_dynamic.${CODEGEN_FILE_SUFFIX}
-                    BC_Temperature_Neumann.h BC_Temperature_Neumann.${CODEGEN_FILE_SUFFIX}
-                    BC_Temperature_DiffusionDirichlet_static.h BC_Temperature_DiffusionDirichlet_static.${CODEGEN_FILE_SUFFIX}
-                    WelfordVelocity.h WelfordVelocity.${CODEGEN_FILE_SUFFIX}
-                    WelfordTemperature.h WelfordTemperature.${CODEGEN_FILE_SUFFIX}
-                    FluidMacroSetter.h FluidMacroSetter.cpp
-                    FluidMacroGetter.h FluidMacroGetter.cpp
-                    TemperatureMacroSetter.h TemperatureMacroSetter.cpp
-                    TemperatureMacroGetter.h TemperatureMacroGetter.cpp
-                    initializeTemperatureField.h initializeTemperatureField.cpp
-                    GeneralInfoHeader.h
+        waLBerla_generate_target_from_python(NAME simplifiedChannel_CodeGeneration_${config}
+                FILE thermalPSMCodegenCHT.py
+                CODEGEN_CFG ${config}
+                OUT_FILES TurbulentChannel_Setter.h TurbulentChannel_Setter.${CODEGEN_FILE_SUFFIX}
+                TurbulentChannel_Sweep.h TurbulentChannel_Sweep.${CODEGEN_FILE_SUFFIX}
+                PackInfoFluid.h PackInfoFluid.${CODEGEN_FILE_SUFFIX}
+                InitializeFluidDomain.h InitializeFluidDomain.${CODEGEN_FILE_SUFFIX}
+                BC_Fluid_NoSlip.h BC_Fluid_NoSlip.${CODEGEN_FILE_SUFFIX}
+                WelfordVelocity.h WelfordVelocity.${CODEGEN_FILE_SUFFIX}
+                FluidMacroSetter.h FluidMacroSetter.cpp
+                FluidMacroGetter.h FluidMacroGetter.cpp
+                GeneralInfoHeader.h
         )
-            message(STATUS "generated in thermal PSM is: ${config}" )
-            if (WALBERLA_BUILD_WITH_HIP OR WALBERLA_BUILD_WITH_GPU_SUPPORT)
-                set(MAINSRC ThermalTurbulentChannelGPU.cpp)
 
-            else()
-                set(MAINSRC simplifiedBenchmark.cpp)
-            endif()
+        set(MAINSRC simplifiedBenchmark.cpp)
+        set(BASE_SOURCES
+                ${MAINSRC}
+        )
 
-            set(BASE_SOURCES
-                    ${MAINSRC}
-            )
-
-            add_executable(simplifiedChannel_${config}
-                    ${SRC}
-                    ${BASE_SOURCES}
-            )
-
-
-            target_link_libraries(simplifiedChannel_${config} walberla::blockforest walberla::core walberla::field walberla::geometry walberla::gpu walberla::lbm walberla::lbm_mesapd_coupling walberla::mesa_pd walberla::sqlite walberla::vtk simplifiedChannel_CodeGeneration_${config})
-            target_compile_definitions(simplifiedChannel_${config} PRIVATE Weighting=1)
-        endforeach ()
-
-
+        add_executable(simplifiedChannel_${config}
+                ${SRC}
+                ${BASE_SOURCES}
+        )
+        target_link_libraries(simplifiedChannel_${config} walberla::blockforest walberla::core walberla::field walberla::geometry walberla::gpu walberla::lbm walberla::lbm_mesapd_coupling walberla::mesa_pd walberla::sqlite walberla::vtk simplifiedChannel_CodeGeneration_${config})
+        target_compile_definitions(simplifiedChannel_${config} PRIVATE Weighting=1)
     endif ()
 endif ()
 
