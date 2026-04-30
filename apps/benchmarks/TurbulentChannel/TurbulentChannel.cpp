@@ -166,6 +166,10 @@ namespace walberla {
          viscosity = 2_r * real_c(channelHalfWidth) * targetBulkVelocity / targetBulkReynolds;
          targetFrictionVelocity = targetFrictionReynolds * viscosity / real_c(channelHalfWidth);
 
+         //targetFrictionVelocity = 0.1/(2.5*std::log(targetFrictionReynolds) + 5.5);
+         //viscosity = (targetFrictionVelocity*channelHalfWidth)/targetFrictionReynolds;
+         //targetFrictionVelocity = targetFrictionReynolds * viscosity / real_c(channelHalfWidth);
+
          /// TIMESTEPS
 
          timesteps = config.getParameter<uint_t>("timesteps", 0);
@@ -326,6 +330,7 @@ namespace walberla {
          topWall.addParameter("walldistance", "-1");
          if(parameters.fullChannel) {
             if (parameters.boundaryCondition == "NoSlip") {
+               WALBERLA_LOG_INFO_ON_ROOT("no slip for fullchannel");
                topWall.addParameter("flag", "NoSlip");
             } else if (parameters.boundaryCondition == "WFB") {
                topWall.addParameter("flag", "WFB_top");
@@ -348,7 +353,7 @@ namespace walberla {
            targetBulkVelocity_(parameter.targetBulkVelocity), targetFrictionVelocity_(parameter.targetFrictionVelocity)
       {
          const auto & domainSize = parameter.domainSize;
-
+         WALBERLA_LOG_INFO_ON_ROOT("target friction velocity is "  << targetFrictionVelocity_);
          Cell maxCell;
          maxCell[parameter.wallAxis] = int_c(parameter.channelHalfWidth) - 1;
          maxCell[flowDirection_] = int_c(domainSize[flowDirection_]) - 1;
@@ -398,8 +403,8 @@ namespace walberla {
       real_t calculateDrivingForce() const {
 
          // forcing term as in Malaspinas (2014) "Wall model for large-eddy simulation based on the lattice Boltzmann method"
-         const auto force = targetFrictionVelocity_ * targetFrictionVelocity_ / channelHalfWidth_
-                            + (targetBulkVelocity_ - bulkVelocity_) * targetBulkVelocity_ / channelHalfWidth_;
+         const auto force = targetFrictionVelocity_ * targetFrictionVelocity_ / channelHalfWidth_;
+                            //+ (targetBulkVelocity_ - bulkVelocity_) * targetBulkVelocity_ / channelHalfWidth_;
 
          return force;
       }
@@ -640,6 +645,63 @@ namespace walberla {
       std::filesystem::path forcingDataFilePath_;
    };
 
+
+
+   struct FluidInfo
+{
+   uint_t numFluidCells   = 0;
+   real_t averageVelocity = 0_r;
+   real_t maximumVelocity = 0_r;
+   real_t averageDensity  = 0_r;
+   real_t maximumDensity  = 0_r;
+   real_t maxTemperature  = 0_r;
+   real_t minTemperature  = 0_r;
+
+   void allReduce()
+   {
+      walberla::mpi::allReduceInplace(numFluidCells, walberla::mpi::SUM);
+      walberla::mpi::allReduceInplace(averageVelocity, walberla::mpi::SUM);
+      walberla::mpi::allReduceInplace(maximumVelocity, walberla::mpi::MAX);
+      ;
+      walberla::mpi::allReduceInplace(averageDensity, walberla::mpi::SUM);
+      walberla::mpi::allReduceInplace(maximumDensity, walberla::mpi::MAX);
+      walberla::mpi::allReduceInplace(maxTemperature, walberla::mpi::MAX);
+      walberla::mpi::allReduceInplace(minTemperature, walberla::mpi::MIN);
+
+      averageVelocity /= real_c(numFluidCells);
+      averageDensity /= real_c(numFluidCells);
+   }
+};
+
+std::ostream& operator<<(std::ostream& os, FluidInfo const& m)
+{
+   return os << "Fluid Info: numFluidCells = " << m.numFluidCells << ", uAvg = " << m.averageVelocity
+             << ", uMax = " << m.maximumVelocity << ", densityAvg = " << m.averageDensity
+             << ", densityMax = " << m.maximumDensity << ", TMax = " << m.maxTemperature << ", TMin = " << m.minTemperature;
+}
+
+FluidInfo evaluateFluidInfo(const shared_ptr< StructuredBlockStorage >& blocks,
+                            const BlockDataID& velocityFieldID)
+{
+   FluidInfo info;
+
+   for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
+   {
+
+      auto velocityField = blockIt->getData< VectorField_T >(velocityFieldID);
+
+
+      WALBERLA_FOR_ALL_CELLS_XYZ(
+         velocityField, ++info.numFluidCells; Vector3< real_t > velocity(
+            velocityField->get(x, y, z, 0), velocityField->get(x, y, z, 1), velocityField->get(x, y, z, 2));real_t velMagnitude = std::abs(velocityField->get(x, y, z, 0));
+
+         info.averageVelocity += velMagnitude; info.maximumVelocity = std::max(info.maximumVelocity, velMagnitude);)
+
+   }
+   info.allReduce();
+   return info;
+}
+
    /////////////////////
    /// Main Function ///
    /////////////////////
@@ -772,6 +834,7 @@ namespace walberla {
       WALBERLA_LOG_INFO_ON_ROOT("Creating sweeps...")
 
       const auto omega = lbm::collision_model::omegaFromViscosity(simulationParameters.viscosity);
+      WALBERLA_LOG_INFO_ON_ROOT("omega is  " << omega);
 #if defined RUN_WITH_SGS
       StreamCollideSweep_T streamCollideSweep(omegaFieldId, pdfFieldId, velocityFieldId, initialForce, omega);
       TKEWelfordSweep_T welfordTKESweep(meanTkeSgsFieldId, tkeSgsFieldId, 0_r);
@@ -899,9 +962,9 @@ namespace walberla {
                            setNewForce(newForce);
                         }, "new force setter")
                      << Sweep([](IBlock *){}, "new force setter");
-      timeloop.add() << Sweep(freeSlip_top, "freeSlip");
+      //timeloop.add() << Sweep(freeSlip_top, "freeSlip");
       timeloop.add() << Sweep(noSlip, "noSlip");
-      timeloop.add() << Sweep(wfbLambda, "wall function bounce");
+      //timeloop.add() << Sweep(wfbLambda, "wall function bounce");
       timeloop.add() << Sweep(streamCollideLambda, "stream and collide");
       timeloop.add() << BeforeFunction([&](){
                            const uint_t velCtr = uint_c(welfordSweep.getCounter());
@@ -952,7 +1015,18 @@ namespace walberla {
       WcTimer timer;
       timer.start();
 
-      timeloop.run(timing);
+   for (uint_t timeStep = 0; timeStep <simulationParameters.timesteps;  ++timeStep)
+   {
+      // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
+      timeloop.singleStep(timing);
+
+      auto fluidInfo =
+            evaluateFluidInfo(blocks, velocityFieldId);
+      if (timeStep%1000 == 0)
+      {
+         WALBERLA_LOG_INFO_ON_ROOT(fluidInfo);
+      }
+   }
 
       timer.end();
 

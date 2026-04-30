@@ -6,14 +6,14 @@ TurbulentChannel {
 
     wall_boundary_condition     NoSlip;
 
-    target_friction_Reynolds    395;
+    target_friction_Reynolds    180;
     target_bulk_velocity        0.1;
 
     sampling_shift              0;
     velocity_filter_width       1e-3;
 
     // turnover_periods              50;
-    timesteps                   100;
+    timesteps                   10000000000;
 
     // sampling_start_timesteps      50;
     // sampling_start_periods      1;
@@ -24,8 +24,8 @@ TurbulentChannel {
     // vtk_start_periods          1000;
      plot_start_timesteps       50;
     // plot_start_periods         1000;
-    vtk_frequency              10;
-    plot_frequency             10;
+    vtk_frequency              0;
+    plot_frequency             100000000000;
     separate_files                0;
 
 }
