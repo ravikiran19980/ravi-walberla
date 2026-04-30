@@ -10,7 +10,7 @@ import numpy as np
 from lbmpy import LBMConfig, LBMOptimisation, LBStencil, Method, Stencil, ForceModel
 from lbmpy.partially_saturated_cells import PSMConfig
 
-from lbmpy.boundaries import NoSlip, UBB, FixedDensity, FreeSlip, DiffusionDirichlet, NeumannByCopy, SimpleExtrapolationOutflow,ExtrapolationOutflow
+from lbmpy.boundaries import NoSlip, UBB, FixedDensity, FreeSlip, DiffusionDirichlet, NeumannByCopy, SimpleExtrapolationOutflow,ExtrapolationOutflow, QuadraticBounceBack,WallFunctionBounce
 from lbmpy.creationfunctions import (
     create_lb_update_rule,
     create_lb_method,
@@ -34,8 +34,11 @@ from lbmpy_walberla.additional_data_handler import DiffusionDirichletAdditionalD
 from pystencils.cache import clear_cache
 from thermalMethods import create_thermal_lb_method#,create_psm_thermal_collision_rule
 from lbmpy.maxwellian_equilibrium import get_weights
-from lbmpy.enums import Stencil, Method, CollisionSpace
+from lbmpy.enums import Stencil, Method, CollisionSpace,SubgridScaleModel
 from lbmpy.flow_statistics import welford_assignments
+from lbmpy.boundaries.wall_function_models import SpaldingsLaw, MoninObukhovSimilarityTheory
+from lbmpy_walberla.additional_data_handler import WFBAdditionalDataHandler
+from lbmpy.relaxationrates import lattice_viscosity_from_relaxation_rate
 #clear_cache()
 
 
@@ -61,9 +64,9 @@ def check_axis(flow_axis, wall_axis):
     assert all(0 <= axis < 3 for axis in (flow_axis, wall_axis)), "Axes must be between 0 and 2."
 
 
-with CodeGeneration() as ctx:
+with (CodeGeneration() as ctx):
     data_type = "float64" if ctx.double_accuracy else "float32"
-    stencil_fluid = LBStencil(Stencil.D3Q19)
+    stencil_fluid = LBStencil(Stencil.D3Q27)
     stencil_temperature = LBStencil(Stencil.D3Q19)
     omega = sp.Symbol("omega")  # for now same for both the sweeps
     init_density_fluid = sp.Symbol("init_density_fluid")
@@ -118,7 +121,7 @@ with CodeGeneration() as ctx:
 
 
     lbm_config = LBMConfig(stencil=stencil_fluid,
-                           method=Method.SRT,
+                           method=Method.CUMULANT,
                            force_model=ForceModel.GUO,
                            force=tuple(force_on_fluid),
                            relaxation_rate=omega,
@@ -126,6 +129,10 @@ with CodeGeneration() as ctx:
                            output={'velocity': velocity_field})
     update_rule = create_lb_update_rule(lbm_config=lbm_config, lbm_optimisation=lbm_fluid_opt)
     lbm_method = update_rule.method
+    lbm_config.subgrid_scale_model = SubgridScaleModel.SMAGORINSKY
+    if stencil_fluid.Q == 27 and lbm_config.method == Method.CUMULANT:
+        lbm_config.galilean_correction = True
+        lbm_config.fourth_order_correction = True
     pdfs_setter = macroscopic_values_setter(lbm_method,
                                             1,
                                             velocity_field.center_vector,
@@ -175,6 +182,46 @@ with CodeGeneration() as ctx:
         target=target,
     )
 
+    generate_boundary(
+        ctx,
+        "BC_Fluid_Qbb",
+        QuadraticBounceBack(omega),
+        lbm_method,
+        field_name=pdfs_fluid.name,
+        streaming_pattern="pull",
+        target=target,
+    )
+
+    nu = lattice_viscosity_from_relaxation_rate(omega)
+    wall_function_model = SpaldingsLaw(viscosity=nu, kappa=0.41, b=5.5, newton_steps=5)
+    wfb_common_params = {
+        'lb_method': lbm_method,
+        'velocity_field': velocity_field,
+        'wall_function_model': wall_function_model,
+        'use_maronga_correction': False,
+        'sampling_shift': 0,
+        'filter_width': sp.Symbol("filter_width"),
+        'data_type': data_type,
+        'target_friction_velocity': sp.Symbol("utau_target")
+    }
+    wfb_common_params['reference_velocity'] = WallFunctionBounce.ReferenceVelocity.MEAN_VELOCITY
+    normal_direction_top = [0] * 3
+    normal_direction_top[wall_axis] = -1
+    normal_direction_top = tuple(normal_direction_top)
+
+    normal_direction_bottom = [0] * 3
+    normal_direction_bottom[wall_axis] = 1
+    normal_direction_bottom = tuple(normal_direction_bottom)
+
+    wfb_top = WallFunctionBounce(**wfb_common_params, normal_direction=normal_direction_top)
+    wfb_bottom = WallFunctionBounce(**wfb_common_params, normal_direction=normal_direction_bottom)
+    additional_data_handler_top = WFBAdditionalDataHandler(stencil_fluid, wfb_top, velocity_field, target=target)
+    additional_data_handler_bottom = WFBAdditionalDataHandler(stencil_fluid, wfb_bottom, velocity_field, target=target)
+
+    generate_boundary(ctx, "TurbulentChannel_WFB_bottom", wfb_bottom, lbm_method, target=target,
+                      additional_data_handler=additional_data_handler_bottom)
+    generate_boundary(ctx, "TurbulentChannel_WFB_top", wfb_top, lbm_method, target=target,
+                      additional_data_handler=additional_data_handler_top)
 
     # welford for the combined fluid-particle field:
 

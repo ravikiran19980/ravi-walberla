@@ -99,6 +99,8 @@ using ScalarField_T = GhostLayerField< real_t, 1 >;
 using VectorField_T = GhostLayerField< real_t, Stencil_Fluid_T::D >;
 using TensorField_T = GhostLayerField< real_t, Stencil_Fluid_T::D*Stencil_Fluid_T::D >;
 using WelfordSweepVelocity_T = WelfordVelocity;
+using WFB_bottom_T = lbm::TurbulentChannel_WFB_bottom;
+using WFB_top_T = lbm::TurbulentChannel_WFB_top;
 
 
 ///////////
@@ -169,6 +171,7 @@ struct ForceCalculatorParameters
    real_t channelHalfWidth;
    real_t targetBulkVelocity;
    real_t targetFrictionVelocity;
+   std::string wallboundaryCondition;
 };
 
 template< typename VelocityField_T >
@@ -231,8 +234,8 @@ template< typename VelocityField_T >
       real_t calculateDrivingForce() const {
 
          // forcing term as in Malaspinas (2014) "Wall model for large-eddy simulation based on the lattice Boltzmann method"
-         const auto force = targetFrictionVelocity_ * targetFrictionVelocity_ / channelHalfWidth_
-                            + (targetBulkVelocity_ - bulkVelocity_) * targetBulkVelocity_ / channelHalfWidth_;
+         const auto force = targetFrictionVelocity_ * targetFrictionVelocity_ / channelHalfWidth_;
+                            //+ (targetBulkVelocity_ - bulkVelocity_) * targetBulkVelocity_ / channelHalfWidth_;
 
          return force;
       }
@@ -259,13 +262,29 @@ void createBoundaryConfig(ForceCalculatorParameters &parameters, Config::Block &
    bottomWall.addParameter("direction", stencil::dirToString[stencil::directionFromAxis(parameters.wallAxis, true)]);
    bottomWall.addParameter("walldistance", "-1");
 
-   bottomWall.addParameter("flag", "NoSlip");
+
+   if (parameters.wallboundaryCondition == "NoSlip")
+   {
+      bottomWall.addParameter("flag", "NoSlip");
+   }
+   else if (parameters.wallboundaryCondition == "WFB")
+   {
+      bottomWall.addParameter("flag", "WFB_bottom");
+   }
 
 
    auto & topWall = boundaryBlock.createBlock("Border");
    topWall.addParameter("direction", stencil::dirToString[stencil::directionFromAxis(parameters.wallAxis, false)]);
    topWall.addParameter("walldistance", "-1");
-   topWall.addParameter("flag", "NoSlip");
+   if (parameters.wallboundaryCondition == "NoSlip")
+   {
+      topWall.addParameter("flag", "NoSlip");
+   }
+
+   else if (parameters.wallboundaryCondition == "WFB")
+   {
+      topWall.addParameter("flag", "WFB_top");
+   }
 }
 }
 
@@ -314,7 +333,7 @@ template<typename VelocityField_T>
             vel[remAxis] = 2_r * frictionVelocity / kappa * std::sin(math::pi * 16_r * rel_x) *
                            std::sin(math::pi * 8_r * rel_y) / (std::pow(rel_y, 2_r) + 1_r);
 
-            vel[wallAxis] = 8_r * frictionVelocity / kappa *
+            vel[wallAxis] =  8_r * frictionVelocity / kappa *
                             (std::sin(math::pi * 8_r * rel_z) * std::sin(math::pi * 8_r * rel_y) +
                              std::sin(math::pi * 8_r * rel_x)) / (std::pow(0.5_r * delta - pos, 2_r) + 1_r);
 
@@ -390,6 +409,7 @@ int main(int argc, char** argv)
    const real_t target_bulk_velocity     = turbulenceSetup.getParameter< real_t >("target_bulk_velocity");
    const real_t center_line_velocity     = turbulenceSetup.getParameter< real_t >("center_line_velocity");
    const uint_t nTurnovers               = turbulenceSetup.getParameter< uint_t >("nTurnovers");
+   const std::string wallboundaryCondition               = turbulenceSetup.getParameter< std::string >("wallboundaryCondition");
 
 
 
@@ -481,6 +501,7 @@ int main(int argc, char** argv)
 
    // example conversion if needed
    forceParams.targetFrictionVelocity = target_friction_velocity;
+   forceParams.wallboundaryCondition = wallboundaryCondition;
 
 
 
@@ -500,8 +521,6 @@ int main(int argc, char** argv)
                                                 numBlocks, cellsPerBlock);
          Vector3<uint_t> periodicity{true,false,true};
 
-         //const auto & periodicity = periodicity;
-         //auto & domainSize = domainSize;
          const Vector3<uint_t> newDomainSize(numBlocks[0] * cellsPerBlock[0], numBlocks[1] * cellsPerBlock[1], numBlocks[2] * cellsPerBlock[2]);
 
          if(domainSize != newDomainSize) {
@@ -514,7 +533,7 @@ int main(int argc, char** argv)
          sforest.addWorkloadMemorySUIDAssignmentFunction( blockforest::uniformWorkloadAndMemoryAssignment );
 
          sforest.init( AABB(0_r, 0_r, 0_r, real_c(domainSize[0]), real_c(domainSize[1]), real_c(domainSize[2])),
-                       numBlocks[0], numBlocks[1], numBlocks[2], periodicity[0], periodicity[1], periodicity[2] );
+                       numBlocks[0], numBlocks[1], numBlocks[2], periodicInX, periodicInY, periodicInZ );
 
          // calculate process distribution
 
@@ -594,11 +613,16 @@ int main(int argc, char** argv)
 
    noSlip.fillFromFlagField< FlagField_T >(blocks, flagFieldFluidID, FlagUID("NoSlip"), fluidFlagUID);
 
+   std::unique_ptr<WFB_bottom_T> wfb_bottom_ptr = std::make_unique<WFB_bottom_T>(blocks, pdfFieldFluidID, velFieldFluidID, omega_f, target_friction_velocity);
+   std::unique_ptr<WFB_top_T > wfb_top_ptr = std::make_unique<WFB_top_T>(blocks, pdfFieldFluidID, velFieldFluidID, omega_f, target_friction_velocity);
 
+   wfb_bottom_ptr->fillFromFlagField< FlagField_T >(blocks, flagFieldFluidID, FlagUID("WFB_bottom"), fluidFlagUID);
+   wfb_top_ptr->fillFromFlagField< FlagField_T >(blocks, flagFieldFluidID, FlagUID("WFB_top"), fluidFlagUID);
 
-
-
-
+   auto wfbLambda = [&wfb_bottom_ptr, &wfb_top_ptr](IBlock * block) {
+      wfb_bottom_ptr->operator()(block);
+      wfb_top_ptr->operator()(block);
+   };
 
 
 
@@ -610,7 +634,7 @@ int main(int argc, char** argv)
    setVelocityFieldsAsmuth<VectorField_T>(
       blocks, velFieldFluidID, meanVelFieldID,
       target_friction_velocity, uint_c(forceParams.channelHalfWidth),
-      5.5_r, 0.41_r, kinematicViscosityLB,
+      5.5_r, 0.4_r, kinematicViscosityLB,
       forceParams.wallAxis, 0 );
 
 
@@ -623,13 +647,6 @@ int main(int argc, char** argv)
    //////////////
 
    WALBERLA_LOG_INFO_ON_ROOT("Setting up fields...")
-
-   // Velocity field setup
-   setVelocityFieldsAsmuth<VectorField_T>(
-      blocks, velFieldFluidID, meanVelFieldID,
-      target_friction_velocity, uint_c(forceParams.channelHalfWidth),
-      5.5_r, 0.41_r, kinematicViscosityLB,
-      forceParams.wallAxis, 0 );
 
    forceCalculator.setBulkVelocity(forceParams.targetBulkVelocity);
    const auto initialForce = forceCalculator.calculateDrivingForce();
@@ -689,6 +706,32 @@ int main(int argc, char** argv)
    WcTimingPool timeloopTiming;
    const bool useOpenMP = true;
 
+
+   // vtk output
+   auto vtkWriter = vtk::createVTKOutput_BlockData(
+      blocks, "field_writer", vtkSpacingFluid, 0, false, "vtk_out", "simulation_step",
+      false, false, true, false
+   );
+
+   // velocity field writer
+   auto velocityWriter = std::make_shared<field::VTKWriter<VectorField_T>>(velFieldFluidID, "instantaneous velocity");
+   vtkWriter->addCellDataWriter(velocityWriter);
+
+   auto meanVelocityFieldWriter = std::make_shared<field::VTKWriter<VectorField_T>>(meanVelFieldID, "mean velocity");
+   vtkWriter->addCellDataWriter(meanVelocityFieldWriter);
+
+   // vtk writer
+   {
+      auto flagOutput = vtk::createVTKOutput_BlockData(
+         blocks, "flag_writer", 1, 1, false, "vtk_out", "simulation_step",
+         false, true, true, false
+      );
+      auto flagWriter = std::make_shared<field::VTKWriter<FlagField_T>>(flagFieldFluidID, "flag field");
+      flagOutput->addCellDataWriter(flagWriter);
+      flagOutput->write();
+   }
+
+
    ///////////////////////////////////
    // add everything to the timeloop//
    ///////////////////////////////////
@@ -705,7 +748,9 @@ int main(int argc, char** argv)
                         "new force setter")
                   << Sweep([](IBlock*) {}, "new force setter");
    timeloop.add() << Sweep((noSlip), "Boundary Handling (No slip fluid)");
+   //timeloop.add() << Sweep(wfbLambda, "wall function bounce");
    timeloop.add() << Sweep((streamCollideLambda), "streamcollide Fluid sweep");
+   timeloop.addFuncAfterTimeStep(vtk::writeFiles(vtkWriter), "VTK field output");
 
 
 

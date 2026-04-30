@@ -10,6 +10,9 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
                 PackInfoFluid.h PackInfoFluid.${CODEGEN_FILE_SUFFIX}
                 InitializeFluidDomain.h InitializeFluidDomain.${CODEGEN_FILE_SUFFIX}
                 BC_Fluid_NoSlip.h BC_Fluid_NoSlip.${CODEGEN_FILE_SUFFIX}
+                BC_Fluid_Qbb.h BC_Fluid_Qbb.${CODEGEN_FILE_SUFFIX}
+                TurbulentChannel_WFB_bottom.h TurbulentChannel_WFB_bottom.${CODEGEN_FILE_SUFFIX}
+                TurbulentChannel_WFB_top.h TurbulentChannel_WFB_top.${CODEGEN_FILE_SUFFIX}
                 WelfordVelocity.h WelfordVelocity.${CODEGEN_FILE_SUFFIX}
                 FluidMacroSetter.h FluidMacroSetter.cpp
                 FluidMacroGetter.h FluidMacroGetter.cpp
