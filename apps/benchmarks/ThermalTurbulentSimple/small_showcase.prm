@@ -40,8 +40,9 @@ TurbulenceSetup
 Output
 {
     infoSpacing 1000; // in s
-    vtkSpacingFluid 1000; // ins
-    vtkFolder vtk_out;
+    vtkSpacingFluid 100; // ins
+    vtkFolder vtk_out_checkpoint;
     performanceLogFrequency 5000000000;
-
+    checkpointing false;
+    checkpointingFileName testCheckpoint;
 }

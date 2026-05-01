@@ -102,6 +102,7 @@ using WelfordSweepVelocity_T = WelfordVelocity;
 using WFB_bottom_T = lbm::TurbulentChannel_WFB_bottom;
 using WFB_top_T = lbm::TurbulentChannel_WFB_top;
 
+using LatticeModel_T =  lbm::GeneratedLBM;
 
 ///////////
 // FLAGS //
@@ -235,7 +236,7 @@ template< typename VelocityField_T >
 
          // forcing term as in Malaspinas (2014) "Wall model for large-eddy simulation based on the lattice Boltzmann method"
          const auto force = targetFrictionVelocity_ * targetFrictionVelocity_ / channelHalfWidth_;
-                            //+ (targetBulkVelocity_ - bulkVelocity_) * targetBulkVelocity_ / channelHalfWidth_;
+                            + (targetBulkVelocity_ - bulkVelocity_) * targetBulkVelocity_ / channelHalfWidth_;
 
          return force;
       }
@@ -418,7 +419,8 @@ int main(int argc, char** argv)
    const real_t vtkSpacingFluid         = outputSetup.getParameter< real_t >("vtkSpacingFluid");
    const std::string vtkFolder          = outputSetup.getParameter< std::string >("vtkFolder");
    const uint_t performanceLogFrequency = outputSetup.getParameter< uint_t >("performanceLogFrequency");
-
+   const bool checkpointing              = outputSetup.getParameter< bool >("checkpointing");
+   const std::string checkpointingFileName          = outputSetup.getParameter< std::string >("checkpointingFileName");
    // convert SI units to simulation (LBM) units and check setup
 
    Vector3< uint_t > domainSize(uint_c(xSize), uint_c(ySize),
@@ -557,8 +559,20 @@ int main(int argc, char** argv)
 
          auto bf = std::make_shared< BlockForest >( uint_c( MPIManager::instance()->rank() ), sforest, false );
 
-         blocks = std::make_shared< StructuredBlockForest >( bf, cellsPerBlock[0], cellsPerBlock[1], cellsPerBlock[2] );
-         blocks->createCellBoundingBoxes();
+         if (checkpointing == false)
+         {
+            blocks = std::make_shared< StructuredBlockForest >( bf, cellsPerBlock[0], cellsPerBlock[1], cellsPerBlock[2] );
+            blocks->createCellBoundingBoxes();
+
+               WALBERLA_LOG_INFO_ON_ROOT("Writing block forest to file!");
+               blocks->getBlockForest().saveToFile(checkpointingFileName+"_forest.txt");
+
+
+         }
+      else
+      {
+         blocks = blockforest::createUniformBlockGrid(checkpointingFileName+"_forest.txt", cellsPerBlockPerDirection[0], cellsPerBlockPerDirection[1], cellsPerBlockPerDirection[2], false);
+      }
 
       }
 
@@ -572,13 +586,39 @@ int main(int argc, char** argv)
    ////////////////////////////////////////////////
    // Fluid related fields creation on CPU       //
    ///////////////////////////////////////////////
-
-
-   BlockDataID pdfFieldFluidID =
-      field::addToStorage< PdfField_fluid_T >(blocks, "pdf fluid field CPU", real_c(std::nan("")), field::fzyx);
+   ///
 
    BlockDataID velFieldFluidID =
-      field::addToStorage< VelocityField_fluid_T >(blocks, "velocity fluid field CPU", real_t(0), field::fzyx);
+     field::addToStorage< VelocityField_fluid_T >(blocks, "velocity fluid field CPU", real_t(0), field::fzyx);
+
+   ForceCalculator<VectorField_T> forceCalculator(blocks, velFieldFluidID, forceParams);
+   forceCalculator.setBulkVelocity(forceParams.targetBulkVelocity);
+   const auto initialForce = forceCalculator.calculateDrivingForce();
+
+   LatticeModel_T latticeModel = LatticeModel_T(initialForce,omega_f);
+   BlockDataID pdfFieldFluidID;
+
+   if (checkpointing == true)
+   {
+      shared_ptr< lbm::internal::PdfFieldHandling< LatticeModel_T > > dataHandling =
+            make_shared< lbm::internal::PdfFieldHandling< LatticeModel_T > >( blocks, latticeModel, false,
+                  Vector3< real_t >( real_t(0) ), real_t(1),
+                  uint_t(1), field::fzyx );
+
+      pdfFieldFluidID = blocks->loadBlockData( checkpointingFileName + "_lbm_tmp.txt", dataHandling, "pdf field" );
+      // here immediately good to have a getter sweep for velocity
+      FluidMacroGetter fluid_macro_getter(pdfFieldFluidID,velFieldFluidID,initialForce);
+      for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
+      {
+         fluid_macro_getter(blockIt.get());
+      }
+   }
+   else
+   {
+      pdfFieldFluidID =
+         field::addToStorage< PdfField_fluid_T >(blocks, "pdf fluid field CPU", real_c(std::nan("")), field::fzyx);
+   }
+
 
    BlockDataID densityFluidFieldID =
       field::addToStorage< DensityField_fluid_T >(blocks, "density fluid field", real_t(1), field::fzyx);
@@ -631,16 +671,17 @@ int main(int argc, char** argv)
    ///////////////////////////////////
 
    // Velocity field setup
-   setVelocityFieldsAsmuth<VectorField_T>(
-      blocks, velFieldFluidID, meanVelFieldID,
-      target_friction_velocity, uint_c(forceParams.channelHalfWidth),
-      5.5_r, 0.4_r, kinematicViscosityLB,
-      forceParams.wallAxis, 0 );
+   if (checkpointing == false)
+   {
+      setVelocityFieldsAsmuth<VectorField_T>(
+         blocks, velFieldFluidID, meanVelFieldID,
+         target_friction_velocity, uint_c(forceParams.channelHalfWidth),
+         5.5_r, 0.4_r, kinematicViscosityLB,
+         forceParams.wallAxis, 0 );
+   }
 
 
-   // create the force and bulk velocity calculator:
-   // use B-field as mask to exclude particle-occupied fractions from bulk velocity.
-   ForceCalculator<VectorField_T> forceCalculator(blocks, velFieldFluidID, forceParams);
+
 
    //////////////
    /// Setter ///
@@ -648,10 +689,10 @@ int main(int argc, char** argv)
 
    WALBERLA_LOG_INFO_ON_ROOT("Setting up fields...")
 
-   forceCalculator.setBulkVelocity(forceParams.targetBulkVelocity);
-   const auto initialForce = forceCalculator.calculateDrivingForce();
+
    using StreamCollideSweep_T = pystencils::TurbulentChannel_Sweep;
    StreamCollideSweep_T streamCollideSweep(pdfFieldFluidID, velFieldFluidID, initialForce, omega_f);
+
 
    // Initialize PDFs
 
@@ -659,10 +700,12 @@ int main(int argc, char** argv)
    Setter_T pdfSetter(pdfFieldFluidID, velFieldFluidID, initialForce);
 
 
-
-   for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
+   if (checkpointing == false)
    {
-      pdfSetter(blockIt.get());
+      for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
+      {
+         pdfSetter(blockIt.get());
+      }
    }
 
    ///////////////////////
@@ -765,6 +808,11 @@ int main(int argc, char** argv)
       if (timeStep%infoSpacing == 0)
       {
          WALBERLA_LOG_INFO_ON_ROOT(fluidInfo);
+      }
+      if (timeStep % infoSpacing == 0 && timeStep > 0)
+      {
+         WALBERLA_LOG_INFO_ON_ROOT("writing checkpoint at timestep " << timeStep);
+         blocks->saveBlockData(checkpointingFileName + "_lbm_tmp.txt", pdfFieldFluidID );
       }
 
 

@@ -29,7 +29,7 @@ from pystencils_walberla import (
     generate_sweep,
     generate_pack_info_from_kernel,
 )
-from lbmpy_walberla import generate_boundary
+from lbmpy_walberla import generate_boundary , generate_lattice_model
 from lbmpy_walberla.additional_data_handler import DiffusionDirichletAdditionalDataHandler
 from pystencils.cache import clear_cache
 from thermalMethods import create_thermal_lb_method#,create_psm_thermal_collision_rule
@@ -142,6 +142,8 @@ with (CodeGeneration() as ctx):
 
     generate_sweep(ctx, "TurbulentChannel_Sweep", update_rule, field_swaps=[(pdfs_fluid, pdfs_fluid_tmp)],target= ps.Target.CPU)
 
+    collision_rule = create_lb_collision_rule(lb_method=lbm_method, optimization={'cse_global': True})
+    generate_lattice_model(ctx, 'GeneratedLBM', collision_rule, field_layout='fzyx')
 
     # =====================
     # Generate method
@@ -261,7 +263,7 @@ with (CodeGeneration() as ctx):
 
     # Getter & setter to compute moments from pdfs
     pdfs_fluid_getter = macroscopic_values_getter(
-        lbm_method, density=density_field, velocity=velocity_field.center_vector,pdfs=pdfs_fluid.center_vector
+        lbm_method, density=sp.Symbol("rho_f"), velocity=velocity_field.center_vector,pdfs=pdfs_fluid.center_vector
     )
 
     generate_sweep(ctx, "FluidMacroSetter", pdfs_fluid_setter)
