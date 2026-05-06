@@ -331,10 +331,9 @@ template<typename VelocityField_T>
             Vector3<real_t> vel;
             vel[flowAxis] = initialVel;
 
-            vel[remAxis] = 2_r * frictionVelocity / kappa * std::sin(math::pi * 16_r * rel_x) *
+            vel[remAxis] = 0.001*2_r * frictionVelocity / kappa * std::sin(math::pi * 16_r * rel_x) *
                            std::sin(math::pi * 8_r * rel_y) / (std::pow(rel_y, 2_r) + 1_r);
-
-            vel[wallAxis] =  8_r * frictionVelocity / kappa *
+            vel[wallAxis] = 0.001*8_r * frictionVelocity / kappa *
                             (std::sin(math::pi * 8_r * rel_z) * std::sin(math::pi * 8_r * rel_y) +
                              std::sin(math::pi * 8_r * rel_x)) / (std::pow(0.5_r * delta - pos, 2_r) + 1_r);
 
@@ -751,29 +750,29 @@ int main(int argc, char** argv)
 
 
    // vtk output
-   auto vtkWriter = vtk::createVTKOutput_BlockData(
-      blocks, "field_writer", vtkSpacingFluid, 0, false, "vtk_out", "simulation_step",
-      false, false, true, false
-   );
+if (vtkSpacingFluid != uint_t(0)){
+      // Fields
+      auto vtkOutput_Fluid = vtk::createVTKOutput_BlockData(blocks, "vtk files fluid", vtkSpacingFluid, 0, false, vtkFolder);
 
-   // velocity field writer
-   auto velocityWriter = std::make_shared<field::VTKWriter<VectorField_T>>(velFieldFluidID, "instantaneous velocity");
-   vtkWriter->addCellDataWriter(velocityWriter);
+      vtkOutput_Fluid->addBeforeFunction(com_fluid);
 
-   auto meanVelocityFieldWriter = std::make_shared<field::VTKWriter<VectorField_T>>(meanVelFieldID, "mean velocity");
-   vtkWriter->addCellDataWriter(meanVelocityFieldWriter);
+      vtkOutput_Fluid->addCellDataWriter(
+         make_shared< field::VTKWriter< VelocityField_fluid_T > >(velFieldFluidID, "instantaneous Fluid Velocity"));
+      vtkOutput_Fluid->addCellDataWriter(
+         make_shared< field::VTKWriter< VelocityField_fluid_T > >(meanVelFieldID, "mean Fluid velocity"));
 
-   // vtk writer
-   {
-      auto flagOutput = vtk::createVTKOutput_BlockData(
-         blocks, "flag_writer", 1, 1, false, "vtk_out", "simulation_step",
-         false, true, true, false
-      );
-      auto flagWriter = std::make_shared<field::VTKWriter<FlagField_T>>(flagFieldFluidID, "flag field");
-      flagOutput->addCellDataWriter(flagWriter);
-      flagOutput->write();
+         auto flagOutput = vtk::createVTKOutput_BlockData(
+            blocks, "flag_writer", 1, 1, false, "vtk_out", "simulation_step",
+            false, true, true, false
+         );
+         auto flagWriter = std::make_shared<field::VTKWriter<FlagField_T>>(flagFieldFluidID, "flag_field_fluid");
+         flagOutput->addCellDataWriter(flagWriter);
+         flagOutput->write();
+
+      timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Fluid), "VTK output Fluid");
+
    }
-
+   if (vtkSpacingFluid != uint_t(0)) { vtk::writeDomainDecomposition(blocks, "domain_decomposition", vtkFolder); }
 
    ///////////////////////////////////
    // add everything to the timeloop//
@@ -793,7 +792,6 @@ int main(int argc, char** argv)
    timeloop.add() << Sweep((noSlip), "Boundary Handling (No slip fluid)");
    //timeloop.add() << Sweep(wfbLambda, "wall function bounce");
    timeloop.add() << Sweep((streamCollideLambda), "streamcollide Fluid sweep");
-   timeloop.addFuncAfterTimeStep(vtk::writeFiles(vtkWriter), "VTK field output");
 
 
 
