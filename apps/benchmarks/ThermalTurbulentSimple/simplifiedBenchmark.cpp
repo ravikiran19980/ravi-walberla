@@ -236,7 +236,7 @@ template< typename VelocityField_T >
 
          // forcing term as in Malaspinas (2014) "Wall model for large-eddy simulation based on the lattice Boltzmann method"
          const auto force = targetFrictionVelocity_ * targetFrictionVelocity_ / channelHalfWidth_;
-                            + (targetBulkVelocity_ - bulkVelocity_) * targetBulkVelocity_ / channelHalfWidth_;
+                            //+ (targetBulkVelocity_ - bulkVelocity_) * targetBulkVelocity_ / channelHalfWidth_;
 
          return force;
       }
@@ -289,7 +289,7 @@ void createBoundaryConfig(ForceCalculatorParameters &parameters, Config::Block &
 }
 }
 
-template<typename VelocityField_T>
+/*template<typename VelocityField_T>
    void setVelocityFieldsAsmuth( const std::weak_ptr<StructuredBlockStorage>& forest,
                                  const BlockDataID & velocityFieldId, const BlockDataID & meanVelocityFieldId,
                                  const real_t frictionVelocity, const uint_t channel_half_width,
@@ -331,11 +331,11 @@ template<typename VelocityField_T>
             Vector3<real_t> vel;
             vel[flowAxis] = initialVel;
 
-            vel[remAxis] = 0.001*2_r * frictionVelocity / kappa * std::sin(math::pi * 16_r * rel_x) *
+            vel[remAxis] = 2_r * frictionVelocity / kappa * std::sin(math::pi * 16_r * rel_x) *
                            std::sin(math::pi * 8_r * rel_y) / (std::pow(rel_y, 2_r) + 1_r);
-            vel[wallAxis] = 0.001*8_r * frictionVelocity / kappa *
+            vel[wallAxis] = 8_r * frictionVelocity / kappa *
                             (std::sin(math::pi * 8_r * rel_z) * std::sin(math::pi * 8_r * rel_y) +
-                             std::sin(math::pi * 8_r * rel_x)) / (std::pow(0.5_r * delta - pos, 2_r) + 1_r);
+                             std::sin(math::pi * 8_r * rel_x)) / (std::pow(rel_y, 2_r) + 1_r);//(std::pow(0.5_r * delta - pos, 2_r) + 1_r);
 
             for(uint_t d = 0; d < 3; ++d) {
                velocityField->get(*cellIt, d) = vel[d];
@@ -345,7 +345,124 @@ template<typename VelocityField_T>
          }
       }
 
-   } // function setVelocityFieldsHenrik
+   } // function setVelocityFieldsHenrik*/
+
+template<typename VelocityField_T>
+void setVelocityFieldsAsmuth(
+    const std::weak_ptr<StructuredBlockStorage>& forest,
+    const BlockDataID & velocityFieldId,
+    const BlockDataID & meanVelocityFieldId,
+    const real_t frictionVelocity,
+    const uint_t channel_half_width,
+    const real_t B,
+    const real_t kappa,
+    const real_t viscosity,
+    const uint_t wallAxis,
+    const uint_t flowAxis )
+{
+    auto blocks = forest.lock();
+    WALBERLA_CHECK_NOT_NULLPTR(blocks)
+
+    const auto domainSize = blocks->getDomain().max();
+    const auto delta      = real_c(channel_half_width);
+    const auto remAxis    = 3 - wallAxis - flowAxis;
+
+    // ─────────────────────────────────────────────
+    // Physical targets in wall units
+    // Derived from your experiments across domains:
+    //   sweet spot: λ_x⁺ ≈ 150-200, λ_z⁺ ≈ 100
+    // ─────────────────────────────────────────────
+    const real_t target_lambda_x_plus = 128/(domainSize[codegen::flow_axis]) * 150.0_r;  // middle of sweet spot
+    const real_t target_lambda_z_plus = 64/(domainSize[codegen::remaining_axis])* 150.0_r;
+
+    // Wall unit conversion factor
+    const real_t utau_over_nu = frictionVelocity / viscosity;
+
+    // Target wavelengths in lattice cells
+    const real_t lambda_x = target_lambda_x_plus / utau_over_nu;
+    const real_t lambda_z = target_lambda_z_plus / utau_over_nu;
+
+    // Factors for sin()  →  factor = 2 * L / lambda
+    const uint_t factor_x = uint_c(2.0_r * real_c(domainSize[flowAxis]) / lambda_x);
+    const uint_t factor_z = uint_c(2.0_r * real_c(domainSize[remAxis])  / lambda_z);
+
+    // ─────────────────────────────────────────────
+    // Sanity check log - verify these look reasonable
+    // ─────────────────────────────────────────────
+    WALBERLA_LOG_INFO_ON_ROOT("=== Generalized Initialization ===");
+    WALBERLA_LOG_INFO_ON_ROOT("u_tau/nu          = " << utau_over_nu);
+    WALBERLA_LOG_INFO_ON_ROOT("lambda_x (cells)  = " << lambda_x
+                               << "  lambda_x+= " << target_lambda_x_plus);
+    WALBERLA_LOG_INFO_ON_ROOT("lambda_z (cells)  = " << lambda_z
+                               << "  lambda_z+= " << target_lambda_z_plus);
+    WALBERLA_LOG_INFO_ON_ROOT("factor_x          = " << factor_x);
+    WALBERLA_LOG_INFO_ON_ROOT("factor_z          = " << factor_z);
+
+    // Warn if less than half a wave fits - perturbation will be very weak
+    if (factor_x < 1.0_r)
+        WALBERLA_LOG_WARNING_ON_ROOT("factor_x < 1: domain too short in x "
+                                     "for target lambda_x+. Consider reducing "
+                                     "target_lambda_x_plus.");
+    if (factor_z < 1.0_r)
+        WALBERLA_LOG_WARNING_ON_ROOT("factor_z < 1: domain too short in z "
+                                     "for target lambda_z+. Consider reducing "
+                                     "target_lambda_z_plus.");
+
+    for( auto block = blocks->begin(); block != blocks->end(); ++block )
+    {
+        auto* velocityField     = block->template getData<VelocityField_T>(velocityFieldId);
+        auto* meanVelocityField = block->template getData<VelocityField_T>(meanVelocityFieldId);
+        WALBERLA_CHECK_NOT_NULLPTR(velocityField)
+        WALBERLA_CHECK_NOT_NULLPTR(meanVelocityField)
+
+        const auto ci = velocityField->xyzSizeWithGhostLayer();
+        for(auto cellIt = ci.begin(); cellIt != ci.end(); ++cellIt)
+        {
+            Cell globalCell(*cellIt);
+            blocks->transformBlockLocalToGlobalCell(globalCell, *block);
+            Vector3<real_t> cellCenter;
+            blocks->getCellCenter(cellCenter, globalCell);
+
+            // Wall normal position
+            const auto y     = cellCenter[wallAxis];
+            const auto pos   = std::max(delta - std::abs(y - delta - 1_r), 0.05_r);
+            const auto rel_y = pos / delta;
+
+            // Normalized coords for x and z
+            const auto rel_x = cellCenter[flowAxis]/ real_c(domainSize[flowAxis]);
+            const auto rel_z = cellCenter[remAxis] / real_c(domainSize[remAxis]);
+
+            // Streamwise: log-law mean profile
+            const real_t initialVel = frictionVelocity *
+                (std::log(frictionVelocity * pos / viscosity) / kappa + B);
+
+            Vector3<real_t> vel;
+            vel[flowAxis] = initialVel;
+
+            // Spanwise perturbation
+            // factor_x anchored to λ_x+ sweet spot
+            vel[remAxis] = 2_r * frictionVelocity / kappa
+                         * std::sin(math::pi * 16 * rel_x)
+                         * std::sin(math::pi * 8_r * rel_y)  // wall-normal envelope
+                         / (std::pow(rel_y, 2_r) + 1_r);
+
+            // Wall-normal perturbation
+            // factor_z anchored to λ_z+ = 100
+            // factor_x same physical scale as spanwise
+            vel[wallAxis] = 8_r * frictionVelocity / kappa
+                          * (  std::sin(math::pi * (factor_z) * rel_z)
+                              * std::sin(math::pi * 16_r     * rel_y)
+                             + std::sin(math::pi * (factor_x) * rel_x))/(std::pow(rel_y, 2_r) + 1_r);
+                          /// (std::pow(0.5_r * delta - pos, 2_r) + 1_r);
+
+            for(uint_t d = 0; d < 3; ++d) {
+                velocityField->get(*cellIt, d)     = vel[d];
+                meanVelocityField->get(*cellIt, d) = vel[d];
+            }
+        }
+    }
+}
+
 
 //////////
 // MAIN //
@@ -513,67 +630,30 @@ int main(int argc, char** argv)
    ///////////////////////////
 
 // domain creation
-      std::shared_ptr<StructuredBlockForest> blocks;
-      {
-         Vector3< uint_t > numBlocks;
-         Vector3< uint_t > cellsPerBlock;
-         blockforest::calculateCellDistribution(domainSize,
-                                                uint_c(mpi::MPIManager::instance()->numProcesses()),
-                                                numBlocks, cellsPerBlock);
-         Vector3<uint_t> periodicity{true,false,true};
-
-         const Vector3<uint_t> newDomainSize(numBlocks[0] * cellsPerBlock[0], numBlocks[1] * cellsPerBlock[1], numBlocks[2] * cellsPerBlock[2]);
-
-         if(domainSize != newDomainSize) {
-            domainSize = newDomainSize;
-            WALBERLA_LOG_WARNING_ON_ROOT("\nWARNING: Domain size has changed due to the chosen domain decomposition.\n")
-         }
-
-         SetupBlockForest sforest;
-
-         sforest.addWorkloadMemorySUIDAssignmentFunction( blockforest::uniformWorkloadAndMemoryAssignment );
-
-         sforest.init( AABB(0_r, 0_r, 0_r, real_c(domainSize[0]), real_c(domainSize[1]), real_c(domainSize[2])),
-                       numBlocks[0], numBlocks[1], numBlocks[2], periodicInX, periodicInY, periodicInZ );
-
-         // calculate process distribution
-
-         const memory_t memoryLimit = numeric_cast< memory_t >( sforest.getNumberOfBlocks() );
-
-         const blockforest::GlobalLoadBalancing::MetisConfiguration< SetupBlock > metisConfig(
-            true, false, std::bind( blockforest::cellWeightedCommunicationCost, std::placeholders::_1, std::placeholders::_2,
-                                    cellsPerBlock[0], cellsPerBlock[1], cellsPerBlock[2] ) );
-
-         sforest.calculateProcessDistribution_Default( uint_c( MPIManager::instance()->numProcesses() ), memoryLimit,
-                                                       "hilbert", 10, false, metisConfig );
-
-         if( !MPIManager::instance()->rankValid() )
-            MPIManager::instance()->useWorldComm();
-
-         // create StructuredBlockForest (encapsulates a newly created BlockForest)
-
-         WALBERLA_LOG_INFO_ON_ROOT("SetupBlockForest created successfully:\n" << sforest)
-
-         sforest.writeVTKOutput("domain_decomposition");
-
-         auto bf = std::make_shared< BlockForest >( uint_c( MPIManager::instance()->rank() ), sforest, false );
-
-         if (checkpointing == false)
-         {
-            blocks = std::make_shared< StructuredBlockForest >( bf, cellsPerBlock[0], cellsPerBlock[1], cellsPerBlock[2] );
-            blocks->createCellBoundingBoxes();
-
-               WALBERLA_LOG_INFO_ON_ROOT("Writing block forest to file!");
-               blocks->getBlockForest().saveToFile(checkpointingFileName+"_forest.txt");
 
 
-         }
-      else
-      {
-         blocks = blockforest::createUniformBlockGrid(checkpointingFileName+"_forest.txt", cellsPerBlockPerDirection[0], cellsPerBlockPerDirection[1], cellsPerBlockPerDirection[2], false);
-      }
 
-      }
+
+
+   shared_ptr< StructuredBlockForest > blocks;
+   if (checkpointing == false)
+   {
+      blocks = blockforest::createUniformBlockGrid(numXBlocks, numYBlocks, numZBlocks, cellsPerBlockPerDirection[0],
+                                                   cellsPerBlockPerDirection[1], cellsPerBlockPerDirection[2],
+                                                   real_t(1), uint_t(0), false, false, periodicInX, periodicInY,
+                                                   periodicInZ, // periodicity
+                                                   false);
+      blocks->createCellBoundingBoxes();
+
+      WALBERLA_LOG_INFO_ON_ROOT("Writing block forest to file!");
+      blocks->getBlockForest().saveToFile(checkpointingFileName + "_forest.txt");
+   }
+   else
+   {
+      blocks = blockforest::createUniformBlockGrid(checkpointingFileName + "_forest.txt", cellsPerBlockPerDirection[0],
+                                                   cellsPerBlockPerDirection[1], cellsPerBlockPerDirection[2], false);
+   }
+   auto simulationDomain = blocks->getDomain();
 
    ////////////////////////
    // ADD DATA TO BLOCKS //

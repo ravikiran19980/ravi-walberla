@@ -6,8 +6,8 @@ PhysicalSetup // all to be specified in SI/ref units
     zSize 260;
 
     periodicInX true;
-    periodicInY true;
-    periodicInZ false;
+    periodicInY false;
+    periodicInZ true;
 
     densityFluid 1.;
     simulationTimeFactor 800;   // total timesteps of simulation = simulationTimeFactor * turnOverPeriod
@@ -30,17 +30,19 @@ TurbulenceSetup
 {
     target_bulk_Reynolds        5600;
     target_friction_Reynolds    180;
-    target_bulk_velocity        0.1;
+    target_bulk_velocity        0.085;
     center_line_velocity        0.1;
     nTurnovers                  1;
+    wallboundaryCondition       NoSlip;
 }
 
 
 Output
 {
     infoSpacing 1000; // in s
-    vtkSpacingFluid 100; // ins
-    vtkFolder vtk_out;
+    vtkSpacingFluid 10000; // ins
+    vtkFolder vtk_out_checkpoint;
     performanceLogFrequency 5000000000;
-
+    checkpointing false;                              // set it to false for the timebeing
+    checkpointingFileName testCheckpoint;
 }
