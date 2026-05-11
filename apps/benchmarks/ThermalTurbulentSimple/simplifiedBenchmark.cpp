@@ -48,36 +48,31 @@
 #include "lbm_mesapd_coupling/DataTypesCodegen.h"
 
 #include "mesa_pd/data/LinkedCells.h"
-
 #include "mesa_pd/domain/BlockForestDataHandling.h"
-
 #include "mesa_pd/vtk/ParticleVtkOutput.h"
 
 #include "sqlite/SQLite.h"
 
 #include "vtk/all.h"
 
-#include <fstream>
-#include <filesystem>
-#include <iomanip>
-
-#include "FluidMacroGetter.h"
-#include "GeneralInfoHeader.h"
-
-#include <memory>
-#include <cmath>
-#include <string>
 #include <blockforest/all.h>
+#include <cmath>
 #include <core/all.h>
 #include <domain_decomposition/all.h>
 #include <field/all.h>
+#include <filesystem>
+#include <fstream>
 #include <geometry/all.h>
-#include <timeloop/all.h>
+#include <iomanip>
 #include <lbm/all.h>
+#include <memory>
+#include <string>
+#include <timeloop/all.h>
 
-
+#include "../GranularGas/check.h"
+#include "FluidMacroGetter.h"
+#include "GeneralInfoHeader.h"
 #include "math.h"
-
 
 namespace MaterialTransport
 {
@@ -512,10 +507,10 @@ int main(int argc, char** argv)
                         "When using GPUs, the number of blocks ("
                            << numXBlocks * numYBlocks * numZBlocks << ") has to match the number of MPI processes ("
                            << uint_t(MPIManager::instance()->numProcesses()) << ")");
-   if ((periodicInX && numXBlocks == 1) || (periodicInY && numYBlocks == 1) || (periodicInZ && numZBlocks == 1))
+   /*if ((periodicInX && numXBlocks == 1) || (periodicInY && numYBlocks == 1) || (periodicInZ && numZBlocks == 1))
    {
       WALBERLA_ABORT("The number of blocks must be greater than 1 in periodic dimensions.")
-   }
+   }*/
 
 
    const bool writeSlice          = numericalSetup.getParameter< bool >("writeSlice");
@@ -674,30 +669,51 @@ int main(int argc, char** argv)
    forceCalculator.setBulkVelocity(forceParams.targetBulkVelocity);
    const auto initialForce = forceCalculator.calculateDrivingForce();
 
-   LatticeModel_T latticeModel = LatticeModel_T(initialForce,omega_f);
+   LatticeModel_T latticeModel = LatticeModel_T(0,0);
    BlockDataID pdfFieldFluidID;
 
    if (checkpointing == true)
    {
-      shared_ptr< lbm::internal::PdfFieldHandling< LatticeModel_T > > dataHandling =
+      /*shared_ptr< lbm::internal::PdfFieldHandling< LatticeModel_T > > dataHandling =
             make_shared< lbm::internal::PdfFieldHandling< LatticeModel_T > >( blocks, latticeModel, false,
                   Vector3< real_t >( real_t(0) ), real_t(1),
-                  uint_t(1), field::fzyx );
+                  uint_t(1), field::fzyx );*/
+
+      auto dataHandling = make_shared< field::DefaultBlockDataHandling< PdfField_fluid_T > >(
+         blocks,
+         uint_t(1),            // ghost layers
+         real_c(std::nan("")), // init value (any value is fine for load path)
+         field::fzyx           // layout
+      );
 
       pdfFieldFluidID = blocks->loadBlockData( checkpointingFileName + "_lbm_tmp.txt", dataHandling, "pdf field" );
       // here immediately good to have a getter sweep for velocity
+
+   }
+   else
+   {
+      pdfFieldFluidID =
+         field::addToStorage< PdfField_fluid_T >(blocks, "pdf fluid field CPU", real_c(std::nan("")), field::fzyx);
+      /*pdfFieldFluidID = lbm::addPdfFieldToStorage< LatticeModel_T >( blocks, "pdf field", latticeModel,
+                                                                Vector3< real_t >( real_t(0) ), real_t(1),
+                                                                uint_t(1), field::fzyx );*/
+
+   }
+
+   // ONLY NOW create communication
+   walberla::blockforest::communication::UniformBufferedScheme< Stencil_Fluid_T > com_fluid(blocks);
+   com_fluid.addPackInfo(make_shared< PackInfoFluid_T >(pdfFieldFluidID));
+
+
+   // NOW halos are synchronized correctly
+   if (checkpointing)
+   {
       FluidMacroGetter fluid_macro_getter(pdfFieldFluidID,velFieldFluidID,initialForce);
       for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
       {
          fluid_macro_getter(blockIt.get());
       }
    }
-   else
-   {
-      pdfFieldFluidID =
-         field::addToStorage< PdfField_fluid_T >(blocks, "pdf fluid field CPU", real_c(std::nan("")), field::fzyx);
-   }
-
 
    BlockDataID densityFluidFieldID =
       field::addToStorage< DensityField_fluid_T >(blocks, "density fluid field", real_t(1), field::fzyx);
@@ -793,8 +809,8 @@ int main(int argc, char** argv)
 
    // Setup of the fluid LBM communication for synchronizing the fluid pdf field between neighboring blocks
 
-   walberla::blockforest::communication::UniformBufferedScheme< Stencil_Fluid_T > com_fluid(blocks);
-   com_fluid.addPackInfo(make_shared< PackInfoFluid_T >(pdfFieldFluidID));
+  // walberla::blockforest::communication::UniformBufferedScheme< Stencil_Fluid_T > com_fluid(blocks);
+  // com_fluid.addPackInfo(make_shared< PackInfoFluid_T >(pdfFieldFluidID));
 
 
 
@@ -840,6 +856,8 @@ if (vtkSpacingFluid != uint_t(0)){
          make_shared< field::VTKWriter< VelocityField_fluid_T > >(velFieldFluidID, "instantaneous Fluid Velocity"));
       vtkOutput_Fluid->addCellDataWriter(
          make_shared< field::VTKWriter< VelocityField_fluid_T > >(meanVelFieldID, "mean Fluid velocity"));
+   vtkOutput_Fluid->addCellDataWriter(
+        make_shared< field::VTKWriter< PdfField_fluid_T > >(pdfFieldFluidID, "pdf field "));
 
          auto flagOutput = vtk::createVTKOutput_BlockData(
             blocks, "flag_writer", 1, 1, false, "vtk_out", "simulation_step",
@@ -878,20 +896,24 @@ if (vtkSpacingFluid != uint_t(0)){
 
    for (uint_t timeStep = 0; timeStep < numTimeSteps; ++timeStep)
    {
+      // Write checkpoint at the beginning of the step so timestep 0 matches
+      // the initial VTK output (which is also written before stepping).
+      if (timeStep % infoSpacing == 0)
+      {
+         WALBERLA_LOG_INFO_ON_ROOT("writing checkpoint at timestep " << timeStep << " (pre-step)");
+         blocks->saveBlockData(checkpointingFileName + "_lbm_tmp.txt", pdfFieldFluidID );
+      }
 
       // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
       timeloop.singleStep(timeloopTiming);
+
       auto fluidInfo =
            evaluateFluidInfo(blocks,densityFluidFieldID ,velFieldFluidID);
       if (timeStep%infoSpacing == 0)
       {
          WALBERLA_LOG_INFO_ON_ROOT(fluidInfo);
       }
-      if (timeStep % infoSpacing == 0 && timeStep > 0)
-      {
-         WALBERLA_LOG_INFO_ON_ROOT("writing checkpoint at timestep " << timeStep);
-         blocks->saveBlockData(checkpointingFileName + "_lbm_tmp.txt", pdfFieldFluidID );
-      }
+
 
 
    }
