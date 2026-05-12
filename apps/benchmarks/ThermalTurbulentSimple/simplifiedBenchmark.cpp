@@ -97,8 +97,6 @@ using WelfordSweepVelocity_T = WelfordVelocity;
 using WFB_bottom_T = lbm::TurbulentChannel_WFB_bottom;
 using WFB_top_T = lbm::TurbulentChannel_WFB_top;
 
-using LatticeModel_T =  lbm::GeneratedLBM;
-
 ///////////
 // FLAGS //
 ///////////
@@ -669,21 +667,16 @@ int main(int argc, char** argv)
    forceCalculator.setBulkVelocity(forceParams.targetBulkVelocity);
    const auto initialForce = forceCalculator.calculateDrivingForce();
 
-   LatticeModel_T latticeModel = LatticeModel_T(0,0);
    BlockDataID pdfFieldFluidID;
 
    if (checkpointing == true)
    {
-      /*shared_ptr< lbm::internal::PdfFieldHandling< LatticeModel_T > > dataHandling =
-            make_shared< lbm::internal::PdfFieldHandling< LatticeModel_T > >( blocks, latticeModel, false,
-                  Vector3< real_t >( real_t(0) ), real_t(1),
-                  uint_t(1), field::fzyx );*/
 
       auto dataHandling = make_shared< field::DefaultBlockDataHandling< PdfField_fluid_T > >(
          blocks,
-         uint_t(1),            // ghost layers
-         real_c(std::nan("")), // init value (any value is fine for load path)
-         field::fzyx           // layout
+         uint_t(1),
+         real_c(std::nan("")),
+         field::fzyx
       );
 
       pdfFieldFluidID = blocks->loadBlockData( checkpointingFileName + "_lbm_tmp.txt", dataHandling, "pdf field" );
@@ -694,9 +687,6 @@ int main(int argc, char** argv)
    {
       pdfFieldFluidID =
          field::addToStorage< PdfField_fluid_T >(blocks, "pdf fluid field CPU", real_c(std::nan("")), field::fzyx);
-      /*pdfFieldFluidID = lbm::addPdfFieldToStorage< LatticeModel_T >( blocks, "pdf field", latticeModel,
-                                                                Vector3< real_t >( real_t(0) ), real_t(1),
-                                                                uint_t(1), field::fzyx );*/
 
    }
 

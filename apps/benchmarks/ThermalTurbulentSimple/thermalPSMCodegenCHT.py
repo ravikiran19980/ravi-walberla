@@ -143,7 +143,6 @@ with (CodeGeneration() as ctx):
     generate_sweep(ctx, "TurbulentChannel_Sweep", update_rule, field_swaps=[(pdfs_fluid, pdfs_fluid_tmp)],target= ps.Target.CPU)
 
     collision_rule = create_lb_collision_rule(lb_method=lbm_method, optimization={'cse_global': True})
-    generate_lattice_model(ctx, 'GeneratedLBM', collision_rule, field_layout='fzyx')
 
     # =====================
     # Generate method

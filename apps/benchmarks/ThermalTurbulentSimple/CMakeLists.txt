@@ -17,7 +17,6 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
                 FluidMacroSetter.h FluidMacroSetter.cpp
                 FluidMacroGetter.h FluidMacroGetter.cpp
                 GeneralInfoHeader.h
-                GeneratedLBM.h GeneratedLBM.cpp
         )
 
         set(MAINSRC simplifiedBenchmark.cpp)
