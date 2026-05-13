@@ -86,11 +86,12 @@ class ForceCalculator
 
    }
 
-   void calculateDrivingForce()
+   real_t calculateDrivingForce () const
    {
       // forcing term as in Malaspinas (2014) "Wall model for large-eddy simulation based on the lattice Boltzmann method"
-      force_ = targetFrictionVelocity_ * targetFrictionVelocity_ / channelHalfWidth_;
+      const auto force = targetFrictionVelocity_ * targetFrictionVelocity_ / channelHalfWidth_;
                // + (targetBulkVelocity_ - bulkVelocity_) * targetBulkVelocity_ / channelHalfWidth_;
+      return force;
    }
 
    real_t getCurrentDrivingForce() const
