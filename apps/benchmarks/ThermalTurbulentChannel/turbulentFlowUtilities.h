@@ -333,69 +333,116 @@ class PlaneAveragedProfiles
    uint_t timeStepCount_;
 };
 
+/*
+ * Initialises the velocity field with a logarithmic profile and sinusoidal perturbations to trigger turbulence.
+ * This initialisation is a modified form of Henrik Asmuth.
+ */
 
-   /*
-    * Initialises the velocity field with a logarithmic profile and sinusoidal perturbations to trigger turbulence.
-    * This initialisation is provided by Henrik Asmuth.
-    */
-   template<typename VelocityField_T>
-   void setVelocityFieldsAsmuth( const std::weak_ptr<StructuredBlockStorage>& forest,
-                                 const BlockDataID & velocityFieldId, const BlockDataID & meanVelocityFieldId,
-                                 const real_t frictionVelocity, const uint_t channel_half_width,
-                                 const real_t B, const real_t kappa, const real_t viscosity,
-                                 const uint_t wallAxis, const uint_t flowAxis ) {
+template< typename VelocityField_T >
+void setVelocityFieldsAsmuth(const std::weak_ptr< StructuredBlockStorage >& forest, const BlockDataID& velocityFieldId,
+                             const BlockDataID& meanVelocityFieldId, const real_t frictionVelocity,
+                             const uint_t channel_half_width, const real_t B, const real_t kappa,
+                             const real_t viscosity, const uint_t wallAxis, const uint_t flowAxis)
+{
+   auto blocks = forest.lock();
+   WALBERLA_CHECK_NOT_NULLPTR(blocks)
 
-      auto blocks = forest.lock();
-      WALBERLA_CHECK_NOT_NULLPTR(blocks)
+   const auto domainSize = blocks->getDomain().max();
+   const auto delta      = real_c(channel_half_width);
+   const auto remAxis    = 3 - wallAxis - flowAxis;
 
-      const auto domainSize = blocks->getDomain().max();
-      const auto delta = real_c(channel_half_width);
-      const auto remAxis = 3 - wallAxis - flowAxis;
+   // ─────────────────────────────────────────────
+   // Physical targets in wall units
+   // Derived from your experiments across domains:
+   //   sweet spot: λ_x⁺ ≈ 150-200, λ_z⁺ ≈ 100
+   // ─────────────────────────────────────────────
+   const real_t target_lambda_x_plus = 128 / (domainSize[codegen::flow_axis]) * 150.0_r; // middle of sweet spot
+   const real_t target_lambda_z_plus = 64 / (domainSize[codegen::remaining_axis]) * 150.0_r;
 
-      for( auto block = blocks->begin(); block != blocks->end(); ++block ) {
+   // Wall unit conversion factor
+   const real_t utau_over_nu = frictionVelocity / viscosity;
 
-         auto * velocityField = block->template getData<VelocityField_T>(velocityFieldId);
-         WALBERLA_CHECK_NOT_NULLPTR(velocityField)
+   // Target wavelengths in lattice cells
+   const real_t lambda_x = target_lambda_x_plus / utau_over_nu;
+   const real_t lambda_z = target_lambda_z_plus / utau_over_nu;
 
-         auto * meanVelocityField = block->template getData<VelocityField_T>(meanVelocityFieldId);
-         WALBERLA_CHECK_NOT_NULLPTR(meanVelocityField)
+   // Factors for sin()  →  factor = 2 * L / lambda
+   const uint_t factor_x = uint_c(2.0_r * real_c(domainSize[flowAxis]) / lambda_x);
+   const uint_t factor_z = uint_c(2.0_r * real_c(domainSize[remAxis]) / lambda_z);
 
-         const auto ci = velocityField->xyzSizeWithGhostLayer();
-         for(auto cellIt = ci.begin(); cellIt != ci.end(); ++cellIt) {
+   // ─────────────────────────────────────────────
+   // Sanity check log - verify these look reasonable
+   // ─────────────────────────────────────────────
+   WALBERLA_LOG_INFO_ON_ROOT("=== Generalized Initialization ===");
+   WALBERLA_LOG_INFO_ON_ROOT("u_tau/nu          = " << utau_over_nu);
+   WALBERLA_LOG_INFO_ON_ROOT("lambda_x (cells)  = " << lambda_x << "  lambda_x+= " << target_lambda_x_plus);
+   WALBERLA_LOG_INFO_ON_ROOT("lambda_z (cells)  = " << lambda_z << "  lambda_z+= " << target_lambda_z_plus);
+   WALBERLA_LOG_INFO_ON_ROOT("factor_x          = " << factor_x);
+   WALBERLA_LOG_INFO_ON_ROOT("factor_z          = " << factor_z);
 
-            Cell globalCell(*cellIt);
-            blocks->transformBlockLocalToGlobalCell(globalCell, *block);
-            Vector3<real_t> cellCenter;
-            blocks->getCellCenter(cellCenter, globalCell);
+   // Warn if less than half a wave fits - perturbation will be very weak
+   if (factor_x < 1.0_r)
+      WALBERLA_LOG_WARNING_ON_ROOT("factor_x < 1: domain too short in x "
+                                   "for target lambda_x+. Consider reducing "
+                                   "target_lambda_x_plus.");
+   if (factor_z < 1.0_r)
+      WALBERLA_LOG_WARNING_ON_ROOT("factor_z < 1: domain too short in z "
+                                   "for target lambda_z+. Consider reducing "
+                                   "target_lambda_z_plus.");
 
-            const auto y = cellCenter[wallAxis];
-            const auto rel_x = cellCenter[flowAxis] / domainSize[flowAxis];
-            const auto rel_z = cellCenter[remAxis] / domainSize[remAxis];
+   for (auto block = blocks->begin(); block != blocks->end(); ++block)
+   {
+      auto* velocityField     = block->template getData< VelocityField_T >(velocityFieldId);
+      auto* meanVelocityField = block->template getData< VelocityField_T >(meanVelocityFieldId);
+      WALBERLA_CHECK_NOT_NULLPTR(velocityField)
+      WALBERLA_CHECK_NOT_NULLPTR(meanVelocityField)
 
-            const real_t pos = std::max(delta - std::abs(y - delta - 1_r), 0.05_r);
-            const auto rel_y = pos / delta;
+      const auto ci = velocityField->xyzSizeWithGhostLayer();
+      for (auto cellIt = ci.begin(); cellIt != ci.end(); ++cellIt)
+      {
+         Cell globalCell(*cellIt);
+         blocks->transformBlockLocalToGlobalCell(globalCell, *block);
+         Vector3< real_t > cellCenter;
+         blocks->getCellCenter(cellCenter, globalCell);
 
-            auto initialVel = frictionVelocity * (std::log(frictionVelocity * pos / viscosity) / kappa + B);
+         // Wall normal position
+         const auto y     = cellCenter[wallAxis];
+         const auto pos   = std::max(delta - std::abs(y - delta - 1_r), 0.05_r);
+         const auto rel_y = pos / delta;
 
-            Vector3<real_t> vel;
-            vel[flowAxis] = initialVel;
+         // Normalized coords for x and z
+         const auto rel_x = cellCenter[flowAxis] / real_c(domainSize[flowAxis]);
+         const auto rel_z = cellCenter[remAxis] / real_c(domainSize[remAxis]);
 
-            vel[remAxis] = 2_r * frictionVelocity / kappa * std::sin(math::pi * 16_r * rel_x) *
-                           std::sin(math::pi * 8_r * rel_y) / (std::pow(rel_y, 2_r) + 1_r);
+         // Streamwise: log-law mean profile
+         const real_t initialVel = frictionVelocity * (std::log(frictionVelocity * pos / viscosity) / kappa + B);
 
-            vel[wallAxis] = 8_r * frictionVelocity / kappa *
-                            (std::sin(math::pi * 8_r * rel_z) * std::sin(math::pi * 8_r * rel_y) +
-                             std::sin(math::pi * 8_r * rel_x)) / (std::pow(0.5_r * delta - pos, 2_r) + 1_r);
+         Vector3< real_t > vel;
+         vel[flowAxis] = initialVel;
 
-            for(uint_t d = 0; d < 3; ++d) {
-               velocityField->get(*cellIt, d) = vel[d];
-               meanVelocityField->get(*cellIt, d) = vel[d];
-            }
+         // Spanwise perturbation
+         // factor_x anchored to λ_x+ sweet spot
+         vel[remAxis] = 2_r * frictionVelocity / kappa * std::sin(math::pi * 16 * rel_x) *
+                        std::sin(math::pi * 8_r * rel_y) // wall-normal envelope
+                        / (std::pow(rel_y, 2_r) + 1_r);
 
+         // Wall-normal perturbation
+         // factor_z anchored to λ_z+ = 100
+         // factor_x same physical scale as spanwise
+         vel[wallAxis] = 8_r * frictionVelocity / kappa *
+                         (std::sin(math::pi * (factor_z) *rel_z) * std::sin(math::pi * 16_r * rel_y) +
+                          std::sin(math::pi * (factor_x) *rel_x)) /
+                         (std::pow(rel_y, 2_r) + 1_r);
+         /// (std::pow(0.5_r * delta - pos, 2_r) + 1_r);
+
+         for (uint_t d = 0; d < 3; ++d)
+         {
+            velocityField->get(*cellIt, d)     = vel[d];
+            meanVelocityField->get(*cellIt, d) = vel[d];
          }
       }
-
-   } // function setVelocityFieldsHenrik
+   }
+}
 
 template<typename FieldMean_T, typename FieldSoS_T>
 class reduceWelfordFields
