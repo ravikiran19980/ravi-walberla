@@ -857,7 +857,25 @@ if (vtkSpacingFluid != uint_t(0)){
          flagOutput->addCellDataWriter(flagWriter);
          flagOutput->write();
 
+
+
+   if(writeSlice){
+      const AABB sliceAABB(real_t(0), real_c(domainSize[1]) * real_t(0.5) - real_t(1), real_t(0),
+                           real_c(domainSize[0]), real_c(domainSize[1]) * real_t(0.5) + real_t(1),
+                           real_c(domainSize[2]));
+      const walberla::vtk::AABBCellFilter aabbSliceFilter(sliceAABB);
+      field::FlagFieldCellFilter< FlagField_T > fluidFilter(flagFieldFluidID);
+      fluidFilter.addFlag(fluidFlagUID);
+      walberla::vtk::ChainedFilter combinedSliceFilter;
+      combinedSliceFilter.addFilter(fluidFilter);
+      combinedSliceFilter.addFilter(aabbSliceFilter);
+      vtkOutput_Fluid->addCellInclusionFilter(combinedSliceFilter);
+      timeloop.addFuncBeforeTimeStep(walberla::vtk::writeFiles(vtkOutput_Fluid), "VTK (fluid field data)");
+   }
+   else
+   {
       timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Fluid), "VTK output Fluid");
+   }
 
    }
    if (vtkSpacingFluid != uint_t(0)) { vtk::writeDomainDecomposition(blocks, "domain_decomposition", vtkFolder); }
