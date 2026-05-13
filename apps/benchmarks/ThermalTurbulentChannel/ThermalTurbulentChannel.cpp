@@ -210,8 +210,8 @@ struct ParticleInfo
 std::ostream& operator<<(std::ostream& os, ParticleInfo const& m)
 {
    return os << "Particle Info: uAvg = " << m.averageVelocity << ", uMax = " << m.maximumVelocity
-             << ", numParticles = " << m.numParticles << ", zMax = " << m.maximumHeight << ", Vp = " << m.particleVolume
-             << ", zMass = " << m.heightOfMass;
+             << ", numParticles = " << m.numParticles << ", yMax = " << m.maximumHeight << ", Vp = " << m.particleVolume
+             << ", yMass = " << m.heightOfMass;
 }
 
 template< typename Accessor_T >
@@ -226,9 +226,9 @@ ParticleInfo evaluateParticleInfo(const Accessor_T& ac)
       if (isSet(ac.getFlags(i), mesa_pd::data::particle_flags::GLOBAL)) continue;
 
       ++info.numParticles;
-      real_t velMagnitude   = ac.getLinearVelocity(i)[2];
+      real_t velMagnitude   = ac.getLinearVelocity(i)[codegen::flow_axis];
       real_t particleVolume = ac.getShape(i)->getVolume();
-      real_t height         = ac.getPosition(i)[2];
+      real_t height         = ac.getPosition(i)[codegen::wall_axis];
       info.averageVelocity += velMagnitude;
       info.maximumVelocity = std::max(info.maximumVelocity, velMagnitude);
       info.maximumHeight   = std::max(info.maximumHeight, height);
@@ -508,7 +508,7 @@ int main(int argc, char** argv)
 
    forceParams.wallAxis = codegen::wall_axis;  // example if Y is wall direction
 
-   forceParams.channelHalfWidth = zSize / 2.0;
+   forceParams.channelHalfWidth = real_c(domainSize[codegen::wall_axis]) / 2.0;
 
    forceParams.targetBulkVelocity = target_bulk_velocity;
 
@@ -720,15 +720,15 @@ int main(int argc, char** argv)
    }
    if (!periodicInY)
    {
-      boundariesBlockString += "Border { direction S;    walldistance -1;  flag Neumann_Temperature; }"
-                               "Border { direction N;    walldistance -1;  flag Neumann_Temperature; }";
+      boundariesBlockString += "Border { direction S;    walldistance -1;  flag Density_Temperature_static_cold; }"
+                               "Border { direction N;    walldistance -1;  flag Density_Temperature_static_hot; }";
    }
 
    if (!periodicInZ)
    {
       boundariesBlockString +=
-         "Border { direction T;    walldistance -1;  flag Density_Temperature_static_cold; }"
-         "Border { direction B;    walldistance -1;  flag Density_Temperature_static_hot; }"; // Neumann_Energy
+         "Border { direction T;    walldistance -1;  flag Neumann_Temperature; }"
+         "Border { direction B;    walldistance -1;  flag Neumann_Temperature; }"; // Neumann_Energy
    }
    boundariesBlockString += "}";
 
@@ -815,7 +815,7 @@ int main(int argc, char** argv)
 
    // calculate the initial force for initialization:
    forceCalculator.setBulkVelocity(forceParams.targetBulkVelocity);
-   const auto initialForce = forceCalculator.getCurrentDrivingForce();
+   const auto initialForce = forceCalculator.calculateDrivingForce();
 
 
    // Initialize PDFs
@@ -1082,7 +1082,7 @@ int main(int argc, char** argv)
             };
 
             // plotting everything in normalized wall units
-            printRow("z","z+", "Ux_f", "Uy_f", "Uz_f", "UU_f", "UV_f", "UW_f", "VU_f", "VV_f", "VW_f", "WU_f", "WV_f",
+            printRow("y","y+", "Ux_f", "Uy_f", "Uz_f", "UU_f", "UV_f", "UW_f", "VU_f", "VV_f", "VW_f", "WU_f", "WV_f",
                      "WW_f", "Ux_p", "Uy_p", "Uz_p", "UU_p", "UV_p", "UW_p", "VU_p", "VV_p", "VW_p", "WU_p", "WV_p",
                      "WW_p");
             // at the wall
@@ -1090,7 +1090,7 @@ int main(int argc, char** argv)
             printRow(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
             for (uint_t idx = 0; idx < domainSize[codegen::wall_axis]; ++idx)
             {
-               // z and z+
+               // y and y+
                velocityOS << std::setw(12) << real_c(idx) + 0.5_r ;
                velocityOS << std::setw(12) << ((real_c(idx) + 0.5_r)*target_friction_velocity)/kinematicViscosityLB ;
 
@@ -1214,12 +1214,12 @@ int main(int argc, char** argv)
                // computation of welford statistics
 
                reduceWelfordFields<VectorField_T, TensorField_T> reduceWelford_velocity(blocks,meanVelFieldID,sosVelFieldID,
-                              codegen::wall_axis, uint_c(zSize), welfordVelocitySweep);
+                              codegen::wall_axis, domainSize[codegen::wall_axis], welfordVelocitySweep);
                reduceWelford_velocity();
                auto welford_mean_velocity = reduceWelford_velocity.getPlaneMeans();
                auto welford_sos_velocity = reduceWelford_velocity.getPlaneSoSMeans();
 
-               // compute viscous stresses here dU_mean/dz ny using the "meanVelFieldID" vector from above.
+               // compute viscous stresses here dU_mean/dy ny using the "meanVelFieldID" vector from above.
                auto viscousStress = computeViscousStress<VectorField_T>( blocks,meanVelFieldID ,domainSize);
 
                // here a function to reduce welford fields to vectors is needed
@@ -1236,7 +1236,7 @@ int main(int argc, char** argv)
                   };
 
                   // plotting everything in normalized wall units
-                  printRow("z","z+", "Ux", "Uy", "Uz", "UU", "UV", "UW", "VU", "VV", "VW", "WU", "WV",
+                  printRow("y","y+", "Ux", "Uy", "Uz", "UU", "UV", "UW", "VU", "VV", "VW", "WU", "WV",
                            "WW", "dUmean/dy");
                   // at the wall:
                   printRow(0,0,0,0,0,0,0,0,0,0,0,0,0,0,wall_statistics.getWallShearStress());
@@ -1320,8 +1320,8 @@ int main(int argc, char** argv)
    timeloop.add() << BeforeFunction([&]() { forceCalculator.calculateBulkVelocity(); }, "bulk velocity calculation")
                   << BeforeFunction(
                         [&]() {
-                           forceCalculator.calculateDrivingForce();
-                           const auto newForce = forceCalculator.getCurrentDrivingForce();
+
+                           const auto newForce = forceCalculator.calculateDrivingForce();
                            setNewForce(newForce);
                         },
                         "new force setter")

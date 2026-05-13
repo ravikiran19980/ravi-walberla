@@ -18,9 +18,9 @@ using namespace walberla;
 class MeanPlaneAverager
 {
  public:
-   MeanPlaneAverager(uint_t Nz)
-      : Nz_(Nz), velocity_plane_(Nz_, 0.0), temperature_plane_(Nz_, 0.0), numPlaneCells_(Nz_, 0), velocityFluid_time_(Nz, 0.0),
-        temperatureFluid_time_(Nz, 0.0), velocityParticle_time_(Nz, 0.0), temperatureParticle_time_(Nz, 0.0),
+   MeanPlaneAverager(uint_t Ny)
+      : Ny_(Ny), velocity_plane_(Ny_, 0.0), temperature_plane_(Ny_, 0.0), numPlaneCells_(Ny_, 0), velocityFluid_time_(Ny, 0.0),
+        temperatureFluid_time_(Ny, 0.0), velocityParticle_time_(Ny, 0.0), temperatureParticle_time_(Ny, 0.0),
         timeCount_(0)
 
    {}
@@ -40,9 +40,9 @@ class MeanPlaneAverager
 
          WALBERLA_FOR_ALL_CELLS_XYZ(
             Tfield, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
-            const uint_t j = uint_c(cell.z());
+            const uint_t j = uint_c(cell.y());
 
-            velocity_plane_[j] +=   velF->get(x, y, z, 2);
+            velocity_plane_[j] +=   velF->get(x, y, z, 1);
             temperature_plane_[j] +=  Tfield->get(x, y, z);
 
             numPlaneCells_[j] += 1;)
@@ -55,7 +55,7 @@ class MeanPlaneAverager
          mpi::allReduceInplace(numPlaneCells_, mpi::SUM);
       }
 
-      for (uint_t k = 0; k < Nz_; ++k)
+      for (uint_t k = 0; k < Ny_; ++k)
       {
          if (numPlaneCells_[k] > 0)
          {
@@ -68,7 +68,7 @@ class MeanPlaneAverager
       // ---- running time average ----
       timeCount_++;
 
-      for (uint_t k = 0; k < Nz_; ++k)
+      for (uint_t k = 0; k < Ny_; ++k)
       {
          velocityFluid_time_[k] += (velocity_plane_[k] - velocityFluid_time_[k]) / real_c(timeCount_);
          temperatureFluid_time_[k] += (temperature_plane_[k] - temperatureFluid_time_[k]) / real_c(timeCount_);
@@ -83,7 +83,7 @@ class MeanPlaneAverager
    const uint_t getTimeCounter() { return timeCount_; }
 
  private:
-   uint_t Nz_;
+   uint_t Ny_;
 
    std::vector< real_t > velocity_plane_;
    std::vector< real_t > temperature_plane_;
@@ -111,13 +111,13 @@ class MeanPlaneAverager
 class HeatFluxBudgets
 {
  public:
-   HeatFluxBudgets(const uint_t Nz, const real_t dz, const real_t alpha_f, const real_t alpha_p,const uint_t averagingTimeBlock,
+   HeatFluxBudgets(const uint_t Ny, const real_t dy, const real_t alpha_f, const real_t alpha_p,const uint_t averagingTimeBlock,
                    MeanPlaneAverager& meanPlaneAverager)
-      : Nz_(Nz), dz_(dz), alpha_f_(alpha_f), alpha_p_(alpha_p), averagingTimeBlock_(averagingTimeBlock),
-        fluctuation_plane_(Nz_, 0), dT_plane_(Nz_, 0), phi_p_plane(Nz_, 0),
-        phi_f_plane(Nz_, 0), cell_count_plane_(Nz_, 0),
+      : Ny_(Ny), dy_(dy), alpha_f_(alpha_f), alpha_p_(alpha_p), averagingTimeBlock_(averagingTimeBlock),
+        fluctuation_plane_(Ny_, 0), dT_plane_(Ny_, 0), phi_p_plane(Ny_, 0),
+        phi_f_plane(Ny_, 0), cell_count_plane_(Ny_, 0),
 
-        fluctuation_time_(Nz_, 0),dT_time_(Nz_, 0), phi_p_time(Nz_, 0), phi_f_time(Nz_, 0),Qtotal_(Nz_,0),
+        fluctuation_time_(Ny_, 0),dT_time_(Ny_, 0), phi_p_time(Ny_, 0), phi_f_time(Ny_, 0),Qtotal_(Ny_,0),
 
         meanPlaneAverager_(meanPlaneAverager)
    {
@@ -155,54 +155,54 @@ class HeatFluxBudgets
 
             Tfield, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
 
-            const uint_t j = uint_c(cell.z()); // global value is stored in j
+            const uint_t j = uint_c(cell.y()); // global value is stored in j
             const real_t B = Bfield->get(x, y, z); const real_t temperature = Tfield->get(x, y, z);
-            const real_t velocity_z                                         = velF->get(x, y, z, 2);
+            const real_t velocity_y                                         = velF->get(x, y, z, 1);
 
 
 
             const real_t T_dash =  temperature - temperature_fluid_avg[j];
-            const real_t V_dash =   velocity_z - velocity_fluid_avg[j];
+            const real_t V_dash =   velocity_y - velocity_fluid_avg[j];
 
             fluctuation_plane_[j] += -T_dash * V_dash;
 
             phi_p_plane[j] += B; phi_f_plane[j] += (1 - B); cell_count_plane_[j] += 1.0;
 
             // for the conductive part of particles and fluid
-            real_t dTdz_p = 0.0;
-            real_t dTdz_f = 0.0;
+            real_t dTdy_p = 0.0;
+            real_t dTdy_f = 0.0;
                // for the INNER mpi blocks of the domain but the FIRST or the LAST cells use one sided FD
                // for the INNER mpi blocks of the domain and all middle cells use central FD
-            if (j > 0 && j < Nz_ - 1) {
-               if (z == 0)
+            if (j > 0 && j < Ny_ - 1) {
+               if (y == 0)
                {
                   // conductive flux
                   const real_t T0_p = Tfield->get(x, y, z);
-                  const real_t T1_p = Tfield->get(x, y, z + 1);
-                  const real_t T2_p = Tfield->get(x, y, z + 2);
-                  dTdz_p            = (-3.0 * T0_p + 4.0 * T1_p - T2_p) / (2.0 * dz_);
-                  dTdz_p            = alpha_p_ * dTdz_p;
-                  dT_plane_[j] += dTdz_p;
+                  const real_t T1_p = Tfield->get(x, y+1, z);
+                  const real_t T2_p = Tfield->get(x, y+2, z);
+                  dTdy_p            = (-3.0 * T0_p + 4.0 * T1_p - T2_p) / (2.0 * dy_);
+                  dTdy_p            = alpha_p_ * dTdy_p;
+                  dT_plane_[j] += dTdy_p;
                }
-               else if (z == cell_idx_c(blocks->getNumberOfZCells(block) - 1))
+               else if (y == cell_idx_c(blocks->getNumberOfYCells(block) - 1))
                {
                   //conductive flux
                   const real_t T0_p = Tfield->get(x, y, z);
-                  const real_t T1_p = Tfield->get(x, y, z - 1);
-                  const real_t T2_p = Tfield->get(x, y, z - 2);
-                  dTdz_p            = (3.0 * T0_p - 4.0 * T1_p + T2_p) / (2.0 * dz_);
-                  dTdz_p            = alpha_p_ * dTdz_p;
-                  dT_plane_[j] += dTdz_p;
+                  const real_t T1_p = Tfield->get(x, y-1, z);
+                  const real_t T2_p = Tfield->get(x, y-2, z);
+                  dTdy_p            = (3.0 * T0_p - 4.0 * T1_p + T2_p) / (2.0 * dy_);
+                  dTdy_p            = alpha_p_ * dTdy_p;
+                  dT_plane_[j] += dTdy_p;
 
                }
                else
                {
                   // conductive flux
-                  const real_t T0_p = Tfield->get(x, y, z - 1);
-                  const real_t T1_p = Tfield->get(x, y, z + 1);
-                  dTdz_p            = (T1_p - T0_p) / (2.0 * dz_);
-                  dTdz_p            = alpha_p_ * dTdz_p;
-                  dT_plane_[j] += dTdz_p;
+                  const real_t T0_p = Tfield->get(x, y-1, z);
+                  const real_t T1_p = Tfield->get(x, y+1, z);
+                  dTdy_p            = (T1_p - T0_p) / (2.0 * dy_);
+                  dTdy_p            = alpha_p_ * dTdy_p;
+                  dT_plane_[j] += dTdy_p;
                }
             } else {
                // wall flux (one-sided derivative), average over x,z on the two extreme planes
@@ -211,22 +211,22 @@ class HeatFluxBudgets
                {
                   // conductive flux
                   const real_t T0_p = Tfield->get(x, y, z);
-                  const real_t T1_p = Tfield->get(x, y, z + 1);
-                  const real_t T2_p = Tfield->get(x, y, z + 2);
-                  dTdz_p            = (-3.0 * T0_p + 4.0 * T1_p - T2_p) / (2.0 * dz_);
-                  dTdz_p            = alpha_p_ * dTdz_p;
-                  dT_plane_[j] += dTdz_p;
+                  const real_t T1_p = Tfield->get(x, y+1, z);
+                  const real_t T2_p = Tfield->get(x, y+2, z);
+                  dTdy_p            = (-3.0 * T0_p + 4.0 * T1_p - T2_p) / (2.0 * dy_);
+                  dTdy_p            = alpha_p_ * dTdy_p;
+                  dT_plane_[j] += dTdy_p;
 
                }
-               if (j == Nz_ - 1)
+               if (j == Ny_ - 1)
                {
                   // conductive flux
                   const real_t T0_p = Tfield->get(x, y, z);
-                  const real_t T1_p = Tfield->get(x, y, z - 1);
-                  const real_t T2_p = Tfield->get(x, y, z - 2);
-                  dTdz_p            = (3.0 * T0_p - 4.0 * T1_p + T2_p) / (2.0 * dz_);
-                  dTdz_p            = alpha_p_ * dTdz_p;
-                  dT_plane_[j] += dTdz_p;
+                  const real_t T1_p = Tfield->get(x, y-1, z);
+                  const real_t T2_p = Tfield->get(x, y-2, z);
+                  dTdy_p            = (3.0 * T0_p - 4.0 * T1_p + T2_p) / (2.0 * dy_);
+                  dTdy_p            = alpha_p_ * dTdy_p;
+                  dT_plane_[j] += dTdy_p;
                }
             }
 
@@ -258,7 +258,7 @@ class HeatFluxBudgets
 
       // time averaging of the x-y plane or spatial averages averages
       timeSamples_++;
-      for (uint_t k = 0; k < Nz_; ++k)
+      for (uint_t k = 0; k < Ny_; ++k)
       {
 
          fluctuation_time_[k] += (fluctuation_plane_[k] - fluctuation_time_[k]) / timeSamples_;
@@ -269,7 +269,7 @@ class HeatFluxBudgets
 
       if (timeSamples_ == averagingTimeBlock_)
       {
-         for (uint_t k = 0; k < Nz_; ++k)
+         for (uint_t k = 0; k < Ny_; ++k)
          {
             Qtotal_[k] =
                fluctuation_time_[k] + dT_time_[k];
@@ -287,8 +287,8 @@ class HeatFluxBudgets
    real_t getTimeSampleCount() const { return real_c(timeSamples_); }
 
  private:
-   uint_t Nz_;
-   real_t dz_;
+   uint_t Ny_;
+   real_t dy_;
    uint_t timeSamples_ = 0;
    std::ofstream outFile_;
    const uint_t averagingTimeBlock_;
@@ -326,9 +326,9 @@ class HeatFluxBudgets
 class WallStatistics
 {
  public:
-   WallStatistics(uint_t Nz, real_t dz, real_t kinematicViscosity, uint_t outputFrequency,
+   WallStatistics(uint_t Ny, real_t dy, real_t kinematicViscosity, uint_t outputFrequency,
                      const std::string& nusseltFileName = "output/wallStatistics.txt")
-      : Nz_(Nz), dz_(dz), outputFrequency_(outputFrequency), kinematicViscosity_(kinematicViscosity)
+      : Ny_(Ny), dy_(dy), outputFrequency_(outputFrequency), kinematicViscosity_(kinematicViscosity)
    {
       WALBERLA_ROOT_SECTION()
       {
@@ -357,36 +357,36 @@ class WallStatistics
          WALBERLA_FOR_ALL_CELLS_XYZ(
             Tfield, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
 
-            const uint_t j = uint_c(cell.z());
+            const uint_t j = uint_c(cell.y());
 
-            // Bottom wall (j = 0): dT/dz = (-8*T0 + 9*T1 - T2) / (3*dz)  since wall situated at half distance from center of bottom cell
+            // Bottom wall (j = 0): dT/dy = (-8*T0 + 9*T1 - T2) / (3*dy)  since wall situated at half distance from center of bottom cell
             if (j == 0) {
                const real_t T0   = T_wall_bottom;
                const real_t T1   = Tfield->get(x, y, z);
-               const real_t T2   = Tfield->get(x, y, z + 1);
-               const real_t dTdz = real_c(Nz_)*(-8.0 * T0 + 9.0 * T1 - T2) / (3.0 * dz_);
-               nuBottom_ += dTdz;
+               const real_t T2   = Tfield->get(x, y+1, z);
+               const real_t dTdy = real_c(Ny_)*(-8.0 * T0 + 9.0 * T1 - T2) / (3.0 * dy_);
+               nuBottom_ += dTdy;
 
                const real_t U0   = real_t(0);
                const real_t U1   = velF->get(x, y, z, 0);
-               const real_t U2   = velF->get(x, y, z + 1, 0);
-               const real_t dUdz = real_c(Nz_)*(-8.0 * U0 + 9.0 * U1 - U2) / (3.0 * dz_);
-               tauBottom_ +=  dUdz;
+               const real_t U2   = velF->get(x, y+1, z, 0);
+               const real_t dUdy = real_c(Ny_)*(-8.0 * U0 + 9.0 * U1 - U2) / (3.0 * dy_);
+               tauBottom_ +=  dUdy;
                countBottom_++;
             }
-            // Top wall (j = Nz - 1): dT/dz = (8*T0 - 9*T1 + T2) / (3*dz) since wall situated at half distance from center of top cell
-            else if (j == Nz_ - 1) {
+            // Top wall (j = Ny - 1): dT/dy = (8*T0 - 9*T1 + T2) / (3*dy) since wall situated at half distance from center of top cell
+            else if (j == Ny_ - 1) {
                const real_t T0   = T_wall_top;
                const real_t T1   = Tfield->get(x, y, z);
-               const real_t T2   = Tfield->get(x, y, z - 1);
-               const real_t dTdz = real_c(Nz_)*(8.0 * T0 - 9.0 * T1 + T2) / (3.0 * dz_);
-               nuTop_ += dTdz;
+               const real_t T2   = Tfield->get(x, y-1, z);
+               const real_t dTdy = real_c(Ny_)*(8.0 * T0 - 9.0 * T1 + T2) / (3.0 * dy_);
+               nuTop_ += dTdy;
 
                const real_t U0   = real_t(0);
                const real_t U1   = velF->get(x, y, z, 0);
-               const real_t U2   = velF->get(x, y, z - 1, 0);
-               const real_t dUdz = real_c(Nz_)*(8.0 * U0 - 9.0 * U1 + U2) / (3.0 * dz_);
-               tauTop_ +=  dUdz;
+               const real_t U2   = velF->get(x, y-1, z, 0);
+               const real_t dUdy = real_c(Ny_)*(8.0 * U0 - 9.0 * U1 + U2) / (3.0 * dy_);
+               tauTop_ +=  dUdy;
                countTop_++;
             })
       }
@@ -474,8 +474,8 @@ class WallStatistics
 
 
 
-   uint_t Nz_;
-   real_t dz_;
+   uint_t Ny_;
+   real_t dy_;
    real_t kinematicViscosity_;
    std::ofstream outFile_;
    real_t nuTop_;

@@ -187,7 +187,7 @@ class PlaneAveragedProfiles
             real_t B = BField->get(*cellIt);
             Cell globalCell(*cellIt);
             blocks_->transformBlockLocalToGlobalCell(globalCell, *blockIt);
-            const uint_t idx = uint_c(globalCell.z());
+            const uint_t idx = uint_c(globalCell.y());
 
             // fluid phase
             if (B < 1.0_r)
@@ -541,25 +541,25 @@ const std::vector< real_t > computeViscousStress(const std::shared_ptr< Structur
 
          meanfield, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
 
-         const uint_t j = uint_c(cell.z()); if (j > 0 && j < uint_c(domainSize[codegen::wall_axis]) - 1) {
-            if (z == 0)
+         const uint_t j = uint_c(cell.y()); if (j > 0 && j < uint_c(domainSize[codegen::wall_axis]) - 1) {
+            if (y == 0)
             {
                const real_t U0 = meanfield->get(x, y, z, 0);
-               const real_t U1 = meanfield->get(x, y, z + 1, 0);
-               const real_t U2 = meanfield->get(x, y, z + 2,0);
+               const real_t U1 = meanfield->get(x, y+1, z, 0);
+               const real_t U2 = meanfield->get(x, y+2, z,0);
                viscousStress[j] += (-3.0 *U0 + 4.0 * U1 - U2) / (2.0);
             }
-            else if (z == cell_idx_c(blocks->getNumberOfZCells(block) - 1))
+            else if (y == cell_idx_c(blocks->getNumberOfYCells(block) - 1))
             {
                const real_t U0 = meanfield->get(x, y, z,0);
-               const real_t U1 = meanfield->get(x, y, z - 1,0);
-               const real_t U2 = meanfield->get(x, y, z - 2,0);
+               const real_t U1 = meanfield->get(x, y-1, z,0);
+               const real_t U2 = meanfield->get(x, y-2, z,0);
                viscousStress[j] += (3.0 * U0 - 4.0 * U1 + U2) / (2.0);
             }
             else
             {
-               const real_t U0 = meanfield->get(x, y, z - 1,0);
-               const real_t U1 = meanfield->get(x, y, z + 1,0);
+               const real_t U0 = meanfield->get(x, y-1, z,0);
+               const real_t U1 = meanfield->get(x, y+1, z,0);
                viscousStress[j] += (U1 - U0) / (2.0);
                ;
             }
@@ -569,16 +569,16 @@ const std::vector< real_t > computeViscousStress(const std::shared_ptr< Structur
             if (j == 0)
             {
                const real_t U0 = meanfield->get(x, y, z,0);
-               const real_t U1 = meanfield->get(x, y, z + 1,0);
-               const real_t U2 = meanfield->get(x, y, z + 2,0);
+               const real_t U1 = meanfield->get(x, y+1, z,0);
+               const real_t U2 = meanfield->get(x, y+2, z,0);
                viscousStress[j] += (-3.0 * U0 + 4.0 * U1 - U2) / (2.0);
                ;
             }
             if (j == uint_c(domainSize[codegen::wall_axis]) - 1)
             {
                const real_t U0 = meanfield->get(x, y, z,0);
-               const real_t U1 = meanfield->get(x, y, z - 1,0);
-               const real_t U2 = meanfield->get(x, y, z - 2,0);
+               const real_t U1 = meanfield->get(x, y-1, z,0);
+               const real_t U2 = meanfield->get(x, y-2, z,0);
                viscousStress[j] += (3.0 * U0 - 4.0 * U1 + U2) / (2.0);
             }
          }

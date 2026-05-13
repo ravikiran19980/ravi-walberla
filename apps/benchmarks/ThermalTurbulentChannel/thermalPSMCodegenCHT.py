@@ -94,7 +94,7 @@ with CodeGeneration() as ctx:
     SC = int(config_tokens[1])
 
     flow_axis  = 0
-    wall_axis  = 2
+    wall_axis  = 1
     remaining_axis = 3 - (flow_axis + wall_axis)
 
     check_axis(flow_axis=flow_axis, wall_axis=wall_axis)
@@ -134,7 +134,7 @@ with CodeGeneration() as ctx:
     # Solid fraction field
     B = ps.fields(f"b({1}): {data_type}[3D]", layout=layout)
 
-    force_temperature_on_fluid = sp.Matrix([0, 0,(rho_0)*alpha*(temperature_field.center - T0)*gravity_LBM])
+    force_temperature_on_fluid = sp.Matrix([0,(rho_0)*alpha*(temperature_field.center - T0)*gravity_LBM, 0])
 
     # Fluid LBM optimisation
     lbm_fluid_opt = LBMOptimisation(
