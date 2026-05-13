@@ -96,6 +96,7 @@ using TensorField_T = GhostLayerField< real_t, Stencil_Fluid_T::D*Stencil_Fluid_
 using WelfordSweepVelocity_T = WelfordVelocity;
 using WFB_bottom_T = lbm::TurbulentChannel_WFB_bottom;
 using WFB_top_T = lbm::TurbulentChannel_WFB_top;
+using WelfordSweep_T = pystencils::TurbulentChannel_Welford;
 
 ///////////
 // FLAGS //
@@ -809,8 +810,10 @@ int main(int argc, char** argv)
    timeloop.addFuncBeforeTimeStep(RemainingTimeLogger(timeloop.getNrOfTimeSteps()), "Remaining Time Logger");
 
 
-
-
+   WelfordSweep_T welfordSweep(meanVelFieldID, sosVelFieldID, velFieldFluidID, 0_r);
+   auto welfordLambda = [&welfordSweep](IBlock * block) {
+      welfordSweep(block);
+   };
 
 
 
@@ -860,9 +863,9 @@ if (vtkSpacingFluid != uint_t(0)){
 
 
    if(writeSlice){
-      const AABB sliceAABB(real_t(0), real_c(domainSize[1]) * real_t(0.5) - real_t(1), real_t(0),
-                           real_c(domainSize[0]), real_c(domainSize[1]) * real_t(0.5) + real_t(1),
-                           real_c(domainSize[2]));
+      const AABB sliceAABB(real_t(0), real_t(0),real_c(domainSize[1]) * real_t(0.5) - real_t(1),
+                           real_c(domainSize[0]), real_c(domainSize[2]),real_c(domainSize[1]) * real_t(0.5) + real_t(1)
+                           );
       const walberla::vtk::AABBCellFilter aabbSliceFilter(sliceAABB);
       field::FlagFieldCellFilter< FlagField_T > fluidFilter(flagFieldFluidID);
       fluidFilter.addFlag(fluidFlagUID);
@@ -898,9 +901,30 @@ if (vtkSpacingFluid != uint_t(0)){
    timeloop.add() << Sweep((noSlip), "Boundary Handling (No slip fluid)");
    //timeloop.add() << Sweep(wfbLambda, "wall function bounce");
    timeloop.add() << Sweep((streamCollideLambda), "streamcollide Fluid sweep");
+   bool resetCounter = false;
+   timeloop.add() << BeforeFunction(
+                        [&]() {
+                           const uint_t velCtr = uint_c(welfordSweep.getCounter());
+                           if (timeloop.getCurrentTimeStep() >= 30 * uint_c(turnOverPeriod))
+                           {
+                              if (resetCounter == false)
+                              {
+                                 WALBERLA_LOG_INFO_ON_ROOT("reseeting welford counter ");
+                                 resetCounter = true;
+                                 welfordSweep.setCounter(real_c(0.0));
+                              }
 
+                              for (auto& block : *blocks)
+                              {
+                                 auto* sopField = block.template getData< TensorField_T >(sosVelFieldID);
+                                 sopField->setWithGhostLayer(0.0);
+                              }
+                           }
 
-
+                           welfordSweep.setCounter(welfordSweep.getCounter() + real_c(1.0));
+                        },
+                        "welford sweep")
+                  << Sweep(welfordLambda, "welford sweep");
 
    for (uint_t timeStep = 0; timeStep < numTimeSteps; ++timeStep)
    {

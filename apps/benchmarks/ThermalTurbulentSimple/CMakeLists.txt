@@ -17,6 +17,7 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
                 FluidMacroSetter.h FluidMacroSetter.cpp
                 FluidMacroGetter.h FluidMacroGetter.cpp
                 GeneralInfoHeader.h
+                TurbulentChannel_Welford.h TurbulentChannel_Welford.${CODEGEN_FILE_SUFFIX}
         )
 
         set(MAINSRC simplifiedBenchmark.cpp)

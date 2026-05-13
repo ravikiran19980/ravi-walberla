@@ -155,14 +155,17 @@ with (CodeGeneration() as ctx):
     )
 
 
-    # specify the target
+
+# specify the target
 
     if ctx.gpu:
         target = ps.Target.GPU
     else:
         target = ps.Target.CPU
 
-
+    welford_update = welford_assignments(field=velocity_field, mean_field=mean_velocity_field,
+                                             sum_of_squares_field=sum_of_squares_velocity_field)
+    generate_sweep(ctx, "TurbulentChannel_Welford", welford_update, target=target)
     generate_pack_info_from_kernel(
         ctx,
         "PackInfoFluid",
