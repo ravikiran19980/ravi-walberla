@@ -949,9 +949,9 @@ int main(int argc, char** argv)
 
 
       if(writeSlice){
-         const AABB sliceAABB(real_t(0), real_c(domainSize[1]) * real_t(0.5) - real_t(1), real_t(0),
-                              real_c(domainSize[0]), real_c(domainSize[1]) * real_t(0.5) + real_t(1),
-                              real_c(domainSize[2]));
+         const AABB sliceAABB(real_t(0), real_t(0),real_c(domainSize[1]) * real_t(0.5) - real_t(1),
+                           real_c(domainSize[0]), real_c(domainSize[2]),real_c(domainSize[1]) * real_t(0.5) + real_t(1)
+                           );
          const walberla::vtk::AABBCellFilter aabbSliceFilter(sliceAABB);
          field::FlagFieldCellFilter< FlagField_T > fluidFilter(flagFieldFluidID);
          fluidFilter.addFlag(Fluid_Flag);
