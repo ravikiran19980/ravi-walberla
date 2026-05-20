@@ -2,12 +2,12 @@ PhysicalSetup // all to be specified in SI/ref units
 {
 
     xSize 128;
-    ySize 64;
-    zSize 40;
+    ySize 40;
+    zSize 64;
 
     periodicInX true;
-    periodicInY true;
-    periodicInZ false;
+    periodicInY false;
+    periodicInZ true;
 
     densityFluid 1.;
     particleDiameter 10;
@@ -67,6 +67,9 @@ Output
     vtkSpacingFluid 0; // ins
     vtkFolder vtk_out;
     performanceLogFrequency 5000000000;
+    checkpointing false;
+    checkpointingFileName testCheckpoint;
+    checkPointingFrequency 1000;
 
 }
 

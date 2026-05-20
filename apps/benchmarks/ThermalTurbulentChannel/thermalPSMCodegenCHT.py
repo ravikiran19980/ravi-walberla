@@ -225,7 +225,8 @@ with CodeGeneration() as ctx:
 
     sub_exp_temperature = pdfs_temperature_setter.subexpressions[0]
     rhs_temperature = []
-    rhs_temperature.append((1 - B.center) * temperature_field.center + (B.center) * sp.Symbol("Tp"))
+    #rhs_temperature.append((1 - B.center) * temperature_field.center + (B.center) * sp.Symbol("Tp"))
+    rhs_temperature.append(temperature_field.center)
     pdfs_temperature_setter.subexpressions.remove(sub_exp_temperature)
     pdfs_temperature_setter.subexpressions.append(Assignment(sub_exp_temperature.lhs, Add(*rhs_temperature)))
     #pdfs_temperature_setter.subexpressions.append(Assignment(sp.Symbol("c_s"), 1/sp.sqrt(3)))

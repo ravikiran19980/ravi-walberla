@@ -34,16 +34,16 @@ class MeanPlaneAverager
       for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
       {
          auto& block = *blockIt;
-         auto velF   = block.getData< VelocityField_fluid_T >(velFieldFluidID);
-         auto Tfield = block.getData< DensityField_concentration_T >(tempFieldID);
+         auto velocityField   = block.getData< VelocityField_fluid_T >(velFieldFluidID);
+         auto temperatureField = block.getData< DensityField_concentration_T >(tempFieldID);
          auto Bfield = block.getData< GhostLayerField< real_t, 1 > >(BFieldID);
 
          WALBERLA_FOR_ALL_CELLS_XYZ(
-            Tfield, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
+            temperatureField, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
             const uint_t j = uint_c(cell.y());
 
-            velocity_plane_[j] +=   velF->get(x, y, z, 1);
-            temperature_plane_[j] +=  Tfield->get(x, y, z);
+            velocity_plane_[j] +=   velocityField->get(x, y, z, 1);
+            temperature_plane_[j] +=  temperatureField->get(x, y, z);
 
             numPlaneCells_[j] += 1;)
       }
@@ -142,8 +142,8 @@ class HeatFluxBudgets
       for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
       {
          auto& block = *blockIt;
-         auto velF   = block.getData< VelocityField_fluid_T >(velFieldFluidID);
-         auto Tfield = block.getData< DensityField_concentration_T >(tempFieldID);
+         auto velocityField   = block.getData< VelocityField_fluid_T >(velFieldFluidID);
+         auto temperatureField = block.getData< DensityField_concentration_T >(tempFieldID);
          auto Bfield = block.getData< GhostLayerField< real_t, 1 > >(BFieldID);
 
          // get the plane averages of velocity and temperature:
@@ -153,11 +153,11 @@ class HeatFluxBudgets
 
          WALBERLA_FOR_ALL_CELLS_XYZ(
 
-            Tfield, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
+            temperatureField, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
 
             const uint_t j = uint_c(cell.y()); // global value is stored in j
-            const real_t B = Bfield->get(x, y, z); const real_t temperature = Tfield->get(x, y, z);
-            const real_t velocity_y                                         = velF->get(x, y, z, 1);
+            const real_t B = Bfield->get(x, y, z); const real_t temperature = temperatureField->get(x, y, z);
+            const real_t velocity_y                                         = velocityField->get(x, y, z, 1);
 
 
 
@@ -177,9 +177,9 @@ class HeatFluxBudgets
                if (y == 0)
                {
                   // conductive flux
-                  const real_t T0_p = Tfield->get(x, y, z);
-                  const real_t T1_p = Tfield->get(x, y+1, z);
-                  const real_t T2_p = Tfield->get(x, y+2, z);
+                  const real_t T0_p = temperatureField->get(x, y, z);
+                  const real_t T1_p = temperatureField->get(x, y+1, z);
+                  const real_t T2_p = temperatureField->get(x, y+2, z);
                   dTdy_p            = (-3.0 * T0_p + 4.0 * T1_p - T2_p) / (2.0 * dy_);
                   dTdy_p            = alpha_p_ * dTdy_p;
                   dT_plane_[j] += dTdy_p;
@@ -187,9 +187,9 @@ class HeatFluxBudgets
                else if (y == cell_idx_c(blocks->getNumberOfYCells(block) - 1))
                {
                   //conductive flux
-                  const real_t T0_p = Tfield->get(x, y, z);
-                  const real_t T1_p = Tfield->get(x, y-1, z);
-                  const real_t T2_p = Tfield->get(x, y-2, z);
+                  const real_t T0_p = temperatureField->get(x, y, z);
+                  const real_t T1_p = temperatureField->get(x, y-1, z);
+                  const real_t T2_p = temperatureField->get(x, y-2, z);
                   dTdy_p            = (3.0 * T0_p - 4.0 * T1_p + T2_p) / (2.0 * dy_);
                   dTdy_p            = alpha_p_ * dTdy_p;
                   dT_plane_[j] += dTdy_p;
@@ -198,8 +198,8 @@ class HeatFluxBudgets
                else
                {
                   // conductive flux
-                  const real_t T0_p = Tfield->get(x, y-1, z);
-                  const real_t T1_p = Tfield->get(x, y+1, z);
+                  const real_t T0_p = temperatureField->get(x, y-1, z);
+                  const real_t T1_p = temperatureField->get(x, y+1, z);
                   dTdy_p            = (T1_p - T0_p) / (2.0 * dy_);
                   dTdy_p            = alpha_p_ * dTdy_p;
                   dT_plane_[j] += dTdy_p;
@@ -210,9 +210,9 @@ class HeatFluxBudgets
                if (j == 0)
                {
                   // conductive flux
-                  const real_t T0_p = Tfield->get(x, y, z);
-                  const real_t T1_p = Tfield->get(x, y+1, z);
-                  const real_t T2_p = Tfield->get(x, y+2, z);
+                  const real_t T0_p = temperatureField->get(x, y, z);
+                  const real_t T1_p = temperatureField->get(x, y+1, z);
+                  const real_t T2_p = temperatureField->get(x, y+2, z);
                   dTdy_p            = (-3.0 * T0_p + 4.0 * T1_p - T2_p) / (2.0 * dy_);
                   dTdy_p            = alpha_p_ * dTdy_p;
                   dT_plane_[j] += dTdy_p;
@@ -221,9 +221,9 @@ class HeatFluxBudgets
                if (j == Ny_ - 1)
                {
                   // conductive flux
-                  const real_t T0_p = Tfield->get(x, y, z);
-                  const real_t T1_p = Tfield->get(x, y-1, z);
-                  const real_t T2_p = Tfield->get(x, y-2, z);
+                  const real_t T0_p = temperatureField->get(x, y, z);
+                  const real_t T1_p = temperatureField->get(x, y-1, z);
+                  const real_t T2_p = temperatureField->get(x, y-2, z);
                   dTdy_p            = (3.0 * T0_p - 4.0 * T1_p + T2_p) / (2.0 * dy_);
                   dTdy_p            = alpha_p_ * dTdy_p;
                   dT_plane_[j] += dTdy_p;
@@ -333,7 +333,11 @@ class WallStatistics
       WALBERLA_ROOT_SECTION()
       {
          outFile_.open(nusseltFileName, std::ios::out);
+#ifdef run_with_temperature
          outFile_ << "timeStep Nu_bottom Nu_top tauW_bottom tauW_top" << std::endl;
+#else
+         outFile_ << "timeStep tauW_bottom tauW_top" << std::endl;
+#endif
       }
    }
 
@@ -342,34 +346,42 @@ class WallStatistics
       WALBERLA_ROOT_SECTION() { outFile_.close(); };
    };
 
-   void operator()(const shared_ptr< StructuredBlockStorage >& blocks, const BlockDataID& tempFieldID,
-                   const BlockDataID& velFieldID, uint_t timeStep, uint_t outputFrequency, const real_t T_wall_top,
+#ifdef run_with_temperature
+   void operator()(const shared_ptr< StructuredBlockStorage >& blocks, const BlockDataID& meantempFieldID,
+                   const BlockDataID& meanvelFieldID, uint_t timeStep, const real_t T_wall_top,
                    const real_t T_wall_bottom, const real_t tolerance)
-   {
+#else
+   void operator()(const shared_ptr< StructuredBlockStorage >& blocks,
+                  const BlockDataID& meanvelFieldID, uint_t timeStep, const real_t tolerance)
+#endif
 
+   {
 
       for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
       {
          auto& block = *blockIt;
-         auto Tfield = block.getData< DensityField_concentration_T >(tempFieldID);
-         auto velF   = block.getData< VelocityField_fluid_T >(velFieldID);
+#ifdef run_with_temperature
+         auto temperatureField = block.getData< DensityField_concentration_T >(meantempFieldID);
+#endif
+         auto velocityField   = block.getData< VelocityField_fluid_T >(meanvelFieldID);
 
+#ifdef run_with_temperature
          WALBERLA_FOR_ALL_CELLS_XYZ(
-            Tfield, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
+            temperatureField, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
 
             const uint_t j = uint_c(cell.y());
 
             // Bottom wall (j = 0): dT/dy = (-8*T0 + 9*T1 - T2) / (3*dy)  since wall situated at half distance from center of bottom cell
             if (j == 0) {
                const real_t T0   = T_wall_bottom;
-               const real_t T1   = Tfield->get(x, y, z);
-               const real_t T2   = Tfield->get(x, y+1, z);
+               const real_t T1   = temperatureField->get(x, y, z);
+               const real_t T2   = temperatureField->get(x, y+1, z);
                const real_t dTdy = real_c(Ny_)*(-8.0 * T0 + 9.0 * T1 - T2) / (3.0 * dy_);
                nuBottom_ += dTdy;
 
                const real_t U0   = real_t(0);
-               const real_t U1   = velF->get(x, y, z, 0);
-               const real_t U2   = velF->get(x, y+1, z, 0);
+               const real_t U1   = velocityField->get(x, y, z, 0);
+               const real_t U2   = velocityField->get(x, y+1, z, 0);
                const real_t dUdy = real_c(Ny_)*(-8.0 * U0 + 9.0 * U1 - U2) / (3.0 * dy_);
                tauBottom_ +=  dUdy;
                countBottom_++;
@@ -377,25 +389,49 @@ class WallStatistics
             // Top wall (j = Ny - 1): dT/dy = (8*T0 - 9*T1 + T2) / (3*dy) since wall situated at half distance from center of top cell
             else if (j == Ny_ - 1) {
                const real_t T0   = T_wall_top;
-               const real_t T1   = Tfield->get(x, y, z);
-               const real_t T2   = Tfield->get(x, y-1, z);
+               const real_t T1   = temperatureField->get(x, y, z);
+               const real_t T2   = temperatureField->get(x, y-1, z);
                const real_t dTdy = real_c(Ny_)*(8.0 * T0 - 9.0 * T1 + T2) / (3.0 * dy_);
                nuTop_ += dTdy;
 
                const real_t U0   = real_t(0);
-               const real_t U1   = velF->get(x, y, z, 0);
-               const real_t U2   = velF->get(x, y-1, z, 0);
+               const real_t U1   = velocityField->get(x, y, z, 0);
+               const real_t U2   = velocityField->get(x, y-1, z, 0);
                const real_t dUdy = real_c(Ny_)*(8.0 * U0 - 9.0 * U1 + U2) / (3.0 * dy_);
                tauTop_ +=  dUdy;
                countTop_++;
             })
+#else
+         WALBERLA_FOR_ALL_CELLS_XYZ(
+            velocityField, Cell cell; blocks->transformBlockLocalToGlobalCell(cell, block, Cell(x, y, z));
+
+            const uint_t j = uint_c(cell.y());
+            if (j == 0) {
+               const real_t U0   = real_t(0);
+               const real_t U1   = velocityField->get(x, y, z, 0);
+               const real_t U2   = velocityField->get(x, y+1, z, 0);
+               const real_t dUdy = real_c(Ny_)*(-8.0 * U0 + 9.0 * U1 - U2) / (3.0 * dy_);
+               tauBottom_ +=  dUdy;
+               countBottom_++;
+            }
+            else if (j == Ny_ - 1) {
+               const real_t U0   = real_t(0);
+               const real_t U1   = velocityField->get(x, y, z, 0);
+               const real_t U2   = velocityField->get(x, y-1, z, 0);
+               const real_t dUdy = real_c(Ny_)*(8.0 * U0 - 9.0 * U1 + U2) / (3.0 * dy_);
+               tauTop_ +=  dUdy;
+               countTop_++;
+            })
+#endif
       }
 
       // MPI reduction
       WALBERLA_MPI_SECTION()
       {
+#ifdef run_with_temperature
          mpi::allReduceInplace(nuBottom_, mpi::SUM);
          mpi::allReduceInplace(nuTop_, mpi::SUM);
+#endif
          mpi::allReduceInplace(tauBottom_, mpi::SUM);
          mpi::allReduceInplace(tauTop_, mpi::SUM);
          mpi::allReduceInplace(countBottom_, mpi::SUM);
@@ -403,17 +439,23 @@ class WallStatistics
       }
 
       // Average over cells at wall
+#ifdef run_with_temperature
       if (countBottom_ > 0) nuBottom_ /= real_c(countBottom_);
       if (countTop_ > 0) nuTop_ /= real_c(countTop_);
+#endif
       if (countBottom_ > 0) tauBottom_ /= real_c(countBottom_);
       if (countTop_ > 0) tauTop_ /= real_c(countTop_);
 
-      if (timeStep % outputFrequency == 0)
+      if (timeStep % outputFrequency_ == 0)
       {
          WALBERLA_ROOT_SECTION()
          {
+#ifdef run_with_temperature
             outFile_ << timeStep << " " << nuBottom_ << " " << nuTop_ << " "
                      << tauBottom_ << " " << tauTop_ << std::endl;
+#else
+            outFile_ << timeStep << " " << tauBottom_ << " " << tauTop_ << std::endl;
+#endif
          }
       }
 
@@ -446,11 +488,13 @@ class WallStatistics
       // WALBERLA_LOG_INFO_ON_ROOT("time block size is " << timeBlockSize << "  "<< timeStep%timeBlockSize);
       if (timeStep % outputFrequency_ == 0 && timeStep > 0)
       {
+#ifdef run_with_temperature
          const real_t currentNu = nuBottom_;
          const real_t relDiff_percentage_nu =
             std::abs(currentNu - oldNu_) * 100 / std::max(std::abs(oldNu_), real_t(1e-14));
 
          oldNu_ = currentNu;
+#endif
 
          const real_t currentTau = tauBottom_;
          const real_t relDiff_percentage_tau =
@@ -458,7 +502,11 @@ class WallStatistics
 
          oldTau_ = currentTau;
 
+#ifdef run_with_temperature
          if (relDiff_percentage_nu < tolerance   && relDiff_percentage_tau < tolerance) { ++convergenceCounter_; }
+#else
+         if (relDiff_percentage_tau < tolerance) { ++convergenceCounter_; }
+#endif
          else
          {
             convergenceCounter_ = 0;
