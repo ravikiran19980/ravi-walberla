@@ -415,6 +415,7 @@ int main(int argc, char** argv)
    }
 
    const bool useLubricationForces        = numericalSetup.getParameter< bool >("useLubricationForces");
+   const bool useParticles                = numericalSetup.getParameter< bool >("useParticles");
    const uint_t numberOfParticleSubCycles = numericalSetup.getParameter< uint_t >("numberOfParticleSubCycles");
    const bool useIntegrators              = numericalSetup.getParameter< bool >("useIntegrators");
    const Vector3< uint_t > particleSubBlockSize =
@@ -425,9 +426,8 @@ int main(int argc, char** argv)
       numericalSetup.getParameter< Vector3< real_t > >("generationDomainFraction");
 
    const real_t volfraction = numericalSetup.getParameter< real_t >("volfraction");
-
-   const bool writeSlice          = numericalSetup.getParameter< bool >("writeSlice");
-   const bool sendDirectlyFromGPU = numericalSetup.getParameter< bool >("sendDirectlyFromGPU");
+   WALBERLA_CHECK(!useParticles || volfraction > real_t(0),
+                  "useParticles is true, but volfraction is equal to 0, must be greater than 0");
 
    Config::BlockHandle turbulenceSetup   = cfgFile->getBlock("TurbulenceSetup");
    const real_t target_bulk_Reynolds     = turbulenceSetup.getParameter< real_t >("target_bulk_Reynolds");
@@ -448,19 +448,29 @@ int main(int argc, char** argv)
    const real_t Gr                      = TemperatureSetup.getParameter< real_t >("Gr");
 #endif
 
-   Config::BlockHandle outputSetup      = cfgFile->getBlock("Output");
-   const uint_t infoSpacing             = outputSetup.getParameter< uint_t >("infoSpacing");
-   const uint_t vtkSpacingParticles     = outputSetup.getParameter< uint_t >("vtkSpacingParticles");
-   const uint_t vtkSpacingFluid         = outputSetup.getParameter< uint_t >("vtkSpacingFluid");
-   const std::string vtkFolder          = outputSetup.getParameter< std::string >("vtkFolder");
-   const uint_t performanceLogFrequency = outputSetup.getParameter< uint_t >("performanceLogFrequency");
-   const bool checkpointing             = outputSetup.getParameter< bool >("checkpointing");
-   const std::string checkpointingFileName = outputSetup.getParameter< std::string >("checkpointingFileName");
-   const uint_t checkPointingFrequency  = outputSetup.getParameter< uint_t >("checkPointingFrequency");
+   Config::BlockHandle vtk_params      = cfgFile->getBlock("vtk_params");
+   const uint_t infoSpacing             = vtk_params.getParameter< uint_t >("infoSpacing");
+   const uint_t vtkSpacingParticles     = vtk_params.getParameter< uint_t >("vtkSpacingParticles");
+   const uint_t vtkSpacingFluid         = vtk_params.getParameter< uint_t >("vtkSpacingFluid");
+   const std::string vtkFolder          = vtk_params.getParameter< std::string >("vtkFolder");
+   const bool writeSlice                = vtk_params.getParameter< bool >("writeSlice");
+
+   Config::BlockHandle checkpoint_params      = cfgFile->getBlock("checkpoint_params");
+   const bool startFromCheckPointFile             = checkpoint_params.getParameter< bool >("startFromCheckPointFile");
+   const std::string checkpointingFileName = checkpoint_params.getParameter< std::string >("checkpointingFileName");
+   const uint_t checkPointingFrequency  = checkpoint_params.getParameter< uint_t >("checkPointingFrequency");
+   const bool writeContinuousCheckPoints  = checkpoint_params.getParameter< bool >("writeContinuousCheckPoints");
+
 
    Config::BlockHandle statisticsParams    = cfgFile->getBlock("statistics_params");
    const uint_t outputFrequency            = statisticsParams.getParameter< uint_t >("outputFrequency");
    const real_t convergenceTolerance       = statisticsParams.getParameter< real_t >("convergenceTolerance");
+
+   Config::BlockHandle performance_params    = cfgFile->getBlock("performance_params");
+   const uint_t performanceLogFrequency   = performance_params.getParameter< uint_t >("performanceLogFrequency");
+   const bool sendDirectlyFromGPU         = performance_params.getParameter< bool >("sendDirectlyFromGPU");
+
+
 #ifdef run_with_temperature
    const uint_t planeAveragingtimeBlock    = statisticsParams.getParameter< uint_t >("planeAveragingtimeBlock");
    const uint_t heatFluxAveragingtimeBlock = statisticsParams.getParameter< uint_t >("heatFluxAveragingtimeBlock");
@@ -504,7 +514,6 @@ int main(int argc, char** argv)
 
    const real_t domainVolume = domainSize[0] * domainSize[1] * domainSize[2];
    const uint_t numParticles = uint_c((volfraction*domainVolume)/(particleVolume));
-   WALBERLA_LOG_INFO_ON_ROOT(numParticles << " particles will be created");
    const real_t T_conversion = real_t(1);
 #ifdef run_with_temperature
    // conversion for the various temperature quantities:
@@ -536,7 +545,7 @@ int main(int argc, char** argv)
    const uint_t numTimeSteps              =  uint_c(simulationTimeFactor *turnOverPeriod);
    uint_t startTimeStep                   = uint_t(0);
 
-   if (checkpointing)
+   if (startFromCheckPointFile)
    {
       WALBERLA_ROOT_SECTION()
       {
@@ -618,7 +627,7 @@ int main(int argc, char** argv)
    ///////////////////////////
 
    shared_ptr< StructuredBlockForest > blocks;
-   if (checkpointing == false)
+   if (startFromCheckPointFile == false)
    {
       blocks = blockforest::createUniformBlockGrid(numXBlocks, numYBlocks, numZBlocks, cellsPerBlockPerDirection[0],
                                                    cellsPerBlockPerDirection[1], cellsPerBlockPerDirection[2],
@@ -652,9 +661,9 @@ int main(int argc, char** argv)
    auto accessor            = walberla::make_shared< ParticleAccessor_T >(ps, ss);
    BlockDataID particleStorageID;
 
-   if (checkpointing)
+   if (startFromCheckPointFile && std::filesystem::exists(checkpointingFileName + "_mesa.txt"))
    {
-      WALBERLA_LOG_INFO_ON_ROOT("Initializing particles from checkpointing file!");
+      WALBERLA_LOG_INFO_ON_ROOT("Initializing " << numParticles <<  " particles from checkpointing file!");
       particleStorageID =
          blocks->loadBlockData(checkpointingFileName + "_mesa.txt", mesa_pd::domain::createBlockForestDataHandling(ps),
                                "Particle Storage");
@@ -672,8 +681,10 @@ int main(int argc, char** argv)
 
    auto sphereShape         = ss->create< mesa_pd::data::Sphere >(particleDiameter * real_t(0.5));
    ss->shapes[sphereShape]->updateMassAndInertia(densityParticle);
-   if (!checkpointing)
+
+   if (useParticles && !std::filesystem::exists(checkpointingFileName + "_mesa.txt") && !startFromCheckPointFile)
    {
+      WALBERLA_LOG_INFO_ON_ROOT("Creating " << numParticles << "particles in Random positions as no Checkpoint file exists for particles");
       // prevent particles from interfering with inflow and outflow by putting the bounding planes slightly in front
       const real_t planeOffsetFromInflow  = 1_r;
       const real_t planeOffsetFromOutflow = 1_r;
@@ -738,7 +749,7 @@ int main(int argc, char** argv)
 
 
    BlockDataID pdfFieldFluidID;
-   if (checkpointing == true)
+   if (startFromCheckPointFile == true)
    {
       auto dataHandling = make_shared< field::DefaultBlockDataHandling< PdfField_fluid_T > >(
          blocks, uint_t(1), real_c(std::nan("")), field::fzyx);
@@ -764,7 +775,7 @@ int main(int argc, char** argv)
    ///////////////////////////////////////////////
 #ifdef run_with_temperature
    BlockDataID pdfFieldTemperatureID;
-   if (checkpointing == true)
+   if (startFromCheckPointFile == true)
    {
       auto dataHandlingTemperature = make_shared< field::DefaultBlockDataHandling< PdfField_temperature_T > >(
          blocks, uint_t(1), real_c(std::nan("")), field::fzyx);
@@ -780,7 +791,7 @@ int main(int argc, char** argv)
    BlockDataID temperatureFieldID = field::addToStorage< DensityField_temperature_T >(
       blocks, "temperature field", real_t(0), field::fzyx);
 
-   BlockDataID particleTemperaturesFieldID = field::addToStorage< particleTemperaturesField_T >(blocks, "particle temperatures field CPU", real_t(0),
+   BlockDataID particleTemperaturesFieldID = field::addToStorage< particleTemperaturesField_T >(blocks, "particle temperatures field CPU", particleTemperature,
                                                                                                       field::fzyx, uint_t(1), true);
 
 
@@ -1025,15 +1036,15 @@ int main(int argc, char** argv)
    for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
    {
       psmSweepCollectionFluid.setParticleVelocitiesSweep(&(*blockIt));
-//#ifdef run_with_temperature
-  //    settemperatureparticles(&(*blockIt));
-//#endif
-      if (!checkpointing)
+#ifdef run_with_temperature
+      settemperatureparticles(&(*blockIt));
+#endif
+      if (!startFromCheckPointFile)
       {
          pdfSetterFluid(&(*blockIt));
       }
 #ifdef run_with_temperature
-      if (!checkpointing)
+      if (!startFromCheckPointFile)
       {
          pdfSetterTemperature(&(*blockIt));
       }
@@ -1073,7 +1084,7 @@ int main(int argc, char** argv)
                                                     );
 #endif
 
-   if (checkpointing)
+   if (startFromCheckPointFile)
    {
       for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
       {
@@ -1233,6 +1244,7 @@ int main(int argc, char** argv)
 
    WcTimingPool timeloopTiming;
    const bool useOpenMP = true;
+   WcTimer checkpointTimer;
 
    real_t linkedCellWidth = linkedCellWidthRation * particleDiameter;
    mesa_pd::data::LinkedCells linkedCells(rpdDomain->getUnionOfLocalAABBs().getExtended(linkedCellWidth),
@@ -1623,29 +1635,92 @@ int main(int argc, char** argv)
       if (checkPointingFrequency > uint_t(0) && (timeStep % checkPointingFrequency == 0) && timeStep != startTimeStep)
       {
          WALBERLA_LOG_INFO_ON_ROOT("writing checkpoint at timestep " << timeStep << " (pre-step)");
+         checkpointTimer.start();
          blocks->saveBlockData(checkpointingFileName + "_lbm_tmp.txt", pdfFieldFluidID);
+         checkpointTimer.end();
+         WALBERLA_LOG_INFO_ON_ROOT("time to write checkpoint fluid is  " << checkpointTimer.last());
 #ifdef run_with_temperature
          blocks->saveBlockData(checkpointingFileName + "_lbm_tmp_temperature.txt", pdfFieldTemperatureID);
 #endif
-         blocks->saveBlockData(checkpointingFileName + "_mesa_tmp.txt", particleStorageID);
+         if (useParticles)
+         {
+            blocks->saveBlockData(checkpointingFileName + "_mesa_tmp.txt", particleStorageID);
+         }
 
          WALBERLA_ROOT_SECTION()
          {
-            std::ofstream checkpointConfigOS(checkpointingFileName + "_config_tmp.txt", std::ios::out | std::ios::trunc);
+            std::ofstream checkpointConfigOS(checkpointingFileName + "_config_tmp.txt",
+                                             std::ios::out | std::ios::trunc);
             WALBERLA_CHECK(checkpointConfigOS.is_open(), "Could not open checkpoint config tmp file "
-                                                          << checkpointingFileName + "_config_tmp.txt" << " for writing");
+                                                            << checkpointingFileName + "_config_tmp.txt"
+                                                            << " for writing");
             checkpointConfigOS << timeStep << "\n";
             checkpointConfigOS.close();
+         }
+         WALBERLA_MPI_BARRIER();
 
-            renameFile(checkpointingFileName + "_lbm_tmp.txt", checkpointingFileName + "_lbm.txt");
+         WALBERLA_ROOT_SECTION()
+         {
+            if (writeContinuousCheckPoints){
+               renameFile(checkpointingFileName + "_lbm_tmp.txt", checkpointingFileName + "_lbm_"+std::to_string(timeStep)+".txt");
 #ifdef run_with_temperature
-            renameFile(checkpointingFileName + "_lbm_tmp_temperature.txt", checkpointingFileName + "_lbm_temperature.txt");
+               renameFile(checkpointingFileName + "_lbm_tmp_temperature.txt",
+                          checkpointingFileName + "_lbm_temperature_"+std::to_string(timeStep)+".txt");
 #endif
-            renameFile(checkpointingFileName + "_config_tmp.txt", checkpointingFileName + "_config.txt");
-            renameFile(checkpointingFileName + "_mesa_tmp.txt", checkpointingFileName + "_mesa.txt");
+               renameFile(checkpointingFileName + "_config_tmp.txt", checkpointingFileName + "_config_"+std::to_string(timeStep)+".txt");
+               if (useParticles)
+               {
+                  renameFile(checkpointingFileName + "_mesa_tmp.txt", checkpointingFileName + "_mesa_"+std::to_string(timeStep)+".txt");
+               }
 
+               if (timeStep >= 2*checkPointingFrequency)
+               {
+                  uint_t oldStep = timeStep - 2 * checkPointingFrequency;
+
+                  std::string oldBase_lbm = checkpointingFileName + "_lbm_" + std::to_string(oldStep);
+#ifdef run_with_temperature
+                  std::string oldBase_temperature = checkpointingFileName + "_lbm_temperature_" + std::to_string(oldStep);
+                  if (std::filesystem::exists(oldBase_lbm + ".txt"))
+                  {
+                     std::filesystem::remove(  oldBase_temperature + ".txt");
+                  }
+#endif
+                  std::string oldBase_config = checkpointingFileName + "_config_" + std::to_string(oldStep);
+                  std::string oldBase_particles = checkpointingFileName + "_mesa_" + std::to_string(oldStep);
+
+                  if (std::filesystem::exists(oldBase_lbm + ".txt")) { std::filesystem::remove(oldBase_lbm + ".txt"); }
+
+                  if (std::filesystem::exists(oldBase_config + ".txt"))
+                  {
+                     std::filesystem::remove(oldBase_config + ".txt");
+                  }
+
+                  if (useParticles)
+                  {
+                     if (std::filesystem::exists(oldBase_particles + ".txt"))
+                     {
+                        std::filesystem::remove(oldBase_particles + ".txt");
+                     }
+                  }
+
+               }
+            }
+            else
+            {
+               renameFile(checkpointingFileName + "_lbm_tmp.txt", checkpointingFileName + "_lbm.txt");
+#ifdef run_with_temperature
+               renameFile(checkpointingFileName + "_lbm_tmp_temperature.txt",
+                          checkpointingFileName + "_lbm_temperature.txt");
+#endif
+               renameFile(checkpointingFileName + "_config_tmp.txt", checkpointingFileName + "_config.txt");
+               if (useParticles)
+               {
+                  renameFile(checkpointingFileName + "_mesa_tmp.txt", checkpointingFileName + "_mesa.txt");
+               }
+            }
          }
       }
+      WALBERLA_MPI_BARRIER();
 
       // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
       timeloop.singleStep(timeloopTiming);

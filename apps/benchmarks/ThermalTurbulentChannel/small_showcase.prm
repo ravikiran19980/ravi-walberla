@@ -15,7 +15,7 @@ PhysicalSetup // all to be specified in SI/ref units
     dynamicFrictionCoefficient 0.15;
     coefficientOfRestitution 0.97;
     collisionTimeFactor 1.0;
-    simulationTimeFactor 10;   // total timesteps of simulation = simulationTimeFactor * turnOverPeriod
+    simulationTimeFactor 100;   // total timesteps of simulation = simulationTimeFactor * turnOverPeriod
 
 }
 
@@ -28,15 +28,14 @@ NumericalSetup
     numZBlocks 2;
 
     useLubricationForces true;
+    useParticles true;
     numberOfParticleSubCycles 10;
     useIntegrators true;
-    particleSubBlockSize <2, 2, 5>;
+    particleSubBlockSize <2, 2, 2>;
     linkedCellWidthRation 1.01;
     particleBarriers true;
     generationDomainFraction <0.95,0.95,0.95>;
-    volfraction 0;                  // no particles
-    writeSlice false;
-    sendDirectlyFromGPU false;
+    volfraction 0.2;                  // this must be 0 if useParticles is false
 
 }
 
@@ -54,23 +53,30 @@ TemperatureSetup
     Thot 1;   // ThotSI = ThotLB   (concentration conversion from SI to LB)
     Tcold 0;
     Tref  0;
-    Tparticle 0;
+    Tparticle 0.5;
     PrandtlNumber 1;
     diffusivityRatio  1;
     Gr 1000;
 }
 
-Output
+vtk_params
 {
     infoSpacing 1000; // in s
     vtkSpacingParticles 0; // in s
-    vtkSpacingFluid 0; // ins
+    vtkSpacingFluid 1000; // ins
     vtkFolder vtk_out;
-    performanceLogFrequency 5000000000;
-    checkpointing false;
+    writeSlice false;
+
+
+
+}
+
+checkpoint_params
+{
+    startFromCheckPointFile false;
     checkpointingFileName testCheckpoint;
     checkPointingFrequency 1000;
-
+    writeContinuousCheckPoints false;
 }
 
 statistics_params{
@@ -79,5 +85,9 @@ statistics_params{
     planeAveragingtimeBlock 10000;               // required only for heat flux budgets
     heatFluxAveragingtimeBlock 600000;           // required only for heat flux budgets
 
+}
 
+performance_params{
+    performanceLogFrequency 1000000000;
+    sendDirectlyFromGPU false;
 }
