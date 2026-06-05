@@ -264,6 +264,15 @@ __global__ void boxMapping(walberla::gpu::FieldAccessor< uint_t > nOverlappingPa
    idxField.set(blockIdx_uint3, threadIdx_uint3);
    BField.set(blockIdx_uint3, threadIdx_uint3);
 
+   // Clear the fields so each timestep starts from a clean state.
+   for (uint i = 0; i < MaxParticlesPerCell; i++)
+   {
+      BsField.get(i)  = real_t(0.0);
+      idxField.get(i) = size_t(0);
+   }
+   nOverlappingParticlesField.get() = uint_t(0);
+   BField.get()                     = real_t(0.0);
+
    const double3 cellCenter = { (blockStart.x + (threadIdx.x + 0.5) * dx), (blockStart.y + (blockIdx.x + 0.5) * dx),
                                 (blockStart.z + (blockIdx.y + 0.5) * dx) };
    const double3 cellMin    = { cellCenter.x - dx * real_t(0.5), cellCenter.y - dx * real_t(0.5),

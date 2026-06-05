@@ -3,7 +3,7 @@ PhysicalSetup // all to be specified in SI/ref units
 
     xSize 0.08; // = width  // 4dp
     ySize 0.08; // = depth  // 4dp
-    zSize 0.8; // = height  // 20dp
+    zSize 0.2; // = height  // 20dp
 
     periodicInX false;
     periodicInY false;
@@ -26,9 +26,9 @@ NumericalSetup
     dt 0.001;  // this is the dt_SI if at all uInflow is set to 0.
     Uc 0.0052;   // Ma = Uc/Cs = 0.0173 << 1    => incompressible
     // product of number of blocks should be equal to number of used processes
-    numXBlocks 2;
-    numYBlocks 8;
-    numZBlocks 16;
+    numXBlocks 1;
+    numYBlocks 1;
+    numZBlocks 1;
 
     use2DRefVel false;
     useLubricationForces true;
@@ -38,8 +38,8 @@ NumericalSetup
     particleSubBlockSize <5, 5, 5>;
     linkedCellWidthRation 1.01;
     particleBarriers true;
-    SingleparticleLocation <0.04,0.04,0.76>;
-    writeSlice true;
+    SingleparticleLocation <0.04,0.04,0.04>;
+    writeSlice false;
     sendDirectlyFromGPU false;
 }
 
@@ -51,8 +51,8 @@ TemperatureSetup
     Tparticle 0;
     PrandtlNumber 0.7;
     Cpf 1;
-    Cps 8;
-    Kr  1;
+    Cps 1;
+    Kr  5;
     Gr 1000;
     Qso 0;
 }
@@ -60,9 +60,9 @@ TemperatureSetup
 Output
 {
     infoSpacing 0.1; // in s
-    vtkSpacingParticles 0; // in s
-    vtkSpacingFluid 0; // in s
-    vtkFolder vtk_out;
+    vtkSpacingParticles 1; // in s
+    vtkSpacingFluid 1; // in s
+    vtkFolder vtk_out_fluc_k5_cp1;
     performanceLogFrequency 5000000000;
     filename  velocity_vs_time_cp8.txt;
 }

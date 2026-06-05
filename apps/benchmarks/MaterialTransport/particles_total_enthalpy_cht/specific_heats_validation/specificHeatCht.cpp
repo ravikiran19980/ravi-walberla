@@ -60,6 +60,7 @@
 #include "mesa_pd/data/ParticleAccessorWithShape.h"
 #include "mesa_pd/data/ParticleStorage.h"
 #include "mesa_pd/data/ShapeStorage.h"
+#include "mesa_pd/data/shape/Box.h"
 #include "mesa_pd/data/shape/HalfSpace.h"
 #include "mesa_pd/data/shape/Sphere.h"
 #include "mesa_pd/domain/BlockForestDataHandling.h"
@@ -540,8 +541,12 @@ int main(int argc, char** argv)
    auto ss                  = walberla::make_shared< mesa_pd::data::ShapeStorage >();
    using ParticleAccessor_T = mesa_pd::data::ParticleAccessorWithShape;
    auto accessor            = walberla::make_shared< ParticleAccessor_T >(ps, ss);
-   auto sphereShape         = ss->create< mesa_pd::data::Sphere >(particleDiameter * real_t(0.5));
-   ss->shapes[sphereShape]->updateMassAndInertia(densityParticle);
+   //auto sphereShape         = ss->create< mesa_pd::data::Sphere >(particleDiameter * real_t(0.5));
+   //ss->shapes[sphereShape]->updateMassAndInertia(densityParticle);
+
+   auto boxShape         = ss->create< mesa_pd::data::Box >(Vector3<real_t>(particleDiameter,particleDiameter,particleDiameter));
+   ss->shapes[boxShape]->updateMassAndInertia(densityParticle);
+   const Vector3< real_t > boxEdgeLength(particleDiameter, particleDiameter, particleDiameter);
 
    // prevent particles from interfering with inflow and outflow by putting the bounding planes slightly in front
    const real_t planeOffsetFromInflow  = dx;
@@ -564,7 +569,7 @@ int main(int argc, char** argv)
          p.setPosition(pt);
          p.setInteractionRadius(particleDiameter * real_t(0.5));
          p.setOwner(mpi::MPIManager::instance()->rank());
-         p.setShapeID(sphereShape);
+         p.setShapeID(boxShape);
          p.setType(1);
          p.setTemperature(particleTemperature);
       }
@@ -662,19 +667,32 @@ int main(int argc, char** argv)
 
    syncCall();
 
+   bool hasLocalBoxParticle = false;
+   walberla::id_t boxUid   = walberla::id_t();
+   for (size_t idx = 0; idx < accessor->size(); ++idx)
+   {
+      if (accessor->getShape(idx)->getShapeType() == mesa_pd::data::Box::SHAPE_TYPE)
+      {
+         boxUid = accessor->getUid(idx);
+         hasLocalBoxParticle = true;
+         break;
+      }
+   }
+   WALBERLA_LOG_INFO_ON_ROOT("box mapping status is  " << hasLocalBoxParticle);
+
    real_t timeStepSizeRPD = real_t(1) / real_t(numberOfParticleSubCycles);
    mesa_pd::kernel::VelocityVerletPreForceUpdate vvIntegratorPreForce(timeStepSizeRPD);
    mesa_pd::kernel::VelocityVerletPostForceUpdate vvIntegratorPostForce(timeStepSizeRPD);
    mesa_pd::kernel::LinearSpringDashpot collisionResponse(2);
-   collisionResponse.setFrictionCoefficientDynamic(0, 1, dynamicFrictionCoefficient);
-   collisionResponse.setFrictionCoefficientDynamic(1, 1, dynamicFrictionCoefficient);
+   //collisionResponse.setFrictionCoefficientDynamic(0, 1, dynamicFrictionCoefficient);
+   //collisionResponse.setFrictionCoefficientDynamic(1, 1, dynamicFrictionCoefficient);
    real_t massSphere       = densityParticle * particleVolume;
    real_t meffSpherePlane  = massSphere;
    real_t meffSphereSphere = massSphere * massSphere / (real_t(2) * massSphere);
-   collisionResponse.setStiffnessAndDamping(0, 1, coefficientOfRestitution, particleCollisionTime, kappa,
+   /*collisionResponse.setStiffnessAndDamping(0, 1, coefficientOfRestitution, particleCollisionTime, kappa,
                                             meffSpherePlane);
    collisionResponse.setStiffnessAndDamping(1, 1, coefficientOfRestitution, particleCollisionTime, kappa,
-                                            meffSphereSphere);
+                                            meffSphereSphere);*/
    mesa_pd::kernel::AssocToBlock assoc(blocks->getBlockForestPointer());
    mesa_pd::mpi::ReduceProperty reduceProperty;
    mesa_pd::mpi::ReduceContactHistory reduceAndSwapContactHistory;
@@ -711,19 +729,19 @@ int main(int argc, char** argv)
    boundariesBlockString += "\n BoundariesEnergy";
    boundariesBlockString += "{"
                             "Border { direction W;    walldistance -1;  flag Density_Energy_static_hot; }"
-                            "Border { direction E;    walldistance -1;  flag Density_Energy_static_hot; }";
+                            "Border { direction E;    walldistance -1;  flag Density_Energy_static_cold; }";
 
    if (!periodicInY)
    {
-      boundariesBlockString += "Border { direction S;    walldistance -1;  flag Density_Energy_static_hot; }"
-                               "Border { direction N;    walldistance -1;  flag Density_Energy_static_hot; }";
+      boundariesBlockString += "Border { direction S;    walldistance -1;  flag Neumann_Energy; }"
+                               "Border { direction N;    walldistance -1;  flag Neumann_Energy; }";
    }
 
    if (!periodicInZ)
    {
       boundariesBlockString +=
-         "Border { direction T;    walldistance -1;  flag Density_Energy_static_hot; }"
-         "Border { direction B;    walldistance -1;  flag Density_Energy_static_hot; }"; // Neumann_Energy
+         "Border { direction T;    walldistance -1;  flag Neumann_Energy; }"
+         "Border { direction B;    walldistance -1;  flag Neumann_Energy; }"; // Neumann_Energy
    }
    boundariesBlockString += "}";
 
@@ -787,6 +805,9 @@ int main(int argc, char** argv)
    energy_static_bc_hot.fillFromFlagField< FlagField_T >(blocks, flagFieldEnergyID,
                                                          Density_Energy_Flag_static_hot, Energy_Flag);
 
+   std::function< void(IBlock*) > fluidParticleMappingSweep = [](IBlock*) {};
+   std::function< void(IBlock*) > thermalParticleMappingSweep = [](IBlock*) {};
+
 ///////////////
 // TIME LOOP //
 ///////////////
@@ -805,19 +826,31 @@ int main(int argc, char** argv)
                                               particleAndVolumeFractionSoA_fluid,
                                               particleSubBlockSize);
 
+   if (hasLocalBoxParticle)
+   {
+      BoxFractionMappingSweep< ParticleAccessor_T, lbm_mesapd_coupling::RegularParticlesSelector, Weighting >
+         boxFractionMappingSweepFluid(blocks, accessor, boxUid, boxEdgeLength, particleAndVolumeFractionSoA_fluid,
+                                      lbm_mesapd_coupling::RegularParticlesSelector());
+      fluidParticleMappingSweep = boxFractionMappingSweepFluid;
+   }
+
    ParticleAndVolumeFractionSoA_T< 1 > particleAndVolumeFractionSoA_energy(blocks,omegaT_f);
    PSMSweepCollection psmSweepCollectionTemperature(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
                                                     particleAndVolumeFractionSoA_energy,
                                                     particleSubBlockSize);
 
+   if (hasLocalBoxParticle)
+   {
+      BoxFractionMappingSweep< ParticleAccessor_T, lbm_mesapd_coupling::RegularParticlesSelector, 1 >
+         boxFractionMappingSweepTemperature(blocks, accessor, boxUid, boxEdgeLength, particleAndVolumeFractionSoA_energy,
+                                            lbm_mesapd_coupling::RegularParticlesSelector());
+      thermalParticleMappingSweep = boxFractionMappingSweepTemperature;
+   }
+
    SetParticleTemperaturesSweepp settemperatureparticles(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
                                 particleAndVolumeFractionSoA_energy, densityConcentrationFieldCPUGPUID,particleTemperaturesFieldCPUGPUID,true);
 
-
-
-
    pystencils::initializeConcentrationField initializeConcentrationField(BsFieldID,BFieldID,densityConcentrationFieldID,particleTemperaturesFieldID, Tref);
-
 
 
    // Initialize PDFs
@@ -875,8 +908,8 @@ int main(int argc, char** argv)
 
    for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
    {
-      psmSweepCollectionFluid.particleMappingSweep(&(*blockIt));
-      psmSweepCollectionTemperature.particleMappingSweep(&(*blockIt));
+      fluidParticleMappingSweep(&(*blockIt));
+      thermalParticleMappingSweep(&(*blockIt));
    }
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
    gpu::fieldCpy< BField_T , BFieldGPU_T >(blocks, BFieldID,
@@ -885,14 +918,17 @@ int main(int argc, char** argv)
 #endif
    for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
    {
+      WALBERLA_LOG_INFO_ON_ROOT("reache here also");
       psmSweepCollectionFluid.setParticleVelocitiesSweep(&(*blockIt));
+      WALBERLA_LOG_INFO_ON_ROOT("reache here also 22");
       settemperatureparticles(&(*blockIt));
+
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
       gpu::fieldCpy< particleTemperaturesField_T , particleTemperaturesFieldGPU_T >(blocks, particleTemperaturesFieldID,
                                                                              particleTemperaturesFieldCPUGPUID);
 #endif
 
-      initializeConcentrationField(&(*blockIt));
+      //initializeConcentrationField(&(*blockIt));
 
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
       gpu::fieldCpy< gpu::GPUField< real_t >, DensityField_concentration_T >(blocks, densityConcentrationFieldCPUGPUID,
@@ -965,11 +1001,12 @@ int main(int argc, char** argv)
       auto particleVtkOutput = make_shared< mesa_pd::vtk::ParticleVtkOutput >(ps);
       particleVtkOutput->addOutput< mesa_pd::data::SelectParticleUid >("uid");
       particleVtkOutput->addOutput< mesa_pd::data::SelectParticleLinearVelocity >("velocity");
-      particleVtkOutput->addOutput< mesa_pd::data::SelectParticleInteractionRadius >("radius");
+      //particleVtkOutput->addOutput< mesa_pd::data::SelectParticleInteractionRadius >("radius");
       particleVtkOutput->addOutput< mesa_pd::data::SelectParticleTemperature >("temperature");
+      //particleVtkOutput->addOutput<SelectBoxEdgeLength >("temperature");
       // limit output to process-local spheres
-      particleVtkOutput->setParticleSelector([sphereShape](const mesa_pd::data::ParticleStorage::iterator& pIt) {
-         return pIt->getShapeID() == sphereShape &&
+      particleVtkOutput->setParticleSelector([boxShape](const mesa_pd::data::ParticleStorage::iterator& pIt) {
+         return pIt->getShapeID() == boxShape &&
                 !(mesa_pd::data::particle_flags::isSet(pIt->getFlags(), mesa_pd::data::particle_flags::GHOST));
       });
       auto particleVtkWriter = vtk::createVTKOutput_PointData(particleVtkOutput, "particles", vtkSpacingParticles, vtkFolder);
@@ -991,10 +1028,10 @@ int main(int argc, char** argv)
                                                                                 densityConcentrationFieldCPUGPUID);
          gpu::fieldCpy< GhostLayerField< real_t, 1 >, BFieldGPU_T >(blocks, BFieldID,
                                                                     particleAndVolumeFractionSoA_fluid.BFieldID);
-         gpu::fieldCpy< DensityField_energy_T , gpu::GPUField< real_t > >(blocks, energyFieldID,
-                                                                         energyFieldCPUGPUID);
+         /*gpu::fieldCpy< DensityField_energy_T , gpu::GPUField< real_t > >(blocks, energyFieldID,
+                                                                         energyFieldCPUGPUID);*/
          gpu::fieldCpy< PdfField_energy_T , gpu::GPUField< real_t > >(blocks, pdfFieldEnergyID,
-                                                                         pdfFieldFluidCPUGPUID);
+                                                                         pdfFieldEnergyCPUGPUID);
          gpu::fieldCpy< particleTemperaturesField_T , gpu::GPUField< real_t > >(blocks, particleTemperaturesFieldID,
                                                                      particleTemperaturesFieldCPUGPUID);
 #endif
@@ -1093,7 +1130,7 @@ int main(int argc, char** argv)
    pystencils::PSMEnergySweep psmEnergySweep(
       particleAndVolumeFractionSoA_energy.BFieldID,densityConcentrationFieldCPUGPUID,energyFieldCPUGPUID,
       pdfFieldEnergyCPUGPUID,velFieldFluidCPUGPUID,Cp_f,Cp_s,Qs,kf,ks,rhoCpRef, densityFluid, densityParticle);
-
+   WALBERLA_LOG_INFO_ON_ROOT("reache here also");
 
    timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")
                   << Sweep(deviceSyncWrapper(noSlip_fluid_bc.getSweep()), "Boundary Handling (No slip fluid)");
@@ -1116,7 +1153,7 @@ int main(int argc, char** argv)
 
 
 
-   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.particleMappingSweep), "Particle mapping Fluid"); // uses weighting for hydrodynamics specified in Cmakelists file
+   timeloop.add() << Sweep(deviceSyncWrapper(fluidParticleMappingSweep), "Particle mapping Fluid"); // uses weighting for hydrodynamics specified in Cmakelists file
 
    timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.setParticleVelocitiesSweep),
                            "Set particle velocities from fluid sweepcollection");
@@ -1209,7 +1246,7 @@ int main(int argc, char** argv)
          if (particleBarriers) WALBERLA_MPI_BARRIER();
          timeloopTiming["RPD forEachParticle ipilc"].end();
 
-         if (useLubricationForces)
+         /*if (useLubricationForces)
          {
             // lubrication correction
             timeloopTiming["RPD forEachParticlePairHalf lubricationCorrectionKernel"].start();
@@ -1232,10 +1269,10 @@ int main(int argc, char** argv)
                *accessor);
             if (particleBarriers) WALBERLA_MPI_BARRIER();
             timeloopTiming["RPD forEachParticlePairHalf lubricationCorrectionKernel"].end();
-         }
+         }*/
 
          // collision response
-         timeloopTiming["RPD forEachParticlePairHalf collisionResponse"].start();
+        /* timeloopTiming["RPD forEachParticlePairHalf collisionResponse"].start();
          linkedCells.forEachParticlePairHalf(
             useOpenMP, mesa_pd::kernel::ExcludeInfiniteInfinite(), *accessor,
             [&collisionResponse, &rpdDomain, timeStepSizeRPD](const size_t idx1, const size_t idx2, auto& ac) {
@@ -1253,7 +1290,7 @@ int main(int argc, char** argv)
             },
             *accessor);
          if (particleBarriers) WALBERLA_MPI_BARRIER();
-         timeloopTiming["RPD forEachParticlePairHalf collisionResponse"].end();
+         timeloopTiming["RPD forEachParticlePairHalf collisionResponse"].end();*/
 
          timeloopTiming["RPD reduceProperty reduceAndSwapContactHistory"].start();
          reduceAndSwapContactHistory(*ps);

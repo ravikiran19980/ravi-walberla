@@ -167,6 +167,7 @@ with CodeGeneration() as ctx:
     k_f = sp.Symbol("k_f")
     k_s = sp.Symbol("k_s")
 
+
     # Energy PSM config
     psm_energy_config = ThermalPSMConfig(
         stencil=stencil_energy,

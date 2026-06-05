@@ -311,6 +311,47 @@ class BoxFractionMappingSweep
 
    void operator()(IBlock* block)
    {
+      particleAndVolumeFractionSoA_.mappingUIDs.clear();
+      size_t numMappedParticles = 0;
+      for (size_t idx = 0; idx < ac_->size(); ++idx)
+      {
+         if (mappingParticleSelector_(idx, *ac_))
+         {
+            particleAndVolumeFractionSoA_.mappingUIDs.push_back(ac_->getUid(idx));
+            ++numMappedParticles;
+         }
+      }
+
+      if (numMappedParticles == uint_t(0)) return;
+
+      const size_t scalarArraySize = numMappedParticles * sizeof(real_t);
+      real_t* positions_h          = (real_t*) malloc(3 * scalarArraySize);
+      size_t boxMappedIndex        = std::numeric_limits< size_t >::max();
+      size_t idxMapped             = 0;
+      for (size_t idx = 0; idx < ac_->size(); ++idx)
+      {
+         if (mappingParticleSelector_(idx, *ac_))
+         {
+            for (size_t d = 0; d < 3; ++d)
+            {
+               positions_h[idxMapped * 3 + d] = ac_->getPosition(idx)[d];
+            }
+            if (ac_->getUid(idx) == boxUid_) { boxMappedIndex = idxMapped; }
+            ++idxMapped;
+         }
+      }
+
+      assert(boxMappedIndex != std::numeric_limits< size_t >::max());
+
+      if (particleAndVolumeFractionSoA_.positions != nullptr)
+      {
+         WALBERLA_GPU_CHECK(gpuFree(particleAndVolumeFractionSoA_.positions));
+      }
+      WALBERLA_GPU_CHECK(gpuMalloc(&(particleAndVolumeFractionSoA_.positions), 3 * scalarArraySize));
+      WALBERLA_GPU_CHECK(
+         gpuMemcpy(particleAndVolumeFractionSoA_.positions, positions_h, 3 * scalarArraySize, gpuMemcpyHostToDevice));
+      free(positions_h);
+
       auto nOverlappingParticlesField =
          block->getData< nOverlappingParticlesFieldGPU_T >(particleAndVolumeFractionSoA_.nOverlappingParticlesFieldID);
       auto BsField  = block->getData< BsFieldGPU_T >(particleAndVolumeFractionSoA_.BsFieldID);
@@ -333,19 +374,9 @@ class BoxFractionMappingSweep
       Vector3< real_t > blockStart = block->getAABB().minCorner();
       myKernel.addParam(double3{ blockStart[0], blockStart[1], blockStart[2] });
       myKernel.addParam(block->getAABB().xSize() / real_t(nOverlappingParticlesField->xSize()));
-
-      // Determine the index of the box among the mapped particles
-      size_t idxMapped = 0;
-      for (size_t idx = 0; idx < ac_->size(); ++idx)
-      {
-         if (mappingParticleSelector_(idx, *ac_))
-         {
-            if (ac_->getUid(idx) == boxUid_) { break; }
-            idxMapped++;
-         }
-      }
-      myKernel.addParam(idxMapped);
+      myKernel.addParam(boxMappedIndex);
       myKernel();
+      WALBERLA_GPU_CHECK(gpuDeviceSynchronize());
    }
 
    shared_ptr< StructuredBlockStorage > blockStorage_;
