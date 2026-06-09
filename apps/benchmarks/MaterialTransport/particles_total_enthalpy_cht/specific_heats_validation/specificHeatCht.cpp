@@ -541,10 +541,10 @@ int main(int argc, char** argv)
    auto ss                  = walberla::make_shared< mesa_pd::data::ShapeStorage >();
    using ParticleAccessor_T = mesa_pd::data::ParticleAccessorWithShape;
    auto accessor            = walberla::make_shared< ParticleAccessor_T >(ps, ss);
-   //auto sphereShape         = ss->create< mesa_pd::data::Sphere >(particleDiameter * real_t(0.5));
-   //ss->shapes[sphereShape]->updateMassAndInertia(densityParticle);
+  // auto sphereShape         = ss->create< mesa_pd::data::Sphere >(particleDiameter * real_t(0.5));
+  // ss->shapes[sphereShape]->updateMassAndInertia(densityParticle);
 
-   auto boxShape         = ss->create< mesa_pd::data::Box >(Vector3<real_t>(particleDiameter,particleDiameter,particleDiameter));
+  auto boxShape         = ss->create< mesa_pd::data::Box >(Vector3<real_t>(particleDiameter,particleDiameter,particleDiameter));
    ss->shapes[boxShape]->updateMassAndInertia(densityParticle);
    const Vector3< real_t > boxEdgeLength(particleDiameter, particleDiameter, particleDiameter);
 
@@ -910,6 +910,8 @@ int main(int argc, char** argv)
    {
       fluidParticleMappingSweep(&(*blockIt));
       thermalParticleMappingSweep(&(*blockIt));
+      //psmSweepCollectionFluid.particleMappingSweep(&(*blockIt));
+      //psmSweepCollectionTemperature.particleMappingSweep(&(*blockIt));
    }
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
    gpu::fieldCpy< BField_T , BFieldGPU_T >(blocks, BFieldID,
@@ -1153,12 +1155,12 @@ int main(int argc, char** argv)
 
 
 
-   timeloop.add() << Sweep(deviceSyncWrapper(fluidParticleMappingSweep), "Particle mapping Fluid"); // uses weighting for hydrodynamics specified in Cmakelists file
-
+   //timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.particleMappingSweep), "Particle mapping Fluid"); // uses weighting for hydrodynamics specified in Cmakelists file
+   timeloop.add() << Sweep(deviceSyncWrapper(fluidParticleMappingSweep), "Particle mapping Fluid");
    timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.setParticleVelocitiesSweep),
                            "Set particle velocities from fluid sweepcollection");
-   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping Thermal"); // always uses a weighting of 1
-
+   //timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping Thermal"); // always uses a weighting of 1
+   timeloop.add() << Sweep(deviceSyncWrapper(thermalParticleMappingSweep), "Particle mapping Thermal");
    timeloop.add() << Sweep(deviceSyncWrapper(psmFluidSweep), "PSM Fluid sweep");
 
    timeloop.add() << Sweep(deviceSyncWrapper(psmEnergySweep), "PSM Energy sweep");

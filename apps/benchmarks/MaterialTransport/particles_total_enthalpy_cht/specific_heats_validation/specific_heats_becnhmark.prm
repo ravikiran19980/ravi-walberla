@@ -1,9 +1,9 @@
 PhysicalSetup // all to be specified in SI/ref units
 {
 
-    xSize 0.08; // = width  // 4dp
-    ySize 0.08; // = depth  // 4dp
-    zSize 0.2; // = height  // 20dp
+    xSize 0.4; // = width  // 4dp
+    ySize 0.1; // = depth  // 4dp
+    zSize 0.4; // = height  // 20dp
 
     periodicInX false;
     periodicInY false;
@@ -34,11 +34,11 @@ NumericalSetup
     useLubricationForces true;
     numberOfParticleSubCycles 10;
     useParticles true;
-    useIntegrators true;
+    useIntegrators false;
     particleSubBlockSize <5, 5, 5>;
     linkedCellWidthRation 1.01;
     particleBarriers true;
-    SingleparticleLocation <0.04,0.04,0.04>;
+    SingleparticleLocation <0.2,0.05,0.2>;
     writeSlice false;
     sendDirectlyFromGPU false;
 }
@@ -51,8 +51,8 @@ TemperatureSetup
     Tparticle 0;
     PrandtlNumber 0.7;
     Cpf 1;
-    Cps 1;
-    Kr  5;
+    Cps 0.9976;
+    Kr  10;
     Gr 1000;
     Qso 0;
 }
@@ -61,8 +61,8 @@ Output
 {
     infoSpacing 0.1; // in s
     vtkSpacingParticles 1; // in s
-    vtkSpacingFluid 1; // in s
-    vtkFolder vtk_out_fluc_k5_cp1;
+    vtkSpacingFluid 10; // in s
+    vtkFolder vtk_out_k10_big;
     performanceLogFrequency 5000000000;
     filename  velocity_vs_time_cp8.txt;
 }
