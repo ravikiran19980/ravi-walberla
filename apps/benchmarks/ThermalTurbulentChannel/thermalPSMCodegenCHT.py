@@ -225,8 +225,8 @@ with CodeGeneration() as ctx:
 
     sub_exp_temperature = pdfs_temperature_setter.subexpressions[0]
     rhs_temperature = []
-    #rhs_temperature.append((1 - B.center) * temperature_field.center + (B.center) * sp.Symbol("Tp"))
-    rhs_temperature.append(temperature_field.center)
+    rhs_temperature.append((1 - B.center) * temperature_field.center + (B.center) * sp.Symbol("Tp"))
+    #rhs_temperature.append(temperature_field.center)
     pdfs_temperature_setter.subexpressions.remove(sub_exp_temperature)
     pdfs_temperature_setter.subexpressions.append(Assignment(sub_exp_temperature.lhs, Add(*rhs_temperature)))
     #pdfs_temperature_setter.subexpressions.append(Assignment(sp.Symbol("c_s"), 1/sp.sqrt(3)))
@@ -435,7 +435,7 @@ with CodeGeneration() as ctx:
         method_temperature, density=temperature_field, velocity=None,pdfs=pdfs_temperature.center_vector
     )
 
-    generate_sweep(ctx, "FluidMacroSetter", pdfs_fluid_setter)
-    generate_sweep(ctx, "FluidMacroGetter", pdfs_fluid_getter)
-    generate_sweep(ctx, "TemperatureMacroSetter", pdfs_temperature_setter)
-    generate_sweep(ctx, "TemperatureMacroGetter", pdfs_temperature_getter)
+    generate_sweep(ctx, "FluidMacroSetter", pdfs_fluid_setter,target=target)
+    generate_sweep(ctx, "FluidMacroGetter", pdfs_fluid_getter,target=target)
+    generate_sweep(ctx, "TemperatureMacroSetter", pdfs_temperature_setter,target=target)
+    generate_sweep(ctx, "TemperatureMacroGetter", pdfs_temperature_getter,target=target)

@@ -27,10 +27,10 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
                     BC_Temperature_DiffusionDirichlet_static.h BC_Temperature_DiffusionDirichlet_static.${CODEGEN_FILE_SUFFIX}
                     WelfordVelocity.h WelfordVelocity.${CODEGEN_FILE_SUFFIX}
                     WelfordTemperature.h WelfordTemperature.${CODEGEN_FILE_SUFFIX}
-                    FluidMacroSetter.h FluidMacroSetter.cpp
-                    FluidMacroGetter.h FluidMacroGetter.cpp
-                    TemperatureMacroSetter.h TemperatureMacroSetter.cpp
-                    TemperatureMacroGetter.h TemperatureMacroGetter.cpp
+                    FluidMacroSetter.h FluidMacroSetter.${CODEGEN_FILE_SUFFIX}
+                    FluidMacroGetter.h FluidMacroGetter.${CODEGEN_FILE_SUFFIX}
+                    TemperatureMacroSetter.h TemperatureMacroSetter.${CODEGEN_FILE_SUFFIX}
+                    TemperatureMacroGetter.h TemperatureMacroGetter.${CODEGEN_FILE_SUFFIX}
                     initializeTemperatureField.h initializeTemperatureField.cpp
                     GeneralInfoHeader.h
         )

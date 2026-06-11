@@ -410,7 +410,7 @@ class WallStatistics
                const real_t U0   = real_t(0);
                const real_t U1   = velocityField->get(x, y, z, 0);
                const real_t U2   = velocityField->get(x, y+1, z, 0);
-               const real_t dUdy = real_c(Ny_)*(-8.0 * U0 + 9.0 * U1 - U2) / (3.0 * dy_);
+               const real_t dUdy = (-8.0 * U0 + 9.0 * U1 - U2) / (3.0 * dy_);
                tauBottom_ +=  dUdy;
                countBottom_++;
             }
@@ -418,7 +418,7 @@ class WallStatistics
                const real_t U0   = real_t(0);
                const real_t U1   = velocityField->get(x, y, z, 0);
                const real_t U2   = velocityField->get(x, y-1, z, 0);
-               const real_t dUdy = real_c(Ny_)*(8.0 * U0 - 9.0 * U1 + U2) / (3.0 * dy_);
+               const real_t dUdy = (8.0 * U0 - 9.0 * U1 + U2) / (3.0 * dy_);
                tauTop_ +=  dUdy;
                countTop_++;
             })

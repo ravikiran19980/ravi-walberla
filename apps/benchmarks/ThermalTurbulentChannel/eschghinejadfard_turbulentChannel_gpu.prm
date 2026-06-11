@@ -74,7 +74,7 @@ vtk_params
 checkpoint_params
 {
     startFromCheckPointFile false;
-    checkpointingFileName testCheckpoint;
+    checkpointingFileName testCheckpoint_gpu;
     checkPointingFrequency 250000;
     writeContinuousCheckPoints true;
 }
