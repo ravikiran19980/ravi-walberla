@@ -1,0 +1,52 @@
+{
+   "version": 9,
+   "cmakeMinimumRequired": {
+      "major": 3,
+      "minor": 25,
+      "patch": 0
+   },
+   "include": ["${sourceDir}/utilities/workflows/cmake-fragments.json"],
+   "configurePresets": [
+      {
+         "name": "MTWBenchmark",
+         "displayName": "MTW Benchmark Config",
+         "inherits": [".codegen", ".clang", ".user-base"],
+         "cacheVariables": {
+            "WALBERLA_BUILD_BENCHMARKS": true,
+            "WARNING_DISABLE": true,
+            "WARNING_PEDANTIC": false,
+            "WARNING_ERROR": false,
+            "WARNING_DEPRECATED": false
+         }
+      }
+   ],
+   "buildPresets": [
+      {
+         "name": "MTWBenchmark",
+         "displayName": "MTW Benchmark Build",
+         "configurePreset": "MTWBenchmark",
+         "targets": [
+            "performance_cht_virtualsc_1",
+            "performance_cht_virtualsc_2",
+            "performance_cht_virtualsc_3"
+         ]
+      }
+   ],
+   "testPresets": [],
+   "workflowPresets": [
+      {
+         "name": "MTWBenchmark",
+         "displayName": "MTW Benchmark Workflow",
+         "steps": [
+            {
+               "type": "configure",
+               "name": "MTWBenchmark"
+            },
+            {
+               "type": "build",
+               "name": "MTWBenchmark"
+            }
+         ]
+      }
+   ]
+}
