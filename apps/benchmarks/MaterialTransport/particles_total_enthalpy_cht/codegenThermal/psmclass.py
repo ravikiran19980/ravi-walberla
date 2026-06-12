@@ -24,11 +24,11 @@ from lbmpy.relaxationrates import relaxation_rate_from_magic_number
 class ThermalPSMConfig(LBMConfig):
 
     # General Parameters
-    temperature_output: dict[str, Field] | None = None,
+    temperature_output: dict[str, Field] | None = None
     temperature_symbol: sp.Symbol = sp.Symbol("T")
     continuous_equilibrium: bool = False
     zero_centered: bool = False
-    collision_space_info: CollisionSpaceInfo = CollisionSpaceInfo(CollisionSpace.POPULATIONS)
+    collision_space_info: CollisionSpaceInfo = field(default_factory=lambda: CollisionSpaceInfo(CollisionSpace.POPULATIONS))
     energy_density_symbol: sp.Symbol = sp.Symbol("rho_Cp_T")
 
     # Fluid quantities:
@@ -42,7 +42,7 @@ class ThermalPSMConfig(LBMConfig):
     SC: int = 5
     MaxParticlesPerCell: int = 1
     individual_fraction_field: Field = None
-    particle_force_field = None,
+    particle_force_field: Field = None
     particle_temperature_field: Field = None
     particle_density: sp.Symbol = sp.Symbol("rho_p")
     particle_specific_heat: sp.Symbol = sp.Symbol("Cp_s")
