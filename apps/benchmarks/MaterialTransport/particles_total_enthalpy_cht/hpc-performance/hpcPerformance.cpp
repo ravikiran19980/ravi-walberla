@@ -1206,12 +1206,7 @@ int main(int argc, char** argv)
       // second adding all the ENERGY related things to the timeloop
 
       timeloop.add() << BeforeFunction(communication_energy, "LBM energy Communication")
-                     << Sweep(deviceSyncWrapper(neumann_energy_bc.getSweep()), "Boundary Handling (Energy Neumann)");
-
-      timeloop.add() << Sweep(deviceSyncWrapper(energy_static_bc_hot.getSweep()),
-                              "Boundary Handling (Energy static bc hot)");
-
-      timeloop.add() << Sweep(deviceSyncWrapper(energy_static_bc_cold.getSweep()),
+                     << Sweep(deviceSyncWrapper(energy_static_bc_cold.getSweep()),
                               "Boundary Handling (Energy static bc cold)");
 
       //timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep),

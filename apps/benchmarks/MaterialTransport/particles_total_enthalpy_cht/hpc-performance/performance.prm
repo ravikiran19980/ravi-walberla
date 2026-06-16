@@ -9,7 +9,7 @@ PhysicalSetup // all to be specified in SI/ref units
     periodicInY false;
     periodicInZ false;
 
-    runtime 3;
+    runtime 1;
     densityFluid 1.;
     particleDiameter 0.016;
     densityParticle 1.1;
@@ -31,7 +31,7 @@ NumericalSetup
     numZBlocks 4;
 
     use2DRefVel false;
-    useLubricationForces true;
+    useLubricationForces false;
     numberOfParticleSubCycles 1;
     useParticles true;
     useIntegrators true;
@@ -46,7 +46,7 @@ NumericalSetup
     resThreshold 1e-5;
     volfraction 0.4;
     randomParticles false;
-    useCommunicationHiding true;
+    useCommunicationHiding false;
 }
 
 TemperatureSetup
@@ -69,5 +69,5 @@ Output
     vtkSpacingParticles 0; // in s
     vtkSpacingFluid 0; // in s
     vtkFolder vtk_out;
-    performanceLogFrequency 3000;
+    performanceLogFrequency 1000;
 }
