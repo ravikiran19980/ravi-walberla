@@ -1194,6 +1194,10 @@ int main(int argc, char** argv)
       timeloop.add() << Sweep(deviceSyncWrapper(freeSlip_fluid_bc.getSweep()), "Boundary Handling (Free slip fluid)");
       timeloop.add() << Sweep(deviceSyncWrapper(density_fluid_bc.getSweep()), "Boundary Handling (fluid density)");
 
+      timeloop.add() << BeforeFunction(communication_energy, "LBM energy Communication")
+               << Sweep(deviceSyncWrapper(energy_static_bc_cold.getSweep()),
+                        "Boundary Handling (Energy static bc cold)");
+
       timeloop.add() << Sweep(
          deviceSyncWrapper(psmSweepCollectionFluid.particleMappingSweep),
          "Particle mapping Fluid"); // uses weighting for hydrodynamics specified in Cmakelists file
@@ -1205,9 +1209,7 @@ int main(int argc, char** argv)
 
       // second adding all the ENERGY related things to the timeloop
 
-      timeloop.add() << BeforeFunction(communication_energy, "LBM energy Communication")
-                     << Sweep(deviceSyncWrapper(energy_static_bc_cold.getSweep()),
-                              "Boundary Handling (Energy static bc cold)");
+
 
       //timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep),
       //                        "Particle mapping Thermal"); // always uses a weighting of 1
