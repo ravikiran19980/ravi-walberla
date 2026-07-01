@@ -62,11 +62,12 @@ void scopedTimer()
       auto scopedTimer = pool.getScopeTimer( "scope timer" );
 
       double sum = 0.0;
-      for( double d = 0.0; d < math::pi; d += 0.00001 )
+      for( double d = 0.0; d < math::pi; )
       {
          sum += std::atan( std::tan( d ) );
          sum += std::asin( std::sin( d ) );
          sum += std::acos( std::cos( d ) );
+         d += 0.00001;
       }
       WALBERLA_UNUSED(sum);
       pool["normal timer"].end();

@@ -65,12 +65,12 @@ public:
 
    class RefreshFunctor {
    public:
-      RefreshFunctor( BlockForest & forest, const uint_t checkFrequency = uint_t(1) ) :
-         forest_( forest ), executionCounter_( uint_t(0) ), checkFrequency_( checkFrequency ) {}
+      RefreshFunctor( BlockForest & forest, const uint_t checkFrequency = uint_t{1} ) :
+         forest_( forest ), executionCounter_( uint_t{0} ), checkFrequency_( checkFrequency ) {}
       void operator()()
       {
          ++executionCounter_;
-         if( checkFrequency_ == uint_t(0) || ( executionCounter_ - uint_c(1) ) % checkFrequency_ != 0 )
+         if( checkFrequency_ == uint_t{0} || ( executionCounter_ - uint_c(1) ) % checkFrequency_ != 0 )
             return;
          forest_.refresh();
       }
@@ -98,12 +98,12 @@ public:
    class SnapshotCreationFunctor {
    public:
       SnapshotCreationFunctor( BlockForest & forest, const SnapshotCreationFunction & function,
-                               const uint_t checkFrequency = uint_t(1) ) :
-         forest_( forest ), executionCounter_( uint_t(0) ), checkFrequency_( checkFrequency ), function_( function ) {}
+                               const uint_t checkFrequency = uint_t{1} ) :
+         forest_( forest ), executionCounter_( uint_t{0} ), checkFrequency_( checkFrequency ), function_( function ) {}
       void operator()()
       {
          ++executionCounter_;
-         if( checkFrequency_ == uint_t(0) || ( executionCounter_ - uint_c(1) ) % checkFrequency_ != 0 )
+         if( checkFrequency_ == uint_t{0} || ( executionCounter_ - uint_c(1) ) % checkFrequency_ != 0 )
             return;
          std::vector<uint_t> sendTo;
          std::vector<uint_t> recvFrom;
@@ -243,7 +243,7 @@ public:
    uint_t getBlockIdBytes()   const { uint_t const bits = treeIdDigits_ + 3 * depth_; return (bits >> 3) + (( bits & 7 ) ? uint_c(1) : uint_c(0)); }
    
    uint_t getDepth()          const { return depth_; }
-   uint_t getNumberOfLevels() const { return depth_ + uint_t(1); }
+   uint_t getNumberOfLevels() const { return depth_ + uint_t{1}; }
    
    bool limitedDepth() const
    {
@@ -258,16 +258,16 @@ public:
    uint_t getMaxDepth() const
    {
 #ifdef WALBERLA_BLOCKFOREST_PRIMITIVE_BLOCKID
-      return ( math::UINT_BITS - treeIdDigits_ ) / uint_t(3);
+      return ( math::UINT_BITS - treeIdDigits_ ) / uint_t{3};
 #else
       return std::numeric_limits< uint_t >::max();
 #endif
    }
-   uint_t getMaxLevels() const { return limitedLevels() ? (getMaxDepth() + uint_t(1)) : std::numeric_limits< uint_t >::max(); }
+   uint_t getMaxLevels() const { return limitedLevels() ? (getMaxDepth() + uint_t{1}) : std::numeric_limits< uint_t >::max(); }
 
 
 
-   inline uint_t getNumberOfBlocks() const { WALBERLA_ASSERT_EQUAL( BlockStorage::getNumberOfBlocks(), blocks_.size() ); return blocks_.size(); }
+   inline uint_t getNumberOfBlocks() const override { WALBERLA_ASSERT_EQUAL( BlockStorage::getNumberOfBlocks(), blocks_.size() ); return blocks_.size(); }
    inline uint_t getNumberOfBlocks( const uint_t level ) const;
 
    inline const std::map< BlockID, shared_ptr< Block > > & getBlockMap() const { return blocks_; }
@@ -344,7 +344,7 @@ public:
 
 
    
-   internal::BlockDataHandlingAdder addBlockData( const std::string & identifier = std::string() ) { return { *this, identifier }; }
+   internal::BlockDataHandlingAdder addBlockData( const std::string & identifier = std::string() ) { return { *this, identifier }; } // NOLINT(bugprone-derived-method-shadowing-base-method) // Fix would require a even more convoluted wrapper of wrapper structure.
 
    template< typename T >
    inline BlockDataID addBlockData( const shared_ptr< T > & dataHandling,
@@ -359,7 +359,7 @@ public:
                                     const Set<SUID> & incompatibleSelectors = Set<SUID>::emptySet() )
    { return BlockStorage::addBlockData( function, identifier, requiredSelectors, incompatibleSelectors ); }
                                     
-   BlockDataID addBlockData( const domain_decomposition::internal::SelectableBlockDataHandlingWrapper & dataHandling, const std::string& identifier = std::string() )
+   BlockDataID addBlockData( const domain_decomposition::internal::SelectableBlockDataHandlingWrapper & dataHandling, const std::string& identifier = std::string() ) override
    { return BlockStorage::addBlockData( dataHandling, identifier ); }
    
    template< typename T >
@@ -372,7 +372,7 @@ public:
    BlockDataID loadBlockData( const std::string & file,
                               const domain_decomposition::internal::SelectableBlockDataHandlingWrapper & dataHandling,
                               const std::string & identifier = std::string(),
-                              const bool forceSerialIO = true )
+                              const bool forceSerialIO = true ) override
    { return BlockStorage::loadBlockData( file, dataHandling, identifier, forceSerialIO ); }
 
 
@@ -390,7 +390,7 @@ public:
    void refresh();
 
    /// Functor that calls refresh with given frequency
-   RefreshFunctor getRefreshFunctor( const uint_t checkFrequency = uint_t(1) ) { return { *this, checkFrequency }; }
+   RefreshFunctor getRefreshFunctor( const uint_t checkFrequency = uint_t{1} ) { return { *this, checkFrequency }; }
    
    /// Modification stamp is changed when refresh moves a block or refines/coarsens at least one block
    /// however, stamp may (in rare cases) also change if block structure was not altered
@@ -473,7 +473,7 @@ public:
    void restoreSnapshot( const SnapshotRestoreFunction & processMapping, const bool rebelance = true );
 
    SnapshotCreationFunctor getSnapshotCreationFunctor( const SnapshotCreationFunction & function,
-                                                       const uint_t checkFrequency = uint_t(1) ) { return { *this, function, checkFrequency }; }
+                                                       const uint_t checkFrequency = uint_t{1} ) { return { *this, function, checkFrequency }; }
 
    inline uint_t    addCallbackFunctionAfterBlockDataIsRestored( const SnapshotRestoreCallbackFunction & f );
    inline void   removeCallbackFunctionAfterBlockDataIsRestored( const uint_t handle );
@@ -489,7 +489,7 @@ protected:
 
    bool equal( const BlockStorage* rhs ) const override;
    
-   void addBlockData( IBlock * const block, const BlockDataID & index, domain_decomposition::internal::BlockData * const data )
+   void addBlockData( IBlock * const block, const BlockDataID & index, domain_decomposition::internal::BlockData * const data ) override
    { BlockStorage::addBlockData( block, index, data ); }
 
 private:
@@ -907,7 +907,7 @@ inline uint_t BlockForest::addRefreshCallbackFunctionBeforeBlockDataIsPacked( co
 {
    callbackBeforeBlockDataIsPacked_.insert( callbackBeforeBlockDataIsPacked_.end(), std::make_pair( nextCallbackBeforeBlockDataIsPackedHandle_, f ) );
    ++nextCallbackBeforeBlockDataIsPackedHandle_;
-   return nextCallbackBeforeBlockDataIsPackedHandle_ - uint_t(1);
+   return nextCallbackBeforeBlockDataIsPackedHandle_ - uint_t{1};
 }
 
 inline void BlockForest::removeRefreshCallbackFunctionBeforeBlockDataIsPacked( const uint_t handle )
@@ -921,7 +921,7 @@ inline uint_t BlockForest::addRefreshCallbackFunctionBeforeBlockDataIsUnpacked( 
 {
    callbackBeforeBlockDataIsUnpacked_.insert( callbackBeforeBlockDataIsUnpacked_.end(), std::make_pair( nextCallbackBeforeBlockDataIsUnpackedHandle_, f ) );
    ++nextCallbackBeforeBlockDataIsUnpackedHandle_;
-   return nextCallbackBeforeBlockDataIsUnpackedHandle_ - uint_t(1);
+   return nextCallbackBeforeBlockDataIsUnpackedHandle_ - uint_t{1};
 }
 
 inline void BlockForest::removeRefreshCallbackFunctionBeforeBlockDataIsUnpacked( const uint_t handle )
@@ -935,7 +935,7 @@ inline uint_t BlockForest::addRefreshCallbackFunctionAfterBlockDataIsUnpacked( c
 {
    callbackAfterBlockDataIsUnpacked_.insert( callbackAfterBlockDataIsUnpacked_.end(), std::make_pair( nextCallbackAfterBlockDataIsUnpackedHandle_, f ) );
    ++nextCallbackAfterBlockDataIsUnpackedHandle_;
-   return nextCallbackAfterBlockDataIsUnpackedHandle_ - uint_t(1);
+   return nextCallbackAfterBlockDataIsUnpackedHandle_ - uint_t{1};
 }
 
 inline void BlockForest::removeRefreshCallbackFunctionAfterBlockDataIsUnpacked( const uint_t handle )
@@ -949,7 +949,7 @@ inline uint_t BlockForest::addCallbackFunctionAfterBlockDataIsRestored( const Sn
 {
    callbackAfterBlockDataIsRestored_.insert( callbackAfterBlockDataIsRestored_.end(), std::make_pair( nextCallbackAfterBlockDataIsRestoredHandle_, f ) );
    ++nextCallbackAfterBlockDataIsRestoredHandle_;
-   return nextCallbackAfterBlockDataIsRestoredHandle_ - uint_t(1);
+   return nextCallbackAfterBlockDataIsRestoredHandle_ - uint_t{1};
 }
 
 inline void BlockForest::removeCallbackFunctionAfterBlockDataIsRestored( const uint_t handle )

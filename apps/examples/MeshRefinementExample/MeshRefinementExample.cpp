@@ -48,7 +48,7 @@ using flag_t      = walberla::uint32_t;
 using FlagField_T = FlagField< flag_t >;
 
 using BoundaryCollection_T = lbm::MeshRefinementExampleBoundaryCollection< FlagField_T >;
-const FlagUID FluidFlagUID("Fluid");
+const FlagUID& FluidFlagUID() { static const FlagUID uid("Fluid"); return uid; }
 
 
 class AABBRefinement
@@ -100,7 +100,7 @@ int main(int argc, char** argv)
 
 
    // Create block forest
-   const uint_t numProcs = uint_t(mpi::MPIManager::instance()->numProcesses());
+   const uint_t numProcs = uint_c(mpi::MPIManager::instance()->numProcesses());
    SetupBlockForest setupBfs;
    AABBRefinement refinement( sphere.boundingBox(), refinementLevels );
    setupBfs.addRefinementSelectionFunction(std::function<void(SetupBlockForest &)>(refinement));
@@ -155,11 +155,11 @@ int main(int argc, char** argv)
       )
    }
 
-   geometry::setNonBoundaryCellsToDomain< FlagField_T >(*blocks, flagFieldId, FluidFlagUID);
+   geometry::setNonBoundaryCellsToDomain< FlagField_T >(*blocks, flagFieldId, FluidFlagUID());
    WALBERLA_MPI_WORLD_BARRIER();
-   BoundaryCollection_T boundaryCollection( blocks, flagFieldId, pdfFieldCpuId, FluidFlagUID, initialVel[0] );
+   BoundaryCollection_T boundaryCollection( blocks, flagFieldId, pdfFieldCpuId, FluidFlagUID(), initialVel[0] );
 
-   lbm::BlockForestEvaluation<FlagField_T>( blocks, flagFieldId, FluidFlagUID ).logInfoOnRoot();
+   lbm::BlockForestEvaluation<FlagField_T>( blocks, flagFieldId, FluidFlagUID() ).logInfoOnRoot();
 
    // Communication
    auto communication = std::make_shared< blockforest::communication::NonUniformBufferedScheme< LBMCommunicationStencil_T > >(blocks);
@@ -185,7 +185,7 @@ int main(int argc, char** argv)
       vtkOutput->addCellDataWriter(densityWriter);
 
       field::FlagFieldCellFilter< FlagField_T > fluidFilter(flagFieldId);
-      fluidFilter.addFlag(FluidFlagUID);
+      fluidFilter.addFlag(FluidFlagUID());
       vtkOutput->addCellInclusionFilter(fluidFilter);
 
       timeloop.addFuncAfterTimeStep(vtk::writeFiles(vtkOutput), "VTK Output");
@@ -202,7 +202,7 @@ int main(int argc, char** argv)
    double time = simTimer.max();
 
    // Performance metrics
-   lbm_generated::PerformanceEvaluation<FlagField_T> const performance(blocks, flagFieldId, FluidFlagUID);
+   lbm_generated::PerformanceEvaluation<FlagField_T> const performance(blocks, flagFieldId, FluidFlagUID());
    performance.logResultOnRoot(timesteps, time);
    timingPool.unifyRegisteredTimersAcrossProcesses();
    timingPool.logResultOnRoot( timing::REDUCE_TOTAL, true );

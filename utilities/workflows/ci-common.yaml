@@ -1,8 +1,6 @@
-# Note: You can use `extends` to merge hashes but not arrays. (See example: https://docs.gitlab.com/ci/yaml/yaml_optimization/#merge-details)
-# Note: YAML anchors can be used to merge arrays, but only from the same file. (No included files)
-# Note: The `!reference` tag works work with included files as well.
-# Note: GitLab CI will apply flattening for sequences passed with the !reference tag ONLY for "script-like" hashes. 
-#       Sequences from every other hash, will be nested. I.e., !reference tag sequences can only be merged for "before_script", "script", and "after_script" sections. 
+####################################################################################################
+#       Common Global Pipeline Settings
+####################################################################################################
 
 variables:
   CI_CONTAINER_REPOSITORY: i10git.cs.fau.de:5005/ci/images/spack-stable-bincache
@@ -10,9 +8,29 @@ variables:
 default:
   interruptible: true
 
+# Workflow definition
+# See https://docs.gitlab.com/ci/yaml/workflow/
 workflow:
+  rules:
+    # Run merge request pipelines
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    # Do not run branch pipelines if a merge request exists
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    # Do run branch pipelines otherwise
+    - if: $CI_COMMIT_BRANCH
   auto_cancel:
     on_new_commit: interruptible
+
+####################################################################################################
+#       Hidden CI Job Templates (to be extended or referenced by actual jobs)
+# --------------------------------------------------------------------------------------------------
+# Note: You can use `extends` to merge hashes but not arrays. (See example: https://docs.gitlab.com/ci/yaml/yaml_optimization/#merge-details)
+# Note: YAML anchors can be used to merge arrays, but only from the same file. (No included files)
+# Note: The `!reference` tag works work with included files as well.
+# Note: GitLab CI will apply flattening for sequences passed with the !reference tag ONLY for "script-like" hashes. 
+#       Sequences from every other hash, will be nested. I.e., !reference tag sequences can only be merged for "before_script", "script", and "after_script" sections. 
+####################################################################################################
 
 .debugging:
   after_script:
@@ -22,24 +40,45 @@ workflow:
     - mv CMakeCache.txt $CI_PROJECT_DIR/debug/
     - mv compile_commands.json $CI_PROJECT_DIR/debug/
     - mv src/waLBerlaDefinitions.h $CI_PROJECT_DIR/debug/
+  before_script:
+    - echo "Debugging information will be collected and stored in the debug/ folder as artifacts for 2 days."
+    - | # Set up debugging information collection
+      export DEBUG_SYSTEM_FILE=$CI_PROJECT_DIR/debug/system.log
+      mkdir -p $CI_PROJECT_DIR/debug
+      touch $DEBUG_SYSTEM_FILE
+      echo "System Information for debugging purposes:" >> $DEBUG_SYSTEM_FILE
+    - | # Check NVIDIA driver versions
+      {
+        echo -e "\nGPU Information:\n"
+        nvidia-container-toolkit --version  || echo "No NVIDIA container toolkit installed."
+        nvidia-smi || echo "No CUDA driver installed."
+        nvidia-smi --query-gpu=compute_cap --format=csv || echo "Failed to query compute capability."
+      } >> $DEBUG_SYSTEM_FILE 
+    - | # Get CPU information
+      {
+        echo -e "\nCPU Information:\n"
+        cat /proc/cpuinfo || echo "/proc/cpuinfo not available."
+      } >> $DEBUG_SYSTEM_FILE
+    - | # Check environment paths
+      {
+        echo -e "[Before build] LD_LIBRARY_PATH is:\n$LD_LIBRARY_PATH"
+        ls -l /usr/local/cuda/lib64/libcudart.so || echo "CUDA runtime library not found."
+      } | tee $DEBUG_SYSTEM_FILE
+    - | # Check software versions
+      {
+        $CXX --version
+        cmake --version
+        cmake -E capabilities | grep -A 10 "CUDA" || echo "CUDA not detected by CMake."
+        nvcc --version || echo "NVCC not found (CUDA not installed in container)."
+        ccache --version
+        mpirun --version
+        python3 --version
+      } | tee $DEBUG_SYSTEM_FILE
+
 
 .testsuite-common:
   before_script:
-    # Check driver versions
-    - nvidia-container-toolkit --version  || echo "No NVIDIA container toolkit installed."
-    - nvidia-smi || echo "No CUDA driver installed."
-    - nvidia-smi --query-gpu=compute_cap --format=csv || echo "Failed to query compute capability."
-    # Check envrionment paths
-    - echo -e "[Before build] LD_LIBRARY_PATH is:\n$LD_LIBRARY_PATH"
-    - ls -l /usr/local/cuda/lib64/libcudart.so || echo "CUDA runtime library not found."
-    # Check software versions
-    - $CXX --version
-    - cmake --version
-    - cmake -E capabilities | grep -A 10 "CUDA" || echo "CUDA not detected by CMake."
-    - nvcc --version || echo "NVCC not found (CUDA not installed in container)."
-    - ccache --version
-    - mpirun --version
-    - python3 --version
+    - !reference [.debugging, before_script]
     # Create and activate Python Environment
     - python3 -m venv .venv
     - source .venv/bin/activate
@@ -77,6 +116,7 @@ workflow:
   extends: .testsuite-common
   tags:
     - docker
+    - AVX2
 
 .testsuite-base-MacOS:
   extends: .testsuite-common
@@ -97,6 +137,8 @@ workflow:
     WALBERLA_CI_CUDA_ARCHITECTURES: "60"
   tags:
     - cudaComputeCapability6.1
+    - docker
+    - AVX2
 
 ####################################################################################################
 #                                             Patches                                              #

@@ -70,7 +70,7 @@ static void refinementSelectionFunctionRandom( SetupBlockForest& forest ) {
    const uint_t max = blocks.size() >> 3;
 
    for( uint_t i = 0; i != max; ++i ) {
-      SetupBlock* const block = blocks[ math::intRandom( uint_t(0), uint_c( blocks.size()-1 ) ) ];
+      SetupBlock* const block = blocks[ math::intRandom( uint_t{0}, uint_c( blocks.size()-1 ) ) ];
       if( block->getLevel() < 4 ) block->setMarker( true );
    }
 }
@@ -116,7 +116,7 @@ static memory_t communicationCalculationFunction( const SetupBlock* const a, con
 
 static uint_t* blockdata23( const IBlock* const /*block*/ ) {
 
-   return new uint_t(23);
+   return new uint_t{23};
 }
 
 
@@ -130,7 +130,7 @@ static int* blockdata42( const IBlock* const /*block*/ ) {
 
 static uint_t* blockdata5( const IBlock* const /*block*/ ) {
 
-   return new uint_t(5);
+   return new uint_t{5};
 }
 
 
@@ -140,14 +140,14 @@ class Base
 public:
    virtual ~Base() = default;
    bool operator==( const Base& /*rhs*/ ) const { return true; }
-           uint_t override() const { return 1; }
+           uint_t override() const { return 1; } // NOLINT(bugprone-derived-method-shadowing-base-method) //  can not be virtual, as the test requires the function to work on a Base* of a Derived object
    virtual uint_t func()     const { return 2; }
 };
 
 class Derived : public Base
 {
 public:
-   uint_t override() const { return 10; }
+   uint_t override() const { return 10; } // NOLINT(bugprone-derived-method-shadowing-base-method) //  can not override, as the test requires the function to work on a Base* of a Derived object
    uint_t func()     const override { return 20; }
 };
 
@@ -170,14 +170,14 @@ class SecondBase
 public:
    virtual ~SecondBase() = default;
    bool operator==( const SecondBase& /*rhs*/ ) const { return true; }
-   uint_t override() const { return 100; }
+   uint_t override() const { return 100; } // NOLINT(bugprone-derived-method-shadowing-base-method) //  can not be virtual, as the test requires the function to work on a SecondBase* of a Derived object
 };
 
-class Multi : public Base, public SecondBase
+class Multi : public Base, public SecondBase // NOLINT(misc-multiple-inheritance)
 {
 public:
    bool operator==( const Multi& /*rhs*/ ) const { return true; }
-   uint_t override() const { return 1000; }
+   uint_t override() const { return 1000; } // NOLINT(bugprone-derived-method-shadowing-base-method) //  can not override, as the test requires the function to work on a Base* of a Multi object
    uint_t func()     const override { return 2000; }
 };
 
@@ -206,9 +206,9 @@ static void test() {
 
    AABB domain( xmin, ymin, zmin, xmax, ymax, zmax );
 #ifdef NDEBUG
-   const uint_t xSize = math::intRandom( uint_t(4), uint_t(8) );
-   const uint_t ySize = math::intRandom( uint_t(4), uint_t(8) );
-   const uint_t zSize = math::intRandom( uint_t(4), uint_t(8) );
+   const uint_t xSize = math::intRandom( uint_t{4}, uint_t{8} );
+   const uint_t ySize = math::intRandom( uint_t{4}, uint_t{8} );
+   const uint_t zSize = math::intRandom( uint_t{4}, uint_t{8} );
 #else
    const uint_t xSize = uint_c(3);
    const uint_t ySize = uint_c(3);

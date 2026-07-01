@@ -82,7 +82,7 @@ void testStreamInput()
       Plane p;
       iss >> p;
       WALBERLA_CHECK( iss.good() );
-      Plane p_ref( Plane::Vec3Real( real_t(1), real_t(2), real_t(3) ), Plane::Vec3Real( real_t(4), real_t(5), real_t(6) ) );
+      Plane p_ref( Plane::Vec3Real( real_t{1}, real_t{2}, real_t{3} ), Plane::Vec3Real( real_t{4}, real_t{5}, real_t{6} ) );
       WALBERLA_CHECK_EQUAL( p, p_ref );
    }
    {
@@ -90,7 +90,7 @@ void testStreamInput()
       Plane p;
       iss >> p;
       WALBERLA_CHECK( iss.good() );
-      Plane p_ref( Plane::Vec3Real( real_t(1), real_t(2), real_t(3) ), real_t(4) );
+      Plane p_ref( Plane::Vec3Real( real_t{1}, real_t{2}, real_t{3} ), real_t{4} );
       WALBERLA_CHECK_EQUAL( p, p_ref );
    }
 }
@@ -103,30 +103,33 @@ int main(int argc, char * argv[])
 
    using Vec3Real = Vector3<real_t>;
 
-   Plane p( Vec3Real( real_t(0), real_t(0), real_t(0) ), Vec3Real( real_t(1), real_t(0), real_t(0) ) );
+   Plane p( Vec3Real( real_t{0}, real_t{0}, real_t{0} ), Vec3Real( real_t{1}, real_t{0}, real_t{0} ) );
 
    testIOStream( p );
 
-   for( real_t x(-10); x < real_t(11); x += real_t(0.25) )
+   for( real_t x(-10); x < real_t{11}; )
    {
-      Vec3Real v( x, real_t(0), real_t(0) );
+      Vec3Real v( x, real_t{0}, real_t{0} );
       WALBERLA_CHECK_FLOAT_EQUAL( p.signedDistance( v ), x );
       WALBERLA_CHECK_FLOAT_EQUAL( p.distance( v ), std::fabs( x ) );
-      WALBERLA_CHECK_EQUAL( p.signedDistance( v ) <= real_t(0), p.isInHalfSpace( v ) );
+      WALBERLA_CHECK_EQUAL( p.signedDistance( v ) <= real_t{0}, p.isInHalfSpace( v ) );
+      x += real_t{0.25};
    }
 
-   for( real_t x(-10); x < real_t(11); x += real_t(0.25) )
+   for( real_t x(-10); x < real_t{11}; )
    {
       static const Vector3<real_t> ZERO_VECTOR {};
       Plane pShifted( p );
       pShifted.shift( x );
       WALBERLA_CHECK_FLOAT_EQUAL( pShifted.signedDistance( ZERO_VECTOR ), -x );
-      for( real_t f(-10); f < real_t(11); f += real_t(0.25) )
+      for( real_t f(-10); f < real_t{11}; )
       {
          Plane pShiftedScaled( pShifted );
          pShiftedScaled.scale( f );
          WALBERLA_CHECK_FLOAT_EQUAL( pShiftedScaled.signedDistance( ZERO_VECTOR ), -x * f );
+         f += real_t{0.25};
       }
+      x += real_t{0.25};
    }
 
    RandomPointGenerator<real_t> rpg( Vec3Real(0,0,0), Vec3Real(100,100,100) );
@@ -139,7 +142,7 @@ int main(int argc, char * argv[])
 
       real_t angle = std::acos( (p1-p0) * (p2-p0) / std::sqrt( (p1-p0).sqrLength() * (p2-p0).sqrLength() ) );
 
-      if( (p0 - p1).sqrLength() < 1e-6 || (p0 - p2).sqrLength() < 1e-6 || (p2 - p1).sqrLength() < 1e-6 || angle < math::pi / real_t(180) )
+      if( (p0 - p1).sqrLength() < 1e-6 || (p0 - p2).sqrLength() < 1e-6 || (p2 - p1).sqrLength() < 1e-6 || angle < math::pi / real_t{180} )
       {
          --i;
          continue;
@@ -147,15 +150,15 @@ int main(int argc, char * argv[])
 
       Plane plane( p0, (p0 - p1).getNormalized() % (p0 - p2).getNormalized() );
 
-      WALBERLA_CHECK_FLOAT_EQUAL( plane.signedDistance( p0 ), real_t(0) );
-      WALBERLA_CHECK_FLOAT_EQUAL( plane.distance      ( p0 ), real_t(0) );
-      WALBERLA_CHECK_FLOAT_EQUAL( plane.signedDistance( p1 ), real_t(0) );
-      WALBERLA_CHECK_FLOAT_EQUAL( plane.distance      ( p1 ), real_t(0) );
-      WALBERLA_CHECK_FLOAT_EQUAL( plane.signedDistance( p2 ), real_t(0) );
-      WALBERLA_CHECK_FLOAT_EQUAL( plane.distance      ( p2 ), real_t(0) );
-      WALBERLA_CHECK_GREATER_EQUAL( plane.distance( p0 ), real_t(0) );
-      WALBERLA_CHECK_GREATER_EQUAL( plane.distance( p1 ), real_t(0) );
-      WALBERLA_CHECK_GREATER_EQUAL( plane.distance( p2 ), real_t(0) );
+      WALBERLA_CHECK_FLOAT_EQUAL( plane.signedDistance( p0 ), real_t{0} );
+      WALBERLA_CHECK_FLOAT_EQUAL( plane.distance      ( p0 ), real_t{0} );
+      WALBERLA_CHECK_FLOAT_EQUAL( plane.signedDistance( p1 ), real_t{0} );
+      WALBERLA_CHECK_FLOAT_EQUAL( plane.distance      ( p1 ), real_t{0} );
+      WALBERLA_CHECK_FLOAT_EQUAL( plane.signedDistance( p2 ), real_t{0} );
+      WALBERLA_CHECK_FLOAT_EQUAL( plane.distance      ( p2 ), real_t{0} );
+      WALBERLA_CHECK_GREATER_EQUAL( plane.distance( p0 ), real_t{0} );
+      WALBERLA_CHECK_GREATER_EQUAL( plane.distance( p1 ), real_t{0} );
+      WALBERLA_CHECK_GREATER_EQUAL( plane.distance( p2 ), real_t{0} );
    }
 
    testStreamInput();
