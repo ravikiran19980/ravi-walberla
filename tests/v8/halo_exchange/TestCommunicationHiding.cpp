@@ -49,7 +49,7 @@ void TestCommunicationHiding()
 {
    Vector3< uint_t > cellsPerBlock = Vector3< uint_t >(10, 10, 10);
 
-   const uint_t numProcs = uint_t(mpi::MPIManager::instance()->numProcesses());
+   const uint_t numProcs = uint_c(mpi::MPIManager::instance()->numProcesses());
    const Vector3< uint_t > numBlocks = math::getFactors3D(numProcs);
 
    AABB domainAabb{ 0., 0., 0., 1., 1., real_c(cellsPerBlock[2]) / real_c(cellsPerBlock[0]) };

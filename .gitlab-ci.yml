@@ -10,24 +10,12 @@ stages:
   - deploy
   - benchmark
 
-# Workflow definition
-# See https://docs.gitlab.com/ci/yaml/workflow/
-workflow:
-  rules:
-    # Run merge request pipelines
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    # Do not run branch pipelines if a merge request exists
-    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
-      when: never
-    # Do run branch pipelines otherwise
-    - if: $CI_COMMIT_BRANCH
-
 ####################################################################################################
 #       Every-Commit Test Suite & Coverage Collection
 ####################################################################################################
 
-clang [cpu-hybrid]:
-  image: $CI_CONTAINER_REPOSITORY:i10ci-walberla-clang-21
+clang-22 [cpu-hybrid]:
+  image: $CI_CONTAINER_REPOSITORY:i10ci-walberla-clang-22
   stage: Testsuite
   extends: .testsuite-base-linux
   before_script:
@@ -38,7 +26,7 @@ clang [cpu-hybrid]:
     CC: clang
     CXX: clang++
 
-icx [cpu-hybrid]:
+icx-2025 [cpu-hybrid]:
   image: $CI_CONTAINER_REPOSITORY:i10ci-walberla-icx-2025
   stage: Testsuite
   extends: .testsuite-base-linux
@@ -47,7 +35,7 @@ icx [cpu-hybrid]:
     CC: icx
     CXX: icpx
 
-gcc [cuda-hybrid-coverage]:
+gcc-15 [cuda-hybrid-coverage]:
   image: $CI_CONTAINER_REPOSITORY:i10ci-walberla-gcc-15
   stage: Testsuite
   extends: .testsuite-base-linux-cuda
@@ -88,10 +76,10 @@ gcc [cuda-hybrid-coverage]:
 #       Code Quality
 ####################################################################################################
 
-clang-tidy:
-  image: $CI_CONTAINER_REPOSITORY:i10ci-walberla-clang-21
+clang-tidy [llvm22-cuda-hybrid-debug]:
+  image: $CI_CONTAINER_REPOSITORY:i10ci-walberla-clang-22
   stage: "Code Quality"
-  needs: []
+  needs: [] # Allows out of order execution of this job, so that it can run in parallel to the testsuite jobs.
   before_script:
     - !reference [.clang-library-path-patch, before_script]
     - apt-get update; apt-get install -y tree
@@ -128,25 +116,32 @@ clang-tidy:
 clang-tidy:preview:
   stage: "Code Quality Preview"
   needs:
-    - job: clang-tidy
+    - job: "clang-tidy [llvm22-cuda-hybrid-debug]"
       artifacts: true
   variables:
     # Constructing the URL using the ID from the build job (exported via dotenv)
-    REVIEW_URL: "https://walberla.pages.i10git.cs.fau.de/-/walberla/-/jobs/${BUILD_JOB_ID}/artifacts/clang-tidy-output/index.html"
+    REVIEW_URL: "https://walberla.pages.i10git.cs.fau.de/-/walberla/-/jobs/${CI_JOB_ID}/artifacts/stored-clang-tidy-output/index.html"
   environment:
-    name: clang-tidy/${CI_COMMIT_REF_SLUG}
+    name: clang-tidy/${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}
     url: $REVIEW_URL
     on_stop: clang-tidy:preview:stop
+    auto_stop_in: 1 month
   rules:
     - if: $CI_MERGE_REQUEST_ID
+      when: always
   script:
-    - echo "Setting up environment link for job ${BUILD_JOB_ID}"
+    - echo "Copy clang-tidy output of job ${BUILD_JOB_ID} for longer storage."
+    - cp -r clang-tidy-output stored-clang-tidy-output
     - echo "View clang-tidy output at ${REVIEW_URL}"
+  artifacts:
+    paths:
+      - stored-clang-tidy-output
 
 clang-tidy:preview:stop:
   stage: "Code Quality Preview"
+  dependencies: [] # This job does not need any artifacts from previous jobs, as it is only responsible for stopping the environment.
   environment:
-    name: clang-tidy/${CI_COMMIT_REF_SLUG}
+    name: clang-tidy/${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}
     action: stop
   rules:
     - if: $CI_MERGE_REQUEST_ID
@@ -158,7 +153,7 @@ clang-tidy:preview:stop:
 python-static-checks:
   image: i10git.cs.fau.de:5005/pycodegen/pycodegen/nox:alpine
   stage: "Code Quality"
-  needs: []
+  needs: [] # Allows out of order execution of this job, so that it can run in parallel to the testsuite jobs.
   tags:
     - docker
   script:
@@ -168,9 +163,7 @@ python-static-checks:
 schema-validation:
   image: "python:3.13"
   stage: "Code Quality"
-  needs: []
-  tags:
-    - docker
+  needs: [] # Allows out of order execution of this job, so that it can run in parallel to the testsuite jobs.
   before_script:
     - python -m venv .venv
     - source .venv/bin/activate
@@ -186,6 +179,7 @@ schema-validation:
 generate-test-matrix:
   stage: Test Matrix
   image: "python:3.13"
+  dependencies: [] # This job does not need any artifacts from previous jobs, as it is only responsible for generating the test matrix.
   before_script:
     - python -m venv .venv
     - source .venv/bin/activate
@@ -225,7 +219,7 @@ trigger-test-matrix:
 documentation:
   image: $CI_CONTAINER_REPOSITORY:i10ci-walberla-gcc-15
   stage: Documentation
-  needs: []
+  needs: [] # Allows out of order execution of this job, so that it can run in parallel to the testsuite jobs.
   variables:
     WALBERLA_DOXYGEN_HTTP_ROOT: /walberla
   before_script:
@@ -248,7 +242,7 @@ documentation:
     paths:
       - build/documentation/doc
       - build/documentation/DoxygenWarnings.txt
-    expire_in: 1 week
+    expire_in: 2 days
     when: always
 
 documentation:preview:
@@ -258,19 +252,25 @@ documentation:preview:
       artifacts: true
   variables:
     # Constructing the URL using the ID from the build job (exported via dotenv)
-    REVIEW_URL: "https://walberla.pages.i10git.cs.fau.de/-/walberla/-/jobs/${BUILD_JOB_ID}/artifacts/build/documentation/doc/html/index.html"
+    REVIEW_URL: "https://walberla.pages.i10git.cs.fau.de/-/walberla/-/jobs/${CI_JOB_ID}/artifacts/stored-html/index.html"
   environment:
     name: doc/${CI_COMMIT_REF_SLUG}
     url: $REVIEW_URL
     on_stop: documentation:preview:stop
+    auto_stop_in: 1 month
   rules:
     - if: $CI_MERGE_REQUEST_ID
   script:
-    - echo "Setting up environment link for job ${BUILD_JOB_ID}"
+    - echo "Copy documentation output of job ${BUILD_JOB_ID} for longer storage."
+    - cp -r build/documentation/doc/html stored-html
     - echo "View documentation at ${REVIEW_URL}"
+  artifacts:
+    paths:
+      - stored-html
 
 documentation:preview:stop:
   stage: Documentation
+  dependencies: [] # This job does not need any artifacts from previous jobs, as it is only responsible for stopping the environment.
   environment:
     name: doc/${CI_COMMIT_REF_SLUG}
     action: stop
@@ -284,15 +284,13 @@ documentation:preview:stop:
 pages:
   image: alpine:latest
   stage: deploy
-  needs: ["documentation", "gcc [cuda-hybrid-coverage]"]
+  needs: ["documentation", "gcc-15 [cuda-hybrid-coverage]"]
   script:
     - mv build/documentation/doc/html public
     - mv coverage public/coverage
   artifacts:
     paths:
       - public
-  tags:
-    - docker
   rules:
     - if: $CI_PROJECT_PATH == "walberla/walberla" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 

@@ -26,6 +26,7 @@
 
 #include <type_traits>
 #include <iterator>
+#include <string_view>
 #include <vector>
 
 
@@ -40,7 +41,7 @@ class DistributedSample
 public:
 
    DistributedSample() :
-      sum_( real_t(0) ), min_( real_t(0) ), max_( real_t(0) ), size_( uint_t(0) ), mean_( real_t(0) ), variance_( real_t(0) ) {}
+      sum_( real_t{0} ), min_( real_t{0} ), max_( real_t{0} ), size_( uint_t{0} ), mean_( real_t{0} ), variance_( real_t{0} ) {}
 
    // insert
 
@@ -55,7 +56,7 @@ public:
    template <class InputIterator>
    void castToRealAndInsert( InputIterator first, InputIterator last );
 
-   void clear() { data_.clear(); sum_ = real_t(0); min_ = real_t(0); max_ = real_t(0); size_ = uint_t(0); mean_ = real_t(0); variance_ = real_t(0); }
+   void clear() { data_.clear(); sum_ = real_t{0}; min_ = real_t{0}; max_ = real_t{0}; size_ = uint_t{0}; mean_ = real_t{0}; variance_ = real_t{0}; }
 
    // synchronization
 
@@ -79,7 +80,7 @@ public:
 
    uint_t size() { return size_; }
 
-   std::string format( const std::string & formatString = DEFAULT_FORMAT_STRING ) const;
+   std::string format( const std::string & formatString = std::string(DEFAULT_FORMAT_STRING) ) const;
 
 private:
    
@@ -92,7 +93,9 @@ private:
    real_t mean_;
    real_t variance_;
 
-   static const std::string DEFAULT_FORMAT_STRING;
+   static constexpr std::string_view DEFAULT_FORMAT_STRING = "Sample has %size values in [%min, %max], "
+                                                             "sum = %sum, mean = %mean, "
+                                                             "stddev = %stddev (relative: %relstddev)";
 };
 
 

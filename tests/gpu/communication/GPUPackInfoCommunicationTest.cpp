@@ -37,7 +37,7 @@
 #include "stencil/Directions.h"
 #include "stencil/Iterator.h"
 
-#include <vector>
+#include <array>
 
 #include "gpu/ErrorChecking.h"
 #include "gpu/FieldCopy.h"
@@ -54,7 +54,7 @@ using GPUFieldType    = gpu::GPUField< DataType >;
 using CommSchemeType  = blockforest::communication::UniformBufferedScheme< StencilType >;
 using GPUPackInfoType = gpu::communication::GPUPackInfo< GPUFieldType >;
 
-static std::vector< gpu::Layout > fieldLayouts = { gpu::fzyx, gpu::zyxf };
+static std::array< gpu::Layout, 2 > fieldLayouts = { gpu::fzyx, gpu::zyxf };
 static uint_t fieldLayoutIndex                 = 0;
 
 FieldType* createField(IBlock* const block, StructuredBlockStorage* const storage)
@@ -63,7 +63,7 @@ FieldType* createField(IBlock* const block, StructuredBlockStorage* const storag
                         storage->getNumberOfYCells(*block),                  // number of cells in y direction per block
                         storage->getNumberOfZCells(*block),                  // number of cells in z direction per block
                         1,                                                   // one ghost layer
-                        DataType(0),                                         // initial value
+                        DataType{0},                                         // initial value
                         fieldLayouts[fieldLayoutIndex],                      // layout
                         make_shared< gpu::HostFieldAllocator< DataType > >() // allocator for host pinned memory
    );

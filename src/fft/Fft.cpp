@@ -2,6 +2,8 @@
 #include "core/mpi/MPIManager.h"
 #include "Fft.h"
 
+#include <utility>
+
 namespace walberla {
 namespace fft {
 
@@ -80,7 +82,7 @@ FourierTransform<Field_T>::FourierTransform( shared_ptr< StructuredBlockForest >
       for (ptrdiff_t x = 0; x < local_no[0]; ++x)
       for (ptrdiff_t y = 0; y < local_no[1]; ++y)
       for (ptrdiff_t z = 0; z < local_no[2]; ++z)
-         greens_[size_t(z + local_no[2] * (y + local_no[1] * x))] = greens(uint_c(x+local_o_start[0]),uint_c(y+local_o_start[1]),uint_c(z+local_o_start[2]));
+         greens_[static_cast< size_t >(z + local_no[2] * (y + local_no[1] * x))] = greens(uint_c(x+local_o_start[0]),uint_c(y+local_o_start[1]),uint_c(z+local_o_start[2]));
    
    WALBERLA_ASSERT_NOT_NULLPTR(plan_forward_.get());
    WALBERLA_ASSERT_NOT_NULLPTR(plan_backward_.get());
@@ -104,7 +106,7 @@ void FourierTransform<Field_T>::operator() ()
    
    if (greens_)
    {
-      for (size_t i = 0; i < size_t(local_no[0]*local_no[1]*local_no[2]); ++i)
+      for (size_t i = 0; std::cmp_less(i, local_no[0]*local_no[1]*local_no[2]); ++i)
       {
          out_[i][0] *= greens_[i];
          out_[i][1] *= greens_[i];

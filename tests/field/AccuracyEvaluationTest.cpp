@@ -41,8 +41,8 @@ using namespace walberla;
 using ScalarField_T = field::GhostLayerField<real_t, 1>;
 using VectorField_T = field::GhostLayerField<Vector3<real_t>, 1>;
 
-const real_t          scalarValue( real_c(23) );
-const Vector3<real_t> vectorValue( real_c(23), real_c(42), real_c(5) );
+constexpr real_t          scalarValue( 23.0 );
+constexpr Vector3<real_t> vectorValue( 23.0, 42.0, 5.0 );
 
 
 real_t scalarSolution( const Vector3<real_t> & )
@@ -62,10 +62,10 @@ int main( int argc, char** argv )
 
    mpi::Environment mpiEnv( argc, argv );
 
-   auto blocks = blockforest::createUniformBlockGrid( uint_t( 2), uint_t( 1), uint_t( 2), // blocks
-                                                      uint_t(10), uint_t(10), uint_t(10), // cells
-                                                      real_t(1), // dx
-                                                      uint_t( 2), uint_t( 1), uint_t( 2) ); // number of processes
+   auto blocks = blockforest::createUniformBlockGrid( uint_t{ 2}, uint_t{ 1}, uint_t{ 2}, // blocks
+                                                      uint_t{10}, uint_t{10}, uint_t{10}, // cells
+                                                      real_t{1}, // dx
+                                                      uint_t{ 2}, uint_t{ 1}, uint_t{ 2} ); // number of processes
 
    //math::seedRandomGenerator( numeric_cast<std::mt19937::result_type>( std::time(0) ) );
    math::seedRandomGenerator( numeric_cast<std::mt19937::result_type>( MPIManager::instance()->rank() ) );
@@ -107,10 +107,10 @@ int main( int argc, char** argv )
    vValues.mpiGatherRoot();
    v2Values.mpiGatherRoot();
 
-   auto sAccuracy = field::makeAccuracyEvaluation< ScalarField_T >( blocks, sId, &scalarSolution, uint_t(0), uint_t(1) );
+   auto sAccuracy = field::makeAccuracyEvaluation< ScalarField_T >( blocks, sId, &scalarSolution, uint_t{0}, uint_t{1} );
    (*sAccuracy)();
 
-   auto vAccuracy = field::makeAccuracyEvaluation< VectorField_T >( blocks, vId, &vectorSolution, uint_t(0), uint_t(1) );
+   auto vAccuracy = field::makeAccuracyEvaluation< VectorField_T >( blocks, vId, &vectorSolution, uint_t{0}, uint_t{1} );
    (*vAccuracy)();
 
    WALBERLA_ROOT_SECTION()

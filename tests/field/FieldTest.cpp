@@ -57,7 +57,7 @@ void alignedAllocTest()
 void alignedAllocWithOffsetTest()
 {
    char * p;
-   p = (char*)field::aligned_malloc_with_offset(64 + 2*8,32,8);
+   p = static_cast< char* >(field::aligned_malloc_with_offset(64 + 2*8,32,8));
    WALBERLA_CHECK_EQUAL( ((size_t)p+8) % 16, 0u  );
    field::aligned_free(p);
 }
@@ -273,7 +273,7 @@ void ghostlayerIterators(field::Layout layout)
 
    for( auto dir = D3Q27::begin(); dir != D3Q27::end(); ++dir )
       for( auto i = field.beginGhostLayerOnly(*dir); i != field.end(); ++i )
-         *i = dirToString[*dir];
+         *i = std::string(dirToString[*dir]);
 
    WALBERLA_CHECK_EQUAL( field(-1,-1,-1), "BSW" );
    WALBERLA_CHECK_EQUAL( field(-1,-1, 0),  "SW" );
