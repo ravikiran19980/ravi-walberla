@@ -5,6 +5,7 @@
 #include <blockforest/all.h>
 #include <algorithm>
 #include "WelfordVelocity.h"
+#include "PIDController.h"
 
 /// BULK VELOCITY CALCULATION
 namespace walberla
@@ -120,6 +121,135 @@ class ForceCalculator
    real_t force_{};
    real_t oldforce_{};
 };
+
+
+template< typename VelocityField_T, typename MaskField_T >
+class ForceAdjusterPID
+{
+ public:
+   ForceAdjusterPID(
+    const shared_ptr< StructuredBlockStorage >& blocks,
+    const BlockDataID meanVelocityId,
+    const BlockDataID maskFieldId,
+    real_t targetVelocity,
+    real_t externalForcing,
+    real_t proportionalGain,
+    real_t derivativeGain,
+    real_t integralGain,
+    real_t maxRamp,
+    real_t minActuatingVariable,
+    real_t maxActuatingVariable)
+    : blocks_(blocks),
+      meanVelocityId_(meanVelocityId),
+      maskFieldId_(maskFieldId),
+      currentExternalForcing_(externalForcing),
+      pid_(targetVelocity, externalForcing, proportionalGain, derivativeGain,
+           integralGain, maxRamp, minActuatingVariable, maxActuatingVariable)
+
+   {
+      WALBERLA_LOG_INFO_ON_ROOT("Creating PID controller with pg = " << pid_.getProportionalGain()
+                                                                     << ", dg = " << pid_.getDerivateGain()
+                                                                     << ", ig = " << pid_.getIntegralGain());
+
+
+
+      /*const auto& domainSize = forceParams.domainSize;
+
+      Cell maxCell;
+      maxCell[forceParams.wallAxis] = int_c(forceParams.channelHalfWidth) - 1;
+      maxCell[flowDirection_]     = int_c(domainSize[flowDirection_]) - 1;
+      const auto remainingIdx     = 3 - forceParams.wallAxis - flowDirection_;
+      maxCell[remainingIdx]       = int_c(domainSize[remainingIdx]) - 1;
+      ci_                         = CellInterval(Cell{}, maxCell);*/
+
+   }
+
+   void operator()(const real_t currentBulkVelocity)
+   {
+      // compute new forcing value on root (since flow rate only known on root)
+      WALBERLA_ROOT_SECTION()
+      {
+         real_t newExternalForcing = pid_.update(currentBulkVelocity);
+         currentExternalForcing_   = newExternalForcing;
+      }
+
+      // send updated external forcing to all other processes
+      mpi::broadcastObject(currentExternalForcing_);
+   }
+
+
+
+   real_t bulkVelocity() const { return bulkVelocity_; }
+   void setBulkVelocity(const real_t bulkVelocity) { bulkVelocity_ = bulkVelocity; }
+
+   void calculateBulkVelocity()
+   {
+      // reset bulk velocity
+      bulkVelocity_ = 0_r;
+      real_t numFluidCells = 0_r;
+
+      auto blocks = blocks_.lock();
+      WALBERLA_CHECK_NOT_NULLPTR(blocks)
+
+      for (auto block = blocks->begin(); block != blocks->end(); ++block)
+      {
+         auto* meanVelocityField = block->template getData< VelocityField_T >(meanVelocityId_);
+         auto* maskField = block->template getData< MaskField_T >(maskFieldId_);
+         WALBERLA_CHECK_NOT_NULLPTR(meanVelocityField)
+         WALBERLA_CHECK_NOT_NULLPTR(maskField)
+
+         auto fieldSize = meanVelocityField->xyzSize();
+
+         for (auto cellIt = fieldSize.begin(); cellIt != fieldSize.end(); ++cellIt)
+         {
+            const real_t localMean = meanVelocityField->get(*cellIt, 0);
+            const real_t B = maskField->get(*cellIt);
+            const real_t fluidWeight = (1-B);
+            if (fluidWeight > 0)
+            {
+               bulkVelocity_ += localMean * fluidWeight;
+               numFluidCells += fluidWeight;
+            }
+         }
+      }
+
+      mpi::allReduceInplace< real_t >(bulkVelocity_, mpi::SUM);
+      mpi::allReduceInplace< real_t >(numFluidCells, mpi::SUM);
+
+
+      bulkVelocity_ /= numFluidCells;
+
+   }
+
+
+
+   real_t getCurrentDrivingForce() const
+   {
+      return  currentExternalForcing_;
+   }
+
+
+ private:
+   const std::weak_ptr< StructuredBlockStorage > blocks_{};
+   const BlockDataID meanVelocityId_{};
+   const BlockDataID maskFieldId_{};
+
+   const uint_t flowDirection_{};
+   const real_t channelHalfWidth_{};
+   const real_t targetBulkVelocity_{};
+   const real_t targetFrictionVelocity_{};
+
+   CellInterval ci_{};
+
+   real_t bulkVelocity_{};
+   real_t currentExternalForcing_{};
+   real_t oldforce_{};
+
+   PIDController pid_;
+};
+
+
+
 
 /// PLANE-AVERAGED PROFILES
 /**
