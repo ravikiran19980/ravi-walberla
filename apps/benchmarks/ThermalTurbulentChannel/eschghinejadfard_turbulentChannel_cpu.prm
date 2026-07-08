@@ -81,7 +81,6 @@ checkpoint_params
 
 statistics_params{
     convergenceTolerance 0.5;                      // percentage tolerance of wall shear and nusselt numbers
-    outputFrequency 10;                        // how often you want to monitor convergence and output the wall statistics
     planeAveragingtimeBlock 10000;               // required only for heat flux budgets
     heatFluxAveragingtimeBlock 600000;           // required only for heat flux budgets
 }

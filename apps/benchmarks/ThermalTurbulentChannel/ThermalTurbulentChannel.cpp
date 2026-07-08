@@ -71,6 +71,8 @@
 #include "mesa_pd/kernel/LinearSpringDashpot.h"
 #include "mesa_pd/kernel/ParticleSelector.h"
 #include "mesa_pd/kernel/VelocityVerlet.h"
+#include "mesa_pd/mpi/ClearGhostOwnerSync.h"
+#include "mesa_pd/mpi/ClearNextNeighborSync.h"
 #include "mesa_pd/mpi/ContactFilter.h"
 #include "mesa_pd/mpi/ReduceContactHistory.h"
 #include "mesa_pd/mpi/ReduceProperty.h"
@@ -464,12 +466,20 @@ int main(int argc, char** argv)
 
 
    Config::BlockHandle statisticsParams    = cfgFile->getBlock("statistics_params");
-   const uint_t outputFrequency            = statisticsParams.getParameter< uint_t >("outputFrequency");
    const real_t convergenceTolerance       = statisticsParams.getParameter< real_t >("convergenceTolerance");
+   const uint_t planeAveragingtimeBlock    = statisticsParams.getParameter< uint_t >("planeAveragingtimeBlock");
+   const uint_t heatFluxAveragingtimeBlock = statisticsParams.getParameter< uint_t >("heatFluxAveragingtimeBlock");
+
 
    Config::BlockHandle performance_params    = cfgFile->getBlock("performance_params");
    const uint_t performanceLogFrequency   = performance_params.getParameter< uint_t >("performanceLogFrequency");
    const bool sendDirectlyFromGPU         = performance_params.getParameter< bool >("sendDirectlyFromGPU");
+
+#ifdef run_with_temperature
+   const uint_t planeAveragingtimeBlock    = statisticsParams.getParameter< uint_t >("planeAveragingtimeBlock");
+   const uint_t heatFluxAveragingtimeBlock = statisticsParams.getParameter< uint_t >("heatFluxAveragingtimeBlock");
+#endif
+
 
    // get PID controller parameters
    Config::BlockHandle PIDParameters        = cfgFile->getBlock("PIDParameters");
@@ -483,10 +493,6 @@ int main(int argc, char** argv)
 
 
 
-#ifdef run_with_temperature
-   const uint_t planeAveragingtimeBlock    = statisticsParams.getParameter< uint_t >("planeAveragingtimeBlock");
-   const uint_t heatFluxAveragingtimeBlock = statisticsParams.getParameter< uint_t >("heatFluxAveragingtimeBlock");
-#endif
 
 
    // convert SI units to simulation (LBM) units and check setup
@@ -494,21 +500,22 @@ int main(int argc, char** argv)
    Vector3< uint_t > domainSize(uint_c(xSize), uint_c(ySize),
                                 uint_c(zSize ));
    WALBERLA_LOG_INFO_ON_ROOT("domain size is " << domainSize);
-   WALBERLA_CHECK_EQUAL(domainSize[0], xSize, "domain size in x is not divisible by given dx");
-   WALBERLA_CHECK_EQUAL(domainSize[1], ySize, "domain size in y is not divisible by given dx");
-   WALBERLA_CHECK_EQUAL(domainSize[2], zSize, "domain size in z is not divisible by given dx");
+   WALBERLA_CHECK_EQUAL(domainSize[codegen::flow_axis], xSize, "domain size in x is not divisible by given dx");
+   WALBERLA_CHECK_EQUAL(domainSize[codegen::wall_axis], ySize, "domain size in y is not divisible by given dx");
+   WALBERLA_CHECK_EQUAL(domainSize[codegen::remaining_axis], zSize, "domain size in z is not divisible by given dx");
 
-   Vector3< uint_t > cellsPerBlockPerDirection(domainSize[0] / numXBlocks, domainSize[1] / numYBlocks,
-                                               domainSize[2] / numZBlocks);
+   Vector3< uint_t > cellsPerBlockPerDirection(domainSize[codegen::flow_axis] / numXBlocks,
+                                               domainSize[codegen::wall_axis] / numYBlocks,
+                                               domainSize[codegen::remaining_axis] / numZBlocks);
 
-   WALBERLA_CHECK_EQUAL(domainSize[0], cellsPerBlockPerDirection[0] * numXBlocks,
-                        "number of cells in x of " << domainSize[0]
+   WALBERLA_CHECK_EQUAL(domainSize[codegen::flow_axis], cellsPerBlockPerDirection[0] * numXBlocks,
+                        "number of cells in x of " << domainSize[codegen::flow_axis]
                                                    << " is not divisible by given number of blocks in x direction");
-   WALBERLA_CHECK_EQUAL(domainSize[1], cellsPerBlockPerDirection[1] * numYBlocks,
-                        "number of cells in y of " << domainSize[1]
+   WALBERLA_CHECK_EQUAL(domainSize[codegen::wall_axis], cellsPerBlockPerDirection[1] * numYBlocks,
+                        "number of cells in y of " << domainSize[codegen::wall_axis]
                                                    << " is not divisible by given number of blocks in y direction");
-   WALBERLA_CHECK_EQUAL(domainSize[2], cellsPerBlockPerDirection[2] * numZBlocks,
-                        "number of cells in z of " << domainSize[2]
+   WALBERLA_CHECK_EQUAL(domainSize[codegen::remaining_axis], cellsPerBlockPerDirection[2] * numZBlocks,
+                        "number of cells in z of " << domainSize[codegen::remaining_axis]
                                                    << " is not divisible by given number of blocks in z direction");
 
    WALBERLA_CHECK_GREATER_EQUAL(
@@ -524,15 +531,19 @@ int main(int argc, char** argv)
    const real_t kappa                 = real_t(2) * (real_t(1) - poissonsRatio) / (real_t(2) - poissonsRatio);
    const real_t particleCollisionTime = collisionTimeFactor * particleDiameter;
 
-   const real_t domainVolume = domainSize[0] * domainSize[1] * domainSize[2];
+   Vector3< uint_t > domainSizeLB;
+   Vector3< real_t > Uinitialize(target_bulk_velocity, 0, 0);
+   const real_t domainVolume = domainSize[codegen::flow_axis] * domainSize[codegen::wall_axis] *
+                               domainSize[codegen::remaining_axis];
    const uint_t numParticles = uint_c((volfraction*domainVolume)/(particleVolume));
+   WALBERLA_LOG_INFO_ON_ROOT(numParticles << " particles will be created");
    const real_t T_conversion = real_t(1);
+   const real_t channel_half_width = real_c(domainSize[codegen::wall_axis]) / 2.0;
 #ifdef run_with_temperature
    // conversion for the various temperature quantities:
    const real_t rho_0               = densityFluid;
    const real_t particleTemperature = Tparticle;
 #endif
-   const real_t channel_half_width = real_c(domainSize[codegen::wall_axis]/2);
 
    // calculation of target friction velocity from the thesis of Eschghinejadfard
 
@@ -546,9 +557,8 @@ int main(int argc, char** argv)
 #ifdef run_with_temperature
    const real_t thermalDiffusivityFluid_LB = kinematicViscosityLB / Pr;
    const real_t thermalDiffusivityParticle_LB = thermalDiffusivityFluid_LB;
+
 #endif
-
-
    const real_t omega_f  = lbm::collision_model::omegaFromViscosity(kinematicViscosityLB);
 #ifdef run_with_temperature
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
@@ -608,6 +618,7 @@ int main(int argc, char** argv)
    WALBERLA_LOG_INFO_ON_ROOT("target friction Reynolds number = " <<  target_friction_Reynolds);
    WALBERLA_LOG_INFO_ON_ROOT("target_friction_velocity = " <<  target_friction_velocity);
    WALBERLA_LOG_INFO_ON_ROOT("turnOverPeriod = " <<  turnOverPeriod);
+   WALBERLA_LOG_INFO_ON_ROOT("sampling interval = " <<  samplingInterval);
    WALBERLA_LOG_INFO_ON_ROOT("kinematic viscosity = " <<  kinematicViscosityLB);
    WALBERLA_LOG_INFO_ON_ROOT("viscous length scale = " <<  kinematicViscosityLB/target_friction_velocity);
 
@@ -980,7 +991,7 @@ int main(int argc, char** argv)
       blocks, velFieldFluidID, meanVelFieldID,
       target_friction_velocity, uint_c(forceParams.channelHalfWidth),
       5.5_r, 0.4_r, kinematicViscosityLB,
-      forceParams.wallAxis, 0 );
+      forceParams.wallAxis, codegen::flow_axis );
 
    // Map particles into the fluid domain
    ParticleAndVolumeFractionSoA_T< Weighting > particleAndVolumeFractionSoA_fluid(blocks, omega_f);
@@ -1064,6 +1075,27 @@ int main(int argc, char** argv)
 #endif
    }
 
+
+   // objects to get the macroscopic quantities
+
+   pystencils::FluidMacroGetter getterSweep_fluid(particleAndVolumeFractionSoA_fluid.BFieldID,densityFluidFieldID,
+                                                  pdfFieldFluidID, velFieldFluidID,initialForce);
+#ifdef run_with_temperature
+   pystencils::TemperatureMacroGetter getterSweep_temperature(pdfFieldTemperatureID,temperatureFieldID
+                                                    );
+#endif
+
+   if (startFromCheckPointFile)
+   {
+      for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
+      {
+         getterSweep_fluid(&(*blockIt));
+#ifdef run_with_temperature
+         getterSweep_temperature(&(*blockIt));
+#endif
+      }
+   }
+
    ///////////////////////
    // ADD COMMUNICATION //
    //////////////////////
@@ -1088,25 +1120,6 @@ int main(int argc, char** argv)
    timeloop.setCurrentTimeStep(startTimeStep);
    timeloop.addFuncBeforeTimeStep( RemainingTimeLogger( numTimeSteps - startTimeStep ), "Remaining Time Logger" );
 
-   // objects to get the macroscopic quantities
-
-   pystencils::FluidMacroGetter getterSweep_fluid(particleAndVolumeFractionSoA_fluid.BFieldID,densityFluidFieldID,
-                                                  pdfFieldFluidID, velFieldFluidID,initialForce);
-#ifdef run_with_temperature
-   pystencils::TemperatureMacroGetter getterSweep_temperature(pdfFieldTemperatureID,temperatureFieldID
-                                                    );
-#endif
-
-   if (startFromCheckPointFile)
-   {
-      for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
-      {
-         getterSweep_fluid(&(*blockIt));
-#ifdef run_with_temperature
-         getterSweep_temperature(&(*blockIt));
-#endif
-      }
-   }
 
    // vtk output
    if (vtkSpacingParticles != uint_t(0))
@@ -1189,8 +1202,8 @@ int main(int argc, char** argv)
 
 
       if(writeSlice){
-         const AABB sliceAABB(real_t(0), real_t(0),real_c(domainSize[1]) * real_t(0.5) - real_t(1),
-                           real_c(domainSize[0]), real_c(domainSize[2]),real_c(domainSize[1]) * real_t(0.5) + real_t(1)
+         const AABB sliceAABB(real_t(0), real_t(0),real_c(domainSize[codegen::wall_axis]) * real_t(0.5) - real_t(1),
+                           real_c(domainSize[codegen::flow_axis]), real_c(domainSize[codegen::remaining_axis]),real_c(domainSize[codegen::wall_axis]) * real_t(0.5) + real_t(1)
                            );
          const walberla::vtk::AABBCellFilter aabbSliceFilter(sliceAABB);
          field::FlagFieldCellFilter< FlagField_T > fluidFilter(flagFieldFluidID);
@@ -1303,7 +1316,7 @@ int main(int argc, char** argv)
    uint_t printchecker = 0;
    auto postProcessingLamdas = [&]() {
 
-      if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod)  && wall_statistics.getWallStatisticsConvergence() == true && timeloop.getCurrentTimeStep() % samplingInterval == 0)
+      if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod) && timeloop.getCurrentTimeStep() % samplingInterval == 0 && wall_statistics.getWallStatisticsConvergence() == true)
       {
          printchecker += 1;
          if (printchecker == 1)
@@ -1465,7 +1478,16 @@ int main(int argc, char** argv)
 
    auto welfordPhasesSweepLambda =
       std::function< void(IBlock*) >([&](IBlock* block) {
-         if (timeloop.getCurrentTimeStep() % samplingInterval == 0)
+            if (wall_statistics.getWallStatisticsConvergence() == false)
+            {
+               welfordVelocitySweep(block);
+#ifdef run_with_temperature
+               welfordTemperatureSweep(block);
+#endif
+            }
+
+
+         if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod) && timeloop.getCurrentTimeStep() % samplingInterval == 0 && wall_statistics.getWallStatisticsConvergence() == true)
          {
             welfordVelocitySweep(block);
 #ifdef run_with_temperature
@@ -1552,9 +1574,9 @@ int main(int argc, char** argv)
          wall_statistics(blocks, meanTemperatureFieldID, meanVelFieldID, timeloop.getCurrentTimeStep(), Tcold, Thot, convergenceTolerance);
 #else
          wall_statistics(blocks, meanVelFieldID, timeloop.getCurrentTimeStep(), convergenceTolerance);
-#endif
       }
-   };
+#endif
+      };
    ///////////////////////////////////
    // add everything to the timeloop//
    ///////////////////////////////////
@@ -1594,7 +1616,7 @@ int main(int argc, char** argv)
 
    // compute the force before the psm fluid sweep.
 
-   /*timeloop.add() << BeforeFunction([&]() { forceCalculator.calculateBulkVelocity(); }, "bulk velocity calculation")
+   timeloop.add() << BeforeFunction([&]() { forceCalculator.calculateBulkVelocity(); }, "bulk velocity calculation")
                   << BeforeFunction(
                         [&]() {
 
@@ -1602,9 +1624,9 @@ int main(int argc, char** argv)
                            setNewForce(newForce);
                         },
                         "new force setter")
-                  << Sweep([](IBlock*) {}, "new force setter");*/
+                  << Sweep([](IBlock*) {}, "new force setter");
 
-  ForceAdjusterPID < VectorField_T, BField_T > forceAdjusterPID(blocks,velFieldFluidID,particleAndVolumeFractionSoA_fluid.BFieldID, targetMeanVelocityMagnitude, 0,
+  /*ForceAdjusterPID < VectorField_T, BField_T > forceAdjusterPID(blocks,velFieldFluidID,particleAndVolumeFractionSoA_fluid.BFieldID, targetMeanVelocityMagnitude, 0,
                     proportionalGain,  derivativeGain,  integralGain,  maxRamp,
                     minActuatingVariable,  maxActuatingVariable);
 
@@ -1617,7 +1639,7 @@ int main(int argc, char** argv)
                            setNewForce(newForce);
                         },
                         "new force setter")
-                  << Sweep([](IBlock*) {}, "new force setter");
+                  << Sweep([](IBlock*) {}, "new force setter");*/
    timeloop.add() << Sweep(psmFluidSweeplamda, "PSM Fluid sweep");
 
 #ifdef run_with_temperature
@@ -1715,29 +1737,26 @@ int main(int argc, char** argv)
                   uint_t oldStep = timeStep - 2 * checkPointingFrequency;
 
                   std::string oldBase_lbm = checkpointingFileName + "_lbm_" + std::to_string(oldStep);
-#ifdef run_with_temperature
-                  std::string oldBase_temperature = checkpointingFileName + "_lbm_temperature_" + std::to_string(oldStep);
-                  if (std::filesystem::exists(oldBase_lbm + ".txt"))
-                  {
-                     std::filesystem::remove(  oldBase_temperature + ".txt");
-                  }
-#endif
                   std::string oldBase_config = checkpointingFileName + "_config_" + std::to_string(oldStep);
                   std::string oldBase_particles = checkpointingFileName + "_mesa_" + std::to_string(oldStep);
+#ifdef run_with_temperature
+                  std::string oldBase_temperature = checkpointingFileName + "_lbm_temperature_" + std::to_string(oldStep);
+#endif
 
                   if (std::filesystem::exists(oldBase_lbm + ".txt")) { std::filesystem::remove(oldBase_lbm + ".txt"); }
-
+#ifdef run_with_temperature
+                  if (std::filesystem::exists(oldBase_temperature + ".txt"))
+                  {
+                     std::filesystem::remove(oldBase_temperature + ".txt");
+                  }
+#endif
                   if (std::filesystem::exists(oldBase_config + ".txt"))
                   {
                      std::filesystem::remove(oldBase_config + ".txt");
                   }
-
-                  if (useParticles)
+                  if (useParticles && std::filesystem::exists(oldBase_particles + ".txt"))
                   {
-                     if (std::filesystem::exists(oldBase_particles + ".txt"))
-                     {
-                        std::filesystem::remove(oldBase_particles + ".txt");
-                     }
+                     std::filesystem::remove(oldBase_particles + ".txt");
                   }
 
                }
@@ -1905,8 +1924,11 @@ int main(int argc, char** argv)
       {
          timeloopTiming["Evaluate infos"].start();
 
-         auto particleInfo = evaluateParticleInfo(*accessor);
-         WALBERLA_LOG_INFO_ON_ROOT(particleInfo);
+         if (useParticles)
+         {
+            auto particleInfo = evaluateParticleInfo(*accessor);
+            WALBERLA_LOG_INFO_ON_ROOT(particleInfo);
+         }
 
          auto fluidInfo =
 #ifdef run_with_temperature
