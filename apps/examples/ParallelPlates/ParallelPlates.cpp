@@ -37,6 +37,7 @@
 #include "walberla/V8.hpp"
 #include "walberla/v8/Testing.hpp"
 #include "walberla/v8/memory/MemoryTraits.hpp"
+#include "walberla/v8/sweep/Sweeper.hpp"
 #include "walberla/v8/testing/Testutils.hpp"
 
 namespace ParallelPlates
@@ -200,11 +201,16 @@ void run(int argc, char** argv)
       computeVelocityError(&b);
    }
 
+   sweep::sync();
+
    mpi::reduceInplace(*velocityErrorLmax, mpi::MAX);
 
    WALBERLA_LOG_INFO_ON_ROOT("Lmax error of x-velocity: " << *velocityErrorLmax);
 
-   WALBERLA_ROOT_SECTION() { testing::assert_less(*velocityErrorLmax, errorThreshold); }
+   WALBERLA_ROOT_SECTION() { 
+      testing::assert_greater_equal(*velocityErrorLmax, 0.);
+      testing::assert_less(*velocityErrorLmax, errorThreshold);
+   }
 }
 } // namespace ParallelPlates
 

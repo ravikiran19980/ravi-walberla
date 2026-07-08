@@ -21,6 +21,7 @@
 #pragma once
 
 #include <concepts>
+#include <optional>
 
 #include "waLBerlaDefinitions.h"
 #include "gpu/ErrorChecking.h"
@@ -84,12 +85,12 @@ struct GPU : public _exec_tag {
     GPU(dim3 b) : block_(b) {}
     GPU(dim3 b, gpuStream_t s): block_(b), stream_(s) {}
 
-    const gpuStream_t& stream() const { return stream_; }
-    dim3 block() const { return block_; }
+    gpuStream_t stream() const { return stream_; }
+    std::optional< dim3 > block() const { return block_; }
     void sync() const { WALBERLA_GPU_CHECK(gpuStreamSynchronize(stream_)) }
 
 private:
-    dim3 block_{ 8, 8, 4 };
+    std::optional< dim3 > block_;
     gpuStream_t stream_{ gpuStreamDefault };
 #else
     void sync() const {}

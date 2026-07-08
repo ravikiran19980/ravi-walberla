@@ -129,9 +129,10 @@ __global__ void sweepKernel(CellInterval ci, Func func)
 template< CellFunction Func >
 void forAllCells(const exectag::GPU& exTag, const CellInterval& ci, Func&& func)
 {
-   dim3 block{ std::min< unsigned int >(exTag.block().x, ci.xSize()),
-               std::min< unsigned int >(exTag.block().y, ci.ySize()),
-               std::min< unsigned int >(exTag.block().z, ci.zSize()) };
+   const dim3 extagBlock{ exTag.block().value_or( dim3{ 8, 4, 4 } ) };
+   dim3 block{ std::min< unsigned int >(extagBlock.x, ci.xSize()),
+               std::min< unsigned int >(extagBlock.y, ci.ySize()),
+               std::min< unsigned int >(extagBlock.z, ci.zSize()) };
 
    dim3 grid{ ((unsigned int) ci.xSize() + block.x - 1) / block.x, ((unsigned int) ci.ySize() + block.y - 1) / block.y,
               ((unsigned int) ci.zSize() + block.z - 1) / block.z };

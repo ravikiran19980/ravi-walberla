@@ -83,7 +83,7 @@ workflow:
     - python3 -m venv .venv
     - source .venv/bin/activate
     - pip install --upgrade pip
-    - pip install jinja2 lbmpy==1.4 lxml setuptools py-cpuinfo islpy
+    - pip install jinja2 lbmpy==1.4.1 lxml setuptools py-cpuinfo islpy
     # Prepare mesa-pd sources
     - python python/mesa_pd.py -y .
     # Prepare CMake presets
