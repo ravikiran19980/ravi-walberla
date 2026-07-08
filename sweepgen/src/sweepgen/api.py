@@ -36,7 +36,6 @@ from pystencilssfg.lang import (
 from pystencilssfg.lang.types import CppTypeFactory, CppType
 from pystencilssfg.lang.cpp import std
 
-
 real_t = PsCustomType("walberla::real_t")
 cell_idx_t = PsCustomType("walberla::cell_idx_t")
 uint_t = PsCustomType("walberla::uint_t")
@@ -545,10 +544,24 @@ class sweep_parts:
             return AugExpr.format("{}.swapBuffers({}, {})", self, field, block)
 
 
-#   Experimental Field and Buffer APIs
+#   v8 Field and Buffer APIs
 
 
-class experimental:
+class v8:
+
+    class exec_tag:
+        class GPU(CppClass):
+            template = cpptype(
+                "walberla::v8::sweep::exectag::GPU",
+                "walberla/v8/sweep/ExecutionTags.hpp",
+            )
+
+            def block(self) -> AugExpr:
+                return AugExpr.format("{}.block()", self)
+
+            def stream(self) -> AugExpr:
+                return AugExpr.format("{}.stream()", self)
+
     class BufferView(AugExpr, SupportsFieldExtraction):
         _template = cpptype(
             "walberla::v8::memory::BufferView< {TElement}, {TRank}, {TMemTag} >",
@@ -609,7 +622,7 @@ class experimental:
     class BufferKernelParamsAdaptor(SupportsFieldExtraction):
         def __init__(
             self,
-            buffer_view: experimental.BufferView,
+            buffer_view: v8.BufferView,
             cell_interval: CellInterval | None = None,
             emulate_spatial_rank: int = 3,
         ) -> None:
@@ -696,10 +709,10 @@ class experimental:
         def buffer_type(self):
             return cpptype(f"{self._dtype}::BufferType")
 
-        def view(self, block: IBlock) -> experimental.BufferView:
-            return experimental.BufferView(
-                self._element_type, self._rank, self._memtag_t
-            ).bind("{}.view({})", self, block)
+        def view(self, block: IBlock) -> v8.BufferView:
+            return v8.BufferView(self._element_type, self._rank, self._memtag_t).bind(
+                "{}.view({})", self, block
+            )
 
         def buffer(self, block: IBlock) -> AugExpr:
             return AugExpr(
@@ -736,20 +749,20 @@ class experimental:
 
         def bufferViewType(
             self, const: bool = False, ref: bool = False
-        ) -> experimental.BufferView:
-            return experimental.BufferView(
+        ) -> v8.BufferView:
+            return v8.BufferView(
                 self._element_type, 4, self._memtag_t, const=const, ref=ref
             )
 
-        def bufferSystem(self) -> experimental.BufferSystem:
-            return experimental.BufferSystem(
-                self._element_type, 4, self._memtag_t
-            ).bind("{}.bufferSystem()", self)
+        def bufferSystem(self) -> v8.BufferSystem:
+            return v8.BufferSystem(self._element_type, 4, self._memtag_t).bind(
+                "{}.bufferSystem()", self
+            )
 
         @staticmethod
         def from_field(
             field: Field, memtag_t: PsType, const: bool = False, ref: bool = False
-        ) -> experimental.Field:
+        ) -> v8.Field:
             """Create an `walberla::v8::Field` instance from a pystencils field"""
 
             if isinstance(field.dtype, DynamicType):
@@ -769,6 +782,6 @@ class experimental:
                         f"Cannot map field with index shape {field.index_shape} to a waLBerla field"
                     )
 
-            return experimental.Field(
-                element_type, f_size, memtag_t, const=const, ref=ref
-            ).var(field.name)
+            return v8.Field(element_type, f_size, memtag_t, const=const, ref=ref).var(
+                field.name
+            )

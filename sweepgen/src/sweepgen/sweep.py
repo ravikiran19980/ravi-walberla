@@ -59,7 +59,7 @@ from .api import (
     CellIdx,
     MemTags,
     sweep_parts,
-    experimental,
+    v8,
 )
 
 from .core.properties import PropertiesContainerBuilder, PropertiesContainer
@@ -133,8 +133,8 @@ class IndexListInfo(FieldInfo):
 
 @dataclass
 class V8FieldInfo(DomainFieldInfo, FieldInfo):
-    ex_field: experimental.Field
-    buffer_view: experimental.BufferView
+    ex_field: v8.Field
+    buffer_view: v8.BufferView
 
     @property
     def entity(self) -> AugExpr:
@@ -148,14 +148,14 @@ class V8FieldInfo(DomainFieldInfo, FieldInfo):
         return self.ex_field.bufferSystem().view(block.deref())
 
     def view_extraction(self) -> SupportsFieldExtraction:
-        return experimental.BufferKernelParamsAdaptor(
+        return v8.BufferKernelParamsAdaptor(
             self.buffer_view,
             cell_interval=None,
             emulate_spatial_rank=self.field.spatial_dimensions,
         )
 
     def with_cell_interval(self, ci: CellInterval | None) -> SupportsFieldExtraction:
-        return experimental.BufferKernelParamsAdaptor(
+        return v8.BufferKernelParamsAdaptor(
             self.buffer_view,
             cell_interval=ci,
             emulate_spatial_rank=self.field.spatial_dimensions,
@@ -485,7 +485,7 @@ class Sweep(CustomGenerator):
         match f.field_type:
             case FieldType.GENERIC | FieldType.CUSTOM:
                 if self._use_experimental_fields:
-                    ex_field = experimental.Field.from_field(f, self._memtag_t)
+                    ex_field = v8.Field.from_field(f, self._memtag_t)
                     buffer_view = ex_field.bufferViewType().var(f.name + "_view")
                     return V8FieldInfo(f, ex_field, buffer_view)
                 else:
@@ -501,35 +501,47 @@ class Sweep(CustomGenerator):
                 raise ValueError(f"Unexpected field type: {f.field_type} at field  {f}")
 
     def _render_invocation(
-        self, sfg: SfgComposer, target: Target, khandle: SfgKernelHandle, exec_tag: SfgVar | None = None,
-    ) -> tuple[SfgCallTreeNode, set[SfgVar]]:
+        self,
+        sfg: SfgComposer,
+        target: Target,
+        khandle: SfgKernelHandle,
+        exec_tag: v8.exec_tag.GPU | None = None,
+    ) -> SfgCallTreeNode:
         """Render and return the kernel invocation plus a set of additional parameters required
         at the call site."""
 
         if target.is_gpu():
-            # from pystencils.codegen.config import GpuIndexingScheme
+            assert exec_tag is not None
 
-            #   TODO: Want default values for properties first,
-            #   to define default stream and block size values
-            # indexing_scheme = self._gen_config.gpu.get_option("indexing_scheme")
-            # if indexing_scheme == GpuIndexingScheme.Linear3D:
-            #     block_size = sfg.gpu_api.dim3(const=True).var("gpuBlockSize")
-            #     return (sfg.gpu_invoke(khandle, block_size=block_size), {block_size})
-            # else:
-            if exec_tag is None:
-                return (sfg.gpu_invoke(khandle), set())
-
-            return (
-                sfg.gpu_invoke(
-                    khandle,
-                    block_size=AugExpr.format("{}.block()", exec_tag),
-                    stream=AugExpr.format("{}.stream()", exec_tag),
-                ),
-                set(),
+            from pystencilssfg.composer.gpu_composer import GpuInvocationBuilder
+            from pystencils.codegen.gpu_indexing import (
+                DynamicBlockSizeLaunchConfiguration,
+                AutomaticLaunchConfiguration,
             )
 
+            invoker = GpuInvocationBuilder(sfg.context, khandle)
+            invoker.stream = exec_tag.stream()
+
+            match invoker._launch_config:
+                case DynamicBlockSizeLaunchConfiguration():
+                    return sfg.seq(
+                        sfg.branch(sfg.expr("{}.has_value()", exec_tag.block()))(
+                            invoker(block_size=sfg.expr("{}.value()", exec_tag.block()))
+                        )(invoker())
+                    )
+
+                case AutomaticLaunchConfiguration():
+                    return sfg.seq(
+                        sfg.branch(AugExpr.format("{}.has_value()", exec_tag.block()))(
+                            'throw std::runtime_error{"Cannot customize GPU block size for this sweep"};'
+                        ),
+                        invoker(),
+                    )
+                case _:
+                    assert False, "unreachable code"
+
         else:
-            return (sfg.call(khandle), set())
+            return sfg.call(khandle)
 
     def generate(self, sfg: SfgComposer) -> None:
         build_config = WalberlaBuildConfig.from_sfg(sfg)
@@ -545,15 +557,16 @@ class Sweep(CustomGenerator):
             knamespace = sfg.kernel_namespace(f"{self._name}_kernels")
             khandle = knamespace.create(assignments, self._name, gen_config)
 
+        exec_tag: v8.exec_tag.GPU | None = None
         if target.is_gpu():
             sfg.include("walberla/v8/sweep/ExecutionTags.hpp")
 
             default_exec_tag = "walberla::v8::sweep::exectag::GPU{}"
-            exec_tag = SfgVar("exTag", PsCustomType("const walberla::v8::sweep::exectag::GPU&"))
+            exec_tag = v8.exec_tag.GPU().var("exTag")
         else:
             exec_tag = None
 
-        ker_invocation, ker_call_site_params = self._render_invocation(
+        ker_invocation = self._render_invocation(
             sfg, target, khandle, exec_tag=exec_tag
         )
 
@@ -581,7 +594,7 @@ class Sweep(CustomGenerator):
 
         props_builder = PropertiesContainerBuilder()
 
-        parameters = khandle.scalar_parameters | ker_call_site_params
+        parameters = khandle.scalar_parameters
 
         blockforest_ref = StructuredBlockForest(ref=True).var("blocks")
         blockforest_params = BlockforestParamExtraction(blockforest_ref, block)
@@ -604,7 +617,9 @@ class Sweep(CustomGenerator):
         property_cache = props_struct().var("properties_")
         property_cache_ref = props_struct(ref=True).bind(f"this->{property_cache}")
 
-        def render_runmethod(ci: CellInterval | None = None, generate_swap: bool = True):
+        def render_runmethod(
+            ci: CellInterval | None = None, generate_swap: bool = True
+        ):
             return [
                 #   Get IDs from class
                 *(
@@ -660,7 +675,9 @@ class Sweep(CustomGenerator):
                     (
                         shadows_cache.perform_swap(orig_name, shadow_info)
                         for orig_name, shadow_info in swaps.items()
-                    ) if generate_swap else ()
+                    )
+                    if generate_swap
+                    else ()
                 ),
             ]
 
@@ -668,7 +685,8 @@ class Sweep(CustomGenerator):
             return [
                 *(
                     sfg.init(fi.entity)(property_cache_ref.get(fi.entity))
-                    for fi in block_fields if fi.field.name in swaps
+                    for fi in block_fields
+                    if fi.field.name in swaps
                 ),
                 *(
                     (
@@ -680,7 +698,9 @@ class Sweep(CustomGenerator):
 
         if target.is_gpu():
             runmethods = [
-                sfg.method("operator()")(*render_runmethod()).params(block, (exec_tag, default_exec_tag)),
+                sfg.method("operator()")(*render_runmethod()).params(
+                    block, (exec_tag, default_exec_tag)
+                ),
             ]
 
             if not self.sparse:
@@ -703,11 +723,7 @@ class Sweep(CustomGenerator):
                 )
 
         if swaps:
-            runmethods.append(
-                sfg.method("swapShadowBuffers")(
-                    *render_swap_only()
-                )
-            )
+            runmethods.append(sfg.method("swapShadowBuffers")(*render_swap_only()))
 
         sfg.klass(self._name)(
             sfg.public(
