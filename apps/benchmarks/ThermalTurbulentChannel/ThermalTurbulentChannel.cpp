@@ -1282,7 +1282,7 @@ int main(int argc, char** argv)
    ////////////////////////////////////////////////////////
 
    // set the outputfrequency to turnOverPeriod as it checks for convergence and also prints it to the wall_statistics.txt file every turnOverPeriod
-   WallStatistics wall_statistics(domainSize[codegen::wall_axis], 1, kinematicViscosityLB, uint_c(turnOverPeriod));
+   WallStatistics wall_statistics(domainSize[codegen::wall_axis], 1, kinematicViscosityLB, uint_c(samplingInterval));
 
 
 
