@@ -467,18 +467,17 @@ int main(int argc, char** argv)
 
    Config::BlockHandle statisticsParams    = cfgFile->getBlock("statistics_params");
    const real_t convergenceTolerance       = statisticsParams.getParameter< real_t >("convergenceTolerance");
+#ifdef run_with_temperature
    const uint_t planeAveragingtimeBlock    = statisticsParams.getParameter< uint_t >("planeAveragingtimeBlock");
    const uint_t heatFluxAveragingtimeBlock = statisticsParams.getParameter< uint_t >("heatFluxAveragingtimeBlock");
+#endif
+
 
 
    Config::BlockHandle performance_params    = cfgFile->getBlock("performance_params");
    const uint_t performanceLogFrequency   = performance_params.getParameter< uint_t >("performanceLogFrequency");
    const bool sendDirectlyFromGPU         = performance_params.getParameter< bool >("sendDirectlyFromGPU");
 
-#ifdef run_with_temperature
-   const uint_t planeAveragingtimeBlock    = statisticsParams.getParameter< uint_t >("planeAveragingtimeBlock");
-   const uint_t heatFluxAveragingtimeBlock = statisticsParams.getParameter< uint_t >("heatFluxAveragingtimeBlock");
-#endif
 
 
    // get PID controller parameters
@@ -1034,12 +1033,12 @@ int main(int argc, char** argv)
       particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID, pdfFieldFluidID, velFieldFluidID,initialForce,real_t(1));
 
 #ifdef run_with_temperature
-   /*pystencils::InitializeTemperatureDomain pdfSetterTemperature(particleAndVolumeFractionSoA_temperature.BFieldID,
+   pystencils::InitializeTemperatureDomain pdfSetterTemperature(particleAndVolumeFractionSoA_temperature.BFieldID,
                                                                 pdfFieldTemperatureID, temperatureFieldID,
-                                                                velFieldFluidID, particleTemperature);*/
-   pystencils::InitializeTemperatureDomain pdfSetterTemperature(
+                                                                velFieldFluidID, particleTemperature);
+   /*pystencils::InitializeTemperatureDomain pdfSetterTemperature(
                                                                 pdfFieldTemperatureID, temperatureFieldID,
-                                                                velFieldFluidID);
+                                                                velFieldFluidID);*/
 #endif
 
 
@@ -1571,12 +1570,14 @@ int main(int argc, char** argv)
       if (timeloop.getCurrentTimeStep() % samplingInterval == 0)
       {
 #ifdef run_with_temperature
-         wall_statistics(blocks, meanTemperatureFieldID, meanVelFieldID, timeloop.getCurrentTimeStep(), Tcold, Thot, convergenceTolerance);
+         wall_statistics(blocks, meanTemperatureFieldID, meanVelFieldID, timeloop.getCurrentTimeStep(), Tcold, Thot,
+                         convergenceTolerance);
 #else
          wall_statistics(blocks, meanVelFieldID, timeloop.getCurrentTimeStep(), convergenceTolerance);
-      }
+
 #endif
-      };
+      }
+   };
    ///////////////////////////////////
    // add everything to the timeloop//
    ///////////////////////////////////
