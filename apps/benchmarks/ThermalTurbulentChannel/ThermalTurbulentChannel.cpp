@@ -108,7 +108,6 @@
 #include "math.h"
 #include "randomPoints.h"
 #include "turbulentFlowUtilities.h"
-#include "PIDController.h"
 
 namespace MaterialTransport
 {
@@ -478,17 +477,6 @@ int main(int argc, char** argv)
    const uint_t performanceLogFrequency   = performance_params.getParameter< uint_t >("performanceLogFrequency");
    const bool sendDirectlyFromGPU         = performance_params.getParameter< bool >("sendDirectlyFromGPU");
 
-
-
-   // get PID controller parameters
-   Config::BlockHandle PIDParameters        = cfgFile->getBlock("PIDParameters");
-   const real_t targetMeanVelocityMagnitude = PIDParameters.getParameter< real_t >("targetMeanVelocityMagnitude");
-   const real_t proportionalGain            = PIDParameters.getParameter< real_t >("proportionalGain");
-   const real_t derivativeGain              = PIDParameters.getParameter< real_t >("derivativeGain");
-   const real_t integralGain                = PIDParameters.getParameter< real_t >("integralGain");
-   const real_t maxRamp                     = PIDParameters.getParameter< real_t >("maxRamp");
-   const real_t minActuatingVariable        = PIDParameters.getParameter< real_t >("minActuatingVariable");
-   const real_t maxActuatingVariable        = PIDParameters.getParameter< real_t >("maxActuatingVariable");
 
 
 
@@ -1341,8 +1329,37 @@ int main(int argc, char** argv)
          // computation of fluid and particle avg, rms, reynolds stresses quantities
          planeAveragedProfiles_velocity.computeFluidParticleRMS();
 
+         // compute wall statistics one final time after temporal averaging and before writing to the output files
+#ifdef run_with_temperature
+         wall_statistics(blocks, meanTemperatureFieldID, meanVelFieldID, timeloop.getCurrentTimeStep(), Tcold, Thot,
+                         convergenceTolerance);
+#else
+         wall_statistics(blocks, meanVelFieldID, timeloop.getCurrentTimeStep(), convergenceTolerance);
+#endif
+
          WALBERLA_ROOT_SECTION()
          {
+
+
+
+            // getWallShearStress() here is just dU/dy //
+            real_t wallshearStress  = kinematicViscosityLB * wall_statistics.getWallShearStress();
+#ifdef run_with_temperature
+            real_t nusseltNumberBottom  = wall_statistics.getNusseltNumber();
+#endif
+
+            real_t frictionVelocity = std::sqrt(wallshearStress);
+            std::ofstream wallstatsOS;
+            wallstatsOS << std::fixed << std::setprecision(6);
+            wallstatsOS.open("output/wallstatsfinal.txt", std::ios::out);
+#ifdef run_with_temperature
+            wallstatsOS << "wallShearStress" << "  frictionVelocity"  <<  "  nusseltNumberBottom \n";
+            wallstatsOS << wallshearStress << "  " << "  " << frictionVelocity << "  " <<  nusseltNumberBottom << "\n";
+#else
+            wallstatsOS << "wallShearStress" << "  frictionVelocity"  <<  " \n";
+            wallstatsOS << wallshearStress << "  " << "  " << frictionVelocity  << "\n";
+#endif
+
             std::ofstream velocityOS;
             velocityOS << std::fixed << std::setprecision(6);
             velocityOS.open("output/phase_statistics.txt", std::ios::out);
@@ -1479,8 +1496,11 @@ int main(int argc, char** argv)
       std::function< void(IBlock*) >([&](IBlock* block) {
             if (wall_statistics.getWallStatisticsConvergence() == false)
             {
+               welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
                welfordVelocitySweep(block);
+
 #ifdef run_with_temperature
+               welfordTemperatureSweep.setCounter(welfordTemperatureSweep.getCounter() + real_c(1.0));
                welfordTemperatureSweep(block);
 #endif
             }
@@ -1488,8 +1508,11 @@ int main(int argc, char** argv)
 
          if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod) && timeloop.getCurrentTimeStep() % samplingInterval == 0 && wall_statistics.getWallStatisticsConvergence() == true)
          {
+            welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
             welfordVelocitySweep(block);
 #ifdef run_with_temperature
+
+            welfordTemperatureSweep.setCounter(welfordTemperatureSweep.getCounter() + real_c(1.0));
             welfordTemperatureSweep(block);
 #endif
          }
@@ -1567,7 +1590,7 @@ int main(int argc, char** argv)
       });
 
    auto wallstatisticsLamda = [&]() {
-      if (timeloop.getCurrentTimeStep() % samplingInterval == 0)
+      if (timeloop.getCurrentTimeStep() % samplingInterval == 0  && wall_statistics.getWallStatisticsConvergence() == false )
       {
 #ifdef run_with_temperature
          wall_statistics(blocks, meanTemperatureFieldID, meanVelFieldID, timeloop.getCurrentTimeStep(), Tcold, Thot,
@@ -1617,7 +1640,7 @@ int main(int argc, char** argv)
 
    // compute the force before the psm fluid sweep.
 
-   timeloop.add() << BeforeFunction([&]() { forceCalculator.calculateBulkVelocity(); }, "bulk velocity calculation")
+   timeloop.add() //<< BeforeFunction([&]() { forceCalculator.calculateBulkVelocity(); }, "bulk velocity calculation")
                   << BeforeFunction(
                         [&]() {
 
@@ -1626,21 +1649,6 @@ int main(int argc, char** argv)
                         },
                         "new force setter")
                   << Sweep([](IBlock*) {}, "new force setter");
-
-  /*ForceAdjusterPID < VectorField_T, BField_T > forceAdjusterPID(blocks,velFieldFluidID,particleAndVolumeFractionSoA_fluid.BFieldID, targetMeanVelocityMagnitude, 0,
-                    proportionalGain,  derivativeGain,  integralGain,  maxRamp,
-                    minActuatingVariable,  maxActuatingVariable);
-
-
-   timeloop.add() << BeforeFunction([&]() { forceAdjusterPID.calculateBulkVelocity(); }, "bulk velocity calculation")
-                  << BeforeFunction(
-                        [&]() {
-                           forceAdjusterPID(forceAdjusterPID.bulkVelocity());
-                           const auto newForce = forceAdjusterPID.getCurrentDrivingForce();
-                           setNewForce(newForce);
-                        },
-                        "new force setter")
-                  << Sweep([](IBlock*) {}, "new force setter");*/
    timeloop.add() << Sweep(psmFluidSweeplamda, "PSM Fluid sweep");
 
 #ifdef run_with_temperature
@@ -1679,9 +1687,9 @@ int main(int argc, char** argv)
                                  sosVelocityField->setWithGhostLayer(0.0);
                               }
                            }
-                           welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
+                           //welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
 #ifdef run_with_temperature
-                           welfordTemperatureSweep.setCounter(welfordTemperatureSweep.getCounter() + real_c(1.0));
+                           //welfordTemperatureSweep.setCounter(welfordTemperatureSweep.getCounter() + real_c(1.0));
 #endif
                         },
                         "welford sweep")
