@@ -45,7 +45,7 @@ TurbulenceSetup
     target_friction_Reynolds    180;
     target_bulk_velocity        0.1;
     center_line_velocity        0.1;
-    nTurnovers                  1;
+    nTurnovers                  30;
 }
 
 TemperatureSetup
@@ -88,4 +88,15 @@ statistics_params{
 performance_params{
     performanceLogFrequency 1000000000;
     sendDirectlyFromGPU false;
+}
+
+PIDParameters
+{
+    targetMeanVelocityMagnitude 0.086;
+    proportionalGain            2e-4;
+    derivativeGain              1e-6;
+    integralGain                2e-4;
+    maxRamp                     1e-4;
+    minActuatingVariable        0;
+    maxActuatingVariable        1e-3;
 }
