@@ -1,0 +1,92 @@
+PhysicalSetup // all to be specified in SI/ref units
+{
+
+    xSize 600;
+    ySize 260;
+    zSize 260;
+
+    periodicInX true;
+    periodicInY false;
+    periodicInZ true;
+
+    densityFluid 1.;
+    particleDiameter 10;
+    densityParticle 1.;
+    dynamicFrictionCoefficient 0.15;
+    coefficientOfRestitution 0.97;
+    collisionTimeFactor 1.0;
+    simulationTimeFactor 100;   // total timesteps of simulation = simulationTimeFactor * turnOverPeriod
+
+}
+
+NumericalSetup
+{
+
+    // product of number of blocks should be equal to number of used processes
+    numXBlocks 25;
+    numYBlocks 10;
+    numZBlocks 10;
+
+    useLubricationForces true;
+    useParticles false;
+    numberOfParticleSubCycles 10;
+    useIntegrators true;
+    particleSubBlockSize <2, 2, 2>;
+    linkedCellWidthRation 1.01;
+    particleBarriers true;
+    generationDomainFraction <0.95,0.95,0.95>;
+    volfraction 0;                  // this must be 0 if useParticles is false
+
+}
+
+TurbulenceSetup
+{
+    target_bulk_Reynolds        5600;
+    target_friction_Reynolds    180;
+    target_bulk_velocity        0.1;
+    center_line_velocity        0.1;
+    nTurnovers                  1;
+}
+
+TemperatureSetup
+{
+    Thot 1;   // ThotSI = ThotLB   (concentration conversion from SI to LB)
+    Tcold 0;
+    Tref  0;
+    Tparticle 0;
+    PrandtlNumber 1;
+    diffusivityRatio  1;
+    Gr 1000;
+}
+
+vtk_params
+{
+    infoSpacing 10000; // in s
+    vtkSpacingParticles 0; // in s
+    vtkSpacingFluid 100000; // ins
+    vtkFolder vtk_out;
+    writeSlice true;
+
+
+
+}
+
+checkpoint_params
+{
+    startFromCheckPointFile false;
+    checkpointingFileName testCheckpoint_cpu;
+    checkPointingFrequency 250000;
+    writeContinuousCheckPoints true;
+}
+
+statistics_params{
+    convergenceTolerance 0.5;                      // percentage tolerance of wall shear and nusselt numbers
+    outputFrequency 10;                        // how often you want to monitor convergence and output the wall statistics
+    planeAveragingtimeBlock 10000;               // required only for heat flux budgets
+    heatFluxAveragingtimeBlock 600000;           // required only for heat flux budgets
+}
+
+performance_params{
+    performanceLogFrequency 1000000000;
+    sendDirectlyFromGPU false;
+}
