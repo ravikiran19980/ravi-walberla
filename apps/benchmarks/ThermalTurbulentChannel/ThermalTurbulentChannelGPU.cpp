@@ -1110,9 +1110,11 @@ int main(int argc, char** argv)
    }
 
 
-   pystencils::FluidMacroGetter getterSweep_fluid(BFieldID, densityFluidFieldGPUID,
+   pystencils::FluidMacroGetter getterSweep_fluid(particleAndVolumeFractionSoA_fluid.BFieldID, densityFluidFieldGPUID,
                                                   pdfFieldFluidGPUID, velFieldFluidGPUID, initialForce);
 #ifdef run_with_temperature
+   pystencils::FluidMacroGetter getterSweep_fluid(particleAndVolumeFractionSoA_temperature.BFieldID, densityFluidFieldGPUID,
+                                                  pdfFieldFluidGPUID, velFieldFluidGPUID, initialForce);
    pystencils::TemperatureMacroGetter getterSweep_temperature(pdfFieldTemperatureGPUID, temperatureFieldGPUID);
 #endif
    if (startFromCheckPointFile)

@@ -90,14 +90,3 @@ performance_params{
     sendDirectlyFromGPU false;
 }
 
-PIDParameters
-{
-    targetMeanVelocityMagnitude 0.086;
-    proportionalGain            2e-4;
-    derivativeGain              1e-6;
-    integralGain                2e-4;
-    maxRamp                     1e-4;
-    minActuatingVariable        0;
-    maxActuatingVariable        1e-3;
-}
-
