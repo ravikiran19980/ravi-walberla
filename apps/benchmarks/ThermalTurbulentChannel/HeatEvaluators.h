@@ -469,11 +469,13 @@ class WallStatistics
 
    bool getWallStatisticsConvergence() { return wallstatistics_convergence_; }
    real_t getWallShearStress() { return tauBottomOld_; }
+   real_t getNusseltNumber() { return nuBottomOld_; }
 
 
  private:
 
    void resetWallValues() {
+      nuBottomOld_ = nuBottom_;
       nuBottom_ = 0.0;
       nuTop_ = 0.0;
       tauBottomOld_ = tauBottom_;
@@ -528,6 +530,7 @@ class WallStatistics
    std::ofstream outFile_;
    real_t nuTop_;
    real_t nuBottom_;
+   real_t nuBottomOld_;
    real_t tauTop_;
    real_t tauBottom_;
    real_t tauBottomOld_;
