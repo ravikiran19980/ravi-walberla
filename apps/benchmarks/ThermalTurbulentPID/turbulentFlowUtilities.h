@@ -7,10 +7,23 @@
 #include "WelfordVelocity.h"
 #include "PIDController.h"
 
+#ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
+#include "gpu/Kernel.h"
+#endif
+
 /// BULK VELOCITY CALCULATION
 namespace walberla
 {
 using namespace pystencils;
+
+#ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
+#define BLOCK_SIZE 256
+void bulkVelocityReductionKernel(const real_t* meanVelocity,
+                                 const real_t* maskField,
+                                 real_t* globalVelocitySum,
+                                 real_t* globalWeightSum,
+                                 int N);
+#endif
 
 struct ForceCalculatorParameters
 {
@@ -151,17 +164,6 @@ class ForceAdjusterPID
                                                                      << ", dg = " << pid_.getDerivateGain()
                                                                      << ", ig = " << pid_.getIntegralGain());
 
-
-
-      /*const auto& domainSize = forceParams.domainSize;
-
-      Cell maxCell;
-      maxCell[forceParams.wallAxis] = int_c(forceParams.channelHalfWidth) - 1;
-      maxCell[flowDirection_]     = int_c(domainSize[flowDirection_]) - 1;
-      const auto remainingIdx     = 3 - forceParams.wallAxis - flowDirection_;
-      maxCell[remainingIdx]       = int_c(domainSize[remainingIdx]) - 1;
-      ci_                         = CellInterval(Cell{}, maxCell);*/
-
    }
 
    void operator()(const real_t currentBulkVelocity)
@@ -182,6 +184,7 @@ class ForceAdjusterPID
    real_t bulkVelocity() const { return bulkVelocity_; }
    void setBulkVelocity(const real_t bulkVelocity) { bulkVelocity_ = bulkVelocity; }
 
+#ifndef WALBERLA_BUILD_WITH_GPU_SUPPORT
    void calculateBulkVelocity()
    {
       // reset bulk velocity
@@ -220,6 +223,58 @@ class ForceAdjusterPID
       bulkVelocity_ /= numFluidCells;
 
    }
+
+#else
+
+   void calculateBulkVelocity()
+   {
+      real_t *d_velSum, *d_weightSum;
+      WALBERLA_GPU_CHECK(gpuMalloc(&d_velSum, sizeof(real_t)));
+      WALBERLA_GPU_CHECK(gpuMalloc(&d_weightSum, sizeof(real_t)));
+      WALBERLA_GPU_CHECK(gpuMemset(d_velSum, 0, sizeof(real_t)));
+      WALBERLA_GPU_CHECK(gpuMemset(d_weightSum, 0, sizeof(real_t)));
+
+      auto blocks = blocks_.lock();
+      WALBERLA_CHECK_NOT_NULLPTR(blocks)
+
+      for (auto block = blocks->begin(); block != blocks->end(); ++block)
+      {
+         auto* meanVelocityField = block->template getData< VelocityField_T >(meanVelocityId_);
+         auto* maskField = block->template getData< MaskField_T >(maskFieldId_);
+
+         int N = meanVelocityField->xSize() * meanVelocityField->ySize() * meanVelocityField->zSize();
+         int numBlocks = (N + BLOCK_SIZE - 1) / BLOCK_SIZE;
+
+         // launched once per waLBerla block; atomicAdd accumulates
+         // across all of them into the same two global scalars
+         auto bulkVelocityKernel = gpu::make_kernel(&bulkVelocityReductionKernel);
+         bulkVelocityKernel.addParam(walberla::gpu::FieldIndexing< uint_t >::xyz(*meanVelocityField));
+         bulkVelocityKernel.addParam(walberla::gpu::FieldIndexing< uint_t >::xyz(*maskField));
+         bulkVelocityKernel.addParam(d_velSum);
+         bulkVelocityKernel.addParam(d_weightSum);
+         bulkVelocityKernel.addParam(N);
+         bulkVelocityKernel.configure(dim3(numBlocks, 1, 1), dim3(BLOCK_SIZE, 1, 1));
+         bulkVelocityKernel();
+      }
+
+      real_t h_velSum, h_weightSum;
+      WALBERLA_GPU_CHECK(gpuMemcpy(&h_velSum, d_velSum, sizeof(real_t), gpuMemcpyDeviceToHost));
+      WALBERLA_GPU_CHECK(gpuMemcpy(&h_weightSum, d_weightSum, sizeof(real_t), gpuMemcpyDeviceToHost));
+      WALBERLA_GPU_CHECK(gpuFree(d_velSum));
+      WALBERLA_GPU_CHECK(gpuFree(d_weightSum));
+
+      // MPI reduction across processes still happens exactly as before -
+      // GPU only removed the per-cell CPU loop within one process
+      mpi::allReduceInplace< real_t >(h_velSum, mpi::SUM);
+      mpi::allReduceInplace< real_t >(h_weightSum, mpi::SUM);
+
+      bulkVelocity_ = h_velSum / h_weightSum;
+   }
+
+
+
+#endif
+
 
 
 

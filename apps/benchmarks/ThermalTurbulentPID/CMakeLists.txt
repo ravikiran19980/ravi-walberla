@@ -51,6 +51,7 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
             )
             if (WALBERLA_BUILD_WITH_HIP OR WALBERLA_BUILD_WITH_GPU_SUPPORT)
                 list(APPEND BASE_SOURCES
+                        ./utilities/bulkVelocityReductionKernel.${CODEGEN_FILE_SUFFIX}
                         ./utilities/temperatureWrapperKernels.h
                         ./utilities/temperatureWrapperKernels.${CODEGEN_FILE_SUFFIX}
                 )
