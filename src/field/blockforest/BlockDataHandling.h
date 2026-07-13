@@ -51,6 +51,9 @@ public:
 
    void addInitializationFunction( const InitializationFunction_T & initFunction ) { initFunction_ = initFunction; }
 
+   void serializeGhostLayers( const bool serializeGhostLayers ) { serializeGhostLayers_ = serializeGhostLayers; }
+   bool serializeGhostLayers() const { return serializeGhostLayers_; }
+
    Field_T * initialize( IBlock * const block ) override
    {
       auto * field = allocate( block );
@@ -104,6 +107,8 @@ protected:
 
    InitializationFunction_T initFunction_;
 
+   bool serializeGhostLayers_{ true };
+
 }; // class BlockDataHandling
 // NOLINTEND(portability-template-virtual-member-function)
 
@@ -119,8 +124,16 @@ inline void BlockDataHandling< Field_T, Pseudo2D >::serialize( IBlock * const bl
    buffer << field->xSize() << field->ySize() << field->zSize() << field->fSize();
 #endif
 
-   for( const auto &value : *field )
-      buffer << value;
+   if( serializeGhostLayers_ )
+   {
+      for( auto it = field->beginWithGhostLayer(); it != field->end(); ++it )
+         buffer << *it;
+   }
+   else
+   {
+      for( const auto &value : *field )
+         buffer << value;
+   }
 }
 
 
@@ -219,8 +232,16 @@ inline void BlockDataHandling< Field_T, Pseudo2D >::deserialize( IBlock * const 
    WALBERLA_ASSERT_EQUAL( fSender, field->fSize() )
 #endif
 
-   for( auto &value : *field )
-      buffer >> value;
+   if( serializeGhostLayers_ )
+   {
+      for( auto it = field->beginWithGhostLayer(); it != field->end(); ++it )
+         buffer >> *it;
+   }
+   else
+   {
+      for( auto &value : *field )
+         buffer >> value;
+   }
 }
 
 
