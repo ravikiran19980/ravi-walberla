@@ -608,7 +608,6 @@ int main(int argc, char** argv)
    const real_t domainVolume = domainSize[codegen::flow_axis] * domainSize[codegen::wall_axis] *
                                domainSize[codegen::remaining_axis];
    const uint_t numParticles = uint_c((volfraction*domainVolume)/(particleVolume));
-   WALBERLA_LOG_INFO_ON_ROOT(numParticles << " particles will be created");
    const real_t T_conversion = real_t(1);
    const real_t channel_half_width = real_c(domainSize[codegen::wall_axis]) / 2.0;
 #ifdef run_with_temperature
@@ -655,25 +654,18 @@ int main(int argc, char** argv)
          {
             checkpointConfigIS >> startTimeStep;
             checkpointConfigIS >> currentPidForce;
-            if (!checkpointConfigIS.good() && !checkpointConfigIS.eof())
-            {
-               WALBERLA_ABORT("Could not parse timestep from checkpoint config file " << checkpointingFileName + "_config.txt");
-            }
-            if (!(checkpointConfigIS >> currentPidForce))
-            {
-               WALBERLA_ABORT("Could not parse PID force from checkpoint config file " << checkpointingFileName + "_config.txt");
-            }
          }
       }
       walberla::mpi::broadcastObject(startTimeStep);
       walberla::mpi::broadcastObject(currentPidForce);
-      WALBERLA_LOG_INFO_ON_ROOT("Restarting simulation from checkpoint at time step " << startTimeStep);
+      WALBERLA_LOG_INFO_ON_ROOT("Restarting simulation from checkpoint at time step " << startTimeStep << " with PID force " << currentPidForce);
    }
 
 
 
 
    WALBERLA_LOG_INFO_ON_ROOT("total number of timeSteps in simulation " << numTimeSteps);
+   WALBERLA_LOG_INFO_ON_ROOT("Remaining timeSteps in simulation " << numTimeSteps - startTimeStep);
    WALBERLA_LOG_INFO_ON_ROOT("density particle LB is " << densityParticle);
    WALBERLA_LOG_INFO_ON_ROOT("density fluid LB is " << densityFluid);
    WALBERLA_LOG_INFO_ON_ROOT("Particle Diameter is = " << particleDiameter);
@@ -1070,7 +1062,7 @@ int main(int argc, char** argv)
    setVelocityFieldsAsmuth<VectorField_T>(
       blocks, velFieldFluidID, meanVelFieldID,
       target_friction_velocity, uint_c(forceParams.channelHalfWidth),
-      5.5_r, 0.4_r, 0.000614286,
+      5.5_r, 0.4_r, kinematicViscosityLB,
       forceParams.wallAxis, codegen::flow_axis );
 
    // Map particles into the fluid domain
@@ -2057,7 +2049,7 @@ int main(int argc, char** argv)
 #else
             evaluateFluidInfo(blocks, densityFluidFieldID, velFieldFluidID);
 #endif
-         //getFluidMacroFields();
+         getFluidMacroFields();
          WALBERLA_LOG_INFO_ON_ROOT(fluidInfo);
 
          if (particleBarriers) WALBERLA_MPI_BARRIER();

@@ -548,7 +548,7 @@ void setVelocityFieldsAsmuth(const std::weak_ptr< StructuredBlockStorage >& fore
    const real_t utau_over_nu = frictionVelocity / viscosity;
 
    // Target wavelengths in lattice cells
-   const real_t lambda_x = target_lambda_x_plus / utau_over_nu;
+   const real_t lambda_x = 10*target_lambda_x_plus / utau_over_nu;
    const real_t lambda_z = target_lambda_z_plus / utau_over_nu;
 
    // Factors for sin()  →  factor = 2 * L / lambda
