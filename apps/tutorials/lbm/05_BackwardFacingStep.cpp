@@ -182,7 +182,7 @@ int main( int argc, char ** argv )
 
    // create fields
    LatticeModel_T latticeModel = LatticeModel_T( lbm::collision_model::SRT( omega ) );
-   BlockDataID pdfFieldID = lbm::addPdfFieldToStorage( blocks, "pdf field", latticeModel, inletVelocity, real_t{1} );
+   BlockDataID pdfFieldID = lbm::addPdfFieldToStorage( blocks, "pdf field", latticeModel, inletVelocity, 1_r );
    BlockDataID flagFieldID = field::addFlagFieldToStorage< FlagField_T >( blocks, "flag field" );
 
    // create and initialize boundary handling

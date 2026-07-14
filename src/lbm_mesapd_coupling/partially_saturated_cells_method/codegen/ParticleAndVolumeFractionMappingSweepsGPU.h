@@ -155,12 +155,12 @@ class SphereFractionMappingSweep
             {
                const real_t radius = static_cast< mesa_pd::data::Sphere* >(ac_->getShape(idx))->getRadius();
                radii_h[idxMapped]  = radius;
-               real_t Va           = real_t{
+               real_t Va           = real_c(
                   (1.0 / 12.0 - radius * radius) * atan((0.5 * sqrt(radius * radius - 0.5)) / (0.5 - radius * radius)) +
                   1.0 / 3.0 * sqrt(radius * radius - 0.5) +
                   (radius * radius - 1.0 / 12.0) * atan(0.5 / sqrt(radius * radius - 0.5)) -
-                  4.0 / 3.0 * radius * radius * radius * atan(0.25 / (radius * sqrt(radius * radius - 0.5)))};
-               f_r_h[idxMapped] = Va - radius + real_t{0.5};
+                  4.0 / 3.0 * radius * radius * radius * atan(0.25 / (radius * sqrt(radius * radius - 0.5))));
+               f_r_h[idxMapped] = Va - radius + 0.5_r;
             }
             idxMapped++;
          }
@@ -324,12 +324,12 @@ class BoxFractionMappingSweep
       myKernel.addFieldIndexingParam(walberla::gpu::FieldIndexing< real_t >::xyz(*BField));
       myKernel.addParam(particleAndVolumeFractionSoA_.omega_);
       const Vector3< real_t > boxPosition = ac_->getPosition(ac_->uidToIdx(boxUid_));
-      myKernel.addParam(double3{ boxPosition[0] - boxEdgeLength_[0] / real_t{2},
-                                 boxPosition[1] - boxEdgeLength_[1] / real_t{2},
-                                 boxPosition[2] - boxEdgeLength_[2] / real_t{2} });
-      myKernel.addParam(double3{ boxPosition[0] + boxEdgeLength_[0] / real_t{2},
-                                 boxPosition[1] + boxEdgeLength_[1] / real_t{2},
-                                 boxPosition[2] + boxEdgeLength_[2] / real_t{2} });
+      myKernel.addParam(double3{ boxPosition[0] - boxEdgeLength_[0] / 2_r,
+                                 boxPosition[1] - boxEdgeLength_[1] / 2_r,
+                                 boxPosition[2] - boxEdgeLength_[2] / 2_r });
+      myKernel.addParam(double3{ boxPosition[0] + boxEdgeLength_[0] / 2_r,
+                                 boxPosition[1] + boxEdgeLength_[1] / 2_r,
+                                 boxPosition[2] + boxEdgeLength_[2] / 2_r });
       Vector3< real_t > blockStart = block->getAABB().minCorner();
       myKernel.addParam(double3{ blockStart[0], blockStart[1], blockStart[2] });
       myKernel.addParam(block->getAABB().xSize() / real_t(nOverlappingParticlesField->xSize()));

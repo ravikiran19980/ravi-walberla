@@ -109,7 +109,7 @@ private:
                   rho = pdfField->getDensityAndVelocity(velocity,cell);
                } else{
                   isFluid = false;
-                  rho = real_t{0};
+                  rho = 0_r;
                   auto particleIdx = ac_->uidToIdx(particleField->get( cell ));
                   velocity = mesa_pd::getVelocityAtWFPoint(particleIdx, *ac_, cellCenter );
                   if(isSet(ac_->getFlags(particleIdx), mesa_pd::data::particle_flags::FIXED)) isFixed = true;

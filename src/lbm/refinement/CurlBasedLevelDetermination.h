@@ -56,12 +56,12 @@ public:
 
    CurlBasedLevelDetermination(const ConstBlockDataID & fieldID, const StructuredBlockForest & structuredBlockForest,
          const Filter_T & filter, const uint_t maxLevel,
-         const real_t upperLimit, const real_t lowerLimit, const real_t lengthScaleWeight = real_t{2}) :
+         const real_t upperLimit, const real_t lowerLimit, const real_t lengthScaleWeight = 2_r) :
          fieldID_(fieldID), structuredBlockForest_(structuredBlockForest), filter_(filter), maxLevel_(maxLevel),
          upperLimitSqr_(upperLimit*upperLimit), lowerLimitSqr_(lowerLimit*lowerLimit),
          lengthScaleWeight_(lengthScaleWeight)
    {
-      WALBERLA_CHECK_FLOAT_UNEQUAL(lengthScaleWeight_, real_t{0}); // else std::pow(x, y/0) is calculated further below
+      WALBERLA_CHECK_FLOAT_UNEQUAL(lengthScaleWeight_, 0_r); // else std::pow(x, y/0) is calculated further below
    }
 
    void operator()( std::vector< std::pair< const Block *, uint_t > > & minTargetLevels,
@@ -108,9 +108,9 @@ void CurlBasedLevelDetermination< Filter_T >::operator()( std::vector< std::pair
       const real_t dy = structuredBlockForest_.dy(forest.getLevel(*block));
       const real_t dz = structuredBlockForest_.dz(forest.getLevel(*block));
 
-      const auto halfInvDx = real_t{0.5} * real_t{1} / dx;
-      const auto halfInvDy = real_t{0.5} * real_t{1} / dy;
-      const auto halfInvDz = real_t{0.5} * real_t{1} / dz;
+      const auto halfInvDx = 0.5_r * 1_r / dx;
+      const auto halfInvDy = 0.5_r * 1_r / dy;
+      const auto halfInvDz = 0.5_r * 1_r / dz;
 
       bool refine = false;
       bool coarsen = true;

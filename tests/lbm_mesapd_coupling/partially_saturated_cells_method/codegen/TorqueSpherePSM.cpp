@@ -368,7 +368,7 @@ int main(int argc, char** argv)
 
    pystencils::PSM_MacroSetter pdfSetter(particleAndVolumeFractionSoA.BsFieldID, particleAndVolumeFractionSoA.BFieldID,
                                          particleAndVolumeFractionSoA.particleVelocitiesFieldID, pdfFieldCPUGPUID,
-                                         real_t{1.0}, real_t{0}, real_t{0}, real_t{0});
+                                         1.0_r, 0_r, 0_r, 0_r);
 
    for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
    {

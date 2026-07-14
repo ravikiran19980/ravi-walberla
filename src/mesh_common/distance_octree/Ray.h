@@ -110,7 +110,7 @@ class Ray {
    }
 
    inline void setDirection (const Vector3<real_t>& direction) {
-      WALBERLA_CHECK_FLOAT_EQUAL(direction.length(), real_t{1});
+      WALBERLA_CHECK_FLOAT_EQUAL(direction.length(), 1_r);
       direction_ = direction;
       calcInvDirection();
    }
@@ -185,14 +185,14 @@ inline bool rayAABBIntersection(const AABB& aabb, const Ray& ray, real_t& t, rea
    }
 
    if (n != nullptr) {
-      (*n)[0] = (*n)[1] = (*n)[2] = real_t{0};
+      (*n)[0] = (*n)[1] = (*n)[2] = 0_r;
    }
    real_t t_;
    if (tmin > 0) {
       // ray hit box from outside
       t_ = tmin;
       if (n != nullptr) {
-         (*n)[tminAxis] = real_t{1};
+         (*n)[tminAxis] = 1_r;
       }
    } else if (tmax < 0) {
       // tmin and tmax are smaller than 0 -> box is in rays negative direction
@@ -202,7 +202,7 @@ inline bool rayAABBIntersection(const AABB& aabb, const Ray& ray, real_t& t, rea
       // ray origin within box
       t_ = tmax;
       if (n != nullptr) {
-         (*n)[tmaxAxis] = real_t{1};
+         (*n)[tmaxAxis] = 1_r;
       }
    }
 

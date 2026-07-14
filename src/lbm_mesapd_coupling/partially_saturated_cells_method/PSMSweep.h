@@ -219,11 +219,11 @@ void PSMSweep< LatticeModel_T, Filter_T, DensityVelocityIn_T, DensityVelocityOut
                if (particleAndVolumeFractionField->get(x, y, z).size() != size_t{0})
                {
                   // total coverage ratio in the cell
-                  real_t Bn = real_t{0};
+                  real_t Bn = 0_r;
 
                   // averaged solid collision operator for all intersecting particles s
                   // = \sum_s B_s * \Omega_s_i
-                  std::vector< real_t > omega_n(Stencil_T::Size, real_t{0});
+                  std::vector< real_t > omega_n(Stencil_T::Size, 0_r);
 
                   // get center of cell
                   Vector3< real_t > cellCenter = blockStorage_->getBlockLocalCellCenter(*block, Cell(x, y, z));
@@ -396,11 +396,11 @@ void PSMSweep< LatticeModel_T, Filter_T, DensityVelocityIn_T, DensityVelocityOut
                if (particleAndVolumeFractionField->get(x, y, z).size() != size_t{0})
                {
                   // total coverage ratio in the cell
-                  real_t Bn = real_t{0};
+                  real_t Bn = 0_r;
 
                   // averaged solid collision operator for all intersecting particles s
                   // = \sum_s B_s * \Omega_s_i
-                  std::vector< real_t > omega_n(Stencil_T::Size, real_t{0});
+                  std::vector< real_t > omega_n(Stencil_T::Size, 0_r);
 
                   // get center of cell
                   Vector3< real_t > cellCenter = blockStorage_->getBlockLocalCellCenter(*block, Cell(x, y, z));

@@ -95,7 +95,7 @@ private:
          :child( _child ), intersectsAabb( pe::raytracing::intersects( child->getAABB(), 
                                                                        pe::raytracing::Ray(toWalberla( ray_origin ), (toWalberla( ray_direction )).getNormalized()),
                                                                        parametricDistance,
-                                                                       real_t{0.0}, 
+                                                                       0.0_r, 
                                                                        &normal
                                                                      )) {}
 
@@ -121,7 +121,7 @@ private:
                                                         mesh::Ray(
                                                                toWalberla( ray_origin ), 
                                                                (toWalberla( ray_direction )).getNormalized()),
-                                                         distance, real_t{0.0}, &ray_normal
+                                                         distance, 0.0_r, &ray_normal
                                                       )
                         };
                   

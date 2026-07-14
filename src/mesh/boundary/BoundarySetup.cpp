@@ -135,7 +135,7 @@ void BoundarySetup::voxelize()
 
          if( curCi.numCells() == uint_t{1} )
          {
-            if( ( sqSignedDistance < real_t{0} ) )
+            if( ( sqSignedDistance < 0_r ) )
             {
                Cell localCell;
                structuredBlockStorage_->transformGlobalToBlockLocalCell( localCell, block, curCi.min() );
@@ -146,7 +146,7 @@ void BoundarySetup::voxelize()
             continue;
          }
 
-         const real_t circumRadius = curAABB.sizes().length() * real_t{0.5};
+         const real_t circumRadius = curAABB.sizes().length() * 0.5_r;
          const real_t sqCircumRadius = circumRadius * circumRadius;
 
          if( sqSignedDistance < -sqCircumRadius )
@@ -243,7 +243,7 @@ void BoundarySetup::refinementCorrection( StructuredBlockForest & blockForest )
             structuredBlockStorage_->getCellCenter( coarseCenter, coarseCell, level - uint_t{1} );
             structuredBlockStorage_->mapToPeriodicDomain( coarseCenter );
 
-            voxelizationField->get( cell ) =  distanceFunction_( coarseCenter ) < real_t{0} ? uint8_t{1} : uint8_t{0};
+            voxelizationField->get( cell ) =  distanceFunction_( coarseCenter ) < 0_r ? uint8_t{1} : uint8_t{0};
          }
    }
 }

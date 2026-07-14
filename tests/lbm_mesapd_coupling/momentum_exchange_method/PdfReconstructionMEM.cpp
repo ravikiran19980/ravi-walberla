@@ -196,7 +196,7 @@ public:
    MappingChecker(const shared_ptr< StructuredBlockStorage > & blocks,
                   const BlockDataID & boundaryHandlingID, real_t sphereRadius) :
          blocks_( blocks ), boundaryHandlingID_( boundaryHandlingID ),
-         sphereRadius_( sphereRadius ), sphereVolume_( math::pi * real_t{4} / real_t{3} * sphereRadius * sphereRadius * sphereRadius )
+         sphereRadius_( sphereRadius ), sphereVolume_( math::pi * 4_r / 3_r * sphereRadius * sphereRadius * sphereRadius )
    { }
 
    // check the mapping in the inner domain of the block and check mapped volume against real sphere volume
@@ -244,7 +244,7 @@ public:
 
       // mapped volume has to be - approximately - the same as the real volume
       real_t mappedVolume = real_c(cellCounter); // dx=1
-      WALBERLA_CHECK(std::fabs( mappedVolume - sphereVolume_ ) / sphereVolume_ <= real_t{0.1},
+      WALBERLA_CHECK(std::fabs( mappedVolume - sphereVolume_ ) / sphereVolume_ <= 0.1_r,
                      "Mapped volume " << mappedVolume << " does not fit to real sphere volume " << sphereVolume_ << ".");
    }
 
@@ -344,7 +344,7 @@ void checkExtrapolationDirectionFinder( std::string identifier,
    mesa_pd::domain::BlockForestDomain domain(blocks->getBlockForestPointer());
    auto sphereShape = ss->create<mesa_pd::data::Sphere>( radius );
    mesa_pd::mpi::SyncNextNeighbors syncNextNeighborFunc;
-   const real_t overlap = real_t{ 1.5 };
+   const real_t overlap = 1.5_r;
 
    MappingResetter<BoundaryHandling_T> mappingResetter(blocks, boundaryHandlingID, particleFieldID, accessor->getInvalidUid());
    auto regularParticleMapper = lbm_mesapd_coupling::makeMovingParticleMapping<PdfField_T, BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, MO_Flag(), FormerMO_Flag(), mesa_pd::kernel::SelectAll(), conserveMomentum);
@@ -352,7 +352,7 @@ void checkExtrapolationDirectionFinder( std::string identifier,
    std::string testIdentifier(identifier + " Test:");
    WALBERLA_LOG_DEVEL_ON_ROOT(testIdentifier << " - started");
 
-   Vector3<real_t> spherePosition(real_t{9.5}, real_t{9.5}, real_t{9.5});
+   Vector3<real_t> spherePosition(9.5_r, 9.5_r, 9.5_r);
 
    std::array<Vector3<real_t>,3> referenceNormals = {{Vector3<real_t>(1,0,0), Vector3<real_t>(0,-1,0), Vector3<real_t>(-1,0,1)/sqrt(2)}};
    std::array<Vector3<real_t>,3> evaluationPoints = {{spherePosition + referenceNormals[0] * radius, spherePosition + referenceNormals[1] * radius, spherePosition + referenceNormals[2] * radius}};
@@ -420,7 +420,7 @@ void checkReconstruction( std::string testIdentifier, Vector3<real_t> spherePosi
    mesa_pd::domain::BlockForestDomain domain(blocks->getBlockForestPointer());
    auto sphereShape = ss->create<mesa_pd::data::Sphere>( radius );
    mesa_pd::mpi::SyncNextNeighbors syncNextNeighborFunc;
-   const real_t overlap = real_t{ 1.5 };
+   const real_t overlap = 1.5_r;
 
    MappingChecker<BoundaryHandling_T> mappingChecker(blocks, boundaryHandlingID, radius);
    MappingResetter<BoundaryHandling_T> mappingResetter(blocks, boundaryHandlingID, particleFieldID, accessor->getInvalidUid());
@@ -530,11 +530,11 @@ int main( int argc, char **argv )
    // SIMULATION PROPERTIES //
    ///////////////////////////
 
-   const real_t omega  = real_t{1};
-   const real_t dx     = real_t{1};
-   const real_t radius = real_t{5};
-   const Vector3<real_t> velocity( real_t{0.1}, real_t{0}, real_t{0} );
-   const real_t density = real_t{1};
+   const real_t omega  = 1_r;
+   const real_t dx     = 1_r;
+   const real_t radius = 5_r;
+   const Vector3<real_t> velocity( 0.1_r, 0_r, 0_r );
+   const real_t density = 1_r;
 
    bool conserveMomentum = true;
 
@@ -585,11 +585,11 @@ int main( int argc, char **argv )
 
    // test setups -> tuple of (setupName, spherePosition, periodicityTested)
    std::vector<std::tuple<std::string, Vector3<real_t>, bool> > testSetups;
-   testSetups.emplace_back( "sphere inside block",          Vector3<real_t>(real_t{10}, real_t{10}, real_t{10}),        false );
-   testSetups.emplace_back( "sphere on block boarder",      Vector3<real_t>(real_t{19.5}, real_t{10}, real_t{10}),      false );
-   testSetups.emplace_back( "sphere on block boarder 2",    Vector3<real_t>(real_t{20}+radius, real_t{10}, real_t{10}), false );
-   testSetups.emplace_back( "sphere on periodic boarder",   Vector3<real_t>(real_t{59.5}, real_t{10}, real_t{10}),      true );
-   testSetups.emplace_back( "sphere on periodic boarder 2", Vector3<real_t>(radius, real_t{10}, real_t{10}),            true );
+   testSetups.emplace_back( "sphere inside block",          Vector3<real_t>(10_r, 10_r, 10_r),        false );
+   testSetups.emplace_back( "sphere on block boarder",      Vector3<real_t>(19.5_r, 10_r, 10_r),      false );
+   testSetups.emplace_back( "sphere on block boarder 2",    Vector3<real_t>(20_r+radius, 10_r, 10_r), false );
+   testSetups.emplace_back( "sphere on periodic boarder",   Vector3<real_t>(59.5_r, 10_r, 10_r),      true );
+   testSetups.emplace_back( "sphere on periodic boarder 2", Vector3<real_t>(radius, 10_r, 10_r),            true );
 
 
    /////////////////////////////////////

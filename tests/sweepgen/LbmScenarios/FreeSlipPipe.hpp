@@ -78,7 +78,7 @@ struct FreeSlipPipe
 
       const real_t pipeRadius{ 14.0 };
       const Vector3< real_t > pipeAnchor{ 0.0, 16.0, 16.0 };
-      const real_t maxVelocity{ 0.02 };
+      const real_t maxVelocity{ 0.02_r };
       const Vector3< real_t > force{ 0., 0., 0. };
       const real_t omega{ 1.0 };
 

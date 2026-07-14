@@ -83,9 +83,9 @@ int main(int argc, char** argv)
    auto blocks = blockforest::createUniformBlockGridFromConfig(globalConfig);
 
    // dummy values without physical importance
-   const real_t omega{1.4};
-   [[maybe_unused]] const real_t filterWidth{1e-3};
-   const real_t targetUTau{1e-5};
+   const real_t omega{1.4_r};
+   [[maybe_unused]] const real_t filterWidth{1e-3_r};
+   const real_t targetUTau{1e-5_r};
 
    // create fields
    BlockDataID pdfFieldID     = blocks->addStructuredBlockData< PdfField_T >(pdfFieldAdder, "PDFs");

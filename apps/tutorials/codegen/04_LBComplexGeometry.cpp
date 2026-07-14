@@ -328,7 +328,7 @@ int main(int argc, char** argv)
       const Vector3< uint_t > domainScaling = domainParameters.getParameter< Vector3< uint_t > >("domainScaling", Vector3< uint_t >(1));
       const Vector3< bool >   periodicity   = domainParameters.getParameter< Vector3< bool > >("periodic", Vector3< bool >(true));
       const Vector3< uint_t > cellsPerBlock = domainParameters.getParameter< Vector3< uint_t > >("cellsPerBlock");
-      const real_t            dx_SI         = domainParameters.getParameter< real_t >("dx_SI", real_t{1});
+      const real_t            dx_SI         = domainParameters.getParameter< real_t >("dx_SI", 1_r);
       
       /*-----------------------------------------------------------------------------------------------------*/
       

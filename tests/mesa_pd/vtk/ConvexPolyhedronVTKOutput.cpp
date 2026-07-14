@@ -51,8 +51,8 @@ int main(int argc, char** argv) {
    std::string vtk_out = "vtk_out";
 
    /// BlockForest
-   Vector3< real_t > minCorner(real_t{0}, real_t{0}, real_t{0});
-   Vector3< real_t > maxCorner(real_t{4}, real_t{4}, real_t{4});
+   Vector3< real_t > minCorner(0_r, 0_r, 0_r);
+   Vector3< real_t > maxCorner(4_r, 4_r, 4_r);
    math::AABB domainSize(minCorner, maxCorner);
    Vector3< bool > periodicity(true, true, true);
    Vector3< uint_t > numBlocks(2, 2, 1);
@@ -83,14 +83,14 @@ int main(int argc, char** argv) {
    auto cubeShapeID = ss->create< data::ConvexPolyhedron >(cubeMesh);
 
    /// Mesh Particles
-   math::Rot3< real_t > cubeRotation(Vector3< real_t >(static_cast< real_t >(M_PI) / real_t{4}, real_t{0}, real_t{0}));
+   math::Rot3< real_t > cubeRotation(Vector3< real_t >(static_cast< real_t >(M_PI) / 4_r, 0_r, 0_r));
    for (uint_t x = 0; x <= 1; ++x) {
       for (uint_t y = 0; y <= 1; ++y) {
          for (uint_t z = 0; z <= 1; ++z) {
             // position of new mesh cube slightly shifted inwards
-            Vector3< real_t > pos((real_t{0.05} + static_cast< real_t >(x) * maxCorner[0] - static_cast< real_t >(x) * real_t{0.1}),
-                                  real_t{0.05} + static_cast< real_t >(y) * maxCorner[1] - static_cast< real_t >(y) * real_t{0.1},
-                                  real_t{0.05} + static_cast< real_t >(z) * maxCorner[2] - static_cast< real_t >(z) * real_t{0.1});
+            Vector3< real_t > pos((0.05_r + static_cast< real_t >(x) * maxCorner[0] - static_cast< real_t >(x) * 0.1_r),
+                                  0.05_r + static_cast< real_t >(y) * maxCorner[1] - static_cast< real_t >(y) * 0.1_r,
+                                  0.05_r + static_cast< real_t >(z) * maxCorner[2] - static_cast< real_t >(z) * 0.1_r);
 
             if (domain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), pos)) {
                auto rotatedCubeParticle = ps->create();

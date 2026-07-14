@@ -151,7 +151,7 @@ uint_t StaticLevelwiseParMetis::operator()( SetupBlockForest & forest, const uin
       int64_t numflag = 0; // C-style ordering
       int64_t ncon = 1; // Number of constraints
       int64_t ndims = 3; // Number of dimensions
-      std::array< double, 1 > ubvec = { real_t{ 1.05 } }; // imbalance tolerance
+      std::array< double, 1 > ubvec = { 1.05_r }; // imbalance tolerance
       int64_t nparts = int64_c( numberOfProcesses ); // number of subdomains
       MPI_Comm comm = MPIManager::instance()->comm();
       std::vector<double> tpwgts( uint_c(nparts * ncon), 1.0 / double_c( nparts ) ); // vertex weight fraction that is stored in a subdomain

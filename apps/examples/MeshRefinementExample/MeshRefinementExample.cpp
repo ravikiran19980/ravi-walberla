@@ -58,8 +58,8 @@ class AABBRefinement
 
    void operator()(SetupBlockForest& forest) const
    {
-      auto extendedAABB = AABB(objectAABB_.minCorner()[0] - objectAABB_.xSize() * 0.00, objectAABB_.minCorner()[1] - objectAABB_.ySize() * 0.0, objectAABB_.minCorner()[2] - objectAABB_.zSize() * 0.0,
-                              objectAABB_.maxCorner()[0] + 0.3 * objectAABB_.xSize(), objectAABB_.maxCorner()[1] + objectAABB_.ySize() * 0.0, objectAABB_.maxCorner()[2] + objectAABB_.zSize() * 0.0);
+      auto extendedAABB = AABB(objectAABB_.minCorner()[0] - objectAABB_.xSize() * 0.0_r, objectAABB_.minCorner()[1] - objectAABB_.ySize() * 0.0_r, objectAABB_.minCorner()[2] - objectAABB_.zSize() * 0.0_r,
+                              objectAABB_.maxCorner()[0] + 0.3_r * objectAABB_.xSize(), objectAABB_.maxCorner()[1] + objectAABB_.ySize() * 0.0_r, objectAABB_.maxCorner()[2] + objectAABB_.zSize() * 0.0_r);
       for(auto & block : forest) {
          auto blockAABB = block.getAABB();
          if (extendedAABB.intersects(blockAABB)) {
@@ -123,7 +123,7 @@ int main(int argc, char** argv)
    SweepCollection_T sweepCollection( blocks, densityFieldCpuId, pdfFieldCpuId, velocityFieldCpuId, omega);
 
    // Initialize Velocity and PDF field
-   Vector3<real_t> initialVel(0.1, 0, 0);
+   Vector3<real_t> initialVel(0.1_r, 0, 0);
    for (auto& block : *blocks)
    {
       auto velField = block.getData<VelocityField_T>(velocityFieldCpuId);

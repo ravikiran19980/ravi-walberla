@@ -64,11 +64,11 @@ public:
 
    void operator()()
    {
-      Vector3<real_t> pos(real_t{0});
-      Vector3<real_t> transVel(real_t{0});
-      Vector3<real_t> angularVel(real_t{0});
-      Vector3<real_t> force(real_t{0});
-      Vector3<real_t> torque(real_t{0});
+      Vector3<real_t> pos(0_r);
+      Vector3<real_t> transVel(0_r);
+      Vector3<real_t> angularVel(0_r);
+      Vector3<real_t> force(0_r);
+      Vector3<real_t> torque(0_r);
 
       size_t idx = ac_->uidToIdx(sphereUid_);
       if( idx != ac_->getInvalidIdx())
@@ -160,16 +160,16 @@ int main( int argc, char ** argv )
                                               domainSize[1] / numberOfBlocksPerDirection[1],
                                               domainSize[2] / numberOfBlocksPerDirection[2] );
 
-   real_t xPos1 = real_t{0};
-   real_t xPos2 = real_t{45.36281}; // random
+   real_t xPos1 = 0_r;
+   real_t xPos2 = 45.36281_r; // random
 
-   real_t radius = real_t{2};
+   real_t radius = 2_r;
 
-   Vector3<real_t> hydForce( real_t{0.75}, 0, 0);
-   Vector3<real_t> hydTorque( real_t{0.75}, 0, 0);
+   Vector3<real_t> hydForce( 0.75_r, 0, 0);
+   Vector3<real_t> hydTorque( 0.75_r, 0, 0);
 
-   real_t dt = real_t{1};
-   real_t dx = real_t{1};
+   real_t dt = 1_r;
+   real_t dx = 1_r;
    uint_t timesteps = 400;
 
    bool averageForceTorqueOverTwoTimeSteps = true;
@@ -200,10 +200,10 @@ int main( int argc, char ** argv )
    auto accessor = walberla::make_shared<ParticleAccessor_T >(ps, ss);
 
    auto sphereShape = ss->create<mesa_pd::data::Sphere>( radius );
-   ss->shapes[sphereShape]->updateMassAndInertia(real_t{1});
+   ss->shapes[sphereShape]->updateMassAndInertia(1_r);
 
-   Vector3<real_t> initialPosition1( xPos1, real_t{0.5} * real_c(domainSize[1]), real_t{0.5} * real_c(domainSize[2]));
-   Vector3<real_t> initialPosition2( xPos2, real_t{0.5} * real_c(domainSize[1]), real_t{0.5} * real_c(domainSize[2]));
+   Vector3<real_t> initialPosition1( xPos1, 0.5_r * real_c(domainSize[1]), 0.5_r * real_c(domainSize[2]));
+   Vector3<real_t> initialPosition2( xPos2, 0.5_r * real_c(domainSize[1]), 0.5_r * real_c(domainSize[2]));
 
    walberla::id_t sphereUid1 = 0;
    if (rpdDomain->isContainedInProcessSubdomain( uint_c(mpi::MPIManager::instance()->rank()), initialPosition1 ))
@@ -237,7 +237,7 @@ int main( int argc, char ** argv )
    mesa_pd::mpi::ReduceProperty reduceProperty;
 
    std::function<void(void)> syncCall = [ps,rpdDomain](){
-      const real_t overlap = real_t{ 1.5 };
+      const real_t overlap = 1.5_r;
       mesa_pd::mpi::SyncNextNeighbors syncNextNeighborFunc;
       syncNextNeighborFunc(*ps, *rpdDomain, overlap);
    };

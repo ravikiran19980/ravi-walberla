@@ -127,7 +127,7 @@ int main(int argc, char** argv)
    Vector3< uint_t > domainScaling =
       domainParameters.getParameter< Vector3< uint_t > >("domainScaling", Vector3< uint_t >(1));
 
-   const real_t dx = domainParameters.getParameter< real_t >("dx", real_t{1});
+   const real_t dx = domainParameters.getParameter< real_t >("dx", 1_r);
    const Vector3< bool > periodicity =
       domainParameters.getParameter< Vector3< bool > >("periodic", Vector3< bool >(true));
    const Vector3< uint_t > cellsPerBlock = domainParameters.getParameter< Vector3< uint_t > >("cellsPerBlock");
@@ -199,7 +199,7 @@ int main(int argc, char** argv)
    // create fields
    LatticeModel_T latticeModel = LatticeModel_T(lbm::collision_model::SRT(omega));
    BlockDataID pdfFieldId =
-      lbm::addPdfFieldToStorage(blocks, "pdf field", latticeModel, initialVelocity, real_t{1}, numGhostLayers);
+      lbm::addPdfFieldToStorage(blocks, "pdf field", latticeModel, initialVelocity, 1_r, numGhostLayers);
    BlockDataID flagFieldId = field::addFlagFieldToStorage< FlagField_T >(blocks, "flag field", numGhostLayers);
 
    /////////////////////////

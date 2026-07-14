@@ -139,8 +139,8 @@ namespace mesh {
       auto triDist = make_shared< mesh::TriangleDistance<MeshType> >( mesh );
       auto distanceOctree = make_shared< mesh::DistanceOctree< MeshType > >( triDist );
 
-      std::vector< real_t > test_dx = { real_t{0.33}, real_t{1.0}, real_t{1.5} };
-      std::vector< real_t > mesh_shift = { real_t{0.0}, real_t{0.33}, real_t{0.5}, real_t{1.0} };
+      std::vector< real_t > test_dx = { 0.33_r, 1.0_r, 1.5_r };
+      std::vector< real_t > mesh_shift = { 0.0_r, 0.33_r, 0.5_r, 1.0_r };
 
       for (const auto dx : test_dx )
       {
@@ -148,7 +148,7 @@ namespace mesh {
          {
             const Vector3<real_t> translation_shift { shift * dx };
             AABB aabb = computeAABB( *mesh );
-            aabb.scale( real_t{1.2} ); // AABB containing the test points
+            aabb.scale( 1.2_r ); // AABB containing the test points
             aabb.translate(translation_shift); // Shift test points relative to mesh to get arbitrary distances.
 
             // build blockforest

@@ -138,7 +138,7 @@ int main( int argc, char **argv ) {
       Vector3<real_t> domainCorner{};
       for(uint_t d = 0; d < 3; ++d) {
          domainSize[d] = real_c(nBlocks[d] * cellsPerBlock[d]);
-         domainCorner[d] = zeroCenteredDomain ? real_t{0} : - domainSize[d] / real_t{2};
+         domainCorner[d] = zeroCenteredDomain ? 0_r : - domainSize[d] / 2_r;
       }
 
       auto blocks = blockforest::createUniformBlockGrid(
@@ -151,7 +151,7 @@ int main( int argc, char **argv ) {
          true                                                   // keep global block information
       );
 
-      const auto h_fieldID = field::addToStorage< Field_T >(blocks, "test field CPU", real_t{0}, field::Layout::fzyx, fieldGhostLayers);
+      const auto h_fieldID = field::addToStorage< Field_T >(blocks, "test field CPU", 0_r, field::Layout::fzyx, fieldGhostLayers);
       FieldInitialiser< Field_T > initialiser(blocks, h_fieldID);
 
       const auto d_fieldID = gpu::addGPUFieldToStorage< Field_T >(blocks, h_fieldID, "test field GPU");

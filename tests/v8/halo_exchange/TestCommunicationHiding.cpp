@@ -63,7 +63,7 @@ void TestCommunicationHiding()
    VectorField_T u{ *blocks };
    PdfField_T pdfs{ *blocks };
 
-   const real_t maxVelocity{0.01};
+   const real_t maxVelocity{0.01_r};
    for (auto& block : *blocks){
       FieldView uv{ u, block };
       FieldView rhov{ rho, block };
@@ -80,7 +80,7 @@ void TestCommunicationHiding()
    {
       lbInit(&b);
    }
-   const real_t omega{0.8};
+   const real_t omega{0.8_r};
    auto haloExchange = HaloExchange::create< LbStencil, MemoryTag >(blocks)
                           .sync(halo_exchange::streamPullSync< LbStencil >(pdfs))
                           .makeShared();

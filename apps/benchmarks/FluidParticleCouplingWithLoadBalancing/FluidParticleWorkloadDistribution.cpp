@@ -189,21 +189,21 @@ static shared_ptr< StructuredBlockForest > createBlockStructure( const AABB & do
    if( loadDistributionStrategy == "Hilbert" )
    {
       bool useHilbert = true;
-      sforest.balanceLoad( blockforest::StaticLevelwiseCurveBalance(useHilbert), uint_c( MPIManager::instance()->numProcesses() ), real_t{0}, memoryLimit, true );
+      sforest.balanceLoad( blockforest::StaticLevelwiseCurveBalance(useHilbert), uint_c( MPIManager::instance()->numProcesses() ), 0_r, memoryLimit, true );
    } else if ( loadDistributionStrategy == "Morton" )
    {
       bool useHilbert = false;
-      sforest.balanceLoad( blockforest::StaticLevelwiseCurveBalance(useHilbert), uint_c( MPIManager::instance()->numProcesses() ), real_t{0}, memoryLimit, true );
+      sforest.balanceLoad( blockforest::StaticLevelwiseCurveBalance(useHilbert), uint_c( MPIManager::instance()->numProcesses() ), 0_r, memoryLimit, true );
    } else if ( loadDistributionStrategy == "ParMetis" )
    {
       blockforest::StaticLevelwiseParMetis::Algorithm algorithm = blockforest::StaticLevelwiseParMetis::Algorithm::PARMETIS_PART_GEOM_KWAY;
       blockforest::StaticLevelwiseParMetis staticParMetis(algorithm);
-      sforest.balanceLoad( staticParMetis, uint_c( MPIManager::instance()->numProcesses() ), real_t{0}, memoryLimit, true );
+      sforest.balanceLoad( staticParMetis, uint_c( MPIManager::instance()->numProcesses() ), 0_r, memoryLimit, true );
    } else if (loadDistributionStrategy == "Diffusive" )
    {
       // also use Hilbert curve here
       bool useHilbert = true;
-      sforest.balanceLoad( blockforest::StaticLevelwiseCurveBalance(useHilbert), uint_c( MPIManager::instance()->numProcesses() ), real_t{0}, memoryLimit, true );
+      sforest.balanceLoad( blockforest::StaticLevelwiseCurveBalance(useHilbert), uint_c( MPIManager::instance()->numProcesses() ), 0_r, memoryLimit, true );
    } else
    {
       WALBERLA_ABORT("Load distribution strategy \"" << loadDistributionStrategy << "\t not implemented! - Aborting" );
@@ -300,7 +300,7 @@ void evaluateTimers(WcTimingPool & timingPool,
 
    for (auto & timingsIt : timings)
    {
-      timingsIt = real_t{0};
+      timingsIt = 0_r;
    }
 
    timingPool.unifyRegisteredTimersAcrossProcesses();
@@ -428,8 +428,8 @@ void addHopperPlaneSetup(const shared_ptr<mesa_pd::data::ParticleStorage> & ps, 
    createPlane(ps, ss, p1, n2);
 
    Vector3<real_t> p2(xMax,yMax,hopperRelHeight*zMax);
-   Vector3<real_t> n3(-p2[2],0,-((real_t{1}-hopperRelOpening)*xMax-p2[0]));
-   Vector3<real_t> n4(0,-p2[2],-((real_t{1}-hopperRelOpening)*yMax-p2[1]));
+   Vector3<real_t> n3(-p2[2],0,-((1_r-hopperRelOpening)*xMax-p2[0]));
+   Vector3<real_t> n4(0,-p2[2],-((1_r-hopperRelOpening)*yMax-p2[1]));
    createPlane(ps, ss, p2, n3);
    createPlane(ps, ss, p2, n4);
 }
@@ -581,18 +581,18 @@ int main( int argc, char **argv )
    bool useProgressLogging = false;
 
    // physical setup
-   auto GalileoNumber = real_t{50};
-   auto densityRatio = real_t{1.5};
-   auto diameter = real_t{15};
-   auto solidVolumeFraction = real_t{0.1};
+   auto GalileoNumber = 50_r;
+   auto densityRatio = 1.5_r;
+   auto diameter = 15_r;
+   auto solidVolumeFraction = 0.1_r;
    auto blockSize = uint_t{32};
    auto XBlocks = uint_t{12};
    auto YBlocks = uint_t{12};
    auto ZBlocks = uint_t{16};
    bool useBox = false;
    bool useHopper = false;
-   auto hopperRelHeight = real_t{0.5}; // for hopper setup
-   auto hopperRelOpening = real_t{0.3}; // for hopper setup
+   auto hopperRelHeight = 0.5_r; // for hopper setup
+   auto hopperRelOpening = 0.3_r; // for hopper setup
 
    auto timesteps = uint_t{80000};
 
@@ -604,10 +604,10 @@ int main( int argc, char **argv )
    // load balancing
    std::string loadEvaluationStrategy = "LBM"; //LBM, Fit
    std::string loadDistributionStrategy = "Hilbert"; //Morton, Hilbert, ParMetis, Diffusive
-   real_t blockBaseWeight = real_t{1};
+   real_t blockBaseWeight = 1_r;
 
-   auto parMetis_ipc2redist = real_t{1000};
-   auto parMetisTolerance = real_t{-1};
+   auto parMetis_ipc2redist = 1000_r;
+   auto parMetisTolerance = -1_r;
    std::string parMetisAlgorithmString = "ADAPTIVE_REPART";
 
    auto diffusionFlowIterations = uint_t{15};
@@ -688,8 +688,8 @@ int main( int argc, char **argv )
 
    if( useHopper )
    {
-      WALBERLA_CHECK(hopperRelHeight >= real_t{0} && hopperRelHeight <= real_t{1}, "Invalid relative hopper height of " << hopperRelHeight);
-      WALBERLA_CHECK(hopperRelOpening >= real_t{0} && hopperRelOpening <= real_t{1}, "Invalid relative hopper opening of " << hopperRelOpening);
+      WALBERLA_CHECK(hopperRelHeight >= 0_r && hopperRelHeight <= 1_r, "Invalid relative hopper height of " << hopperRelHeight);
+      WALBERLA_CHECK(hopperRelOpening >= 0_r && hopperRelOpening <= 1_r, "Invalid relative hopper opening of " << hopperRelOpening);
    }
 
 
@@ -699,24 +699,24 @@ int main( int argc, char **argv )
 
    const Vector3<uint_t> domainSize( XBlocks * blockSize, YBlocks * blockSize, ZBlocks * blockSize );
    const auto domainVolume = real_t(domainSize[0] * domainSize[1] * domainSize[2]);
-   const real_t sphereVolume = math::pi / real_t{6} * diameter * diameter * diameter;
+   const real_t sphereVolume = math::pi / 6_r * diameter * diameter * diameter;
    const uint_t numberOfSediments = uint_c(std::ceil(solidVolumeFraction * domainVolume / sphereVolume));
 
-   real_t expectedSedimentVolumeFraction = (useBox||useHopper) ? real_t{0.45} : real_t{0.52};
-   const real_t expectedSedimentedVolume = real_t{1}/expectedSedimentVolumeFraction * real_c(numberOfSediments) * sphereVolume;
+   real_t expectedSedimentVolumeFraction = (useBox||useHopper) ? 0.45_r : 0.52_r;
+   const real_t expectedSedimentedVolume = 1_r/expectedSedimentVolumeFraction * real_c(numberOfSediments) * sphereVolume;
    const real_t expectedSedimentedHeight = std::max(diameter, expectedSedimentedVolume / real_c(domainSize[0] * domainSize[1]));
 
-   const auto uRef = real_t{0.02};
+   const auto uRef = 0.02_r;
    const real_t xRef = diameter;
    const real_t tRef = xRef / uRef;
 
-   const real_t gravitationalAcceleration = uRef * uRef / ( (densityRatio-real_t{1}) * diameter );
+   const real_t gravitationalAcceleration = uRef * uRef / ( (densityRatio-1_r) * diameter );
    const real_t viscosity = uRef * diameter / GalileoNumber;
    const real_t omega = lbm::collision_model::omegaFromViscosity(viscosity);
-   const real_t tau = real_t{1} / omega;
+   const real_t tau = 1_r / omega;
 
-   const auto dx = real_t{1};
-   const real_t overlap = real_t{ 1.5 } * dx;
+   const auto dx = 1_r;
+   const real_t overlap = 1.5_r * dx;
 
    timesteps = funcTest ? 1 : ( shortRun ? uint_t{100} : timesteps );
 
@@ -765,8 +765,8 @@ int main( int argc, char **argv )
 
    Vector3<uint_t> blockSizeInCells( blockSize );
 
-   AABB simulationDomain( real_t{0}, real_t{0}, real_t{0}, real_c(domainSize[0]), real_c(domainSize[1]), real_c(domainSize[2]) );
-   AABB sedimentDomain( real_t{0}, real_t{0}, real_c(domainSize[2]) - expectedSedimentedHeight, real_c(domainSize[0]), real_c(domainSize[1]), real_c(domainSize[2]) );
+   AABB simulationDomain( 0_r, 0_r, 0_r, real_c(domainSize[0]), real_c(domainSize[1]), real_c(domainSize[2]) );
+   AABB sedimentDomain( 0_r, 0_r, real_c(domainSize[2]) - expectedSedimentedHeight, real_c(domainSize[0]), real_c(domainSize[1]), real_c(domainSize[2]) );
 
    auto blocks = createBlockStructure( simulationDomain, blockSizeInCells, (useBox||useHopper), loadDistributionStrategy );
 
@@ -780,12 +780,12 @@ int main( int argc, char **argv )
    // RPD //
    /////////
 
-   const real_t restitutionCoeff = real_t{0.97};
-   const real_t frictionCoeffStatic = real_t{0.8};
-   const real_t frictionCoeffDynamic = real_t{0.15};
-   const real_t collisionTime = real_t{4} * diameter; // from my paper
-   const real_t poissonsRatio = real_t{0.22};
-   const real_t kappa = real_t{2} * ( real_t{1} - poissonsRatio ) / ( real_t{2} - poissonsRatio ) ;
+   const real_t restitutionCoeff = 0.97_r;
+   const real_t frictionCoeffStatic = 0.8_r;
+   const real_t frictionCoeffDynamic = 0.15_r;
+   const real_t collisionTime = 4_r * diameter; // from my paper
+   const real_t poissonsRatio = 0.22_r;
+   const real_t kappa = 2_r * ( 1_r - poissonsRatio ) / ( 2_r - poissonsRatio ) ;
 
    auto rpdDomain = std::make_shared<mesa_pd::domain::BlockForestDomain>(blocks->getBlockForestPointer());
 
@@ -795,7 +795,7 @@ int main( int argc, char **argv )
    auto ss = walberla::make_shared<mesa_pd::data::ShapeStorage>();
    auto accessor = walberla::make_shared<ParticleAccessor_T >(ps, ss);
 
-   real_t timeStepSizeRPD = real_t{1}/static_cast< real_t >(numRPDSubCycles);
+   real_t timeStepSizeRPD = 1_r/static_cast< real_t >(numRPDSubCycles);
    mesa_pd::kernel::VelocityVerletPreForceUpdate  vvIntegratorPreForce(timeStepSizeRPD);
    mesa_pd::kernel::VelocityVerletPostForceUpdate vvIntegratorPostForce(timeStepSizeRPD);
 
@@ -808,7 +808,7 @@ int main( int argc, char **argv )
 
    const real_t particleMass = densityRatio * sphereVolume;
    const real_t effMass_sphereWall = particleMass;
-   const real_t effMass_sphereSphere = particleMass * particleMass / ( real_t{2} * particleMass );
+   const real_t effMass_sphereSphere = particleMass * particleMass / ( 2_r * particleMass );
    collisionResponse.setStiffnessAndDamping(0,1,restitutionCoeff,collisionTime,kappa,effMass_sphereWall);
    collisionResponse.setStiffnessAndDamping(1,1,restitutionCoeff,collisionTime,kappa,effMass_sphereSphere);
 
@@ -832,15 +832,15 @@ int main( int argc, char **argv )
 
    WALBERLA_LOG_INFO_ON_ROOT("Starting creation of sediments");
 
-   AABB sedimentGenerationDomain( real_t{0}, real_t{0}, real_t{0.5}*real_c(domainSize[2]), real_c(domainSize[0]), real_c(domainSize[1]), real_c(domainSize[2]) );
+   AABB sedimentGenerationDomain( 0_r, 0_r, 0.5_r*real_c(domainSize[2]), real_c(domainSize[0]), real_c(domainSize[1]), real_c(domainSize[2]) );
 
-   auto xParticle = real_t{0};
-   auto yParticle = real_t{0};
-   auto zParticle = real_t{0};
+   auto xParticle = 0_r;
+   auto yParticle = 0_r;
+   auto zParticle = 0_r;
 
    auto rank = mpi::MPIManager::instance()->rank();
 
-   auto sphereShape = ss->create<mesa_pd::data::Sphere>( diameter * real_t{0.5} );
+   auto sphereShape = ss->create<mesa_pd::data::Sphere>( diameter * 0.5_r );
    ss->shapes[sphereShape]->updateMassAndInertia(densityRatio);
 
    std::mt19937 randomGenerator (static_cast<unsigned int>(2610)); // fixed seed: quasi-random and reproducible
@@ -867,7 +867,7 @@ int main( int argc, char **argv )
       if (!rpdDomain->isContainedInProcessSubdomain(uint_c(rank), position)) continue;
       auto p = ps->create();
       p->setPosition(position);
-      p->setInteractionRadius(diameter * real_t{0.5});
+      p->setInteractionRadius(diameter * 0.5_r);
       p->setShapeID(sphereShape);
       p->setType(1);
       p->setOwner(rank);
@@ -892,10 +892,10 @@ int main( int argc, char **argv )
    // 3: carry out a few time steps with gravity in negative direction to relay the system towards the real setup
 
    const bool useOpenMP = false;
-   const real_t dt_RPD_Init = real_t{1};
+   const real_t dt_RPD_Init = 1_r;
    const auto particleSimStepsPhase1 = uint_t{1000};
    const auto maxParticleSimStepsPhase2 = (shortRun) ? uint_t{10} : uint_t{200000};
-   const auto particleSimStepsPhase3 = uint_t(std::sqrt(real_t{2}/std::fabs(gravitationalAcceleration)));
+   const auto particleSimStepsPhase3 = uint_t(std::sqrt(2_r/std::fabs(gravitationalAcceleration)));
 
    uint_t maxInitialParticleSimSteps = particleSimStepsPhase1 + maxParticleSimStepsPhase2 + particleSimStepsPhase3;
 
@@ -906,7 +906,7 @@ int main( int argc, char **argv )
    auto particleVtkWriterInit = vtk::createVTKOutput_PointData(particleVtkOutput, "Particles_init", 1, baseFolder, "simulation_step");
 
    real_t gravitationalAccelerationGeneration = gravitationalAcceleration;
-   auto oldMinParticlePosition = real_t{0};
+   auto oldMinParticlePosition = 0_r;
    real_t phase2ConvergenceLimit = std::fabs(gravitationalAccelerationGeneration);
    real_t heightConvergenceThreshold = sedimentDomain.zMin();
 
@@ -965,8 +965,8 @@ int main( int argc, char **argv )
          // damp velocities to avoid too large ones
          ps->forEachParticle( useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor,
                               [](const size_t idx, ParticleAccessor_T& ac){
-                                 ac.setLinearVelocity(idx, ac.getLinearVelocity(idx) * real_t{0.5});
-                                 ac.setAngularVelocity(idx, ac.getAngularVelocity(idx) * real_t{0.5});
+                                 ac.setLinearVelocity(idx, ac.getLinearVelocity(idx) * 0.5_r);
+                                 ac.setAngularVelocity(idx, ac.getAngularVelocity(idx) * 0.5_r);
                               }, *accessor);
 
          if(pet > particleSimStepsPhase1)
@@ -983,7 +983,7 @@ int main( int argc, char **argv )
       } else if(currentPhase == 2)
       {
 
-         Vector3<real_t> gravitationalForce( real_t{0}, real_t{0}, (densityRatio - real_t{1}) * gravitationalAccelerationGeneration * sphereVolume );
+         Vector3<real_t> gravitationalForce( 0_r, 0_r, (densityRatio - 1_r) * gravitationalAccelerationGeneration * sphereVolume );
          lbm_mesapd_coupling::AddForceOnParticlesKernel addGravitationalForce(gravitationalForce);
          ps->forEachParticle( useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, addGravitationalForce, *accessor );
 
@@ -1023,13 +1023,13 @@ int main( int argc, char **argv )
 
       } else if(currentPhase == 3)
       {
-         Vector3<real_t> gravitationalForce( real_t{0}, real_t{0}, -(densityRatio - real_t{1}) * gravitationalAccelerationGeneration * sphereVolume );
+         Vector3<real_t> gravitationalForce( 0_r, 0_r, -(densityRatio - 1_r) * gravitationalAccelerationGeneration * sphereVolume );
          lbm_mesapd_coupling::AddForceOnParticlesKernel addGravitationalForce(gravitationalForce);
          ps->forEachParticle( useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor, addGravitationalForce, *accessor );
 
          if(pet - beginOfPhase3SimStep > particleSimStepsPhase3)
          {
-            Vector3<real_t> initialParticleVelocity(real_t{0});
+            Vector3<real_t> initialParticleVelocity(0_r);
             WALBERLA_LOG_INFO_ON_ROOT("Setting initial velocity " << initialParticleVelocity << " of all particles");
             // reset velocities to avoid too large ones
             ps->forEachParticle( useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor,
@@ -1052,7 +1052,7 @@ int main( int argc, char **argv )
 
    // add PDF field
    BlockDataID pdfFieldID = lbm::addPdfFieldToStorage< LatticeModel_T >( blocks, "pdf field (fzyx)", latticeModel,
-                                                                         Vector3< real_t >( real_t{0} ), real_t{1},
+                                                                         Vector3< real_t >( 0_r ), 1_r,
                                                                          FieldGhostLayers, field::fzyx );
    // add flag field
    BlockDataID flagFieldID = field::addFlagFieldToStorage<FlagField_T>( blocks, "flag field", FieldGhostLayers );
@@ -1063,11 +1063,11 @@ int main( int argc, char **argv )
    // add boundary handling & initialize outer domain boundaries
    BlockDataID boundaryHandlingID = blocks->addBlockData( make_shared< MyBoundaryHandling >( blocks, flagFieldID, pdfFieldID, particleFieldID, accessor ), "boundary handling" );
 
-   Vector3<real_t> gravitationalForce( real_t{0}, real_t{0}, -(densityRatio - real_t{1}) * gravitationalAcceleration * sphereVolume );
+   Vector3<real_t> gravitationalForce( 0_r, 0_r, -(densityRatio - 1_r) * gravitationalAcceleration * sphereVolume );
    lbm_mesapd_coupling::AddForceOnParticlesKernel addGravitationalForce(gravitationalForce);
    lbm_mesapd_coupling::ResetHydrodynamicForceTorqueKernel resetHydrodynamicForceTorque;
    lbm_mesapd_coupling::AverageHydrodynamicForceTorqueKernel averageHydrodynamicForceTorque;
-   lbm_mesapd_coupling::LubricationCorrectionKernel lubricationCorrectionKernel(viscosity, [](real_t r){return (real_t(0.001 + real_t{0.00007}*r))*r;});
+   lbm_mesapd_coupling::LubricationCorrectionKernel lubricationCorrectionKernel(viscosity, [](real_t r){return (real_t(0.001 + 0.00007_r*r))*r;});
    lbm_mesapd_coupling::ParticleMappingKernel<BoundaryHandling_T> particleMappingKernel(blocks, boundaryHandlingID);
    lbm_mesapd_coupling::MovingParticleMappingKernel<BoundaryHandling_T> movingParticleMappingKernel(blocks, boundaryHandlingID, particleFieldID);
    lbm_mesapd_coupling::ParticleMappingKernel<BoundaryHandling_T> fixedParticleMappingKernel(blocks, boundaryHandlingID);
@@ -1165,7 +1165,7 @@ int main( int argc, char **argv )
 
       auto numberOfBlocks = XBlocks * YBlocks * ZBlocks;
 
-      real_t loadImbalanceTolerance = (parMetisTolerance < real_t{1}) ? std::max(real_t{1.05}, real_t{1} + real_t{1} / ( real_c(numberOfBlocks) / real_c(numberOfProcesses) ) ) : parMetisTolerance;
+      real_t loadImbalanceTolerance = (parMetisTolerance < 1_r) ? std::max(1.05_r, 1_r + 1_r / ( real_c(numberOfBlocks) / real_c(numberOfProcesses) ) ) : parMetisTolerance;
       dynamicParMetis.setImbalanceTolerance(double(loadImbalanceTolerance), 0);
 
       WALBERLA_LOG_INFO_ON_ROOT(" - ParMetis configuration: ");
@@ -1184,7 +1184,7 @@ int main( int argc, char **argv )
          lbm_mesapd_coupling::amr::WeightEvaluationFunctor weightEvaluationFunctor(couplingInfoCollection, lbm_mesapd_coupling::amr::fittedTotalWeightEvaluationFunction);
          lbm_mesapd_coupling::amr::MetisAssignmentFunctor weightAssignmentFunctor(weightEvaluationFunctor); //attention: special METIS assignment functor!
          weightAssignmentFunctor.setBlockBaseWeight(blockBaseWeight);
-         real_t weightMultiplicator = real_t{1000}; // values from predictor are in range [0-5] which is too coarse when cast to int as done in parmetis
+         real_t weightMultiplicator = 1000_r; // values from predictor are in range [0-5] which is too coarse when cast to int as done in parmetis
          weightAssignmentFunctor.setWeightMultiplicator(weightMultiplicator);
          blockforest.setRefreshPhantomBlockDataAssignmentFunction(weightAssignmentFunctor);
       }
@@ -1551,11 +1551,11 @@ int main( int argc, char **argv )
          // write process local load predictions to files (per process, per load balancing step)
          {
 
-            auto wlLBM = real_t{0};
-            auto wlBH = real_t{0};
-            auto wlCoup1 = real_t{0};
-            auto wlCoup2 = real_t{0};
-            auto wlRPD = real_t{0};
+            auto wlLBM = 0_r;
+            auto wlBH = 0_r;
+            auto wlCoup1 = 0_r;
+            auto wlCoup2 = 0_r;
+            auto wlRPD = 0_r;
 
             auto & forest = blocks->getBlockForest();
             lbm_mesapd_coupling::amr::updateAndSyncInfoCollection<BoundaryHandling_T,ParticleAccessor_T >(forest, boundaryHandlingID, *accessor, numRPDSubCycles, *couplingInfoCollection);

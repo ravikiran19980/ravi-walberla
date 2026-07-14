@@ -101,9 +101,9 @@ HilbertCompareFunctor::HilbertCompareFunctor(const math::AABB& domain, const uin
    , hilbertLookup_(cells_ * cells_ * cells_)
 {
    WALBERLA_CHECK(math::uintIsPowerOfTwo(cells));
-   inverse_dx[0] = real_t{1.0} / (domain_.xSize() / real_c(cells_));
-   inverse_dx[1] = real_t{1.0} / (domain_.ySize() / real_c(cells_));
-   inverse_dx[2] = real_t{1.0} / (domain_.zSize() / real_c(cells_));
+   inverse_dx[0] = 1.0_r / (domain_.xSize() / real_c(cells_));
+   inverse_dx[1] = 1.0_r / (domain_.ySize() / real_c(cells_));
+   inverse_dx[2] = 1.0_r / (domain_.zSize() / real_c(cells_));
    initializeLookup();
 }
 

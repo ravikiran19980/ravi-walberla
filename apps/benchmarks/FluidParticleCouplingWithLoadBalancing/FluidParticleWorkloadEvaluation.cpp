@@ -267,18 +267,18 @@ int main( int argc, char **argv )
 
    mpi::Environment env( argc, argv );
 
-   auto solidVolumeFraction = real_t{0.2};
+   auto solidVolumeFraction = 0.2_r;
 
    // LBM / numerical parameters
    auto blockSize  = uint_t{32};
-   auto uSettling = real_t{0.1}; // characteristic settling velocity
-   auto diameter = real_t{10};
+   auto uSettling = 0.1_r; // characteristic settling velocity
+   auto diameter = 10_r;
 
-   auto Ga = real_t{30}; //Galileo number
+   auto Ga = 30_r; //Galileo number
    auto numRPDSubCycles = uint_t{10};
 
    auto vtkIOFreq = uint_t{0};
-   auto timestepsNonDim = real_t{2.5};
+   auto timestepsNonDim = 2.5_r;
    auto numSamples = uint_t{2000};
    std::string baseFolder = "workload_files"; // folder for vtk and file output
 
@@ -290,7 +290,7 @@ int main( int argc, char **argv )
    auto YBlocks = uint_t{4};
    auto ZBlocks = uint_t{5};
 
-   real_t topWallOffsetFactor = real_t{1.05};
+   real_t topWallOffsetFactor = 1.05_r;
 
    bool vtkDuringInit = false;
 
@@ -317,11 +317,11 @@ int main( int argc, char **argv )
       WALBERLA_ABORT("Unrecognized command line argument found: " << argv[i]);
    }
 
-   WALBERLA_CHECK(diameter > real_t{1});
-   WALBERLA_CHECK(uSettling > real_t{0});
-   WALBERLA_CHECK(Ga > real_t{0});
-   WALBERLA_CHECK(solidVolumeFraction > real_t{0});
-   WALBERLA_CHECK(solidVolumeFraction < real_t{0.65});
+   WALBERLA_CHECK(diameter > 1_r);
+   WALBERLA_CHECK(uSettling > 0_r);
+   WALBERLA_CHECK(Ga > 0_r);
+   WALBERLA_CHECK(solidVolumeFraction > 0_r);
+   WALBERLA_CHECK(solidVolumeFraction < 0.65_r);
 
    ///////////////////////////
    // SIMULATION PROPERTIES //
@@ -350,15 +350,15 @@ int main( int argc, char **argv )
    real_t domainHeight = real_c(ZCells) - topWallOffset;
    real_t fluidVolume =  real_c( XCells * YCells ) * domainHeight;
    real_t solidVolume = solidVolumeFraction * fluidVolume;
-   uint_t numberOfParticles = uint_c(std::ceil(solidVolume / ( math::pi / real_t{6} * diameter * diameter * diameter )));
-   diameter = std::cbrt( solidVolume / ( real_c(numberOfParticles) * math::pi / real_t{6} ) );
+   uint_t numberOfParticles = uint_c(std::ceil(solidVolume / ( math::pi / 6_r * diameter * diameter * diameter )));
+   diameter = std::cbrt( solidVolume / ( real_c(numberOfParticles) * math::pi / 6_r ) );
 
-   auto densityRatio = real_t{2.5};
+   auto densityRatio = 2.5_r;
 
    real_t viscosity = uSettling * diameter / Ga;
    const real_t omega = lbm::collision_model::omegaFromViscosity(viscosity);
 
-   const real_t gravitationalAcceleration = uSettling * uSettling / ( (densityRatio-real_t{1}) * diameter );
+   const real_t gravitationalAcceleration = uSettling * uSettling / ( (densityRatio-1_r) * diameter );
 
    real_t tref = diameter / uSettling;
    real_t Tref = domainHeight / uSettling;
@@ -367,7 +367,7 @@ int main( int argc, char **argv )
 
    const real_t dx = real_c(1);
    WALBERLA_LOG_INFO_ON_ROOT("viscosity = " << viscosity);
-   WALBERLA_LOG_INFO_ON_ROOT("tau = " << real_t{1}/omega);
+   WALBERLA_LOG_INFO_ON_ROOT("tau = " << 1_r/omega);
    WALBERLA_LOG_INFO_ON_ROOT("diameter = " << diameter);
    WALBERLA_LOG_INFO_ON_ROOT("solid volume fraction = " << solidVolumeFraction);
    WALBERLA_LOG_INFO_ON_ROOT("domain size (in cells) = " << XCells << " x " << YCells << " x " << ZCells);
@@ -406,12 +406,12 @@ int main( int argc, char **argv )
    // RPD //
    /////////
 
-   const real_t restitutionCoeff = real_t{0.97};
-   const real_t frictionCoeffStatic = real_t{0.8};
-   const real_t frictionCoeffDynamic = real_t{0.15};
-   const real_t collisionTime = real_t{4} * diameter; // from my paper
-   const real_t poissonsRatio = real_t{0.22};
-   const real_t kappa = real_t{2} * ( real_t{1} - poissonsRatio ) / ( real_t{2} - poissonsRatio ) ;
+   const real_t restitutionCoeff = 0.97_r;
+   const real_t frictionCoeffStatic = 0.8_r;
+   const real_t frictionCoeffDynamic = 0.15_r;
+   const real_t collisionTime = 4_r * diameter; // from my paper
+   const real_t poissonsRatio = 0.22_r;
+   const real_t kappa = 2_r * ( 1_r - poissonsRatio ) / ( 2_r - poissonsRatio ) ;
 
    auto rpdDomain = std::make_shared<mesa_pd::domain::BlockForestDomain>(blocks->getBlockForestPointer());
 
@@ -421,7 +421,7 @@ int main( int argc, char **argv )
    using ParticleAccessor_T = mesa_pd::data::ParticleAccessorWithShape;
    auto accessor = walberla::make_shared<ParticleAccessor_T >(ps, ss);
 
-   real_t timeStepSizeRPD = real_t{1}/static_cast< real_t >(numRPDSubCycles);
+   real_t timeStepSizeRPD = 1_r/static_cast< real_t >(numRPDSubCycles);
    mesa_pd::kernel::VelocityVerletPreForceUpdate  vvIntegratorPreForce(timeStepSizeRPD);
    mesa_pd::kernel::VelocityVerletPostForceUpdate vvIntegratorPostForce(timeStepSizeRPD);
 
@@ -432,10 +432,10 @@ int main( int argc, char **argv )
    collisionResponse.setFrictionCoefficientStatic(0,1,frictionCoeffStatic);
    collisionResponse.setFrictionCoefficientStatic(1,1,frictionCoeffStatic);
 
-   const real_t sphereVolume = math::pi / real_t{6} * diameter * diameter * diameter;
+   const real_t sphereVolume = math::pi / 6_r * diameter * diameter * diameter;
    const real_t particleMass = densityRatio * sphereVolume;
    const real_t effMass_sphereWall = particleMass;
-   const real_t effMass_sphereSphere = particleMass * particleMass / ( real_t{2} * particleMass );
+   const real_t effMass_sphereSphere = particleMass * particleMass / ( 2_r * particleMass );
    collisionResponse.setStiffnessAndDamping(0,1,restitutionCoeff,collisionTime,kappa,effMass_sphereWall);
    collisionResponse.setStiffnessAndDamping(1,1,restitutionCoeff,collisionTime,kappa,effMass_sphereSphere);
 
@@ -454,7 +454,7 @@ int main( int argc, char **argv )
       syncNextNeighborFunc(*ps, *rpdDomain, overlap);
    };
 
-   auto generationDomain = AABB( real_t{0}, real_t{0}, real_t{0}, real_c(XCells), real_c(YCells), real_c(ZCells) - topWallOffset);
+   auto generationDomain = AABB( 0_r, 0_r, 0_r, real_c(XCells), real_c(YCells), real_c(ZCells) - topWallOffset);
 
    // create plane at top and bottom
 
@@ -476,12 +476,12 @@ int main( int argc, char **argv )
    mesa_pd::data::particle_flags::set(p1.getFlagsRef(), mesa_pd::data::particle_flags::INFINITE);
    mesa_pd::data::particle_flags::set(p1.getFlagsRef(), mesa_pd::data::particle_flags::FIXED);
 
-   auto sphereShape = ss->create<mesa_pd::data::Sphere>( diameter * real_t{0.5} );
+   auto sphereShape = ss->create<mesa_pd::data::Sphere>( diameter * 0.5_r );
    ss->shapes[sphereShape]->updateMassAndInertia(densityRatio);
 
-   auto xParticle = real_t{0};
-   auto yParticle = real_t{0};
-   auto zParticle = real_t{0};
+   auto xParticle = 0_r;
+   auto yParticle = 0_r;
+   auto zParticle = 0_r;
 
    auto rank = mpi::MPIManager::instance()->rank();
 
@@ -509,7 +509,7 @@ int main( int argc, char **argv )
       if (!rpdDomain->isContainedInProcessSubdomain(uint_c(rank), position)) continue;
       auto p                       = ps->create();
       p->setPosition(position);
-      p->setInteractionRadius(diameter * real_t{0.5});
+      p->setInteractionRadius(diameter * 0.5_r);
       p->setShapeID(sphereShape);
       p->setType(1);
       p->setOwner(rank);
@@ -520,9 +520,9 @@ int main( int argc, char **argv )
    // resolve possible overlaps of the particles due to the random initialization via a particle-only simulation
 
    const bool useOpenMP = false;
-   const real_t dt_RPD_Init = real_t{1};
+   const real_t dt_RPD_Init = 1_r;
    const auto initialParticleSimSteps = uint_t{20000};
-   const real_t overlapLimit = real_t{0.001} * diameter;
+   const real_t overlapLimit = 0.001_r * diameter;
 
    auto particleVtkOutput = make_shared<mesa_pd::vtk::ParticleVtkOutput>(ps);
    particleVtkOutput->addOutput<mesa_pd::data::SelectParticleLinearVelocity>("velocity");
@@ -568,7 +568,7 @@ int main( int argc, char **argv )
          {
             particleVtkWriterInit->write();
          }
-         WALBERLA_LOG_INFO_ON_ROOT(pet << " - current max overlap = " << maxPenetrationDepth / diameter * real_t{100} << "%");
+         WALBERLA_LOG_INFO_ON_ROOT(pet << " - current max overlap = " << maxPenetrationDepth / diameter * 100_r << "%");
       }
 
       if(maxPenetrationDepth < overlapLimit) break;
@@ -577,8 +577,8 @@ int main( int argc, char **argv )
 
       ps->forEachParticle( useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor,
             [](const size_t idx, ParticleAccessor_T& ac){
-               ac.setLinearVelocity(idx, ac.getLinearVelocity(idx) * real_t{0.5});
-               ac.setAngularVelocity(idx, ac.getAngularVelocity(idx) * real_t{0.5});
+               ac.setLinearVelocity(idx, ac.getLinearVelocity(idx) * 0.5_r);
+               ac.setAngularVelocity(idx, ac.getAngularVelocity(idx) * 0.5_r);
                }, *accessor);
 
 
@@ -586,7 +586,7 @@ int main( int argc, char **argv )
 
 
    // reset all velocities to zero
-   Vector3<real_t> initialSphereVelocity(real_t{0});
+   Vector3<real_t> initialSphereVelocity(0_r);
 
    ps->forEachParticle(useOpenMP, mesa_pd::kernel::SelectAll(), *accessor, [](const size_t idx, ParticleAccessor_T& ac){
       ac.getNewContactHistoryRef(idx).clear();
@@ -597,7 +597,7 @@ int main( int argc, char **argv )
    ps->forEachParticle( useOpenMP, mesa_pd::kernel::SelectLocal(), *accessor,
                         [initialSphereVelocity](const size_t idx, ParticleAccessor_T& ac){
                            ac.setLinearVelocity(idx, initialSphereVelocity);
-                           ac.setAngularVelocity(idx, Vector3<real_t>(real_t{0}));
+                           ac.setAngularVelocity(idx, Vector3<real_t>(0_r));
                         }, *accessor);
 
    syncCall();
@@ -611,7 +611,7 @@ int main( int argc, char **argv )
 
    // add PDF field
    BlockDataID pdfFieldID = lbm::addPdfFieldToStorage< LatticeModel_T >( blocks, "pdf field (fzyx)", latticeModel,
-                                                                         Vector3< real_t >( real_t{0} ), real_t{1},
+                                                                         Vector3< real_t >( 0_r ), 1_r,
                                                                          uint_t{1}, field::fzyx );
 
    // add flag field
@@ -624,11 +624,11 @@ int main( int argc, char **argv )
    using BoundaryHandling_T = MyBoundaryHandling<ParticleAccessor_T>::Type;
    BlockDataID boundaryHandlingID = blocks->addStructuredBlockData< BoundaryHandling_T >(MyBoundaryHandling<ParticleAccessor_T>( flagFieldID, pdfFieldID, particleFieldID, accessor, useEntireFieldTraversal), "boundary handling" );
 
-   Vector3<real_t> gravitationalForce( real_t{0}, real_t{0}, -(densityRatio - real_t{1}) * gravitationalAcceleration * sphereVolume );
+   Vector3<real_t> gravitationalForce( 0_r, 0_r, -(densityRatio - 1_r) * gravitationalAcceleration * sphereVolume );
    lbm_mesapd_coupling::AddForceOnParticlesKernel addGravitationalForce(gravitationalForce);
    lbm_mesapd_coupling::ResetHydrodynamicForceTorqueKernel resetHydrodynamicForceTorque;
    lbm_mesapd_coupling::AverageHydrodynamicForceTorqueKernel averageHydrodynamicForceTorque;
-   lbm_mesapd_coupling::LubricationCorrectionKernel lubricationCorrectionKernel(viscosity, [](real_t r){return (real_t(0.001 + real_t{0.00007}*r))*r;});
+   lbm_mesapd_coupling::LubricationCorrectionKernel lubricationCorrectionKernel(viscosity, [](real_t r){return (real_t(0.001 + 0.00007_r*r))*r;});
    lbm_mesapd_coupling::ParticleMappingKernel<BoundaryHandling_T> particleMappingKernel(blocks, boundaryHandlingID);
    lbm_mesapd_coupling::MovingParticleMappingKernel<BoundaryHandling_T> movingParticleMappingKernel(blocks, boundaryHandlingID, particleFieldID);
 

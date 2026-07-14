@@ -36,7 +36,7 @@ struct Vorticity {
    template< typename VelocityField_T, typename Filter_T >
    static inline Vector3<real_t> get(const VelocityField_T & velocityField, const Filter_T & filter,
            const cell_idx_t x, const cell_idx_t y, const cell_idx_t z,
-           real_t dx = real_t{1}, real_t dy = real_t{1}, real_t dz = real_t{1}) {
+           real_t dx = 1_r, real_t dy = 1_r, real_t dz = 1_r) {
       const auto one = cell_idx_t{1};
 
       if(filter(x,y,z) && filter(x+one,y,z) && filter(x-one,y,z) && filter(x,y+one,z)
@@ -51,7 +51,7 @@ struct Vorticity {
          return calculate(xa, xb, ya, yb, za, zb, dx, dy, dz);
       }
 
-      return Vector3<real_t>(real_t{0});
+      return Vector3<real_t>(0_r);
    }
 
    static inline Vector3<real_t> calculate(const Vector3<real_t> xa, const Vector3<real_t> xb,
@@ -59,9 +59,9 @@ struct Vorticity {
            const Vector3<real_t> za, const Vector3<real_t> zb,
            const real_t dx, const real_t dy, const real_t dz) {
 
-      const auto halfInvDx = real_t{0.5} / dx;
-      const auto halfInvDy = real_t{0.5} / dy;
-      const auto halfInvDz = real_t{0.5} / dz;
+      const auto halfInvDx = 0.5_r / dx;
+      const auto halfInvDy = 0.5_r / dy;
+      const auto halfInvDz = 0.5_r / dz;
 
       const real_t duxdy = (ya[0] - yb[0]) * halfInvDy;
       const real_t duxdz = (za[0] - zb[0]) * halfInvDz;

@@ -36,7 +36,7 @@
 namespace walberla {
 namespace mesa_pd {
 
-const real_t radius = real_t{3};
+const real_t radius = 3_r;
 
 walberla::id_t createSphere(data::ParticleStorage& ps, domain::IDomain& domain)
 {

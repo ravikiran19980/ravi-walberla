@@ -51,7 +51,7 @@ public:
                     const WeightsToUse weightsToUse = PARMETIS_BOTH_WEIGHTS,
                     const EdgeSource edgeSource = PARMETIS_EDGES_FROM_EDGE_WEIGHTS,
                     const uint_t ncon = uint_t{1})
-      : algorithm_( algorithm ), weightsToUse_( weightsToUse ), edgeSource_( edgeSource ), ncon_( ncon ), ubvec_( ncon, real_t{1.05} ) {}
+      : algorithm_( algorithm ), weightsToUse_( weightsToUse ), edgeSource_( edgeSource ), ncon_( ncon ), ubvec_( ncon, 1.05 ) {}
 
    bool operator()( std::vector< std::pair< const PhantomBlock *, uint_t > > & targetProcess,
                     std::set< uint_t > & processesToRecvFrom,
@@ -85,7 +85,7 @@ protected:
 
    uint_t ncon_ = uint_t{1}; ///< number of constraints
    std::vector<double> ubvec_; ///< imbalance tolerance for each constraint, value between 1 (perfect balance) and number of subdomains (= number of processes, perfect imbalance)
-   double ipc2redist_ = real_t{ 1000.0 }; ///< compute repartitioning with low edge cut (set lower (down to 0.000001) to get minimal repartitioning )
+   double ipc2redist_ = 1000.0; ///< compute repartitioning with low edge cut (set lower (down to 0.000001) to get minimal repartitioning )
 };
 
 class DynamicParMetisBlockInfo

@@ -361,7 +361,7 @@ bool DynamicDiffusionBalance< PhantomData_T >::operator()( std::vector< std::pai
                flowScaleFactor[l] = correctedOutflow / outflow[l];
                if (std::isnan(flowScaleFactor[l]))
                {
-                  flowScaleFactor[l] = real_t{1};
+                  flowScaleFactor[l] = 1_r;
                   continue;
                }
                outflow[l] = correctedOutflow;
@@ -628,7 +628,7 @@ bool DynamicDiffusionBalance< PhantomData_T >::operator()( std::vector< std::pai
                flowScaleFactor[l] = correctedInflow / inflow[l];
                if (std::isnan(flowScaleFactor[l]))
                {
-                  flowScaleFactor[l] = real_t{1};
+                  flowScaleFactor[l] = 1_r;
                   continue;
                }
                inflow[l] = correctedInflow;

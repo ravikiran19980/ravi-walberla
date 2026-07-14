@@ -102,12 +102,12 @@ struct ParticleAndVolumeFractionSoA_T
 #else
       nOverlappingParticlesFieldID = field::addToStorage< nOverlappingParticlesField_T >(
          bs, "number of overlapping particles field CPU", uint_t{0}, field::fzyx, uint_t{1}, true);
-      BsFieldID  = field::addToStorage< BsField_T >(bs, "Bs field CPU", real_t{0}, field::fzyx, uint_t{1}, true);
+      BsFieldID  = field::addToStorage< BsField_T >(bs, "Bs field CPU", 0_r, field::fzyx, uint_t{1}, true);
       idxFieldID = field::addToStorage< idxField_T >(bs, "idx field CPU", uint_t{0}, field::fzyx, uint_t{1}, true);
-      BFieldID   = field::addToStorage< BField_T >(bs, "B field CPU", real_t{0}, field::fzyx, uint_t{1}, true);
+      BFieldID   = field::addToStorage< BField_T >(bs, "B field CPU", 0_r, field::fzyx, uint_t{1}, true);
       particleVelocitiesFieldID = field::addToStorage< particleVelocitiesField_T >(
-         bs, "particle velocities field CPU", real_t{0}, field::fzyx, uint_t{1}, true);
-      particleForcesFieldID = field::addToStorage< particleForcesField_T >(bs, "particle forces field CPU", real_t{0},
+         bs, "particle velocities field CPU", 0_r, field::fzyx, uint_t{1}, true);
+      particleForcesFieldID = field::addToStorage< particleForcesField_T >(bs, "particle forces field CPU", 0_r,
                                                                            field::fzyx, uint_t{1}, true);
 #endif
       omega_ = omega;

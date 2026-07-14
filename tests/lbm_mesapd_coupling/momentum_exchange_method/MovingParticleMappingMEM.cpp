@@ -137,7 +137,7 @@ public:
    MappingChecker(const shared_ptr< StructuredBlockStorage > & blocks,
                   const BlockDataID & boundaryHandlingID, real_t sphereRadius) :
          blocks_( blocks ), boundaryHandlingID_( boundaryHandlingID ),
-         sphereRadius_( sphereRadius ), sphereVolume_( math::pi * real_t{4} / real_t{3} * sphereRadius * sphereRadius * sphereRadius )
+         sphereRadius_( sphereRadius ), sphereVolume_( math::pi * 4_r / 3_r * sphereRadius * sphereRadius * sphereRadius )
    {
       WALBERLA_ASSERT(blocks->isXPeriodic());
    }
@@ -185,7 +185,7 @@ public:
 
       // mapped volume has to be - approximately - the same as the real volume
       real_t mappedVolume = real_c(cellCounter); // dx=1
-      WALBERLA_CHECK(std::fabs( mappedVolume - sphereVolume_ ) / sphereVolume_ <= real_t{0.1},
+      WALBERLA_CHECK(std::fabs( mappedVolume - sphereVolume_ ) / sphereVolume_ <= 0.1_r,
                      "Mapped volume " << mappedVolume << " does not fit to real sphere volume " << sphereVolume_ << ".");
    }
 
@@ -318,9 +318,9 @@ int main( int argc, char **argv )
    ///////////////////////////
 
    bool writeVTK = false;
-   const real_t omega  = real_t{1};
-   const real_t dx     = real_t{1};
-   const real_t radius = real_t{5};
+   const real_t omega  = 1_r;
+   const real_t dx     = 1_r;
+   const real_t radius = 5_r;
 
    ///////////////////////////
    // DATA STRUCTURES SETUP //
@@ -342,7 +342,7 @@ int main( int argc, char **argv )
 
    // add PDF field
    BlockDataID pdfFieldID = lbm::addPdfFieldToStorage< LatticeModel_T >( blocks, "pdf field (fzyx)", latticeModel,
-                                                                         Vector3<real_t>(real_t{0}), real_t{1},
+                                                                         Vector3<real_t>(0_r), 1_r,
                                                                          FieldGhostLayers, field::fzyx );
 
    // add flag field
@@ -360,7 +360,7 @@ int main( int argc, char **argv )
    mesa_pd::mpi::SyncNextNeighbors syncNextNeighborFunc;
 
    // coupling
-   const real_t overlap = real_t{ 1.5 } * dx;
+   const real_t overlap = 1.5_r * dx;
 
    // add particle field
    BlockDataID particleFieldID = field::addToStorage<lbm_mesapd_coupling::ParticleField_T>( blocks, "particle field", accessor->getInvalidUid(), field::fzyx, FieldGhostLayers );
@@ -384,9 +384,9 @@ int main( int argc, char **argv )
    lbm_mesapd_coupling::MovingParticleMappingKernel<BoundaryHandling_T> movingParticleMappingKernel(blocks, boundaryHandlingID, particleFieldID);
 
    // sphere positions for test scenarios
-   Vector3<real_t> positionInsideBlock(real_t{10}, real_t{10}, real_t{10});
-   Vector3<real_t> positionAtBlockBoarder(real_t{19}, real_t{10}, real_t{10});
-   Vector3<real_t> positionAtPeriodicBoarder(real_t{1}, real_t{10}, real_t{10});
+   Vector3<real_t> positionInsideBlock(10_r, 10_r, 10_r);
+   Vector3<real_t> positionAtBlockBoarder(19_r, 10_r, 10_r);
+   Vector3<real_t> positionAtPeriodicBoarder(1_r, 10_r, 10_r);
 
    //////////////////////////
    // MOVING BODY MAPPING //

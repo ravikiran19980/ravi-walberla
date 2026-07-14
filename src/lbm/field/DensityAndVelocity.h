@@ -51,7 +51,7 @@ struct AdaptVelocityToForce< LatticeModel_T >
 {
    static Vector3<real_t> get( const LatticeModel_T & latticeModel, const Vector3< real_t > & velocity, const real_t rho )
    {
-      return velocity - latticeModel.forceModel().forceDensity() * real_t{0.5} / rho;
+      return velocity - latticeModel.forceModel().forceDensity() * 0.5_r / rho;
    }
 
    template< typename FieldPtrOrIterator >
@@ -73,7 +73,7 @@ struct AdaptVelocityToForce< LatticeModel_T >
 {
    static Vector3<real_t> get( const LatticeModel_T & latticeModel, const Vector3< real_t > & velocity, const real_t )
    {
-      return velocity - latticeModel.forceModel().forceDensity() * real_t{0.5};
+      return velocity - latticeModel.forceModel().forceDensity() * 0.5_r;
    }
 
    template< typename FieldPtrOrIterator >
@@ -96,20 +96,20 @@ struct AdaptVelocityToForce< LatticeModel_T >
    /*
    static Vector3<real_t> get( const LatticeModel_T & latticeModel, const Vector3< real_t > & velocity, const real_t rho )
    {
-      return velocity - latticeModel.forceModel().forceDensity() * real_t{0.5} / rho;
+      return velocity - latticeModel.forceModel().forceDensity() * 0.5_r / rho;
    }
    */
 
    template< typename FieldPtrOrIterator >
    static Vector3<real_t> get( FieldPtrOrIterator & it, const LatticeModel_T & latticeModel, const Vector3< real_t > & velocity, const real_t rho )
    {
-      return velocity - latticeModel.forceModel().forceDensity(it.x(),it.y(),it.z()) * real_t{0.5} / rho;
+      return velocity - latticeModel.forceModel().forceDensity(it.x(),it.y(),it.z()) * 0.5_r / rho;
    }
 
    static Vector3<real_t> get( const cell_idx_t x, const cell_idx_t y, const cell_idx_t z, const LatticeModel_T & latticeModel,
                                const Vector3< real_t > & velocity, const real_t rho )
    {
-      return velocity - latticeModel.forceModel().forceDensity(x,y,z) * real_t{0.5} / rho;
+      return velocity - latticeModel.forceModel().forceDensity(x,y,z) * 0.5_r / rho;
    }
 };
 
@@ -120,20 +120,20 @@ struct AdaptVelocityToForce< LatticeModel_T >
    /*
    static Vector3<real_t> get( const LatticeModel_T & latticeModel, const Vector3< real_t > & velocity, const real_t )
    {
-      return velocity - latticeModel.forceModel().forceDensity() * real_t{0.5};
+      return velocity - latticeModel.forceModel().forceDensity() * 0.5_r;
    }
    */
 
    template< typename FieldPtrOrIterator >
    static Vector3<real_t> get( FieldPtrOrIterator & it, const LatticeModel_T & latticeModel, const Vector3< real_t > & velocity, const real_t )
    {
-      return velocity - latticeModel.forceModel().forceDensity(it.x(),it.y(),it.z()) * real_t{0.5};
+      return velocity - latticeModel.forceModel().forceDensity(it.x(),it.y(),it.z()) * 0.5_r;
    }
 
    static Vector3<real_t> get( const cell_idx_t x, const cell_idx_t y, const cell_idx_t z, const LatticeModel_T & latticeModel,
                                const Vector3< real_t > & velocity, const real_t )
    {
-      return velocity - latticeModel.forceModel().forceDensity(x,y,z) * real_t{0.5};
+      return velocity - latticeModel.forceModel().forceDensity(x,y,z) * 0.5_r;
    }
 };
 
@@ -172,7 +172,7 @@ struct DensityAndVelocity
 {
    template< typename FieldPtrOrIterator >
    static void set( FieldPtrOrIterator & it, const LatticeModel_T & latticeModel,
-                    const Vector3< real_t > & velocity = Vector3< real_t >( real_t{0.0} ), const real_t rho = real_t{1.0} )
+                    const Vector3< real_t > & velocity = Vector3< real_t >( 0.0_r ), const real_t rho = 1.0_r )
    {
       Vector3< real_t > velAdaptedToForce = internal::AdaptVelocityToForce<LatticeModel_T>::get( it, latticeModel, velocity, rho );
       Equilibrium< LatticeModel_T >::set( it, velAdaptedToForce, rho );
@@ -180,7 +180,7 @@ struct DensityAndVelocity
 
    template< typename PdfField_T >
    static void set( PdfField_T & pdf, const cell_idx_t x, const cell_idx_t y, const cell_idx_t z, const LatticeModel_T & latticeModel,
-                    const Vector3< real_t > & velocity = Vector3< real_t >( real_t{0.0} ), const real_t rho = real_t{1.0} )
+                    const Vector3< real_t > & velocity = Vector3< real_t >( 0.0_r ), const real_t rho = 1.0_r )
    {
       Vector3< real_t > velAdaptedToForce = internal::AdaptVelocityToForce<LatticeModel_T>::get( x, y, z, latticeModel, velocity, rho );
       Equilibrium< LatticeModel_T >::set( pdf, x, y, z, velAdaptedToForce, rho );
@@ -208,7 +208,7 @@ struct DensityAndVelocityRange< LatticeModel_T, FieldIteratorXYZ >
    static_assert( LatticeModel_T::ForceModel::constant, "Only works with constant forces!" );
 
    static void set( FieldIteratorXYZ & begin, const FieldIteratorXYZ & end, const LatticeModel_T & latticeModel,
-                    const Vector3< real_t > & velocity = Vector3< real_t >( real_t{0.0} ), const real_t rho = real_t{1.0} )
+                    const Vector3< real_t > & velocity = Vector3< real_t >( 0.0_r ), const real_t rho = 1.0_r )
    {
       Vector3< real_t > velAdaptedToForce = internal::AdaptVelocityToForce<LatticeModel_T>::get( latticeModel, velocity, rho );
       EquilibriumRange< LatticeModel_T, FieldIteratorXYZ >::set( begin, end, velAdaptedToForce, rho );
@@ -224,7 +224,7 @@ struct DensityAndVelocityRange< LatticeModel_T, FieldIteratorXYZ >
    static_assert( LatticeModel_T::ForceModel::constant == false, "Does not work with constant forces!" );
 
    static void set( FieldIteratorXYZ & begin, const FieldIteratorXYZ & end, const LatticeModel_T & latticeModel,
-                    const Vector3< real_t > & velocity = Vector3< real_t >( real_t{0.0} ), const real_t rho = real_t{1.0} )
+                    const Vector3< real_t > & velocity = Vector3< real_t >( 0.0_r ), const real_t rho = 1.0_r )
    {
       for( auto cell = begin; cell != end; ++cell )
          DensityAndVelocity< LatticeModel_T >::set( cell, latticeModel, velocity, rho );

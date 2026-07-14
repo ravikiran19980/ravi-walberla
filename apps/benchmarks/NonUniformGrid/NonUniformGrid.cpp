@@ -235,8 +235,8 @@ static void refinementSelection( SetupBlockForest& forest )
 {
    const AABB & domain = forest.getDomain();
 
-   real_t xSize = ( domain.xSize() / real_t{12} ) * real_c( 0.99 );
-   real_t zSize = ( domain.zSize() / real_t{12} ) * real_c( 0.99 );
+   real_t xSize = ( domain.xSize() / 12_r ) * real_c( 0.99 );
+   real_t zSize = ( domain.zSize() / 12_r ) * real_c( 0.99 );
 
    AABB leftCorner( domain.xMin(), domain.yMin(), domain.zMax() - zSize,
                     domain.xMin() + xSize, domain.yMax(), domain.zMax() );
@@ -289,7 +289,7 @@ void createSetupBlockForest( blockforest::SetupBlockForest & sforest, const Conf
    sforest.addRefinementSelectionFunction( refinementSelection );
    sforest.addWorkloadMemorySUIDAssignmentFunction( [=] (auto &forest) { workloadAndMemoryAssignment( forest, memoryPerBlock ); } );
 
-   sforest.init( AABB( real_t{0}, real_t{0}, real_t{0}, real_c( numberOfXBlocks * numberOfXCellsPerBlock ),
+   sforest.init( AABB( 0_r, 0_r, 0_r, real_c( numberOfXBlocks * numberOfXCellsPerBlock ),
                                                         real_c( numberOfYBlocks * numberOfYCellsPerBlock ),
                                                         real_c( numberOfZBlocks * numberOfZCellsPerBlock ) ),
                  numberOfXBlocks, numberOfYBlocks, numberOfZBlocks, false, false, false );
@@ -395,8 +395,8 @@ void ReGrid::operator()( std::vector< std::pair< const Block *, uint_t > > & min
 {
    const AABB & domain = forest.getDomain();
    
-   const real_t xSize = domain.xSize() / real_t{12};
-   const real_t zSize = domain.zSize() / real_t{12};
+   const real_t xSize = domain.xSize() / 12_r;
+   const real_t zSize = domain.zSize() / 12_r;
    
    AABB left;
    AABB right;
@@ -681,10 +681,10 @@ void run( const shared_ptr< Config > & config, const LatticeModel_T & latticeMod
    // add pdf field to blocks
 
    BlockDataID pdfFieldId = fzyx ? lbm::addPdfFieldToStorage( blocks, "pdf field (fzyx)", latticeModel,
-                                                              Vector3< real_t >( real_c(0), real_c(0), real_c(0) ), real_t{1},
+                                                              Vector3< real_t >( real_c(0), real_c(0), real_c(0) ), 1_r,
                                                               FieldGhostLayers, field::fzyx ) :
                                    lbm::addPdfFieldToStorage( blocks, "pdf field (zyxf)", latticeModel,
-                                                              Vector3< real_t >( real_c(0), real_c(0), real_c(0) ), real_t{1},
+                                                              Vector3< real_t >( real_c(0), real_c(0), real_c(0) ), 1_r,
                                                               FieldGhostLayers, field::zyxf );
 
    // add flag field to blocks
@@ -693,7 +693,7 @@ void run( const shared_ptr< Config > & config, const LatticeModel_T & latticeMod
 
    // add LB boundary handling to blocks
 
-   const real_t velocity = configBlock.getParameter< real_t >( "velocity", real_t{0.05} );
+   const real_t velocity = configBlock.getParameter< real_t >( "velocity", 0.05_r );
 
    BlockDataID boundaryHandlingId = blocks->addBlockData( make_shared< MyBoundaryHandling< LatticeModel_T > >( blocks, flagFieldId, pdfFieldId, velocity ),
                                                           "boundary handling" );
@@ -1267,7 +1267,7 @@ int main( int argc, char **argv )
       pure         = false;
    }
 
-   const real_t omega = configBlock.getParameter< real_t >( "omega", real_t{1.4} ); // on the coarsest grid!
+   const real_t omega = configBlock.getParameter< real_t >( "omega", 1.4_r ); // on the coarsest grid!
 
    // executing benchmark
 

@@ -110,14 +110,14 @@ class SetParticleVelocitiesSweep
       WALBERLA_FOR_ALL_CELLS_XYZ(
          particleVelocitiesField,
          for (uint_t i = 0; i < MaxParticlesPerCell; i++) {
-            particleVelocitiesField->get(x, y, z, i * 3 + 0) = real_t{0.0};
-            particleVelocitiesField->get(x, y, z, i * 3 + 1) = real_t{0.0};
-            particleVelocitiesField->get(x, y, z, i * 3 + 2) = real_t{0.0};
+            particleVelocitiesField->get(x, y, z, i * 3 + 0) = 0.0_r;
+            particleVelocitiesField->get(x, y, z, i * 3 + 1) = 0.0_r;
+            particleVelocitiesField->get(x, y, z, i * 3 + 2) = 0.0_r;
          }
 
          const Vector3< real_t >
-            cellCenter = Vector3< real_t >(static_cast< real_t >(x) + real_t{0.5} * dx, static_cast< real_t >(y) + real_t{0.5} * dx,
-                                           static_cast< real_t >(z) + real_t{0.5} * dx) +
+            cellCenter = Vector3< real_t >(static_cast< real_t >(x) + 0.5_r * dx, static_cast< real_t >(y) + 0.5_r * dx,
+                                           static_cast< real_t >(z) + 0.5_r * dx) +
                          block->getAABB().minCorner();
          for (uint_t p = 0; p < nOverlappingParticlesField->get(x, y, z); p++) {
             Vector3< real_t > particleVelocityAtWFPoint =
@@ -207,8 +207,8 @@ class ReduceParticleForcesSweep
             for (cell_idx_t x = cell_idx_t{0}; x < cell_idx_t(particleForcesField->xSize()); ++x)
             {
                const Vector3< real_t > cellCenter =
-                  Vector3< real_t >(static_cast< real_t >(x) + real_t{0.5} * dx, static_cast< real_t >(y) + real_t{0.5} * dx,
-                                    static_cast< real_t >(z) + real_t{0.5} * dx) +
+                  Vector3< real_t >(static_cast< real_t >(x) + 0.5_r * dx, static_cast< real_t >(y) + 0.5_r * dx,
+                                    static_cast< real_t >(z) + 0.5_r * dx) +
                   block->getAABB().minCorner();
                for (uint_t p = 0; p < nOverlappingParticlesField->get(x, y, z); p++)
                {

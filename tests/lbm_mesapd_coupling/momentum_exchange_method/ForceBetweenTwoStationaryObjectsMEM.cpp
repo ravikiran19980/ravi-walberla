@@ -211,13 +211,13 @@ void createSimulationSetup( shared_ptr< StructuredBlockForest > blocks, shared_p
                             bool useSBB, shared_ptr<mesa_pd::data::ParticleStorage> ps, Vector3<real_t> velocity,
                             SweepTimeloop & timeloop )
 {
-   real_t omega = real_t{1};
+   real_t omega = 1_r;
 
    // create the lattice model
    LM_T latticeModel = LM_T( lbm::collision_model::TRT::constructWithMagicNumber( omega ) );
 
    // add PDF field
-   BlockDataID pdfFieldID = lbm::addPdfFieldToStorage< LM_T >( blocks, "pdf field (fzyx)", latticeModel, velocity, real_t{1}, uint_t{1}, field::fzyx );
+   BlockDataID pdfFieldID = lbm::addPdfFieldToStorage< LM_T >( blocks, "pdf field (fzyx)", latticeModel, velocity, 1_r, uint_t{1}, field::fzyx );
 
    // add flag field
    BlockDataID flagFieldID = field::addFlagFieldToStorage<FlagField_T>( blocks, "flag field" );
@@ -301,10 +301,10 @@ int main( int argc, char **argv )
    bool useCompressible = false;
    bool useSBB = false;
    bool useSphereWallSetup = false;
-   real_t surfaceDistance = real_t{0.1};
-   real_t systemVelocity = real_t{0};
+   real_t surfaceDistance = 0.1_r;
+   real_t systemVelocity = 0_r;
    uint_t timesteps = uint_t{10};
-   real_t radius = real_t{5};
+   real_t radius = 5_r;
 
    for( int i = 1; i < argc; ++i )
    {
@@ -323,8 +323,8 @@ int main( int argc, char **argv )
    // SIMULATION PROPERTIES //
    ///////////////////////////
 
-   const uint_t length = static_cast< uint_t >(real_t{4} * radius);
-   const Vector3<real_t> velocity(systemVelocity, real_t{0}, real_t{0});
+   const uint_t length = static_cast< uint_t >(4_r * radius);
+   const Vector3<real_t> velocity(systemVelocity, 0_r, 0_r);
 
    ///////////////////////////
    // BLOCK STRUCTURE SETUP //
@@ -349,7 +349,7 @@ int main( int argc, char **argv )
    auto accessor = make_shared<ParticleAccessor_T >(ps, ss);
    auto sphereShape = ss->create<mesa_pd::data::Sphere>( radius );
 
-   createPlaneSetup(ps, ss, walberla::math::AABB(real_t{0}, real_t{0}, real_t{0}, real_c(length), real_c(length), real_c(length)), velocity);
+   createPlaneSetup(ps, ss, walberla::math::AABB(0_r, 0_r, 0_r, real_c(length), real_c(length), real_c(length)), velocity);
 
    walberla::id_t sphereID;
    if(useSphereWallSetup)
@@ -369,7 +369,7 @@ int main( int argc, char **argv )
       }
    } else {
       // create two spheres
-      Vector3<real_t> position1 (real_c(length) * real_c(0.5) - radius - surfaceDistance*real_t{0.5},
+      Vector3<real_t> position1 (real_c(length) * real_c(0.5) - radius - surfaceDistance*0.5_r,
                                  real_c(length) * real_c(0.5),
                                  real_c(length) * real_c(0.5));
       {
@@ -383,7 +383,7 @@ int main( int argc, char **argv )
       }
 
 
-      Vector3<real_t> position2 (real_c(length) * real_c(0.5) + radius + surfaceDistance*real_t{0.5},
+      Vector3<real_t> position2 (real_c(length) * real_c(0.5) + radius + surfaceDistance*0.5_r,
                                  real_c(length) * real_c(0.5),
                                  real_c(length) * real_c(0.5));
       {
@@ -413,7 +413,7 @@ int main( int argc, char **argv )
 
       //WALBERLA_LOG_INFO(hydrodynamicForce);
 
-      WALBERLA_CHECK_FLOAT_EQUAL(hydrodynamicForce, Vector3<real_t>(real_t{0}), "Found non-zero force");
+      WALBERLA_CHECK_FLOAT_EQUAL(hydrodynamicForce, Vector3<real_t>(0_r), "Found non-zero force");
 
 
       lbm_mesapd_coupling::ResetHydrodynamicForceTorqueKernel resetHydrodynamicForceTorque;

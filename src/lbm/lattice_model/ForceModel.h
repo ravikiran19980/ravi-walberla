@@ -167,7 +167,7 @@ public:
    template< typename LatticeModel_T >
    real_t forceTerm( const cell_idx_t /*x*/, const cell_idx_t /*y*/, const cell_idx_t /*z*/, const Vector3<real_t> & /*velocity*/, const real_t /*rho*/,
                      const DirectionIndependentTerms_T & /*commonTerms*/, const real_t /*w*/,
-                     const real_t /*cx*/, const real_t /*cy*/, const real_t /*cz*/, const real_t /*omega*/, const real_t /*omega_bulk*/, const real_t /*omega_odd*/ ) const { return real_t{0}; }
+                     const real_t /*cx*/, const real_t /*cy*/, const real_t /*cz*/, const real_t /*omega*/, const real_t /*omega_bulk*/, const real_t /*omega_odd*/ ) const { return 0_r; }
 
    bool setConstantBodyForceIfPossible( const Vector3<real_t> &, const uint_t = uint_t{0} ) { return false; }
 };
@@ -222,7 +222,7 @@ public:
                      const DirectionIndependentTerms_T & /*commonTerms*/, const real_t w,
                      const real_t cx, const real_t cy, const real_t cz, const real_t /*omega*/, const real_t /*omega_bulk*/, const real_t /*omega_odd*/ ) const
    {
-      return real_t{3.0} * w * ( cx * bodyForceDensity_[0] + cy * bodyForceDensity_[1] + cz * bodyForceDensity_[2] );
+      return 3.0_r * w * ( cx * bodyForceDensity_[0] + cy * bodyForceDensity_[1] + cz * bodyForceDensity_[2] );
    }
 
    /// "forceDensity_level" is the level that corresponds to "acceleration"
@@ -250,13 +250,13 @@ private:
    template< typename LatticeModel_T >
    struct DirectionIndependentTerm
    {
-      static real_t get( const real_t ) { return real_t{0}; }
+      static real_t get( const real_t ) { return 0_r; }
    };
    template< typename LatticeModel_T >
    requires( LatticeModel_T::compressible )
    struct DirectionIndependentTerm< LatticeModel_T >
    {
-      static real_t get( const real_t rho ) { return real_t{1} / rho; }
+      static real_t get( const real_t rho ) { return 1_r / rho; }
    };
 
    template< typename LatticeModel_T >
@@ -382,7 +382,7 @@ public:
                      const real_t cx, const real_t cy, const real_t cz, const real_t /*omega*/, const real_t /*omega_bulk*/, const real_t /*omega_odd*/ ) const
    {
       const Vector3<real_t> c( cx, cy, cz );
-      return real_t{3} * w * ( ( c - velocity + ( real_t{3} * ( c * velocity ) * c ) ) * bodyForceDensity_ );
+      return 3_r * w * ( ( c - velocity + ( 3_r * ( c * velocity ) * c ) ) * bodyForceDensity_ );
    }
 
    /// "forceDensity_level" is the level that corresponds to "bodyForceDensity"
@@ -442,7 +442,7 @@ public:
                      const real_t cx, const real_t cy, const real_t cz, const real_t /*omega*/, const real_t /*omega_bulk*/, const real_t /*omega_odd*/ ) const
    {
       const Vector3<real_t> c( cx, cy, cz );
-      return real_t{3} * w * ( ( c - velocity + ( real_t{3} * ( c * velocity ) * c ) ) * forceDensity(x,y,z) );
+      return 3_r * w * ( ( c - velocity + ( 3_r * ( c * velocity ) * c ) ) * forceDensity(x,y,z) );
    }
 
    bool setConstantBodyForceIfPossible( const Vector3< real_t > &, const uint_t = uint_t{0} ) { return false; }
@@ -500,13 +500,13 @@ public:
    {
       if (std::is_same_v< typename LatticeModel_T::CollisionModel::tag, collision_model::MRT_tag >)
       {
-         const real_t one_over_d  = real_t{1} / real_t(LatticeModel_T::Stencil::D);
+         const real_t one_over_d  = 1_r / real_t(LatticeModel_T::Stencil::D);
 
          const auto common = Matrix3<real_t>::makeDiagonalMatrix( velocity * bodyForceDensity_ );
          return (tensorProduct( velocity, bodyForceDensity_ ) +
                  tensorProduct( bodyForceDensity_, velocity ) -
-                 common * (real_t{2}*one_over_d) ) * real_t{0.5} * ( real_t{2} - omega )
-                + common * ( one_over_d * ( real_t{2} - omega_bulk ) );
+                 common * (2_r*one_over_d) ) * 0.5_r * ( 2_r - omega )
+                + common * ( one_over_d * ( 2_r - omega_bulk ) );
       }
       else
       {
@@ -523,21 +523,21 @@ public:
       const Vector3<real_t> c( cx, cy, cz );
       if (std::is_same_v< typename LatticeModel_T::CollisionModel::tag, collision_model::MRT_tag >)
       {
-         const real_t one_third  = real_t{1} / real_t{3};
+         const real_t one_third  = 1_r / 3_r;
 
          const real_t common = (commonTerms * ( tensorProduct(c,c) - Matrix3<real_t>::makeDiagonalMatrix(one_third) )).trace();
-         return real_t{3.0} * w * ( bodyForceDensity_ * c + real_t{1.5} * common);
+         return 3.0_r * w * ( bodyForceDensity_ * c + 1.5_r * common);
       }
       else if (std::is_same_v< typename LatticeModel_T::CollisionModel::tag, collision_model::TRT_tag >)
       {
-         return real_t{3.0} * w * ( ( real_t{1} - real_t{0.5} * omega ) *
-                                    ( ( c - velocity + ( real_t{3} * ( c * velocity ) * c ) ) * bodyForceDensity_ ) +
-                                    ( omega - omega_odd ) * real_t{0.5} * (c * bodyForceDensity_) );
+         return 3.0_r * w * ( ( 1_r - 0.5_r * omega ) *
+                                    ( ( c - velocity + ( 3_r * ( c * velocity ) * c ) ) * bodyForceDensity_ ) +
+                                    ( omega - omega_odd ) * 0.5_r * (c * bodyForceDensity_) );
       }
       else
       {
-         return real_t{3.0} * w * ( real_t{1} - real_t{0.5} * omega ) *
-                                  ( ( c - velocity + ( real_t{3} * ( c * velocity ) * c ) ) * bodyForceDensity_ );
+         return 3.0_r * w * ( 1_r - 0.5_r * omega ) *
+                                  ( ( c - velocity + ( 3_r * ( c * velocity ) * c ) ) * bodyForceDensity_ );
       }
    }
 
@@ -593,13 +593,13 @@ public:
    {
       if (std::is_same_v< typename LatticeModel_T::CollisionModel::tag, collision_model::MRT_tag >)
       {
-         const real_t one_over_d  = real_t{1} / real_t(LatticeModel_T::Stencil::D);
+         const real_t one_over_d  = 1_r / real_t(LatticeModel_T::Stencil::D);
 
          const auto common = Matrix3<real_t>::makeDiagonalMatrix( velocity * forceDensity(x,y,z) );
          return (tensorProduct( velocity, forceDensity(x,y,z) ) +
                  tensorProduct( forceDensity(x,y,z), velocity ) -
-                 common * (real_t{2}*one_over_d) ) * real_t{0.5} * ( real_t{2} - omega )
-                + common * ( one_over_d * ( real_t{2} - omega_bulk ) );
+                 common * (2_r*one_over_d) ) * 0.5_r * ( 2_r - omega )
+                + common * ( one_over_d * ( 2_r - omega_bulk ) );
       }
       else
       {
@@ -616,21 +616,21 @@ public:
       const Vector3<real_t> c( cx, cy, cz );
       if (std::is_same_v< typename LatticeModel_T::CollisionModel::tag, collision_model::MRT_tag >)
       {
-         const real_t one_third  = real_t{1} / real_t{3};
+         const real_t one_third  = 1_r / 3_r;
 
          const real_t common = (commonTerms * ( tensorProduct(c,c) - Matrix3<real_t>::makeDiagonalMatrix(one_third) )).trace();
-         return real_t{3.0} * w * ( forceDensity(x,y,z) * c + real_t{1.5} * common);
+         return 3.0_r * w * ( forceDensity(x,y,z) * c + 1.5_r * common);
       }
       else if (std::is_same_v< typename LatticeModel_T::CollisionModel::tag, collision_model::TRT_tag >)
       {
-         return real_t{3.0} * w * ( ( real_t{1} - real_t{0.5} * omega ) *
-                                    ( ( c - velocity + ( real_t{3} * ( c * velocity ) * c ) ) * forceDensity(x,y,z) ) +
-                                    ( omega - omega_odd ) * real_t{0.5} * (c * forceDensity(x,y,z)) );
+         return 3.0_r * w * ( ( 1_r - 0.5_r * omega ) *
+                                    ( ( c - velocity + ( 3_r * ( c * velocity ) * c ) ) * forceDensity(x,y,z) ) +
+                                    ( omega - omega_odd ) * 0.5_r * (c * forceDensity(x,y,z)) );
       }
       else
       {
-         return real_t{3.0} * w * ( real_t{1} - real_t{0.5} * omega ) *
-                                  ( ( c - velocity + ( real_t{3} * ( c * velocity ) * c ) ) * forceDensity(x,y,z) );
+         return 3.0_r * w * ( 1_r - 0.5_r * omega ) *
+                                  ( ( c - velocity + ( 3_r * ( c * velocity ) * c ) ) * forceDensity(x,y,z) );
       }
    }
 
@@ -659,7 +659,7 @@ public:
    static const bool constant = true;
 
    Correction( const BlockDataID & previousRhoVelocityId ) :
-      forceDensity_( real_t{0} ), previousRhoVelocityId_( previousRhoVelocityId ), previousRhoVelocity_(nullptr) {}
+      forceDensity_( 0_r ), previousRhoVelocityId_( previousRhoVelocityId ), previousRhoVelocity_(nullptr) {}
 
    void pack( mpi::SendBuffer & buffer ) const { buffer << forceDensity_ << previousRhoVelocityId_; }
    void unpack( mpi::RecvBuffer & buffer ) { buffer >> forceDensity_ >> previousRhoVelocityId_; }
