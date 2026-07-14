@@ -164,7 +164,7 @@ BlockDataID addPdfFieldToStorage( const shared_ptr< BlockStorage_T > & blocks, c
                                   const shared_ptr< field::FieldAllocator<real_t> > alloc = nullptr)
 {
    return blocks->addBlockData( make_shared< internal::PdfFieldHandling< LatticeModel_T > >(
-                                   blocks, latticeModel, true, Vector3<real_t>(0), real_t{1}, uint_t{1}, layout, alloc ),
+                                   blocks, latticeModel, true, Vector3<real_t>(0), 1_r, uint_t{1}, layout, alloc ),
                                 identifier, requiredSelectors, incompatibleSelectors );
 }
 
@@ -179,7 +179,7 @@ BlockDataID addPdfFieldToStorage( const shared_ptr< BlockStorage_T > & blocks, c
                                   const shared_ptr< field::FieldAllocator<real_t> > alloc = nullptr)
 {
    return blocks->addBlockData( make_shared< internal::PdfFieldHandling< LatticeModel_T > >(
-                                   blocks, latticeModel, true, Vector3<real_t>(0), real_t{1}, ghostLayers, layout, alloc ),
+                                   blocks, latticeModel, true, Vector3<real_t>(0), 1_r, ghostLayers, layout, alloc ),
                                 identifier, requiredSelectors, incompatibleSelectors );
 }
 
@@ -230,7 +230,7 @@ struct PdfFieldCreator : public domain_decomposition::BlockDataCreator< lbm::Pdf
                     const field::Layout & layout = field::fzyx,
                     const shared_ptr< field::FieldAllocator<real_t> > alloc = nullptr) :
       domain_decomposition::BlockDataCreator< lbm::PdfField< LatticeModel_T > >( make_shared< internal::PdfFieldHandling< LatticeModel_T > >(
-                                                                                    blocks, latticeModel, false, Vector3<real_t>(0), real_t{1}, uint_t{1}, layout, alloc ),
+                                                                                    blocks, latticeModel, false, Vector3<real_t>(0), 1_r, uint_t{1}, layout, alloc ),
                                                                                  identifier, requiredSelectors, incompatibleSelectors )
    {}
 
@@ -240,7 +240,7 @@ struct PdfFieldCreator : public domain_decomposition::BlockDataCreator< lbm::Pdf
                     const field::Layout & layout = field::fzyx,
                     const shared_ptr< field::FieldAllocator<real_t> > alloc = nullptr) :
       domain_decomposition::BlockDataCreator< lbm::PdfField< LatticeModel_T > >( make_shared< internal::PdfFieldHandling< LatticeModel_T > >(
-                                                                                    blocks, latticeModel, false, Vector3<real_t>(0), real_t{1}, ghostLayers, layout, alloc ),
+                                                                                    blocks, latticeModel, false, Vector3<real_t>(0), 1_r, ghostLayers, layout, alloc ),
                                                                                  identifier, requiredSelectors, incompatibleSelectors )
    {}
 

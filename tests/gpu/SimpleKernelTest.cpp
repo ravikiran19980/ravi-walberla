@@ -96,7 +96,7 @@ int main( int argc, char ** argv )
 
       gpu::fieldCpy( *cpuField, *gpuField );
 
-      WALBERLA_ASSERT_FLOAT_EQUAL( cpuField->get(0,0,0), real_t{2} )
+      WALBERLA_ASSERT_FLOAT_EQUAL( cpuField->get(0,0,0), 2_r )
    }
 
    return EXIT_SUCCESS;

@@ -61,7 +61,7 @@ int main(int argc, char** argv)
    const real_t normalSpringConstant_SI = config.getParameter< real_t >("normalSpringConstant_SI");
 
    // BlockForest
-   const math::AABB simulationDomain_SI(real_t{0.0}, real_t{0.0}, real_t{0.0}, domainSize_SI[0], domainSize_SI[1],
+   const math::AABB simulationDomain_SI(0.0_r, 0.0_r, 0.0_r, domainSize_SI[0], domainSize_SI[1],
                                         domainSize_SI[2]);
 
    shared_ptr< BlockForest > forest =
@@ -74,8 +74,8 @@ int main(int argc, char** argv)
 
    // Init sphere 0
    auto p0                       = ps->create();
-   p0->getPositionRef()          = simulationDomain_SI.center() - Vec3(diameter_SI / 2, real_t{0}, real_t{0});
-   p0->getInteractionRadiusRef() = diameter_SI * real_t{0.5};
+   p0->getPositionRef()          = simulationDomain_SI.center() - Vec3(diameter_SI / 2, 0_r, 0_r);
+   p0->getInteractionRadiusRef() = diameter_SI * 0.5_r;
    p0->getBaseShapeRef()         = std::make_shared< data::Sphere >(p0->getInteractionRadius());
    p0->getBaseShapeRef()->updateMassAndInertia(densityParticle_SI);
    p0->getOwnerRef() = walberla::mpi::MPIManager::instance()->rank();
@@ -84,8 +84,8 @@ int main(int argc, char** argv)
 
    // Init sphere 1
    auto p1                       = ps->create();
-   p1->getPositionRef()          = simulationDomain_SI.center() + Vec3(diameter_SI / 2, real_t{0}, real_t{0});
-   p1->getInteractionRadiusRef() = diameter_SI * real_t{0.5};
+   p1->getPositionRef()          = simulationDomain_SI.center() + Vec3(diameter_SI / 2, 0_r, 0_r);
+   p1->getInteractionRadiusRef() = diameter_SI * 0.5_r;
    p1->getBaseShapeRef()         = std::make_shared< data::Sphere >(p1->getInteractionRadius());
    p1->getBaseShapeRef()->updateMassAndInertia(densityParticle_SI);
    p1->getOwnerRef() = walberla::mpi::MPIManager::instance()->rank();
@@ -104,8 +104,8 @@ int main(int argc, char** argv)
    {
       ps->forEachParticle(false, kernel::SelectLocal(), accessor, vvIntegratorPreForce, accessor);
 
-      p0->setForce(Vec3(force_SI * static_cast< real_t >(i) / static_cast< real_t >(timeSteps), real_t{0}, real_t{0}));
-      p1->setForce(Vec3(-force_SI * static_cast< real_t >(i) / static_cast< real_t >(timeSteps), real_t{0}, real_t{0}));
+      p0->setForce(Vec3(force_SI * static_cast< real_t >(i) / static_cast< real_t >(timeSteps), 0_r, 0_r));
+      p1->setForce(Vec3(-force_SI * static_cast< real_t >(i) / static_cast< real_t >(timeSteps), 0_r, 0_r));
 
       ps->forEachParticlePairHalf(
          false, kernel::ExcludeInfiniteInfinite(), accessor,

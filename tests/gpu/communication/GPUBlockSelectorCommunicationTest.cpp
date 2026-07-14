@@ -98,9 +98,9 @@ std::shared_ptr< StructuredBlockForest >
 
    sforest.addWorkloadMemorySUIDAssignmentFunction(suidAssignmentFunction);
 
-   AABB const domainAABB{ real_t{0},
-                          real_t{0},
-                          real_t{0},
+   AABB const domainAABB{ 0_r,
+                          0_r,
+                          0_r,
                           dx * real_c(numberOfXBlocks * numberOfXCellsPerBlock),
                           dx * real_c(numberOfYBlocks * numberOfYCellsPerBlock),
                           dx * real_c(numberOfZBlocks * numberOfZCellsPerBlock) };

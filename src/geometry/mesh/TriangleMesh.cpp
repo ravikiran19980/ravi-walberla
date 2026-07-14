@@ -464,7 +464,7 @@ real_t TriangleMesh::volume() const
    for(size_t i = 0; i < getNumTriangles(); ++i)
    {
       getTriangle( i, v0, v1, v2 );
-      result += ( v0 * ( v1 % v2 ) ) / real_t{6};
+      result += ( v0 * ( v1 % v2 ) ) / 6_r;
    }
 
    return std::fabs(result);
@@ -483,7 +483,7 @@ real_t TriangleMesh::surfaceArea() const
       result += ( ( v1 - v0 ) % ( v2 - v0 ) ).length();
    }
 
-   return result * real_t{ 0.5 };
+   return result * 0.5_r;
 }
 
 

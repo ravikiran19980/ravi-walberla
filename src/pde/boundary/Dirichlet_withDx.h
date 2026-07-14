@@ -275,7 +275,7 @@ inline void Dirichlet< Stencil_T, flag_t >::treatDirection( const cell_idx_t  x,
                                                              // current implementation of this boundary condition (Dirichlet)
 
    // Adapt RHS to Dirichlet BC //
-   rhsField_->get( x, y, z ) -= stencilField_->get( x, y, z, Stencil_T::idx[dir] ) * real_t{2} * dx_[ Stencil_T::idx[dir] ] * dirichletBC_->get( nx, ny, nz ); // possibly utilize that off-diagonal entries -1 anyway
+   rhsField_->get( x, y, z ) -= stencilField_->get( x, y, z, Stencil_T::idx[dir] ) * 2_r * dx_[ Stencil_T::idx[dir] ] * dirichletBC_->get( nx, ny, nz ); // possibly utilize that off-diagonal entries -1 anyway
 
    // WALBERLA_LOG_DEVEL("Adapt RHS to Dirichlet value " << dirichletBC_->get( nx, ny, nz ) << " on cell " << Cell(x,y,z) << " for stencil entry " << stencilField_->get( x, y, z, Stencil_T::idx[dir] ) );
 

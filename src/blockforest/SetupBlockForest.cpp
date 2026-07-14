@@ -1209,7 +1209,7 @@ void SetupBlockForest::balanceLoad( const TargetProcessAssignmentFunction & func
 {
    WALBERLA_LOG_PROGRESS( "Balancing SetupBlockForest: Creating a process distribution for " << numberOfProcesses << " process(es) ..." )
 
-   if( minBufferProcessesFraction < real_t{0} || minBufferProcessesFraction >= real_t{1})
+   if( minBufferProcessesFraction < 0_r || minBufferProcessesFraction >= 1_r)
       WALBERLA_ABORT( "Load balancing failed: \'buffer processes fraction\' must be in [0,1). "
                       "The value you provided was \'" << minBufferProcessesFraction << "\'." )
    
@@ -1223,7 +1223,7 @@ void SetupBlockForest::balanceLoad( const TargetProcessAssignmentFunction & func
    //
    // integer = cast< integer >( 0.5 + floating point )  [for correct rounding]
 
-   const uint_t numberOfWorkerProcesses = uint_c( real_c(0.5) + ( real_t{1} - minBufferProcessesFraction ) * real_c( numberOfProcesses ) );
+   const uint_t numberOfWorkerProcesses = uint_c( real_c(0.5) + ( 1_r - minBufferProcessesFraction ) * real_c( numberOfProcesses ) );
    WALBERLA_CHECK_LESS_EQUAL( numberOfWorkerProcesses, numberOfProcesses )
    const uint_t numberOfBufferProcesses = numberOfProcesses - numberOfWorkerProcesses;
    
@@ -2036,7 +2036,7 @@ void SetupBlockForest::toStream( std::ostream & os ) const
       << "- initial decomposition: " << size_[0] << " x " << size_[1] << " x " << size_[2] << " (= forest size)\n"
       << std::boolalpha << "- periodicity: " << periodic_[0] << " x " << periodic_[1] << " x " << periodic_[2] << "\n"
       << "- number of blocks discarded from the initial grid: " << discardedRootBlocks << " (= "
-                                                                << ( real_t{100} * real_c(discardedRootBlocks) / real_c(size_[0]*size_[1]*size_[2]) ) << " %)\n"
+                                                                << ( 100_r * real_c(discardedRootBlocks) / real_c(size_[0]*size_[1]*size_[2]) ) << " %)\n"
       << "- number of levels: " << getNumberOfLevels() << "\n"
       << "- tree ID digits: " << treeIdDigits_ << " (-> block ID bytes = " << getBlockIdBytes() << ")\n"
       << "- total number of blocks: " << numberOfBlocks_ << "\n";
@@ -2049,9 +2049,9 @@ void SetupBlockForest::toStream( std::ostream & os ) const
       {
          os << "\n- distribution of space/memory/work to different grid levels:\n";
 
-         std::vector< real_t > space         ( depth_ + 2, real_t{0} );
-         std::vector< real_t > memory        ( depth_ + 2, real_t{0} );
-         std::vector< real_t > workload      ( depth_ + 2, real_t{0} );
+         std::vector< real_t > space         ( depth_ + 2, 0_r );
+         std::vector< real_t > memory        ( depth_ + 2, 0_r );
+         std::vector< real_t > workload      ( depth_ + 2, 0_r );
          std::vector< uint_t > numberOfBlocks( depth_ + 2, uint_t{0} );
 
          for(const auto & block : *this)
@@ -2075,9 +2075,9 @@ void SetupBlockForest::toStream( std::ostream & os ) const
          {
             os << "   + level " << l << ":\n"
                << "      - " << numberOfBlocks[l] << " blocks ...\n"
-               << "      - ... cover " << ( real_t{100} * space[l] / space.back() ) << " % of the total simulation space\n"
-               << "      - ... account for " << ( real_t{100} * memory[l] / memory.back() ) << " % of the total memory foot print\n"
-               << "      - ... generate " << ( real_t{100} * workload[l] / workload.back() ) << " % of the total workload";
+               << "      - ... cover " << ( 100_r * space[l] / space.back() ) << " % of the total simulation space\n"
+               << "      - ... account for " << ( 100_r * memory[l] / memory.back() ) << " % of the total memory foot print\n"
+               << "      - ... generate " << ( 100_r * workload[l] / workload.back() ) << " % of the total workload";
             if( l != depth_ ) os << "\n";
          }
       }
@@ -2145,7 +2145,7 @@ void SetupBlockForest::toStream( std::ostream & os ) const
       {
          os << "\n- distribution of space/memory/work to different grid levels:\n";
 
-         std::vector< real_t > space( depth_ + 2, real_t{0} );
+         std::vector< real_t > space( depth_ + 2, 0_r );
          std::vector< uint_t > numberOfBlocks( depth_ + 2, uint_t{0} );
 
          for(const auto & block : *this)
@@ -2165,9 +2165,9 @@ void SetupBlockForest::toStream( std::ostream & os ) const
          {
             os << "   + level " << l << ":\n"
                << "      - " << numberOfBlocks[l] << " blocks ...\n"
-               << "      - ... cover " << ( real_t{100} * space[l] / space.back() ) << " % of the total simulation space\n"
-               << "      - ... account for " << ( real_t{100} * memory[l].sum() / memory.back().sum() ) << " % of the total memory foot print\n"
-               << "      - ... generate " << ( real_t{100} * workload[l].sum() / workload.back().sum() ) << " % of the total work load\n"
+               << "      - ... cover " << ( 100_r * space[l] / space.back() ) << " % of the total simulation space\n"
+               << "      - ... account for " << ( 100_r * memory[l].sum() / memory.back().sum() ) << " % of the total memory foot print\n"
+               << "      - ... generate " << ( 100_r * workload[l].sum() / workload.back().sum() ) << " % of the total work load\n"
                << "      - blocks per process:\n"
                << "         + min       = " << blocks[l].min() << "\n"
                << "         + max       = " << blocks[l].max() << "\n"

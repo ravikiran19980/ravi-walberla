@@ -63,9 +63,9 @@ int main( int argc, char ** argv )
    real_t xv = 0, yv = 0, zv = 0;
 
    for (auto cellIt = velocityField.beginWithGhostLayerXYZ(); cellIt != velocityField.end(); ++cellIt) {
-      xv = math::realRandom<real_t>(real_t{-1}, real_t{1});
-      yv = math::realRandom<real_t>(real_t{-1}, real_t{1});
-      zv = math::realRandom<real_t>(real_t{-1}, real_t{1});
+      xv = math::realRandom<real_t>(-1_r, 1_r);
+      yv = math::realRandom<real_t>(-1_r, 1_r);
+      zv = math::realRandom<real_t>(-1_r, 1_r);
 
       *cellIt = Vector3<real_t>(static_cast< real_t >(xv), static_cast< real_t >(yv), static_cast< real_t >(zv));
    }
@@ -88,19 +88,19 @@ int main( int argc, char ** argv )
       const Vector3<real_t> za = velocityField.get(x,y,z+one);
       const Vector3<real_t> zb = velocityField.get(x,y,z-one);
 
-      const real_t duxdx = (xa[0] - xb[0]) * real_t{0.5};
-      const real_t duxdy = (ya[0] - yb[0]) * real_t{0.5};
-      const real_t duxdz = (za[0] - zb[0]) * real_t{0.5};
+      const real_t duxdx = (xa[0] - xb[0]) * 0.5_r;
+      const real_t duxdy = (ya[0] - yb[0]) * 0.5_r;
+      const real_t duxdz = (za[0] - zb[0]) * 0.5_r;
 
-      const real_t duydx = (xa[1] - xb[1]) * real_t{0.5};
-      const real_t duydy = (ya[1] - yb[1]) * real_t{0.5};
-      const real_t duydz = (za[1] - zb[1]) * real_t{0.5};
+      const real_t duydx = (xa[1] - xb[1]) * 0.5_r;
+      const real_t duydy = (ya[1] - yb[1]) * 0.5_r;
+      const real_t duydz = (za[1] - zb[1]) * 0.5_r;
 
-      const real_t duzdx = (xa[2] - xb[2]) * real_t{0.5};
-      const real_t duzdy = (ya[2] - yb[2]) * real_t{0.5};
-      const real_t duzdz = (za[2] - zb[2]) * real_t{0.5};
+      const real_t duzdx = (xa[2] - xb[2]) * 0.5_r;
+      const real_t duzdy = (ya[2] - yb[2]) * 0.5_r;
+      const real_t duzdz = (za[2] - zb[2]) * 0.5_r;
 
-      real_t q_paraview = -real_t{0.5}*(duxdx*duxdx + duydy*duydy + duzdz*duzdz)
+      real_t q_paraview = -0.5_r*(duxdx*duxdx + duydy*duydy + duzdz*duzdz)
                           -(duxdy*duydx + duxdz*duzdx + duydz*duzdy);
 
       WALBERLA_CHECK_FLOAT_EQUAL(q_paraview, lbm::getQCriterion(velocityField, filter, x, y, z));

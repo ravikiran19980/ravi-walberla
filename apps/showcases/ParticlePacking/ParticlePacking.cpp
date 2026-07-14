@@ -215,16 +215,16 @@ public:
          {
             auto domainCenter             = simulationDomain_.center();
             auto distanceFromDomainCenter = pt - domainCenter;
-            distanceFromDomainCenter[2]   = real_t{0};
+            distanceFromDomainCenter[2]   = 0_r;
             auto distance                 = distanceFromDomainCenter.length();
-            real_t containerRadius        = real_t{0.5} * simulationDomain_.xSize();
-            if (distance > containerRadius - real_t{0.5} * spacing) continue;
+            real_t containerRadius        = 0.5_r * simulationDomain_.xSize();
+            if (distance > containerRadius - 0.5_r * spacing) continue;
          }
 
          // for non-spherical particles only insufficient diameter information is available -> scale with safety factor, here max scaling factor
          generationPositionChecker.addParticleIfLarge(pt, diameter * std::sqrt(shapeGenerator->getMaxDiameterScalingFactor())); //std::cbrt(shapeGenerator->getMaxDiameterScalingFactor()));
 
-         if (!particleDomain_->isContainedInLocalSubdomain(pt, real_t{0})) continue;
+         if (!particleDomain_->isContainedInLocalSubdomain(pt, 0_r)) continue;
 
          particlesToBeCreated.emplace_back(GenerationPositionChecker::PositionDescription_T(pt, diameter));
       }
@@ -489,7 +489,7 @@ int main(int argc, char **argv) {
    real_t dem_collisionTime = solverDEMConf.getParameter<real_t>("collisionTime");
    //real_t dem_stiffnessNormal = solverDEMConf.getParameter<real_t>("stiffnessNormal");
    real_t dem_poissonsRatio = solverDEMConf.getParameter<real_t>("poissonsRatio");
-   real_t dem_kappa = real_t{2} * ( real_t{1} - dem_poissonsRatio ) / ( real_t{2} - dem_poissonsRatio ) ; // from Thornton et al
+   real_t dem_kappa = 2_r * ( 1_r - dem_poissonsRatio ) / ( 2_r - dem_poissonsRatio ) ; // from Thornton et al
 
    const Config::BlockHandle generationConf = cfg->getBlock("Generation");
    real_t initialVelocity = generationConf.getParameter<real_t>("initialVelocity");
@@ -542,13 +542,13 @@ int main(int argc, char **argv) {
    uint_t timestep = 0;
    bool isDampingActive = false;
    bool isShakingActive = false;
-   real_t oldAvgParticleHeight = real_t{1};
-   real_t oldMaxParticleHeight = real_t{1};
-   real_t timeLastTerminationCheck = real_t{0};
-   real_t timeLastCreation = real_t{0};
-   real_t timeBeginShaking = real_t{-1};
-   real_t timeEndShaking = real_t{-1};
-   real_t timeBeginDamping = real_t{-1};
+   real_t oldAvgParticleHeight = 1_r;
+   real_t oldMaxParticleHeight = 1_r;
+   real_t timeLastTerminationCheck = 0_r;
+   real_t timeLastCreation = 0_r;
+   real_t timeBeginShaking = -1_r;
+   real_t timeEndShaking = -1_r;
+   real_t timeBeginDamping = -1_r;
 
    if(checkPointing_existingUID == "None")
    {
@@ -559,7 +559,7 @@ int main(int argc, char **argv) {
       {
          WALBERLA_LOG_INFO_ON_ROOT("Will use shaking from beginning.");
          isShakingActive = true;
-         timeBeginShaking = real_t{0};
+         timeBeginShaking = 0_r;
       }
    } else
    {
@@ -785,10 +785,10 @@ int main(int argc, char **argv) {
       auto massFractions = parseStringToVector<real_t>(sievingConf.getParameter<std::string>("massFractions"));
       diameterGenerator = std::make_unique<DiscreteSieving>(diameters, massFractions, randomSeed, shapeGenerator->getNormalVolume(), totalParticleMass, particleDensity);
 
-      maxGenerationParticleDiameter = real_t{0};
+      maxGenerationParticleDiameter = 0_r;
       minGenerationParticleDiameter = std::numeric_limits<real_t>::max();
       for(uint_t i = 0; i < diameters.size(); ++i) {
-         if(massFractions[i] > real_t{0}) {
+         if(massFractions[i] > 0_r) {
             maxGenerationParticleDiameter = std::max(maxGenerationParticleDiameter, diameters[i]);
             minGenerationParticleDiameter = std::min(minGenerationParticleDiameter, diameters[i]);
          }
@@ -810,13 +810,13 @@ int main(int argc, char **argv) {
       real_t stdDev = std::sqrt(d84/d16);
       WALBERLA_LOG_INFO_ON_ROOT("Curve properties: D50 = " << d50 << ", D16 = " << d16 << ", D84 = " << d84 << ", estimated std. dev. = " << stdDev);
 
-      maxGenerationParticleDiameter = real_t{0};
+      maxGenerationParticleDiameter = 0_r;
       minGenerationParticleDiameter = std::numeric_limits<real_t>::max();
       if(useDiscreteForm)
       {
          diameterGenerator = std::make_unique<DiscreteSieving>(diameters, massFractions, randomSeed, shapeGenerator->getNormalVolume(), totalParticleMass, particleDensity);
          for(uint_t i = 0; i < diameters.size(); ++i) {
-            if(massFractions[i] > real_t{0}) {
+            if(massFractions[i] > 0_r) {
                maxGenerationParticleDiameter = std::max(maxGenerationParticleDiameter, diameters[i]);
                minGenerationParticleDiameter = std::min(minGenerationParticleDiameter, diameters[i]);
             }
@@ -826,7 +826,7 @@ int main(int argc, char **argv) {
       } else {
          diameterGenerator = std::make_unique<ContinuousSieving>(sieveSizes, massFractions, randomSeed, shapeGenerator->getNormalVolume(), totalParticleMass, particleDensity);
          for(uint_t i = 0; i < sieveSizes.size()-1; ++i) {
-            if(massFractions[i] > real_t{0}) {
+            if(massFractions[i] > 0_r) {
                maxGenerationParticleDiameter = std::max(maxGenerationParticleDiameter, std::max(sieveSizes[i],sieveSizes[i+1]));
                minGenerationParticleDiameter = std::min(minGenerationParticleDiameter, std::min(sieveSizes[i],sieveSizes[i+1]));
             }
@@ -1036,7 +1036,7 @@ int main(int argc, char **argv) {
    std::vector<std::vector<real_t>> particleShapeBins(particleShapeEvaluators.size());
    for(auto& pSB: particleShapeBins)
    {
-      pSB = std::vector<real_t>(numShapeBins, real_t{0});
+      pSB = std::vector<real_t>(numShapeBins, 0_r);
       real_t binBegin = 0_r;
       real_t binEnd = 1_r;
       real_t inc = (binEnd - binBegin) / real_t(numShapeBins-1);
@@ -1233,7 +1233,7 @@ int main(int argc, char **argv) {
          timing.stop("Init particles");
 
          timing.start("Velocity update");
-         VelocityUpdateNotification::Parameters::relaxationParam = real_t{1.0}; // must be set to 1.0 such that dv and dw caused by external forces and torques are not falsely altered
+         VelocityUpdateNotification::Parameters::relaxationParam = 1.0_r; // must be set to 1.0 such that dv and dw caused by external forces and torques are not falsely altered
          reductionKernel.operator()<VelocityCorrectionNotification>(*particleStorage);
          broadcastKernel.operator()<VelocityUpdateNotification>(*particleStorage);
          timing.stop("Velocity update");
@@ -1263,7 +1263,7 @@ int main(int argc, char **argv) {
                                         [&dem_collision, coefficientOfRestitution, dem_collisionTime, dem_kappa, dt](size_t c, data::ContactAccessor &ca, data::ParticleAccessorWithBaseShape &pa){
                                            auto idx1 = ca.getId1(c);
                                            auto idx2 = ca.getId2(c);
-                                           auto meff = real_t{1} / (pa.getInvMass(idx1) + pa.getInvMass(idx2));
+                                           auto meff = 1_r / (pa.getInvMass(idx1) + pa.getInvMass(idx2));
 
                                            dem_collision.setStiffnessAndDamping(0,0,coefficientOfRestitution, dem_collisionTime, dem_kappa, meff);
 
@@ -1500,7 +1500,7 @@ int main(int argc, char **argv) {
             WALBERLA_LOG_INFO_ON_ROOT("t = " << timestep << " = " << currentTime << " s");
             WALBERLA_LOG_INFO_ON_ROOT(particleInfo << " => " << particleInfo.particleVolume * particleDensity << " kg" << ", current porosity = " << estimatedPorosity << ", packing height = " << estimatedPackingHeight);
             real_t ensembleAverageDiameter = diameterFromSphereVolume(particleInfo.particleVolume / real_c(particleInfo.numParticles));
-            WALBERLA_LOG_INFO_ON_ROOT(contactInfo << " => " << contactInfo.maximumPenetrationDepth / ensembleAverageDiameter * real_t{100} << "% of avg diameter " << ensembleAverageDiameter);
+            WALBERLA_LOG_INFO_ON_ROOT(contactInfo << " => " << contactInfo.maximumPenetrationDepth / ensembleAverageDiameter * 100_r << "% of avg diameter " << ensembleAverageDiameter);
          }
 
          timing.stop("Evaluate infos");

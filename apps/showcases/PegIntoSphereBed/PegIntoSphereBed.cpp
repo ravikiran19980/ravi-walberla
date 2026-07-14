@@ -87,14 +87,14 @@
 namespace walberla {
 
 void createPeg(mesh::TriangleMesh & mesh, mesa_pd::Vec3 & pegPikeTipPosition, real_t bodyHeight, real_t pikeHeight, real_t radius, uint_t numSideEdges) {
-   real_t alpha = real_t{2} * math::pi / static_cast< real_t >(numSideEdges); // 360° / numSideEdges -> approximation of cylinder and cone
+   real_t alpha = 2_r * math::pi / static_cast< real_t >(numSideEdges); // 360° / numSideEdges -> approximation of cylinder and cone
    real_t topCornerZ = pikeHeight + bodyHeight;
    real_t bottomCornerZ = pikeHeight;
 
    mesh::TriangleMesh::Point topCenterPoint(radius, radius, topCornerZ);
    mesh::TriangleMesh::VertexHandle topCenterVertex = mesh.add_vertex(topCenterPoint);
 
-   mesh::TriangleMesh::Point bottomCenterPoint(radius, radius, real_t{0});
+   mesh::TriangleMesh::Point bottomCenterPoint(radius, radius, 0_r);
    mesh::TriangleMesh::VertexHandle bottomCenterVertex = mesh.add_vertex(bottomCenterPoint);
 
    mesh::TriangleMesh::VertexHandle firstTopVertex;
@@ -150,7 +150,7 @@ void createPeg(mesh::TriangleMesh & mesh, mesa_pd::Vec3 & pegPikeTipPosition, re
    auto centroidShift = mesh::toWalberla(mesh::computeCentroid(mesh));
    mesh::translate(mesh, -centroidShift);
 
-   pegPikeTipPosition = -centroidShift + mesa_pd::Vec3(radius, radius, real_t{0});
+   pegPikeTipPosition = -centroidShift + mesa_pd::Vec3(radius, radius, 0_r);
 }
 
 mesa_pd::data::ParticleStorage::iterator createPlane( mesa_pd::data::ParticleStorage& ps,
@@ -175,13 +175,13 @@ public:
          : dt_(dt)
          , domain_(domain)
    {
-      sd_.setDampingT(0, 0, real_t{0});
-      sd_.setFriction(0, 0, real_t{0});
-      sd_.setParametersFromCOR(0, 0, real_t{0.9}, dt*real_t{20}, mass * real_t{0.5});
+      sd_.setDampingT(0, 0, 0_r);
+      sd_.setFriction(0, 0, 0_r);
+      sd_.setParametersFromCOR(0, 0, 0.9_r, dt*20_r, mass * 0.5_r);
 
-      sds_.setParametersFromCOR(0, 0, real_t{0.9}, dt*real_t{20}, mass * real_t{0.5});
-      sds_.setCoefficientOfFriction(0,0,real_t{0.4});
-      sds_.setStiffnessT(0,0,real_t{0.9} * sds_.getStiffnessN(0,0));
+      sds_.setParametersFromCOR(0, 0, 0.9_r, dt*20_r, mass * 0.5_r);
+      sds_.setCoefficientOfFriction(0,0,0.4_r);
+      sds_.setStiffnessT(0,0,0.9_r * sds_.getStiffnessN(0,0));
    }
 
    inline
@@ -251,20 +251,20 @@ int main( int argc, char ** argv ) {
 
    uint_t simulationSteps = mainConf.getParameter<uint_t>("simulationSteps", uint_t{1000});
    uint_t visSpacing = mainConf.getParameter<uint_t>("visSpacing", uint_t{100});
-   real_t dt = mainConf.getParameter<real_t>("dt", real_t{0.0003});
-   Vector3<real_t> shift = mainConf.getParameter<Vector3<real_t>>("shift", Vector3<real_t>(real_t{0.01}));
+   real_t dt = mainConf.getParameter<real_t>("dt", 0.0003_r);
+   Vector3<real_t> shift = mainConf.getParameter<Vector3<real_t>>("shift", Vector3<real_t>(0.01_r));
 
-   real_t sphereBedHeight = mainConf.getParameter<real_t>("sphereBedHeight", real_t{1});
-   real_t sphereRadius = mainConf.getParameter<real_t>("sphereRadius", real_t{0.5});
-   real_t sphereSpacing = mainConf.getParameter<real_t>("sphereSpacing", real_t{0.5});
-   real_t sphereDensity = mainConf.getParameter<real_t>("sphereDensity", real_t{1000});
+   real_t sphereBedHeight = mainConf.getParameter<real_t>("sphereBedHeight", 1_r);
+   real_t sphereRadius = mainConf.getParameter<real_t>("sphereRadius", 0.5_r);
+   real_t sphereSpacing = mainConf.getParameter<real_t>("sphereSpacing", 0.5_r);
+   real_t sphereDensity = mainConf.getParameter<real_t>("sphereDensity", 1000_r);
 
-   real_t pegBodyHeight = mainConf.getParameter<real_t>("pegBodyHeight", real_t{5});
-   real_t pegPikeHeight = mainConf.getParameter<real_t>("pegPikeHeight", real_t{2});
-   real_t pegRadius = mainConf.getParameter<real_t>("pegRadius", real_t{2});
+   real_t pegBodyHeight = mainConf.getParameter<real_t>("pegBodyHeight", 5_r);
+   real_t pegPikeHeight = mainConf.getParameter<real_t>("pegPikeHeight", 2_r);
+   real_t pegRadius = mainConf.getParameter<real_t>("pegRadius", 2_r);
    uint_t pegNumSideEdges = mainConf.getParameter<uint_t>("pegNumSideEdges", uint_t{4});
-   Vector3<real_t> pegPikeTipPosition = mainConf.getParameter<Vector3<real_t>>("pegPikeTipPosition", Vector3<real_t>(real_t{1}));
-   Vector3<real_t> pegVelocity = mainConf.getParameter<Vector3<real_t>>("pegVelocity", Vector3<real_t>(0, 0, real_t{-0.05}));
+   Vector3<real_t> pegPikeTipPosition = mainConf.getParameter<Vector3<real_t>>("pegPikeTipPosition", Vector3<real_t>(1_r));
+   Vector3<real_t> pegVelocity = mainConf.getParameter<Vector3<real_t>>("pegVelocity", Vector3<real_t>(0, 0, -0.05_r));
 
    std::string vtk_out = "vtk_out";
 
@@ -284,7 +284,7 @@ int main( int argc, char ** argv ) {
    auto ps = std::make_shared<mesa_pd::data::ParticleStorage>(4);
    auto ss = std::make_shared<mesa_pd::data::ShapeStorage>();
    mesa_pd::data::ParticleAccessorWithShape ac(ps, ss);
-   mesa_pd::data::LinkedCells lc(localDomain.getExtended(real_t{1}), real_t{2.1} * sphereRadius );
+   mesa_pd::data::LinkedCells lc(localDomain.getExtended(1_r), 2.1_r * sphereRadius );
    mesa_pd::mpi::SyncNextNeighbors SNN;
 
    /// Mesh Peg
@@ -304,7 +304,7 @@ int main( int argc, char ** argv ) {
    /// MESAPD Particles
    // Peg
    auto pegShapeID = ss->create<mesa_pd::data::ConvexPolyhedron>(*pegMesh);
-   ss->shapes[pegShapeID]->updateMassAndInertia(real_t{1});
+   ss->shapes[pegShapeID]->updateMassAndInertia(1_r);
    auto pegShape = dynamic_cast<mesa_pd::data::ConvexPolyhedron*>(ss->shapes[pegShapeID].get());
 
    Vector3<real_t> pegPosition = pegPikeTipPosition - pegPikeTipOffset;
@@ -357,7 +357,7 @@ int main( int argc, char ** argv ) {
    WALBERLA_LOG_INFO_ON_ROOT("#particles created: " << numParticles);
 
    // Confining Planes
-   auto planeShift = (sphereSpacing - sphereRadius - sphereRadius) * real_t{0.5};
+   auto planeShift = (sphereSpacing - sphereRadius - sphereRadius) * 0.5_r;
    auto confiningDomain = domainSize.getExtended(planeShift);
    if (!forest->isPeriodic(0)) {
       createPlane(*ps, *ss, confiningDomain.minCorner()+ shift, Vector3<real_t>(+1,0,0));
@@ -397,14 +397,14 @@ int main( int argc, char ** argv ) {
 
    /// MESAPD kernels
    mesa_pd::kernel::ExplicitEuler explicitEuler(dt);
-   DEM dem(domain, dt, real_t{1});
+   DEM dem(domain, dt, 1_r);
    mesa_pd::kernel::InsertParticleIntoLinkedCells ipilc;
    mesa_pd::mpi::ReduceProperty RP;
    mesa_pd::mpi::ReduceContactHistory RCH;
 
-   Vector3<real_t> globalAcceleration(real_t{0}, real_t{0}, real_t{-6});
+   Vector3<real_t> globalAcceleration(0_r, 0_r, -6_r);
    auto addGravitationalForce = [&globalAcceleration](const size_t idx, mesa_pd::data::ParticleAccessorWithShape& ac_) {
-      auto mass = real_t{1} / ac_.getInvMass(idx);
+      auto mass = 1_r / ac_.getInvMass(idx);
       auto force = mass * globalAcceleration;
       mesa_pd::addForceAtomic(idx, ac_, force);
    };

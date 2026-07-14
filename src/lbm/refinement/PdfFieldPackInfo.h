@@ -767,7 +767,7 @@ void PdfFieldPackInfo< LatticeModel_T, BoundaryHandling_T >::packDataFineToCoars
 
    CellInterval packingInterval = fineToCoarsePackInterval( dir, field->xyzSize() );
 
-   const real_t factor = ( Stencil::D == uint_t{3} ) ? real_t{ 0.125 } : real_t{ 0.25 };
+   const real_t factor = ( Stencil::D == uint_t{3} ) ? 0.125_r : 0.25_r;
 
    for( cell_idx_t z = packingInterval.zMin(); z <= packingInterval.zMax(); z += cell_idx_t{2} ) {
       for( cell_idx_t y = packingInterval.yMin(); y <= packingInterval.yMax(); y += cell_idx_t{2} ) {
@@ -908,7 +908,7 @@ void PdfFieldPackInfo< LatticeModel_T, BoundaryHandling_T >::communicateLocalFin
       WALBERLA_ASSERT_EQUAL( packingInterval.zSize(), unpackingInterval.zSize() );
    }
 
-   const real_t factor = ( Stencil::D == uint_t{3} ) ? real_t{ 0.125 } : real_t{ 0.25 };
+   const real_t factor = ( Stencil::D == uint_t{3} ) ? 0.125_r : 0.25_r;
 
    cell_idx_t sz = packingInterval.zMin();
    for( cell_idx_t rz = unpackingInterval.zMin(); rz <= unpackingInterval.zMax(); ++rz )

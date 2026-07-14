@@ -159,7 +159,7 @@ private:
       CellInterval localDomain = useDataFromGhostLayers_ ? pdfField->xyzSizeWithGhostLayer() : pdfField->xyzSize();
 
       auto nAverage = uint_t{0};
-      auto averageDensity = real_t{0};
+      auto averageDensity = 0_r;
       for( auto neighborDir = stencil::D3Q27::beginNoCenter(); neighborDir != stencil::D3Q27::end(); ++neighborDir )
       {
          Cell neighbor( x + neighborDir.cx(), y + neighborDir.cy(), z + neighborDir.cz() );
@@ -177,7 +177,7 @@ private:
          }
       }
 
-      return ( nAverage > uint_t{ 0 } ) ? averageDensity / real_c( nAverage ) : real_t{1.0};
+      return ( nAverage > uint_t{ 0 } ) ? averageDensity / real_c( nAverage ) : 1.0_r;
    }
 
 
@@ -294,7 +294,7 @@ private:
 
       for( auto d = LatticeModel_T::Stencil::begin(); d != LatticeModel_T::Stencil::end(); ++d )
       {
-         pdfField->get( x, y, z, d.toIdx() ) += real_t{3} * pdfsXf[d.toIdx()] - real_t{3} * pdfsXff[d.toIdx()] + pdfsXfff[d.toIdx()];
+         pdfField->get( x, y, z, d.toIdx() ) += 3_r * pdfsXf[d.toIdx()] - 3_r * pdfsXff[d.toIdx()] + pdfsXfff[d.toIdx()];
       }
    }
 
@@ -311,7 +311,7 @@ private:
 
       for( auto d = LatticeModel_T::Stencil::begin(); d != LatticeModel_T::Stencil::end(); ++d )
       {
-         pdfField->get( x, y, z, d.toIdx() ) += real_t{2} * pdfsXf[d.toIdx()] - pdfsXff[d.toIdx()];
+         pdfField->get( x, y, z, d.toIdx() ) += 2_r * pdfsXf[d.toIdx()] - pdfsXff[d.toIdx()];
       }
    }
 
@@ -430,15 +430,15 @@ private:
          // quadratic normal extrapolation
          for( auto d = LatticeModel_T::Stencil::begin(); d != LatticeModel_T::Stencil::end(); ++d )
          {
-            pdfField->get( x, y, z, d.toIdx() ) =   real_t{3} * pdfField->get( x +   extrapolationDirection[0], y +   extrapolationDirection[1], z +   extrapolationDirection[2], d.toIdx() )
-                                                  - real_t{3} * pdfField->get( x + 2*extrapolationDirection[0], y + 2*extrapolationDirection[1], z + 2*extrapolationDirection[2], d.toIdx() )
+            pdfField->get( x, y, z, d.toIdx() ) =   3_r * pdfField->get( x +   extrapolationDirection[0], y +   extrapolationDirection[1], z +   extrapolationDirection[2], d.toIdx() )
+                                                  - 3_r * pdfField->get( x + 2*extrapolationDirection[0], y + 2*extrapolationDirection[1], z + 2*extrapolationDirection[2], d.toIdx() )
                                                   +             pdfField->get( x + 3*extrapolationDirection[0], y + 3*extrapolationDirection[1], z + 3*extrapolationDirection[2], d.toIdx() );
          }
       } else { // numberOfCellsForExtrapolation == 2
          // linear normal extrapolation
          for( auto d = LatticeModel_T::Stencil::begin(); d != LatticeModel_T::Stencil::end(); ++d )
          {
-            pdfField->get( x, y, z, d.toIdx() ) =   real_t{2} * pdfField->get( x +   extrapolationDirection[0], y +   extrapolationDirection[1], z +   extrapolationDirection[2], d.toIdx() )
+            pdfField->get( x, y, z, d.toIdx() ) =   2_r * pdfField->get( x +   extrapolationDirection[0], y +   extrapolationDirection[1], z +   extrapolationDirection[2], d.toIdx() )
                                                   -             pdfField->get( x + 2*extrapolationDirection[0], y + 2*extrapolationDirection[1], z + 2*extrapolationDirection[2], d.toIdx() );
          }
       }
@@ -455,18 +455,18 @@ private:
       WALBERLA_ASSERT( !math::isnan(localParticleVelocity) );
 
       // transforms to moment space (see MRT collision model) to set the particle's velocity in cell without affecting other moments
-      const real_t _1_2  = real_t{1} / real_t{2};
-      const real_t _1_3  = real_t{1} / real_t{3};
-      const real_t _1_4  = real_t{1} / real_t{4};
-      const real_t _1_6  = real_t{1} / real_t{6};
-      const real_t _1_8  = real_t{1} / real_t{8};
-      const real_t _1_12 = real_t{1} / real_t{12};
-      const real_t _1_16 = real_t{1} / real_t{16};
-      const real_t _1_18 = real_t{1} / real_t{18};
-      const real_t _1_24 = real_t{1} / real_t{24};
-      const real_t _1_36 = real_t{1} / real_t{36};
-      const real_t _1_48 = real_t{1} / real_t{48};
-      const real_t _1_72 = real_t{1} / real_t{72};
+      const real_t _1_2  = 1_r / 2_r;
+      const real_t _1_3  = 1_r / 3_r;
+      const real_t _1_4  = 1_r / 4_r;
+      const real_t _1_6  = 1_r / 6_r;
+      const real_t _1_8  = 1_r / 8_r;
+      const real_t _1_12 = 1_r / 12_r;
+      const real_t _1_16 = 1_r / 16_r;
+      const real_t _1_18 = 1_r / 18_r;
+      const real_t _1_24 = 1_r / 24_r;
+      const real_t _1_36 = 1_r / 36_r;
+      const real_t _1_48 = 1_r / 48_r;
+      const real_t _1_72 = 1_r / 72_r;
 
       // restriction to D3Q19!
       const real_t vC  = pdfField->get( x, y, z, LatticeModel_T::Stencil::idx[stencil::C]  );
@@ -492,17 +492,17 @@ private:
       // transform to moment space and change momentum to particle's velocity ( * rho_0 )
       const real_t m0  = vC + vN + vS + vW + vE + vT + vB + vNW + vNE + vSW + vSE + vTN + vTS + vTW + vTE + vBN + vBS + vBW + vBE;
       const real_t m1  = -vC  + vNW + vNE + vSW + vSE + vTN + vTS + vTW + vTE + vBN + vBS + vBW + vBE;
-      const real_t m2  = vC - real_t{2} * ( vN + vS + vW + vE + vT + vB ) + vNW + vNE + vSW + vSE + vTN + vTS + vTW + vTE + vBN + vBS + vBW + vBE;
+      const real_t m2  = vC - 2_r * ( vN + vS + vW + vE + vT + vB ) + vNW + vNE + vSW + vSE + vTN + vTS + vTW + vTE + vBN + vBS + vBW + vBE;
       const real_t m3  = localParticleVelocity[0];
-      const real_t m4  = real_t{2} * vW - real_t{2} * vE - vNW + vNE - vSW + vSE - vTW + vTE - vBW + vBE;
+      const real_t m4  = 2_r * vW - 2_r * vE - vNW + vNE - vSW + vSE - vTW + vTE - vBW + vBE;
       const real_t m5  = localParticleVelocity[1];
-      const real_t m6  = real_t{-2} * vN + real_t{2} * vS + vNW + vNE - vSW - vSE + vTN - vTS + vBN - vBS;
+      const real_t m6  = -2_r * vN + 2_r * vS + vNW + vNE - vSW - vSE + vTN - vTS + vBN - vBS;
       const real_t m7  = localParticleVelocity[2];
-      const real_t m8  = real_t{-2} * vT + real_t{2} * vB + vTN + vTS + vTW + vTE - vBN - vBS - vBW - vBE;
-      const real_t m9  = -vN - vS + real_t{2} * vW + real_t{2} * vE - vT - vB + vNW + vNE + vSW + vSE - real_t{2} * vTN
-                         - real_t{2} * vTS + vTW + vTE - real_t{2} * vBN - real_t{2} * vBS + vBW + vBE;
-      const real_t m10 = vN + vS - real_t{2} * vW - real_t{2} * vE + vT + vB + vNW + vNE + vSW + vSE - real_t{2} * vTN
-                         - real_t{2} * vTS + vTW + vTE - real_t{2} * vBN - real_t{2} * vBS + vBW + vBE;
+      const real_t m8  = -2_r * vT + 2_r * vB + vTN + vTS + vTW + vTE - vBN - vBS - vBW - vBE;
+      const real_t m9  = -vN - vS + 2_r * vW + 2_r * vE - vT - vB + vNW + vNE + vSW + vSE - 2_r * vTN
+                         - 2_r * vTS + vTW + vTE - 2_r * vBN - 2_r * vBS + vBW + vBE;
+      const real_t m10 = vN + vS - 2_r * vW - 2_r * vE + vT + vB + vNW + vNE + vSW + vSE - 2_r * vTN
+                         - 2_r * vTS + vTW + vTE - 2_r * vBN - 2_r * vBS + vBW + vBE;
       const real_t m11 = vN  + vS  - vT  - vB  + vNW + vNE + vSW + vSE - vTW - vTE - vBW - vBE;
       const real_t m12 = -vN - vS  + vT  + vB  + vNW + vNE + vSW + vSE - vTW - vTE - vBW - vBE;
       const real_t m13 = -vNW + vNE + vSW - vSE;
@@ -613,10 +613,10 @@ public:
       std::vector<bool> availableStencilIndices(Stencil::Size, false);
 
       auto nAverage = uint_t{0};
-      auto averageDensity = real_t{0};
+      auto averageDensity = 0_r;
 
       // density and velocity used in the reconstruction
-      auto targetDensity = real_t{0};
+      auto targetDensity = 0_r;
       Vector3<real_t> targetVelocity;
 
       real_t cx, cy, cz;
@@ -640,7 +640,7 @@ public:
             availableStencilIndices[neighborDir.toIdx()] = true;
          }
       }
-      averageDensity = ( nAverage > uint_t{ 0 } ) ? averageDensity / real_c( nAverage ) : real_t{1.0};
+      averageDensity = ( nAverage > uint_t{ 0 } ) ? averageDensity / real_c( nAverage ) : 1.0_r;
 
       // 2. evaluate target velocity
       // we simply use the body velocity in the cell center here since the cell center is probably not far from the particle surface so this is a valid approximation
@@ -671,11 +671,11 @@ public:
                targetDensity += pdfField->get(neighbor, q.inverseDir()); // "bounce back part"
                if(LatticeModel::compressible)
                {
-                  targetDensity += real_t{6} * averageDensity * LatticeModel::w[ Stencil::idx[*q] ] * ( real_c( stencil::cx[ *q ] ) * targetVelocity[0] +
+                  targetDensity += 6_r * averageDensity * LatticeModel::w[ Stencil::idx[*q] ] * ( real_c( stencil::cx[ *q ] ) * targetVelocity[0] +
                                                                                                         real_c( stencil::cy[ *q ] ) * targetVelocity[1] +
                                                                                                         real_c( stencil::cz[ *q ] ) * targetVelocity[2] ); //TODO use wall velocity here?
                } else {
-                  targetDensity += real_t{6} * LatticeModel::w[ Stencil::idx[*q] ] * ( real_c( stencil::cx[ *q ] ) * targetVelocity[0] +
+                  targetDensity += 6_r * LatticeModel::w[ Stencil::idx[*q] ] * ( real_c( stencil::cx[ *q ] ) * targetVelocity[0] +
                                                                                        real_c( stencil::cy[ *q ] ) * targetVelocity[1] +
                                                                                        real_c( stencil::cz[ *q ] ) * targetVelocity[2] ); //TODO use wall velocity here?
                }
@@ -688,7 +688,7 @@ public:
       } else {
          // alternatively, we can simply use the average density from the surrounding fluid cells
          // only minor differences have been seen in comparison to recomputing
-         targetDensity = (LatticeModel::compressible) ? averageDensity : averageDensity - real_t{1};
+         targetDensity = (LatticeModel::compressible) ? averageDensity : averageDensity - 1_r;
       }
 
       // 4. compute pressure tensor from eq and neq parts
@@ -704,19 +704,19 @@ public:
       // else first-order finite differences if available if other neighbor is available
       // else we assume gradient of 0 (if no fluid neighbors available in respective direction)
 
-      Matrix3<real_t> velocityGradient(real_t{0});
+      Matrix3<real_t> velocityGradient(0_r);
       // check if both neighbors are available for central differences
       if(useCentralDifferences_ && availableStencilIndices[Stencil::idx[stencil::E]] && availableStencilIndices[Stencil::idx[stencil::W]])
       {
          auto neighborVelocity1 = pdfField->getVelocity(Cell(x,y,z)+stencil::E);
          auto neighborVelocity2 = pdfField->getVelocity(Cell(x,y,z)+stencil::W);
-         velocityGradient[0] = real_t{0.5} * ( neighborVelocity1[0] - neighborVelocity2[0]); // assuming dx = 1
-         velocityGradient[1] = real_t{0.5} * ( neighborVelocity1[1] - neighborVelocity2[1]); // assuming dx = 1
-         velocityGradient[2] = real_t{0.5} * ( neighborVelocity1[2] - neighborVelocity2[2]); // assuming dx = 1
+         velocityGradient[0] = 0.5_r * ( neighborVelocity1[0] - neighborVelocity2[0]); // assuming dx = 1
+         velocityGradient[1] = 0.5_r * ( neighborVelocity1[1] - neighborVelocity2[1]); // assuming dx = 1
+         velocityGradient[2] = 0.5_r * ( neighborVelocity1[2] - neighborVelocity2[2]); // assuming dx = 1
 
       } else {
          //upwinding
-         stencil::Direction upwindingXDirection = (targetVelocity[0] > real_t{0} ) ? stencil::W : stencil::E;
+         stencil::Direction upwindingXDirection = (targetVelocity[0] > 0_r ) ? stencil::W : stencil::E;
          stencil::Direction sourceXDirection = (availableStencilIndices[Stencil::idx[upwindingXDirection]]) ? upwindingXDirection
                                                                                                             : ((availableStencilIndices[Stencil::idx[stencil::inverseDir[upwindingXDirection]]]) ? stencil::inverseDir[upwindingXDirection]
                                                                                                                                                                                                  : stencil::C );
@@ -741,12 +741,12 @@ public:
       if(useCentralDifferences_ && availableStencilIndices[Stencil::idx[stencil::N]] && availableStencilIndices[Stencil::idx[stencil::S]]) {
          auto neighborVelocity1 = pdfField->getVelocity(Cell(x, y, z) + stencil::N);
          auto neighborVelocity2 = pdfField->getVelocity(Cell(x, y, z) + stencil::S);
-         velocityGradient[3] = real_t{0.5} * (neighborVelocity1[0] - neighborVelocity2[0]); // assuming dx = 1
-         velocityGradient[4] = real_t{0.5} * (neighborVelocity1[1] - neighborVelocity2[1]); // assuming dx = 1
-         velocityGradient[5] = real_t{0.5} * (neighborVelocity1[2] - neighborVelocity2[2]); // assuming dx = 1
+         velocityGradient[3] = 0.5_r * (neighborVelocity1[0] - neighborVelocity2[0]); // assuming dx = 1
+         velocityGradient[4] = 0.5_r * (neighborVelocity1[1] - neighborVelocity2[1]); // assuming dx = 1
+         velocityGradient[5] = 0.5_r * (neighborVelocity1[2] - neighborVelocity2[2]); // assuming dx = 1
       } else {
          //upwinding
-         stencil::Direction upwindingYDirection = (targetVelocity[1] > real_t{0} ) ? stencil::S : stencil::N;
+         stencil::Direction upwindingYDirection = (targetVelocity[1] > 0_r ) ? stencil::S : stencil::N;
          stencil::Direction sourceYDirection = (availableStencilIndices[Stencil::idx[upwindingYDirection]]) ? upwindingYDirection
                                                                                                             : ((availableStencilIndices[Stencil::idx[stencil::inverseDir[upwindingYDirection]]]) ? stencil::inverseDir[upwindingYDirection]
                                                                                                                                                                                                  : stencil::C );
@@ -774,12 +774,12 @@ public:
          if(useCentralDifferences_ && availableStencilIndices[Stencil::idx[stencil::T]] && availableStencilIndices[Stencil::idx[stencil::B]]) {
             auto neighborVelocity1 = pdfField->getVelocity(Cell(x, y, z) + stencil::T);
             auto neighborVelocity2 = pdfField->getVelocity(Cell(x, y, z) + stencil::B);
-            velocityGradient[6] = real_t{0.5} * (neighborVelocity1[0] - neighborVelocity2[0]); // assuming dx = 1
-            velocityGradient[7] = real_t{0.5} * (neighborVelocity1[1] - neighborVelocity2[1]); // assuming dx = 1
-            velocityGradient[8] = real_t{0.5} * (neighborVelocity1[2] - neighborVelocity2[2]); // assuming dx = 1
+            velocityGradient[6] = 0.5_r * (neighborVelocity1[0] - neighborVelocity2[0]); // assuming dx = 1
+            velocityGradient[7] = 0.5_r * (neighborVelocity1[1] - neighborVelocity2[1]); // assuming dx = 1
+            velocityGradient[8] = 0.5_r * (neighborVelocity1[2] - neighborVelocity2[2]); // assuming dx = 1
          } else {
             //upwinding
-            stencil::Direction upwindingZDirection = (targetVelocity[2] > real_t{0}) ? stencil::B : stencil::T;
+            stencil::Direction upwindingZDirection = (targetVelocity[2] > 0_r) ? stencil::B : stencil::T;
             stencil::Direction sourceZDirection = (availableStencilIndices[Stencil::idx[upwindingZDirection]]) ? upwindingZDirection
                                                                                                                : ((availableStencilIndices[Stencil::idx[stencil::inverseDir[upwindingZDirection]]]) ? stencil::inverseDir[upwindingZDirection]
                                                                                                                                                                                                     : stencil::C);
@@ -800,8 +800,8 @@ public:
       }
 
 
-      Matrix3<real_t> pressureTensorNeq(real_t{0}); // without prefactor of rho, added later
-      const real_t preFac = - real_t{1}  / (real_t{3} * omegaShear_); // 2 * beta (in Chikatamarla et al) = omega related to kinematic viscosity
+      Matrix3<real_t> pressureTensorNeq(0_r); // without prefactor of rho, added later
+      const real_t preFac = - 1_r  / (3_r * omegaShear_); // 2 * beta (in Chikatamarla et al) = omega related to kinematic viscosity
       for(auto j = uint_t{0}; j <= uint_t{2}; ++j)
       {
          for(auto i = uint_t{0}; i <= uint_t{2}; ++i)
@@ -818,7 +818,7 @@ public:
          {
             const real_t velci = lbm::internal::multiplyVelocityDirection( *q, targetVelocity );
 
-            auto contributionFromPneq = real_t{0};
+            auto contributionFromPneq = 0_r;
             for(auto j = uint_t{0}; j <= uint_t{2}; ++j) {
                for (auto i = uint_t{0}; i <= uint_t{2}; ++i) {
                   //Pneq_a,b * c_q,a * c_q,b
@@ -826,10 +826,10 @@ public:
                }
             }
             //- Pneq_a,b * cs**2 * delta_a,b
-            contributionFromPneq -= (pressureTensorNeq(0,0) + pressureTensorNeq(1,1) + pressureTensorNeq(2,2)) / real_t{3};
+            contributionFromPneq -= (pressureTensorNeq(0,0) + pressureTensorNeq(1,1) + pressureTensorNeq(2,2)) / 3_r;
 
             // all terms are multiplied with the density
-            real_t fGrad = LatticeModel::w[ q.toIdx() ] * targetDensity * (real_t{1} + real_t{3} * velci - real_t{1.5} * targetVelocity.sqrLength() + real_t{4.5} * velci * velci + real_t{4.5} * contributionFromPneq); // standard comp. feq + comp. Pneq
+            real_t fGrad = LatticeModel::w[ q.toIdx() ] * targetDensity * (1_r + 3_r * velci - 1.5_r * targetVelocity.sqrLength() + 4.5_r * velci * velci + 4.5_r * contributionFromPneq); // standard comp. feq + comp. Pneq
             pdfField->get(x,y,z,*q) = fGrad;
          }
       }else{
@@ -838,7 +838,7 @@ public:
          {
             const real_t velci = lbm::internal::multiplyVelocityDirection( *q, targetVelocity );
 
-            auto contributionFromPneq = real_t{0};
+            auto contributionFromPneq = 0_r;
             for(auto j = uint_t{0}; j <= uint_t{2}; ++j) {
                for (auto i = uint_t{0}; i <= uint_t{2}; ++i) {
                   //Pneq_a,b * c_q,a * c_q,b
@@ -846,10 +846,10 @@ public:
                }
             }
             //- Pneq_a,b * cs**2 * delta_a,b
-            contributionFromPneq -= (pressureTensorNeq(0,0) + pressureTensorNeq(1,1) + pressureTensorNeq(2,2)) / real_t{3};
+            contributionFromPneq -= (pressureTensorNeq(0,0) + pressureTensorNeq(1,1) + pressureTensorNeq(2,2)) / 3_r;
 
             // density deviation just appears as the leading order term
-            real_t fGrad = LatticeModel::w[ q.toIdx() ] * ( targetDensity + real_t{3} * velci - real_t{1.5} * targetVelocity.sqrLength() + real_t{4.5} * velci * velci + real_t{4.5} * contributionFromPneq); // standard incomp. feq + incomp Pneq
+            real_t fGrad = LatticeModel::w[ q.toIdx() ] * ( targetDensity + 3_r * velci - 1.5_r * targetVelocity.sqrLength() + 4.5_r * velci * velci + 4.5_r * contributionFromPneq); // standard incomp. feq + incomp Pneq
             pdfField->get(x,y,z,*q) = fGrad;
          }
       }

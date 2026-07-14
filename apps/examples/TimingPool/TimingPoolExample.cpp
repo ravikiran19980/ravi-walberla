@@ -50,23 +50,23 @@ void myTrivialKernel(IBlock* block, BlockDataID fieldBlockDataID, const real_t d
    const real_t delay_weight =
       500 * delay_factor                                // emulation for sweeps of different costly executions
       * real_c(mpi::MPIManager::instance()->rank() + 1) // emulation heterogeneous compute power per rank
-      * (1.0 / real_c(numProcesses)); // ensure similar total execution independet of number of processes
+      * (1_r / real_c(numProcesses)); // ensure similar total execution independet of number of processes
 
    // retrieve the field-data from the blockforest
    auto field = block->getData< Field< real_t, 1 > >(fieldBlockDataID);
 
-   const auto threshold = 50.0 * real_c(numProcesses) / real_c(field->allocSize());
+   const auto threshold = 50_r * real_c(numProcesses) / real_c(field->allocSize());
    // some bogus "algorithm"
    for (auto cell = field->begin(); cell != field->end(); ++cell)
    {
       // some arbitrary write access to the field
-      (*cell) = walberla::math::realRandom(real_t{0}, real_t{1});
+      (*cell) = walberla::math::realRandom(0_r, 1_r);
 
       // introduce some random delay to simulate non-uniform computation time
       if ((*cell) <= threshold)
       {
          // the delay is proportional to the MPI rank to showcase and test the thread based timing pool reduction.
-         const uint_t delay = uint_c(std::round(delay_weight * walberla::math::realRandom(real_t{0}, real_t{10})));
+         const uint_t delay = uint_c(std::round(delay_weight * walberla::math::realRandom(0_r, 10_r)));
          std::this_thread::sleep_for(std::chrono::microseconds(delay));
       }
    }

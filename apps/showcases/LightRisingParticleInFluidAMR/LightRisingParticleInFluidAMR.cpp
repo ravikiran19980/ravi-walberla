@@ -153,7 +153,7 @@ const FlagUID FormerMO_Flag("former moving obstacle");
 //// block structure
 
 static void refinementSelection(SetupBlockForest &forest, uint_t levels, AABB refinementBox) {
-   real_t dx = real_t{1}; // dx on finest level
+   real_t dx = 1_r; // dx on finest level
    const uint_t finestLevel = levels - uint_t{1};
    for (auto & block : forest) {
       uint_t blockLevel = block.getLevel();
@@ -203,12 +203,12 @@ createBlockStructure(const AABB &domainAABB, Vector3<uint_t> blockSizeInCells, u
                               "Domain can not be refined in direction " << i
                                                                         << " according to the specified number of levels!");
       }
-      AABB refinementBox( std::floor(spherePosition[0] - real_t{0.5} * diameter),
-                          std::floor(spherePosition[1] - real_t{0.5} * diameter),
-                          std::floor(spherePosition[2] - real_t{0.5} * diameter),
-                          std::ceil( spherePosition[0] + real_t{0.5} * diameter),
-                          std::ceil( spherePosition[1] + real_t{0.5} * diameter),
-                          std::ceil( spherePosition[2] + real_t{0.5} * diameter) );
+      AABB refinementBox( std::floor(spherePosition[0] - 0.5_r * diameter),
+                          std::floor(spherePosition[1] - 0.5_r * diameter),
+                          std::floor(spherePosition[2] - 0.5_r * diameter),
+                          std::ceil( spherePosition[0] + 0.5_r * diameter),
+                          std::ceil( spherePosition[1] + 0.5_r * diameter),
+                          std::ceil( spherePosition[2] + 0.5_r * diameter) );
       WALBERLA_LOG_INFO_ON_ROOT(" - refinement box: " << refinementBox);
 
       sforest.addRefinementSelectionFunction(
@@ -221,7 +221,7 @@ createBlockStructure(const AABB &domainAABB, Vector3<uint_t> blockSizeInCells, u
       // calculate process distribution
       const memory_t memoryLimit = math::Limits<memory_t>::inf();
       sforest.balanceLoad(blockforest::StaticLevelwiseCurveBalance(true),
-                          uint_c(MPIManager::instance()->numProcesses()), real_t{0}, memoryLimit, true);
+                          uint_c(MPIManager::instance()->numProcesses()), 0_r, memoryLimit, true);
 
       WALBERLA_LOG_INFO_ON_ROOT(sforest);
 
@@ -314,7 +314,7 @@ public:
    SpherePropertyLogger(lbm_mesapd_coupling::SubCyclingManager* mesapdTimeStep, const shared_ptr<ParticleAccessor_T>& ac, walberla::id_t sphereUid,
                         const std::string& fileName, bool fileIO, bool writeHeader, real_t t_g, real_t u_g, real_t diameter) :
          mesapdTimeStep_(mesapdTimeStep), ac_(ac), sphereUid_(sphereUid), fileName_(fileName), fileIO_(fileIO), t_g_(t_g),
-         u_g_(u_g), diameter_(diameter), position_(real_t{0}) {
+         u_g_(u_g), diameter_(diameter), position_(0_r) {
       if (fileIO_ && writeHeader) {
          WALBERLA_ROOT_SECTION() {
             std::ofstream file;
@@ -364,7 +364,7 @@ public:
    }
 
    void syncPosition() {
-      Vector3<real_t> pos(real_t{0});
+      Vector3<real_t> pos(0_r);
 
       size_t idx = ac_->uidToIdx(sphereUid_);
       if (idx != ac_->getInvalidIdx()) {
@@ -479,8 +479,8 @@ int main(int argc, char** argv) {
    uint_t qCriterionVtkIOFreq = 0;
    std::string vtkIOSelection = "sliced"; // "none", "full", "thicksliced" (half the sphere still in), "trackingsliced" (sphere is followed in y direction)
    std::string baseFolder = "vtk_out_UnsettlingSphereDR";
-   auto vtkLowerVelocityLimit = real_t{0.003};
-   auto vtkLowerQCriterionLimit = real_t{1e-10};
+   auto vtkLowerVelocityLimit = 0.003_r;
+   auto vtkLowerQCriterionLimit = 1e-10_r;
    auto propertyLoggingFreq = uint_t{1};
 
    // numerical params
@@ -489,34 +489,34 @@ int main(int argc, char** argv) {
    auto YBlocks = uint_t{32};
    auto ZBlocks = uint_t{64};
    auto refinementCheckFrequency = uint_t{0};
-   auto initialZ = real_t{-1};
-   auto diameter = real_t{16};
+   auto initialZ = -1_r;
+   auto diameter = 16_r;
    bool offsetInitialPosition = true;
    bool averageForceTorqueOverTwoTimeSteps = true;
    auto numMESAPDSubCycles = uint_t{10};
-   auto u_ref = real_t{0.01};
-   auto densitySphere = real_t{0.1};
+   auto u_ref = 0.01_r;
+   auto densitySphere = 0.1_r;
    auto timesteps = uint_t{2000};
-   auto galileoNumber = real_t{300};
-   auto Lambda_Bulk = real_t{100}; // if = 1, normal TRT, else not. Up to 100.
+   auto galileoNumber = 300_r;
+   auto Lambda_Bulk = 100_r; // if = 1, normal TRT, else not. Up to 100.
    bool conserveMomentum = false;
 
    // virtual mass
    bool useVirtualMass = true;
-   auto C_v = real_t{0.5};
-   auto C_v_omega = real_t{0.5};
+   auto C_v = 0.5_r;
+   auto C_v_omega = 0.5_r;
 
    // dynamic refinement
    auto numberOfLevels = uint_t{3};
 
    bool useVorticityCriterion = false;
-   auto lowerFluidRefinementLimit = real_t{0};
+   auto lowerFluidRefinementLimit = 0_r;
    auto upperFluidRefinementLimit = std::numeric_limits<real_t>::infinity();
 
    bool useCurlCriterion = true;
-   auto upperCurlLimit = real_t{0.001};
-   auto curlCoarsenFactor = real_t{0.2};
-   auto curlLengthScaleWeight = real_t{2};
+   auto upperCurlLimit = 0.001_r;
+   auto curlCoarsenFactor = 0.2_r;
+   auto curlLengthScaleWeight = 2_r;
 
    // checkpointing
    bool writeCheckPointFile = false;
@@ -526,7 +526,7 @@ int main(int argc, char** argv) {
    uint_t checkPointMESAPDTimeStep = 0;
 
    for (int i = 1; i < argc; i++) {
-      if (std::strcmp(argv[i], "--shortRun") == 0) { fileIO = false; densitySphere = real_t{0.02}; galileoNumber = 100; timesteps = 2; continue; }
+      if (std::strcmp(argv[i], "--shortRun") == 0) { fileIO = false; densitySphere = 0.02_r; galileoNumber = 100; timesteps = 2; continue; }
 
       if (std::strcmp(argv[i], "--noLogging")                == 0) { fileIO = false; continue; }
       if (std::strcmp(argv[i], "--vtkIOFreq")                == 0) { vtkIOFreq = uint_c( std::stod( argv[++i] ) ); continue; }
@@ -577,7 +577,7 @@ int main(int argc, char** argv) {
       WALBERLA_ABORT("Unrecognized command line argument found: " << argv[i]);
    }
 
-   WALBERLA_CHECK(!realIsEqual(u_ref, real_t{0}), "u_ref has to be non-zero.")
+   WALBERLA_CHECK(!realIsEqual(u_ref, 0_r), "u_ref has to be non-zero.")
    WALBERLA_CHECK(useCurlCriterion || useVorticityCriterion,
          "Use curl or vorticity (legacy) criterion for refinement.");
    WALBERLA_CHECK(!(useCurlCriterion && useVorticityCriterion),
@@ -595,45 +595,45 @@ int main(int argc, char** argv) {
 
    //// numerical parameters
 
-   const auto densityFluid = real_t{1};
+   const auto densityFluid = 1_r;
 
    // calculate relaxation time from u_ref
    real_t viscosity = u_ref * diameter / galileoNumber;
    real_t omega = lbm::collision_model::omegaFromViscosity(viscosity);
-   real_t relaxationTime = real_t{1} / omega;
+   real_t relaxationTime = 1_r / omega;
 
    const auto d3 = diameter*diameter*diameter;
    const auto G2 = galileoNumber*galileoNumber;
    const auto v2 = viscosity*viscosity;
-   const auto gravitationalAcceleration = G2*v2 / (std::fabs(densitySphere-real_t{1})*d3);
+   const auto gravitationalAcceleration = G2*v2 / (std::fabs(densitySphere-1_r)*d3);
 
-   const auto dx = real_t{1};
-   const auto overlap = real_t{4.5} * dx;
+   const auto dx = 1_r;
+   const auto overlap = 4.5_r * dx;
 
    const Vector3<uint_t> domainSize( XBlocks * blockSize, YBlocks * blockSize, ZBlocks * blockSize );
-   if (realIsIdentical(initialZ, real_t{-1})) {
-      initialZ = real_c(blockSize) + real_t{0.5} * diameter;
+   if (realIsIdentical(initialZ, -1_r)) {
+      initialZ = real_c(blockSize) + 0.5_r * diameter;
    }
-   Vector3<real_t> initialPosition(real_t{0.5} * real_c(domainSize[0]),
-                                   real_t{0.5} * real_c(domainSize[1]),
+   Vector3<real_t> initialPosition(0.5_r * real_c(domainSize[0]),
+                                   0.5_r * real_c(domainSize[1]),
                                    initialZ);
    if (offsetInitialPosition) {
       // offset sphere's initial position half a cell to introduce a slight disturbance.
-      initialPosition += Vector3<real_t>(real_t{0.5}, real_t{0.5}, real_t{0});
+      initialPosition += Vector3<real_t>(0.5_r, 0.5_r, 0_r);
    }
 
-   if (useVorticityCriterion && floatIsEqual(lowerFluidRefinementLimit, real_t{0}) && std::isinf(upperFluidRefinementLimit)) {
+   if (useVorticityCriterion && floatIsEqual(lowerFluidRefinementLimit, 0_r) && std::isinf(upperFluidRefinementLimit)) {
       // use computed criterion instead of user input
-      lowerFluidRefinementLimit = real_t{0.05} * u_ref;
-      upperFluidRefinementLimit = real_t{0.1} * u_ref;
+      lowerFluidRefinementLimit = 0.05_r * u_ref;
+      upperFluidRefinementLimit = 0.1_r * u_ref;
    }
 
-   //const auto dx = real_t{1};
+   //const auto dx = 1_r;
 
-   const auto u_g = std::sqrt(std::fabs(densitySphere - real_t{1}) * gravitationalAcceleration * diameter);
-   const auto t_g = std::sqrt(diameter / (std::fabs(densitySphere - real_t{1}) * gravitationalAcceleration));
+   const auto u_g = std::sqrt(std::fabs(densitySphere - 1_r) * gravitationalAcceleration * diameter);
+   const auto t_g = std::sqrt(diameter / (std::fabs(densitySphere - 1_r) * gravitationalAcceleration));
 
-   const bool rising = densitySphere < real_t{1};
+   const bool rising = densitySphere < 1_r;
 
    WALBERLA_LOG_INFO_ON_ROOT("Setup (in simulation, i.e. lattice, units):");
    WALBERLA_LOG_INFO_ON_ROOT(" - number of processes = " << mpi::MPIManager::instance()->numProcesses());
@@ -670,11 +670,11 @@ int main(int argc, char** argv) {
 
    if(refinementCheckFrequency == 0 && numberOfLevels != 1){
       // determine check frequency automatically based on maximum admissible velocity and block sizes
-      auto uMax = real_t{0.02}; // this should never ever be reached
+      auto uMax = 0.02_r; // this should never ever be reached
       const uint_t finestLevel = numberOfLevels - uint_t{1};
       const uint_t levelScalingFactor = ( uint_t{1} << finestLevel );
       const uint_t lbmTimeStepsPerTimeLoopIteration = levelScalingFactor;
-      refinementCheckFrequency = uint_c((overlap + (real_c(blockSize) - real_t{2} * static_cast< real_t >(FieldGhostLayers)) * dx) / uMax) / lbmTimeStepsPerTimeLoopIteration;
+      refinementCheckFrequency = uint_c((overlap + (real_c(blockSize) - 2_r * static_cast< real_t >(FieldGhostLayers)) * dx) / uMax) / lbmTimeStepsPerTimeLoopIteration;
    }
    WALBERLA_LOG_INFO_ON_ROOT(" - refinement / load balancing check frequency (coarse time steps): " << refinementCheckFrequency);
 
@@ -782,7 +782,7 @@ int main(int argc, char** argv) {
 
    Vector3<uint_t> blockSizeInCells(blockSize);
 
-   AABB simulationDomain( real_t{0}, real_t{0}, real_t{0}, real_c(domainSize[0]), real_c(domainSize[1]), real_c(domainSize[2]) );
+   AABB simulationDomain( 0_r, 0_r, 0_r, real_c(domainSize[0]), real_c(domainSize[1]), real_c(domainSize[2]) );
    Vector3<bool> periodicity(true, true, true);
    auto blocks = createBlockStructure(simulationDomain, blockSizeInCells, numberOfLevels, diameter, initialPosition,
            periodicity, readFromCheckPointFile, readCheckPointFileName+"_forest.txt");
@@ -820,7 +820,7 @@ int main(int argc, char** argv) {
 
    // bounding planes can be added here
 
-   auto sphereShape = ss->create<mesa_pd::data::Sphere>(diameter * real_t{0.5});
+   auto sphereShape = ss->create<mesa_pd::data::Sphere>(diameter * 0.5_r);
    ss->shapes[sphereShape]->updateMassAndInertia(densitySphere);
 
    walberla::id_t sphereUid = 0;
@@ -837,7 +837,7 @@ int main(int argc, char** argv) {
       if (mesapdDomain->isContainedInProcessSubdomain(uint_c(mpi::MPIManager::instance()->rank()), initialPosition)) {
          mesa_pd::data::Particle &&p = *ps->create();
          p.setPosition(initialPosition);
-         p.setInteractionRadius(diameter * real_t{0.5});
+         p.setInteractionRadius(diameter * 0.5_r);
          p.setOwner(mpi::MPIManager::instance()->rank());
          p.setShapeID(sphereShape);
          sphereUid = p.getUid();
@@ -849,7 +849,7 @@ int main(int argc, char** argv) {
       WALBERLA_ABORT("No sphere present - aborting!");
    }
 
-   auto ghostOwnerSyncIterations = uint_t(real_t{0.5} * diameter/static_cast< real_t >(blockSize) + real_t{1});
+   auto ghostOwnerSyncIterations = uint_t(0.5_r * diameter/static_cast< real_t >(blockSize) + 1_r);
    WALBERLA_LOG_INFO_ON_ROOT(" - Number of req'd ghost owner sync iterations: " << ghostOwnerSyncIterations << ", thus using " << (ghostOwnerSyncIterations == 1 ? "SNN" : "SGO") << " for synchronization.");
 
    bool useSyncNextNeighbors = (ghostOwnerSyncIterations == 1);
@@ -878,10 +878,10 @@ int main(int argc, char** argv) {
 
    // create the lattice model
 #ifdef BUILD_WITH_MRT
-   const real_t Lambda_Magic = real_t{3} / real_t{16};
+   const real_t Lambda_Magic = 3_r / 16_r;
    const real_t lambda_e = lbm::collision_model::TRT::lambda_e( omega );
    const real_t lambda_d = lbm::collision_model::TRT::lambda_d( omega, Lambda_Magic );
-   const real_t omegaBulk = real_t{1} / (Lambda_Bulk * ( real_t{1} / omega - real_t{1}/ real_t{2} ) + real_t{1}/ real_t{2} );
+   const real_t omegaBulk = 1_r / (Lambda_Bulk * ( 1_r / omega - 1_r/ 2_r ) + 1_r/ 2_r );
 
    LatticeModel_T latticeModel = LatticeModel_T( lbm::collision_model::D3Q19MRT( omegaBulk, lambda_e, lambda_d, lambda_e, lambda_e, lambda_d, finestLevel ));
 #else
@@ -895,7 +895,7 @@ int main(int argc, char** argv) {
       WALBERLA_LOG_INFO_ON_ROOT( "Initializing PDF Field from checkpointing file!" );
       shared_ptr< lbm::internal::PdfFieldHandling< LatticeModel_T > > dataHandling =
               make_shared< lbm::internal::PdfFieldHandling< LatticeModel_T > >(blocks, latticeModel, false,
-                      Vector3<real_t>(real_t{0}), real_t{1},
+                      Vector3<real_t>(0_r), 1_r,
                       FieldGhostLayers, field::fzyx );
 
       pdfFieldID = blocks->loadBlockData( readCheckPointFileName+"_lbm.txt", dataHandling, "pdf field" );
@@ -903,7 +903,7 @@ int main(int argc, char** argv) {
    } else {
       // add PDF field
       pdfFieldID = lbm::addPdfFieldToStorage< LatticeModel_T >(blocks, "pdf field (fzyx)", latticeModel,
-              Vector3<real_t>(real_t{0}), real_t{1},
+              Vector3<real_t>(0_r), 1_r,
               FieldGhostLayers, field::fzyx);
    }
 
@@ -920,7 +920,7 @@ int main(int argc, char** argv) {
          FieldGhostLayers);
 
    // add velocity field and utility
-   BlockDataID velocityFieldID = field::addToStorage<VelocityField_T>( blocks, "velocity field", Vector3<real_t>(real_t{0}), field::fzyx, uint_t{2} );
+   BlockDataID velocityFieldID = field::addToStorage<VelocityField_T>( blocks, "velocity field", Vector3<real_t>(0_r), field::fzyx, uint_t{2} );
 
    using VelocityFieldWriter_T = lbm::VelocityFieldWriter<PdfField_T, VelocityField_T>;
    BlockSweepWrapper< VelocityFieldWriter_T > velocityFieldWriter( blocks, VelocityFieldWriter_T( pdfFieldID, velocityFieldID ) );
@@ -929,7 +929,7 @@ int main(int argc, char** argv) {
    velocityCommunicationScheme->addPackInfo( make_shared< field::refinement::PackInfo<VelocityField_T, stencil::D3Q27> >( velocityFieldID ) );
 
    // add q criterion field (only needed for mesh output)
-   BlockDataID qCriterionFieldID = field::addToStorage<QCriterionField_T>(blocks, "q criterion field", real_t{0}, field::fzyx, uint_t{1});
+   BlockDataID qCriterionFieldID = field::addToStorage<QCriterionField_T>(blocks, "q criterion field", 0_r, field::fzyx, uint_t{1});
 
    using QCriterionFieldWriter_T = lbm::QCriterionFieldWriter<VelocityField_T, QCriterionField_T, FluidFilter_T>;
    BlockSweepWrapper<QCriterionFieldWriter_T> qCriterionFieldWriter(blocks, QCriterionFieldWriter_T(blocks, velocityFieldID,
@@ -1011,8 +1011,8 @@ int main(int argc, char** argv) {
 
    //// MESAPD Time Step
 
-   const real_t sphereVolume = math::pi / real_t{6} * diameter * diameter * diameter;
-   Vector3<real_t> gravitationalForce(real_t{0}, real_t{0},
+   const real_t sphereVolume = math::pi / 6_r * diameter * diameter * diameter;
+   Vector3<real_t> gravitationalForce(0_r, 0_r,
                                       -(densitySphere - densityFluid) * gravitationalAcceleration * sphereVolume);
 
    lbm_mesapd_coupling::SubCyclingManager mesapdTimeStep(numMESAPDSubCycles, timeloopTiming);
@@ -1041,8 +1041,8 @@ int main(int argc, char** argv) {
    using VirtualMass_ParticleAccessor_T = lbm_mesapd_coupling::ParticleAccessorWithShapeVirtualMassWrapper<ParticleAccessor_T>;
    auto virtualMassAccessor = walberla::make_shared<VirtualMass_ParticleAccessor_T>(ps, ss);
 
-   mesa_pd::kernel::VelocityVerletPreForceUpdate vvIntegratorPreForce(real_t{1} / static_cast< real_t >(numMESAPDSubCycles));
-   mesa_pd::kernel::VelocityVerletPostForceUpdate vvIntegratorPostForce(real_t{1} / static_cast< real_t >(numMESAPDSubCycles));
+   mesa_pd::kernel::VelocityVerletPreForceUpdate vvIntegratorPreForce(1_r / static_cast< real_t >(numMESAPDSubCycles));
+   mesa_pd::kernel::VelocityVerletPostForceUpdate vvIntegratorPostForce(1_r / static_cast< real_t >(numMESAPDSubCycles));
    lbm_mesapd_coupling::AddForceOnParticlesKernel addGravitationalForce(gravitationalForce);
    lbm_mesapd_coupling::AddHydrodynamicInteractionKernel addHydrodynamicInteraction;
 
@@ -1193,21 +1193,21 @@ int main(int argc, char** argv) {
 
    vtk::ChainedFilter combinedFilter;
    if (vtkIOSelection == "sliced") {
-      AABB sliceAABB( real_t{0}, real_c(domainSize[1])*real_t{0.5}, real_t{0},
-                      real_c(domainSize[0]), real_c(domainSize[1])*real_t{0.5}+real_t{1}, real_c(domainSize[2]) );
+      AABB sliceAABB( 0_r, real_c(domainSize[1])*0.5_r, 0_r,
+                      real_c(domainSize[0]), real_c(domainSize[1])*0.5_r+1_r, real_c(domainSize[2]) );
       vtk::AABBCellFilter aabbSliceFilter( sliceAABB );
       combinedFilter.addFilter( aabbSliceFilter );
    } else if (vtkIOSelection == "thicksliced") {
-      AABB sliceAABB( real_t{0}, real_c(domainSize[1])*real_t{0.5}-static_cast< real_t >(diameter)*real_t{0.5}-real_t{1}, real_t{0},
-                      real_c(domainSize[0]), real_c(domainSize[1])*real_t{0.5}, real_c(domainSize[2]) );
+      AABB sliceAABB( 0_r, real_c(domainSize[1])*0.5_r-static_cast< real_t >(diameter)*0.5_r-1_r, 0_r,
+                      real_c(domainSize[0]), real_c(domainSize[1])*0.5_r, real_c(domainSize[2]) );
       vtk::AABBCellFilter aabbSliceFilter( sliceAABB );
       combinedFilter.addFilter( aabbSliceFilter );
    } else if (vtkIOSelection == "trackingsliced") {
       auto filter = [logger, domainSize](CellSet& filteredCells, const IBlock& block, const StructuredBlockStorage& storage, const uint_t ghostLayers = uint_t{0}){
          auto yPosition = logger.getPosition()[1];
          real_t minY = std::floor(yPosition);
-         real_t maxY = std::floor(yPosition)+real_t{1};
-         AABB sliceAABB( real_t{0}, minY, real_t{0},
+         real_t maxY = std::floor(yPosition)+1_r;
+         AABB sliceAABB( 0_r, minY, 0_r,
                          real_c(domainSize[0]), maxY, real_c(domainSize[2]) );
          vtk::AABBCellFilter aabbSliceFilter( sliceAABB );
          aabbSliceFilter(filteredCells, block, storage, ghostLayers);
@@ -1236,7 +1236,7 @@ int main(int argc, char** argv) {
    pdfFieldVTK->addCellDataWriter(make_shared<lbm::QCriterionVTKWriter<VelocityField_T, FluidFilter_T, float>>(blocks,
          fluidFlagFieldEvaluationFilter, velocityFieldID, "QCriterionFromPDF"));
    pdfFieldVTK->addCellDataWriter(make_shared<lbm::CurlMagnitudeVTKWriter<VelocityField_T, FluidFilter_T, float>>(blocks,
-         fluidFlagFieldEvaluationFilter, velocityFieldID, "CurlSensor", real_t{2}));
+         fluidFlagFieldEvaluationFilter, velocityFieldID, "CurlSensor", 2_r));
 
    // full size vtk
    auto fullPdfFieldVTK = vtk::createVTKOutput_BlockData(blocks, "fluid_field_full"+vtkFileTag, fullVtkIOFreq,
@@ -1292,7 +1292,7 @@ int main(int argc, char** argv) {
    } else {
       terminationPosition = real_t(initialPosition[2]) + diameter;
    }
-   if (terminationPosition < real_t{0}) {
+   if (terminationPosition < 0_r) {
       terminationPosition = real_t(domainSize[2]) + terminationPosition;
    } else if (terminationPosition > real_t(domainSize[2])) {
       terminationPosition = terminationPosition - real_t(domainSize[2]);

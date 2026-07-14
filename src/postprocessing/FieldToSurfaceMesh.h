@@ -92,9 +92,9 @@ namespace postprocessing {
          while ( realFieldIt != tmpField.end() )
          {
             if( isPartOfMaskSet( flagFieldIt, mask) )
-               *realFieldIt = real_t{ 1.0 };
+               *realFieldIt = 1.0_r;
             else
-               *realFieldIt = real_t{ 0.0 };
+               *realFieldIt = 0.0_r;
 
             ++realFieldIt;
             ++flagFieldIt;

@@ -236,11 +236,11 @@ using float16 = half;
 using float32 = float;
 using float64 = double;
 
-WALBERLA_HOST_DEVICE inline constexpr real_t operator""_r( long double t ) { return static_cast< real_t >(t); }
-WALBERLA_HOST_DEVICE inline constexpr real_t operator""_r( unsigned long long int t ) { return static_cast< real_t >(t); }
-template< typename T > WALBERLA_HOST_DEVICE inline real_t real_c  ( T t ) { return numeric_cast< real_t >(t); } ///< cast to type real_t using "real_c(x)"
-template< typename T > WALBERLA_HOST_DEVICE inline double double_c( T t ) { return numeric_cast< double >(t); } ///< cast to type double
-template< typename T > WALBERLA_HOST_DEVICE  inline float  float_c ( T t ) { return numeric_cast< float > (t); } ///< cast to type float
+                       WALBERLA_HOST_DEVICE inline constexpr real_t operator""_r( long double t )            noexcept { return static_cast< real_t >(t); }
+                       WALBERLA_HOST_DEVICE inline constexpr real_t operator""_r( unsigned long long int t ) noexcept { return static_cast< real_t >(t); }
+template< typename T > WALBERLA_HOST_DEVICE inline real_t    real_c  ( T t ) { return numeric_cast< real_t >(t); } ///< cast to type real_t using "real_c(x)"
+template< typename T > WALBERLA_HOST_DEVICE inline double    double_c( T t ) { return numeric_cast< double >(t); } ///< cast to type double
+template< typename T > WALBERLA_HOST_DEVICE inline float     float_c ( T t ) { return numeric_cast< float > (t); } ///< cast to type float
 
 /// If you want to compare two reals using operator == and you really know what you are doing, you can use the following function:
 template <typename T>

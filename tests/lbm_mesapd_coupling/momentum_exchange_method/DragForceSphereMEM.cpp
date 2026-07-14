@@ -266,7 +266,7 @@ private:
    real_t computeDragForce()
    {
       size_t idx = ac_->uidToIdx(sphereID_);
-      real_t force = real_t{0};
+      real_t force = 0_r;
       if( idx!= ac_->getInvalidIdx())
       {
          force = ac_->getHydrodynamicForce(idx)[0];
@@ -283,7 +283,7 @@ private:
    // calculate the average velocity in forcing direction (here: x) inside the domain (assuming dx=1)
    real_t computeAverageVel()
    {
-      auto velocity_sum = real_t{0};
+      auto velocity_sum = 0_r;
       // iterate all blocks stored locally on this process
       for( auto blockIt = blocks_->begin(); blockIt != blocks_->end(); ++blockIt )
       {
@@ -451,9 +451,9 @@ int main( int argc, char **argv )
    //////////////////
 
    // connect to pe
-   const real_t overlap = real_t{ 1.5 } * dx;
+   const real_t overlap = 1.5_r * dx;
 
-   if( setup.radius > real_c( setup.length ) * real_t{0.5} - overlap )
+   if( setup.radius > real_c( setup.length ) * 0.5_r - overlap )
    {
       std::cerr << "Periodic sphere is too large and would lead to incorrect mapping!" << std::endl;
       // solution: create the periodic copies explicitly
@@ -482,7 +482,7 @@ int main( int argc, char **argv )
 
    // add PDF field
    BlockDataID pdfFieldID = lbm::addPdfFieldToStorage< LatticeModel_T >( blocks, "pdf field (fzyx)", latticeModel,
-                                                                         Vector3< real_t >( real_t{0} ), real_t{1},
+                                                                         Vector3< real_t >( 0_r ), 1_r,
                                                                          uint_t{1}, field::fzyx );
 
    // add flag field

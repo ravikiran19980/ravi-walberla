@@ -103,7 +103,7 @@ public:
 
 private:
 
-   inline static real_t deltaToWeight( const real_t delta ) { return ( real_t{ 1 } - real_t{ 2 } * delta ) / ( real_t{ 1 } + real_t{ 2 } * delta ); }
+   inline static real_t deltaToWeight( const real_t delta ) { return ( 1_r - 2_r * delta ) / ( 1_r + 2_r * delta ); }
    inline static shared_ptr< std::array<real_t, Stencil::Size> > makeDeltaArray()
    {
       return walberla::shared_ptr< std::array<real_t, Stencil::Size> >( new std::array<real_t, Stencil::Size> );

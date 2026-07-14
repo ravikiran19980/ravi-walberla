@@ -152,7 +152,7 @@ int main( int argc, char **argv )
    }
 
    const uint_t length = uint_t{32};
-   const real_t radius = real_t{5};
+   const real_t radius = 5_r;
 
    const uint_t XBlocks = uint_t{ 1 };
    const uint_t YBlocks = uint_t{ 1 };
@@ -183,10 +183,10 @@ int main( int argc, char **argv )
 
    }
 
-   LatticeModel_T latticeModel = LatticeModel_T( lbm::collision_model::TRT::constructWithMagicNumber( real_t{1} ) );
+   LatticeModel_T latticeModel = LatticeModel_T( lbm::collision_model::TRT::constructWithMagicNumber( 1_r ) );
 
    BlockDataID pdfFieldID = lbm::addPdfFieldToStorage< LatticeModel_T >( blocks, "pdf field (fzyx)", latticeModel,
-                                                                         Vector3< real_t >( real_t{0} ), real_t{1},
+                                                                         Vector3< real_t >( 0_r ), 1_r,
                                                                          uint_t{1}, field::fzyx );
 
    BlockDataID flagFieldID = field::addFlagFieldToStorage<FlagField_T>( blocks, "flag field" );
@@ -200,17 +200,17 @@ int main( int argc, char **argv )
    lbm_mesapd_coupling::MovingParticleMappingKernel<BoundaryHandling_T> movingParticleMappingKernel(blocks, boundaryHandlingID, particleFieldID);
    ps->forEachParticle(false, mesa_pd::kernel::SelectAll(), *accessor, movingParticleMappingKernel, *accessor, MO_Flag());
 
-   Vector3<real_t> probeLocation = centerPosition - Vector3<real_t>(radius + real_t{1}, real_t{0}, real_t{0});
+   Vector3<real_t> probeLocation = centerPosition - Vector3<real_t>(radius + 1_r, 0_r, 0_r);
    lbm_mesapd_coupling::InspectionProbe<PdfField_T, BoundaryHandling_T, ParticleAccessor_T> probe(probeLocation, blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, printToScreen, printSurroundingState, outputFileName );
 
    real_t rhoAtLocation;
    Vector3<real_t> velocityAtLocation;
    probe(rhoAtLocation, velocityAtLocation);
 
-   WALBERLA_ASSERT_FLOAT_EQUAL(rhoAtLocation, real_t{1});
-   WALBERLA_ASSERT_FLOAT_EQUAL(velocityAtLocation[0], real_t{0});
-   WALBERLA_ASSERT_FLOAT_EQUAL(velocityAtLocation[1], real_t{0});
-   WALBERLA_ASSERT_FLOAT_EQUAL(velocityAtLocation[2], real_t{0});
+   WALBERLA_ASSERT_FLOAT_EQUAL(rhoAtLocation, 1_r);
+   WALBERLA_ASSERT_FLOAT_EQUAL(velocityAtLocation[0], 0_r);
+   WALBERLA_ASSERT_FLOAT_EQUAL(velocityAtLocation[1], 0_r);
+   WALBERLA_ASSERT_FLOAT_EQUAL(velocityAtLocation[2], 0_r);
 
    return EXIT_SUCCESS;
 }

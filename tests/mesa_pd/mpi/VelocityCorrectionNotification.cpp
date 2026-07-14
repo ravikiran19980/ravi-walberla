@@ -64,14 +64,14 @@ int main( int argc, char ** argv )
    const auto linVel = Vec3(1,2,3);
    const auto angVel = Vec3(-1,-2,-3);
 
-   Vec3 pt(real_t{0.1}, real_t{0.1},real_t{0.1});
+   Vec3 pt(0.1_r, 0.1_r,0.1_r);
 
    for (auto& iBlk : *forest)
    {
       if(iBlk.getAABB().contains(pt)) {
          auto p                       = ps.create();
          p->getPositionRef()          = pt;
-         p->getInteractionRadiusRef() = real_t{1.0};
+         p->getInteractionRadiusRef() = 1.0_r;
          p->getOwnerRef()             = walberla::mpi::MPIManager::instance()->rank();
          p->getTypeRef()              = 0;
          p->getLinearVelocityRef()    = linVel;
@@ -84,7 +84,7 @@ int main( int argc, char ** argv )
    mesa_pd::mpi::SyncNextNeighbors snn;
    snn(ps, domain);
 
-   auto relax_param = real_t{0.8};
+   auto relax_param = 0.8_r;
    VelocityUpdateNotification::Parameters::relaxationParam = relax_param;
    mesa_pd::mpi::ReduceProperty reductionKernel;
    mesa_pd::mpi::BroadcastProperty broadcastKernel;
@@ -93,8 +93,8 @@ int main( int argc, char ** argv )
 
    // Reduce dv
    // dv per process
-   auto dvprocess = Vec3(real_t{0.1},real_t{0.1},real_t{0.1});
-   auto dwprocess = Vec3(real_t{0.05},real_t{0.1},real_t{0.15});
+   auto dvprocess = Vec3(0.1_r,0.1_r,0.1_r);
+   auto dwprocess = Vec3(0.05_r,0.1_r,0.15_r);
    ps.setDv(0, dvprocess);
    ps.setDw(0, dwprocess);
    reductionKernel.operator()<VelocityCorrectionNotification>(ps);

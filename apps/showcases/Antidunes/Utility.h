@@ -84,8 +84,8 @@ class BedloadTransportEvaluator
 
    void operator()()
    {
-      real_t transportRate(real_t{0});
-      real_t velocity(real_t{0});
+      real_t transportRate(0_r);
+      real_t velocity(0_r);
 
       for (uint_t i = uint_t{0}; i < ac_->size(); ++i)
       {
@@ -153,9 +153,9 @@ class AverageDataSliceEvaluator
       ylen_ = blocks_->getNumberOfYCells();
       zlen_ = blocks_->getNumberOfZCells();
 
-      x_z_SolidVolumeFraction_ = std::vector< real_t >(xlen_ * zlen_, real_t{0});
-      x_z_FillLevel_           = std::vector< real_t >(xlen_ * zlen_, real_t{0});
-      x_z_VelocityX_           = std::vector< real_t >(xlen_ * zlen_, real_t{0});
+      x_z_SolidVolumeFraction_ = std::vector< real_t >(xlen_ * zlen_, 0_r);
+      x_z_FillLevel_           = std::vector< real_t >(xlen_ * zlen_, 0_r);
+      x_z_VelocityX_           = std::vector< real_t >(xlen_ * zlen_, 0_r);
       x_z_FluidCellCount_      = std::vector< uint_t >(xlen_ * zlen_, 0);
       maxFluidZPos_            = uint_t{0};
    }
@@ -163,9 +163,9 @@ class AverageDataSliceEvaluator
    void operator()()
    {
       // erase data
-      std::fill(x_z_SolidVolumeFraction_.begin(), x_z_SolidVolumeFraction_.end(), real_t{0});
-      std::fill(x_z_FillLevel_.begin(), x_z_FillLevel_.end(), real_t{0});
-      std::fill(x_z_VelocityX_.begin(), x_z_VelocityX_.end(), real_t{0});
+      std::fill(x_z_SolidVolumeFraction_.begin(), x_z_SolidVolumeFraction_.end(), 0_r);
+      std::fill(x_z_FillLevel_.begin(), x_z_FillLevel_.end(), 0_r);
+      std::fill(x_z_VelocityX_.begin(), x_z_VelocityX_.end(), 0_r);
       std::fill(x_z_FluidCellCount_.begin(), x_z_FluidCellCount_.end(), 0);
 
       // fill contributions
@@ -190,8 +190,8 @@ class AverageDataSliceEvaluator
             auto entryIdx = uint_c(globalCell.x()) + uint_c(globalCell.z()) * xlen_;
             if (flagField->isFlagSet(cell, solidMO) || flagField->isFlagSet(cell, solidNoSlip))
             {
-               x_z_SolidVolumeFraction_[entryIdx] += real_t{1};
-               x_z_FillLevel_[entryIdx] += real_t{1};
+               x_z_SolidVolumeFraction_[entryIdx] += 1_r;
+               x_z_FillLevel_[entryIdx] += 1_r;
             }
             else
             {
@@ -428,10 +428,10 @@ inline void initSpheresFromFile(const std::string& filename, walberla::mesa_pd::
 inline void getAverageVelocity(const mesa_pd::data::ParticleAccessorWithBaseShape& ac, real_t& averageVelocity,
                         real_t& maxVelocity, uint_t& numParticles, real_t& maxHeight)
 {
-   averageVelocity = real_t{0};
-   maxVelocity     = real_t{0};
+   averageVelocity = 0_r;
+   maxVelocity     = 0_r;
    numParticles    = uint_t{0};
-   maxHeight       = real_t{0};
+   maxHeight       = 0_r;
    for (uint_t i = 0; i < ac.size(); ++i)
    {
       if (isSet(ac.getFlags(i), walberla::mesa_pd::data::particle_flags::GHOST)) continue;
@@ -457,7 +457,7 @@ inline auto createPlane(mesa_pd::data::ParticleStorage& ps, const mesa_pd::Vec3&
    auto p0 = ps.create(true);
    p0->setPosition(pos);
    p0->setBaseShape(std::make_shared< mesa_pd::data::HalfSpace >(normal));
-   p0->getBaseShapeRef()->updateMassAndInertia(real_t{1});
+   p0->getBaseShapeRef()->updateMassAndInertia(1_r);
    p0->setOwner(walberla::mpi::MPIManager::instance()->rank());
    p0->setType(0);
    p0->setInteractionRadius(std::numeric_limits< real_t >::infinity());

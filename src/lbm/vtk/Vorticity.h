@@ -38,7 +38,7 @@ class VorticityComponentVTKWriter : public vtk::BlockCellDataWriter< OutputType,
 public:
    VorticityComponentVTKWriter(const shared_ptr<StructuredBlockStorage> blockStorage, Filter_T & filter,
          const ConstBlockDataID & velocityFieldId, const uint_t componentIdx, const std::string & id,
-         const real_t normalizationConstant = real_t{1}) :
+         const real_t normalizationConstant = 1_r) :
          vtk::BlockCellDataWriter< OutputType, 1 >(id), blockStorage_(blockStorage), filter_(filter),
          velocityFieldId_(velocityFieldId), componentIdx_(componentIdx), velocityField_(nullptr),
          normalizationConstant_(normalizationConstant) {

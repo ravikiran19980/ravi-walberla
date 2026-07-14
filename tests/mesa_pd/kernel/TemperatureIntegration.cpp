@@ -41,22 +41,22 @@ int main( int argc, char ** argv )
 
    //initialize particle
    accessor.setType(        0, 0 );
-   accessor.setHeatFlux(    0, real_t{8} );
-   accessor.setTemperature( 0, real_t{5} );
-   accessor.setInvMass(     0, real_t{1} );
+   accessor.setHeatFlux(    0, 8_r );
+   accessor.setTemperature( 0, 5_r );
+   accessor.setInvMass(     0, 1_r );
 
    //init kernels
-   const real_t dt = real_t{1};
+   const real_t dt = 1_r;
    kernel::TemperatureIntegration integrator( dt, 1 );
-   integrator.setInvSpecificHeat( 0, real_t{2} );
+   integrator.setInvSpecificHeat( 0, 2_r );
 
    integrator(0, accessor);
 
    //check force
-   WALBERLA_CHECK_FLOAT_EQUAL(accessor.getHeatFlux(0) + real_t{1}, real_t{1});
+   WALBERLA_CHECK_FLOAT_EQUAL(accessor.getHeatFlux(0) + 1_r, 1_r);
 
    //check velocity
-   WALBERLA_CHECK_FLOAT_EQUAL(accessor.getTemperature(0), real_t{21});
+   WALBERLA_CHECK_FLOAT_EQUAL(accessor.getTemperature(0), 21_r);
 
    return EXIT_SUCCESS;
 }

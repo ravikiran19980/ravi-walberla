@@ -112,7 +112,7 @@ shared_ptr< StructuredBlockForest > createUniformBlockGridFromConfig( const Conf
                                                                       const bool keepGlobalBlockInformation )
 {
    const Vector3<bool> periodic = configBlock.getParameter<Vector3<bool> >( "periodic",  Vector3<bool> (false) );
-   const real_t        dx       = configBlock.getParameter<real_t        >( "dx",        real_t{1}             );
+   const real_t        dx       = configBlock.getParameter<real_t        >( "dx",        1_r             );
 
    Vector3<uint_t> cellsPerBlock;
    Vector3<uint_t> blocks;
@@ -298,7 +298,7 @@ std::unique_ptr<SetupBlockForest> createSetupBlockForest(const math::AABB& simul
 
    WALBERLA_LOG_INFO_ON_ROOT( "Balancing " << sforest->getNumberOfBlocks() << " blocks for " << numberOfProcesses << " processes...");
 
-   sforest->balanceLoad( blockforest::StaticLevelwiseCurveBalance(true), numberOfProcesses, real_t{0}, memory_t{0}, false, true );
+   sforest->balanceLoad( blockforest::StaticLevelwiseCurveBalance(true), numberOfProcesses, 0_r, memory_t{0}, false, true );
    return sforest;
 }
 

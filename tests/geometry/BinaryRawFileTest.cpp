@@ -46,7 +46,7 @@ void test( const std::string & filename, const Vector3<uint_t> & size, const std
 
    auto blocks = blockforest::createUniformBlockGrid( uint_t{1}, uint_t{ 1 }, uint_t{ 1 }, 
       size[0], size[1], size[2], 
-      real_t{ 1 }, 
+      1_r, 
       uint_t{ 1 }, uint_t{ 1 }, uint_t{ 1 } );
 
    using ScalarField = GhostLayerField<uint8_t, uint_t{1}>;
@@ -85,7 +85,7 @@ void testScaled( const std::string & filename, const Vector3<uint_t> & size, con
 
    auto blocks = blockforest::createUniformBlockGrid( uint_t{ 1 }, uint_t{ 1 }, uint_t{ 1 },
       scaledSize[0], scaledSize[1], scaledSize[2],
-      real_t{ 1 },
+      1_r,
       uint_t{ 1 }, uint_t{ 1 }, uint_t{ 1 } );
 
    BinaryRawFileInterpolator const brfi( blocks->getDomain(), brf, BinaryRawFileInterpolator::NEAREST_NEIGHBOR );

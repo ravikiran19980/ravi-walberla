@@ -143,9 +143,9 @@ void testHostFieldPackInfo()
             auto cc = blocks->getBlockLocalCellCenter(block, cell);
             blocks->mapToPeriodicDomain(cc);
 
-            testing::assert_close(fView(cell, 0), cc[0]);
-            testing::assert_close(fView(cell, 1), cc[1]);
-            testing::assert_close(fView(cell, 2), cc[2]);
+            testing::assert_close(fView(cell, 0), static_cast< double >(cc[0]));
+            testing::assert_close(fView(cell, 1), static_cast< double >(cc[1]));
+            testing::assert_close(fView(cell, 2), static_cast< double >(cc[2]));
          });
       }
    }

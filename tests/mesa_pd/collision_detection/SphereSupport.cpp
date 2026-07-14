@@ -41,21 +41,21 @@ void check( )
 {
    using namespace walberla::mesa_pd::collision_detection;
 
-   Vec3 pos      = Vec3(real_t{1},real_t{2},real_t{3});
-   real_t radius = real_t{2.356};
+   Vec3 pos      = Vec3(1_r,2_r,3_r);
+   real_t radius = 2.356_r;
 
    auto sp = data::Sphere(radius);
    Support e0(pos, Rot3(), sp);
-   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(real_t{1},real_t{0},real_t{0})),  Vec3(real_t(1+2.356),real_t{2},real_t{3}));
-   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(real_t{0},real_t{1},real_t{0})),  Vec3(real_t{1},real_t(2+2.356),real_t{3}));
-   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(real_t{0},real_t{0},real_t{1})),  Vec3(real_t{1},real_t{2},real_t(3+2.356)));
-   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(real_t{-1},real_t{0},real_t{0})), Vec3(real_t(1-2.356),real_t{2},real_t{3}));
-   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(real_t{0},real_t{-1},real_t{0})), Vec3(real_t{1},real_t(2-2.356),real_t{3}));
-   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(real_t{0},real_t{0},real_t{-1})), Vec3(real_t{1},real_t{2},real_t(3-2.356)));
+   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(1_r,0_r,0_r)),  Vec3(real_t(1+2.356),2_r,3_r));
+   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(0_r,1_r,0_r)),  Vec3(1_r,real_t(2+2.356),3_r));
+   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(0_r,0_r,1_r)),  Vec3(1_r,2_r,real_t(3+2.356)));
+   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(-1_r,0_r,0_r)), Vec3(real_t(1-2.356),2_r,3_r));
+   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(0_r,-1_r,0_r)), Vec3(1_r,real_t(2-2.356),3_r));
+   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(0_r,0_r,-1_r)), Vec3(1_r,2_r,real_t(3-2.356)));
 
-   WALBERLA_CHECK_FLOAT_EQUAL( contour(e0.support(Vec3(real_t{-1},real_t{-2},real_t{-3}).getNormalized()) - pos, radius), real_t{1} );
-   WALBERLA_CHECK_FLOAT_EQUAL( contour(e0.support(Vec3(real_t{-2},real_t{-3},real_t{-1}).getNormalized()) - pos, radius), real_t{1} );
-   WALBERLA_CHECK_FLOAT_EQUAL( contour(e0.support(Vec3(real_t{-3},real_t{-1},real_t{-2}).getNormalized()) - pos, radius), real_t{1} );
+   WALBERLA_CHECK_FLOAT_EQUAL( contour(e0.support(Vec3(-1_r,-2_r,-3_r).getNormalized()) - pos, radius), 1_r );
+   WALBERLA_CHECK_FLOAT_EQUAL( contour(e0.support(Vec3(-2_r,-3_r,-1_r).getNormalized()) - pos, radius), 1_r );
+   WALBERLA_CHECK_FLOAT_EQUAL( contour(e0.support(Vec3(-3_r,-1_r,-2_r).getNormalized()) - pos, radius), 1_r );
 }
 
 } //namespace mesa_pd

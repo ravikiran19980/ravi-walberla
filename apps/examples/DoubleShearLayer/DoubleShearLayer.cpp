@@ -104,11 +104,9 @@ void run(int argc, char** argv)
    //  Compute relaxation rate
    const real_t N = real_c(blocks->getDomainCellBB().xSize());
    const real_t nu{ (u_0 * N) / reynolds };
-   const real_t theta{
-      1. / 3,
-   };
+   const real_t theta{ 1_r / 3 };
    const real_t tau{ nu / theta };
-   const real_t omega{ 2. / (2. * tau + 1.) };
+   const real_t omega{ 2_r / (2_r * tau + 1_r) };
 
    auto streamCollide = std::make_shared< gen::LBM::StreamCollide >(pdfs, rho, u, omega);
 

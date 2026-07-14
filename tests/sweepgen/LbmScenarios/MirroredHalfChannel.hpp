@@ -66,14 +66,14 @@ struct MirroredHalfChannel
       PdfField_T pdfs{ *blocks };
 
       /* Hagen-Poiseuille-law in lattice units */
-      const real_t u_max{ 0.025 };
-      const real_t reynolds{ 10.0 };
+      const real_t u_max{ 0.025_r };
+      const real_t reynolds{ 10.0_r };
       const real_t L_z{ real_c(2 * cellsPerBlock[2]) };
-      const real_t radius{ L_z / 2.0 };
+      const real_t radius{ L_z / 2_r };
       const real_t r_squared{ radius * radius };
       const real_t lattice_viscosity{ L_z * u_max / reynolds };
-      const real_t omega{ 2. / (6. * lattice_viscosity + 1.) };
-      const real_t acceleration{ (u_max * 2.0 * lattice_viscosity) / r_squared };
+      const real_t omega{ real_c(2. / (6. * lattice_viscosity + 1.)) };
+      const real_t acceleration{ (u_max * 2_r * lattice_viscosity) / r_squared };
 
       const Vector3< real_t > force{ acceleration, 0., 0. };
 

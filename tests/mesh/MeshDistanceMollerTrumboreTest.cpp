@@ -170,7 +170,7 @@ void test( const std::string & meshFile )
    auto triDist = make_shared< mesh::TriangleDistance<MeshType> >( mesh );
    DistanceOctree<MeshType> distanceOctree( triDist );
 
-   std::vector< real_t > offsets = {real_t{0.0}, real_t{0.25}, real_t{0.5}, real_t{0.77}, real_t{1.0}, real_t{1.5}};
+   std::vector< real_t > offsets = {0.0_r, 0.25_r, 0.5_r, 0.77_r, 1.0_r, 1.5_r};
 
    std::vector<std::tuple<typename MeshType::Point, typename MeshType::Point, float>> 
    offsetCombos = generateRayInfo<MeshType>( min, max, offsets);

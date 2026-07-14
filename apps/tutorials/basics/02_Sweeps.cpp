@@ -118,7 +118,7 @@ int main( int argc, char ** argv )
 
       // iterate the field and set random values
       for( auto iter = field->begin(); iter != field->end(); ++iter )
-         *iter = walberla::math::realRandom<real_t>(real_t{0}, real_t{ARBITRARY_VALUE});
+         *iter = walberla::math::realRandom<real_t>(0_r, real_c(ARBITRARY_VALUE));
    }
 
    // create time loop

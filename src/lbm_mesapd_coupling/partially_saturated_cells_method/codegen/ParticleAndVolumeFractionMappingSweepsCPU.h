@@ -63,7 +63,7 @@ inline void calculateWeighting< 1 >(real_t* const weighting, const real_t& epsil
 template<>
 inline void calculateWeighting< 2 >(real_t* const weighting, const real_t& epsilon, const real_t& tau)
 {
-   *weighting = epsilon * (tau - real_t{0.5}) / ((real_t{1} - epsilon) + (tau - real_t{0.5}));
+   *weighting = epsilon * (tau - 0.5_r) / ((1_r - epsilon) + (tau - 0.5_r));
 }
 
 template< int Weighting_T >
@@ -83,12 +83,12 @@ void mapParticles(IBlock& blockIt, const ParticleAndVolumeFractionSoA_T< Weighti
    WALBERLA_FOR_ALL_CELLS_XYZ(
       BField,
       for (size_t i = 0; i < MaxParticlesPerCell; i++) {
-         BsField->get(x, y, z, i)  = real_t{0.0};
+         BsField->get(x, y, z, i)  = 0.0_r;
          idxField->get(x, y, z, i) = size_t{0};
       } nOverlappingParticlesField->get(x, y, z) = uint_t{0};
-      BField->get(x, y, z)                       = real_t{0.0};
+      BField->get(x, y, z)                       = 0.0_r;
       const Vector3< real_t > cellCenter =
-         Vector3< real_t >(static_cast< real_t >(x) + real_t{0.5} * dx, static_cast< real_t >(y) + real_t{0.5} * dx, static_cast< real_t >(z) + real_t{0.5} * dx) +
+         Vector3< real_t >(static_cast< real_t >(x) + 0.5_r * dx, static_cast< real_t >(y) + 0.5_r * dx, static_cast< real_t >(z) + 0.5_r * dx) +
          blockIt.getAABB().minCorner();
       const Vector3< size_t > subBlockIndex(size_t(static_cast< real_t >(x) / blockIt.getAABB().xSize() * real_t(subBlocksPerDim[0])),
                                             size_t(static_cast< real_t >(y) / blockIt.getAABB().ySize() * real_t(subBlocksPerDim[1])),
@@ -119,8 +119,8 @@ void mapParticles(IBlock& blockIt, const ParticleAndVolumeFractionSoA_T< Weighti
                sphereRadii[idxMapped];
 
             real_t epsilon = -D + f_rs[idxMapped];
-            epsilon        = std::max(epsilon, real_t{0});
-            epsilon        = std::min(epsilon, real_t{1});
+            epsilon        = std::max(epsilon, 0_r);
+            epsilon        = std::min(epsilon, 1_r);
 
             // Store overlap fraction only if there is an intersection
             if (epsilon > 0.0)
@@ -130,7 +130,7 @@ void mapParticles(IBlock& blockIt, const ParticleAndVolumeFractionSoA_T< Weighti
                BsField->get(x, y, z, nOverlappingParticlesField->get(x, y, z)) = epsilon;
                calculateWeighting< Weighting_T >(&BsField->get(x, y, z, nOverlappingParticlesField->get(x, y, z)),
                                                  BsField->get(x, y, z, nOverlappingParticlesField->get(x, y, z)),
-                                                 real_t{1.0} / particleAndVolumeFractionSoA.omega_);
+                                                 1.0_r / particleAndVolumeFractionSoA.omega_);
                idxField->get(x, y, z, nOverlappingParticlesField->get(x, y, z)) = idxMapped;
                BField->get(x, y, z) += BsField->get(x, y, z, nOverlappingParticlesField->get(x, y, z));
                nOverlappingParticlesField->get(x, y, z) += 1;
@@ -213,12 +213,12 @@ class SphereFractionMappingSweep
             {
                const real_t radius = static_cast< mesa_pd::data::Sphere* >(ac_->getShape(idx))->getRadius();
                radii[idxMapped]    = radius;
-               real_t Va           = real_t{
+               real_t Va           = real_c(
                   (1.0 / 12.0 - radius * radius) * atan((0.5 * sqrt(radius * radius - 0.5)) / (0.5 - radius * radius)) +
                   1.0 / 3.0 * sqrt(radius * radius - 0.5) +
                   (radius * radius - 1.0 / 12.0) * atan(0.5 / sqrt(radius * radius - 0.5)) -
-                  4.0 / 3.0 * radius * radius * radius * atan(0.25 / (radius * sqrt(radius * radius - 0.5)))};
-               f_r[idxMapped] = Va - radius + real_t{0.5};
+                  4.0 / 3.0 * radius * radius * radius * atan(0.25 / (radius * sqrt(radius * radius - 0.5))));
+               f_r[idxMapped] = Va - radius + 0.5_r;
             }
             idxMapped++;
          }

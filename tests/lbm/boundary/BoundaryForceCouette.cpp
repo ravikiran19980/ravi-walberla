@@ -139,14 +139,14 @@ int main( int argc, char ** argv )
                                                      L / xBlocks,
                                                      L / yBlocks,
                                                      L / zBlocks,
-                                                     real_t{1},
+                                                     1_r,
                                                      true,
                                                      true, true, false);
    
    const real_t omega = real_c(1);
    LatticeModel_T latticeModel = LatticeModel_T( lbm::collision_model::TRT::constructWithMagicNumber( omega ) );
    
-   const Vector3<real_t> velocity(real_t{0.01}, real_t{0}, real_t{0});
+   const Vector3<real_t> velocity(0.01_r, 0_r, 0_r);
    BlockDataID pdfFieldId = lbm::addPdfFieldToStorage( blocks, "pdf field", latticeModel );
    BlockDataID flagFieldId = field::addFlagFieldToStorage< FlagField_T >( blocks, "flag field" );
    BlockDataID boundaryHandlingId = blocks->addBlockData< BoundaryHandling_T >( MyBoundaryHandling( flagFieldId, pdfFieldId, velocity ),
@@ -177,7 +177,7 @@ int main( int argc, char ** argv )
    timeloop.run();
    
    // get the force acting on the walls
-   real_t fXBottom = real_t{0}, fXTop = real_t{0};
+   real_t fXBottom = 0_r, fXTop = 0_r;
    for( auto block = blocks->begin(); block != blocks->end(); ++block )
    {
       FlagField_T * flagField = block->getData< FlagField_T >( flagFieldId );
@@ -221,8 +221,8 @@ int main( int argc, char ** argv )
    real_t errorTop = std::fabs( ( std::fabs(fXTop) - analyticalForce ) / analyticalForce );
    real_t errorBottom = std::fabs( ( std::fabs(fXBottom) - analyticalForce ) / analyticalForce );
 
-   WALBERLA_LOG_RESULT_ON_ROOT("Relative error top: " << (real_t{100}*errorTop) << " %");
-   WALBERLA_LOG_RESULT_ON_ROOT("Relative error bottom: " << (real_t{100}*errorBottom) << " %");
+   WALBERLA_LOG_RESULT_ON_ROOT("Relative error top: " << (100_r*errorTop) << " %");
+   WALBERLA_LOG_RESULT_ON_ROOT("Relative error bottom: " << (100_r*errorBottom) << " %");
 
 
    if( timeSteps > 100 )

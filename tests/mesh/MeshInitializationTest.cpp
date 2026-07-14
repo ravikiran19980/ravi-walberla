@@ -62,7 +62,7 @@ void commInXDirection( std::vector< std::pair< const SetupBlock*, const SetupBlo
 
       auto centerdiff = aabb2.center() - aabb1.center();
 
-      static const real_t eps = real_t{1e-8};
+      static const real_t eps = 1e-8_r;
 
       if( std::fabs( centerdiff[0] ) > eps && std::fabs( centerdiff[1] ) < eps && std::fabs( centerdiff[2] ) < eps  )
          weights[i] = int64_t{1000};
@@ -86,9 +86,9 @@ void test( const std::string & meshFile, const uint_t numProcesses, const uint_t
 
    const real_t meshVolume  = real_c( computeVolume( *mesh ) );
    const real_t blockVolume = meshVolume / real_c( numTotalBlocks );
-   static const real_t cellsPersBlock = real_t{1000};
+   static const real_t cellsPersBlock = 1000_r;
    const real_t cellVolume = blockVolume / cellsPersBlock;
-   const Vector3<real_t> cellSize( std::pow( cellVolume, real_t{1} / real_t{3} ) );
+   const Vector3<real_t> cellSize( std::pow( cellVolume, 1_r / 3_r ) );
 
    ComplexGeometryStructuredBlockforestCreator bfc( domainAABB, cellSize, makeExcludeMeshInterior( distanceOctree, cellSize.min() ) );
    auto wl = mesh::makeMeshWorkloadMemory( distanceOctree, cellSize );
@@ -96,7 +96,7 @@ void test( const std::string & meshFile, const uint_t numProcesses, const uint_t
    wl.setOutsideCellWorkload(1);
    wl.setForceZeroMemoryOnZeroWorkload(true);
    bfc.setWorkloadMemorySUIDAssignmentFunction( wl );
-   bfc.setRefinementSelectionFunction( makeRefinementSelection( distanceOctree, 5, cellSize[0], cellSize[0] * real_t{5} ) );
+   bfc.setRefinementSelectionFunction( makeRefinementSelection( distanceOctree, 5, cellSize[0], cellSize[0] * 5_r ) );
 
    WALBERLA_LOG_INFO_ON_ROOT( "Creating SBF with StaticLevelwiseCurveBalanceWeighted Partitioner" );
    bfc.setTargetProcessAssignmentFunction( blockforest::StaticLevelwiseCurveBalanceWeighted() );
