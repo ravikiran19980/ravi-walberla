@@ -1,0 +1,25 @@
+Parameters
+{
+    timesteps             301;
+    cellsPerBlock         < 10, 10, 10 >;
+    rootBlocks            < 5, 5, 5 >;
+    refinementLevels      2;
+    sphereCenter          < 0.5, 0.5, 0.5 >;
+    sphereRadius          0.05;
+    omega                 1.95;
+    vtkWriteFrequency     50;
+
+    // Adaptive mesh refinement: every 'refinementFrequency' time steps the block forest is
+    // re-partitioned. A block is refined where the squared velocity gradient exceeds
+    // 'upperRefinementLimit' and coarsened where it drops below 'lowerRefinementLimit'.
+    refinementFrequency   10;
+    lowerRefinementLimit  1e-6;
+    upperRefinementLimit  1e-2;
+}
+
+Boundaries
+{
+	Border { direction W;           walldistance -1;  flag UBB; }
+	Border { direction E;           walldistance -1;  flag Outflow; }
+	Border { direction N,S,T,B;     walldistance -1;  flag FreeSlip; }
+}

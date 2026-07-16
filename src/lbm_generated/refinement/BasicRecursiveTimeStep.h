@@ -61,14 +61,6 @@ class BasicRecursiveTimeStep
       for (auto& block : *sbfs)
          WALBERLA_ASSERT(block.isDataOfType<PdfField_T>(pdfFieldId_), "Template parameter PdfField_T is of different type than BlockDataID pdfFieldId that is provided as constructor argument")
 #endif
-      maxLevel_ = sbfs->getDepth();
-
-      for (uint_t level = 0; level <= maxLevel_; level++)
-      {
-         std::vector<Block *> blocks;
-         sbfs->getBlocks(blocks, level);
-         blocks_.push_back(blocks);
-      }
      };
 
    void operator() () { timestep(0); };
@@ -83,9 +75,10 @@ class BasicRecursiveTimeStep
    std::function< void() > executeStreamCollideOnLevel(uint_t level, bool withGhostLayerPropagation=false);
    std::function< void() > executeBoundaryHandlingOnLevel(uint_t level);
 
+   uint_t maxLevel() const { return sbfs_->getDepth(); }
+   std::vector< Block * > blocksOnLevel(const uint_t level) const;
+
    std::shared_ptr< StructuredBlockForest > sbfs_;
-   uint_t maxLevel_;
-   std::vector<std::vector<Block *>> blocks_;
 
    const BlockDataID pdfFieldId_;
    std::shared_ptr< PackInfo > pdfFieldPackInfo_;

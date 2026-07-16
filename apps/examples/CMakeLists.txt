@@ -6,6 +6,7 @@ endif()
 
 if(WALBERLA_BUILD_WITH_CODEGEN)
     add_subdirectory (MeshRefinementExample)
+    add_subdirectory (AdaptiveMeshRefinementExample)
 endif()
 
 add_subdirectory (TimingPool)

@@ -68,7 +68,6 @@ class {{class_name}}
    {{class_name}}(const shared_ptr< StructuredBlockStorage > & blocks, {{kernel_list|generate_constructor_parameters}}, const Cell & outerWidth=Cell(1, 1, 1))
       : blocks_(blocks), {{ kernel_list|generate_constructor_initializer_list(parameter_registration=parameter_scaling) }}, outerWidth_(outerWidth)
    {
-      {{kernel_list|generate_constructor(parameter_registration=parameter_scaling) |indent(6)}}
 
       validInnerOuterSplit_= true;
 
