@@ -273,7 +273,6 @@ struct FluidInfo
       walberla::mpi::allReduceInplace(numFluidCells, walberla::mpi::SUM);
       walberla::mpi::allReduceInplace(averageVelocity, walberla::mpi::SUM);
       walberla::mpi::allReduceInplace(maximumVelocity, walberla::mpi::MAX);
-      ;
       walberla::mpi::allReduceInplace(averageDensity, walberla::mpi::SUM);
       walberla::mpi::allReduceInplace(maximumDensity, walberla::mpi::MAX);
 #ifdef run_with_temperature
@@ -368,6 +367,10 @@ int main(int argc, char** argv)
    Environment env(argc, argv);
    auto cfgFile = env.config();
    if (!cfgFile) { WALBERLA_ABORT("Usage: " << argv[0] << " path-to-configuration-file \n"); }
+
+#ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
+   gpu::selectDeviceBasedOnMpiRank();
+#endif
 
    WALBERLA_ROOT_SECTION()
    {
@@ -1299,6 +1302,9 @@ int main(int argc, char** argv)
    };
    auto psmFluidSweeplamda = [&psmFluidSweep](IBlock * block) {
       psmFluidSweep(block);
+#ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
+      WALBERLA_GPU_CHECK(gpuDeviceSynchronize());
+#endif
    };
 
 
@@ -1565,10 +1571,12 @@ int main(int argc, char** argv)
             {
                welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
                welfordVelocitySweep(block);
+               WALBERLA_GPU_CHECK(gpuDeviceSynchronize());
 
 #ifdef run_with_temperature
                welfordTemperatureSweep.setCounter(welfordTemperatureSweep.getCounter() + real_c(1.0));
                welfordTemperatureSweep(block);
+               WALBERLA_GPU_CHECK(gpuDeviceSynchronize());
 #endif
             }
 
@@ -1577,10 +1585,12 @@ int main(int argc, char** argv)
          {
             welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
             welfordVelocitySweep(block);
+            WALBERLA_GPU_CHECK(gpuDeviceSynchronize());
 #ifdef run_with_temperature
 
             welfordTemperatureSweep.setCounter(welfordTemperatureSweep.getCounter() + real_c(1.0));
             welfordTemperatureSweep(block);
+            WALBERLA_GPU_CHECK(gpuDeviceSynchronize());
 #endif
          }
 
@@ -1680,9 +1690,9 @@ int main(int argc, char** argv)
 
 
    timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")
-                  << Sweep(deviceSyncWrapper(noSlip_fluid_bc.getSweep()), "Boundary Handling (No slip fluid)");
+                  << Sweep(deviceSyncWrapper(deviceSyncWrapper(noSlip_fluid_bc.getSweep())), "Boundary Handling (No slip fluid)");
 
-   timeloop.add() << Sweep(deviceSyncWrapper(freeSlip_fluid_bc.getSweep()),
+   timeloop.add() << Sweep(deviceSyncWrapper(deviceSyncWrapper(freeSlip_fluid_bc.getSweep())),
                            "Boundary Handling (Free slip fluid)");
 
    // add the temperature to the time loop
