@@ -487,4 +487,12 @@ CellInterval NonuniformGeneratedPdfPackInfo< PdfField_T >::getCoarseBlockCoalesc
    return commSlice;
 }
 
+template< typename PdfField_T>
+void NonuniformGeneratedPdfPackInfo< PdfField_T >::recalculateNonuniformCommData(IBlock* block)
+{
+   auto* commData = block->template getData< NonuniformCommData< LatticeStorageSpecification_T > >(commDataID_);
+   WALBERLA_ASSERT_NOT_NULLPTR(commData)
+   commData->recompute();
+}
+
 } // walberla::lbm_generated

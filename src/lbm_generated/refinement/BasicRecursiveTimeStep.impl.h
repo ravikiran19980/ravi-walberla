@@ -29,8 +29,11 @@ namespace lbm_generated {
 template< typename PdfField_T, typename SweepCollection_T, typename BoundaryCollection_T >
 void BasicRecursiveTimeStep< PdfField_T, SweepCollection_T, BoundaryCollection_T >::timestep(uint_t level)
 {
+   const uint_t maxLevel = this->maxLevel();
+   const std::vector< Block * > blocks = blocksOnLevel(level);
+
    // 1.1 Collision
-   for(auto b: blocks_[level]){
+   for(auto b: blocks){
       sweepCollection_.streamCollide(b);
    }
    for( const auto& func : globalPostCollisionFunctions_){
@@ -38,7 +41,7 @@ void BasicRecursiveTimeStep< PdfField_T, SweepCollection_T, BoundaryCollection_T
    }
 
    // 1.2 Recursive Descent
-   if(level < maxLevel_){
+   if(level < maxLevel){
       timestep(level + 1);
    }
 
@@ -51,16 +54,16 @@ void BasicRecursiveTimeStep< PdfField_T, SweepCollection_T, BoundaryCollection_T
    commScheme_->communicateEqualLevel(level);
 
    // 1.5 Boundary Handling and Coalescence Preparation
-   for(auto b : blocks_[level]){
+   for(auto b : blocks){
       boundaryCollection_(b);
-      if(level != maxLevel_) pdfFieldPackInfo_->prepareCoalescence(b);
+      if(level != maxLevel) pdfFieldPackInfo_->prepareCoalescence(b);
    }
    for( const auto& func : globalPostBoundaryHandlingFunctions_){
       func.first(level);
    }
 
    // 1.6 Fine to Coarse Communication, receiving end
-   if(level < maxLevel_){
+   if(level < maxLevel){
       commScheme_->communicateFineToCoarse(level + 1);
    }
 
@@ -69,7 +72,7 @@ void BasicRecursiveTimeStep< PdfField_T, SweepCollection_T, BoundaryCollection_T
    if(level == 0) return;
 
    // 2.1 Collision and Ghost-Layer Propagation
-   for(auto b: blocks_[level]){
+   for(auto b: blocks){
       ghostLayerPropagation(b);  // GL-Propagation first without swapping arrays...
       sweepCollection_.streamCollide(b);                // then Stream-Collide on interior, and swap arrays
    }
@@ -78,7 +81,7 @@ void BasicRecursiveTimeStep< PdfField_T, SweepCollection_T, BoundaryCollection_T
    }
 
    // 2.2 Recursive Descent
-   if(level < maxLevel_){
+   if(level < maxLevel){
       timestep(level + 1);
    }
 
@@ -86,16 +89,16 @@ void BasicRecursiveTimeStep< PdfField_T, SweepCollection_T, BoundaryCollection_T
    commScheme_->communicateEqualLevel(level);
 
    // 2.5 Boundary Handling and Coalescence Preparation
-   for(auto b : blocks_[level]){
+   for(auto b : blocks){
       boundaryCollection_(b);
-      if(level != maxLevel_) pdfFieldPackInfo_->prepareCoalescence(b);
+      if(level != maxLevel) pdfFieldPackInfo_->prepareCoalescence(b);
    }
    for( const auto& func : globalPostBoundaryHandlingFunctions_){
       func.first(level);
    }
 
    // 2.6 Fine to Coarse Communication, receiving end
-   if(level < maxLevel_){
+   if(level < maxLevel){
       commScheme_->communicateFineToCoarse(level + 1);
    }
 }
@@ -104,6 +107,8 @@ void BasicRecursiveTimeStep< PdfField_T, SweepCollection_T, BoundaryCollection_T
 template< typename PdfField_T, typename SweepCollection_T, typename BoundaryCollection_T >
 void BasicRecursiveTimeStep< PdfField_T, SweepCollection_T, BoundaryCollection_T >::addRefinementToTimeLoop(SweepTimeloop & timeloop, uint_t level)
 {
+   const uint_t maxLevel = this->maxLevel();
+
    // 1.1 Collision
    timeloop.addFuncBeforeTimeStep(executeStreamCollideOnLevel(level), "Refinement Cycle: streamCollide on level " + std::to_string(level));
    for ( auto func : globalPostCollisionFunctions_) {
@@ -111,7 +116,7 @@ void BasicRecursiveTimeStep< PdfField_T, SweepCollection_T, BoundaryCollection_T
    }
 
    // 1.2 Recursive Descent
-   if(level < maxLevel_) {
+   if(level < maxLevel) {
       addRefinementToTimeLoop(timeloop, level + 1);
    }
 
@@ -130,7 +135,7 @@ void BasicRecursiveTimeStep< PdfField_T, SweepCollection_T, BoundaryCollection_T
    }
 
    // 1.6 Fine to Coarse Communication, receiving end
-   if(level < maxLevel_) {
+   if(level < maxLevel) {
       timeloop.addFuncBeforeTimeStep(commScheme_->communicateFineToCoarseFunctor(level + 1), "Refinement Cycle: communicate fine to coarse on level " + std::to_string(level + 1));
    }
    // Stop here if on coarsest level.
@@ -144,7 +149,7 @@ void BasicRecursiveTimeStep< PdfField_T, SweepCollection_T, BoundaryCollection_T
    }
 
    // 2.2 Recursive Descent
-   if(level < maxLevel_) {
+   if(level < maxLevel) {
       addRefinementToTimeLoop(timeloop, level + 1);
    }
 
@@ -158,7 +163,7 @@ void BasicRecursiveTimeStep< PdfField_T, SweepCollection_T, BoundaryCollection_T
    }
 
    // 2.6 Fine to Coarse Communication, receiving end
-   if(level < maxLevel_) {
+   if(level < maxLevel) {
       timeloop.addFuncBeforeTimeStep(commScheme_->communicateFineToCoarseFunctor(level + 1), "Refinement Cycle: communicate fine to coarse on level " + std::to_string(level + 1));
    }
 }
@@ -171,14 +176,14 @@ std::function<void()> BasicRecursiveTimeStep< PdfField_T, SweepCollection_T, Bou
    {
       if (withGhostLayerPropagation)
       {
-         for(auto b: blocks_[level]){
+         for(auto b: blocksOnLevel(level)){
             ghostLayerPropagation(b);
             sweepCollection_.streamCollide(b);
          }
       }
       else
       {
-         for(auto b: blocks_[level]){
+         for(auto b: blocksOnLevel(level)){
             sweepCollection_.streamCollide(b);
          }
       }
@@ -190,10 +195,11 @@ template< typename PdfField_T, typename SweepCollection_T, typename BoundaryColl
 std::function<void()>  BasicRecursiveTimeStep< PdfField_T, SweepCollection_T, BoundaryCollection_T >::executeBoundaryHandlingOnLevel(uint_t level)
 {
    return [level, this]() {
-      for (auto b : blocks_[level])
+      const uint_t maxLevel = this->maxLevel();
+      for (auto b : blocksOnLevel(level))
       {
          boundaryCollection_(b);
-         if (level != maxLevel_) pdfFieldPackInfo_->prepareCoalescence(b);
+         if (level != maxLevel) pdfFieldPackInfo_->prepareCoalescence(b);
       }
    };
 }
@@ -225,6 +231,14 @@ template< typename PdfField_T, typename SweepCollection_T, typename BoundaryColl
 inline void BasicRecursiveTimeStep< PdfField_T, SweepCollection_T, BoundaryCollection_T >::addPostCollisionFunction( const LevelFunction& function, std::string identifier )
 {
    globalPostCollisionFunctions_.emplace_back( std::make_pair(function, identifier) );
+}
+
+template< typename PdfField_T, typename SweepCollection_T, typename BoundaryCollection_T >
+std::vector< Block * > BasicRecursiveTimeStep< PdfField_T, SweepCollection_T, BoundaryCollection_T >::blocksOnLevel(const uint_t level) const
+{
+   std::vector< Block * > blocks;
+   sbfs_->getBlocks(blocks, level);
+   return blocks;
 }
 
 } // namespace lbm_generated
