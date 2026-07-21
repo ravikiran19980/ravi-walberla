@@ -4,7 +4,7 @@
    "applicationCategory": "CFD",
    "codeRepository": "git+https://i10git.cs.fau.de/walberla/walberla.git",
    "dateCreated": "2017-03-30",
-   "dateModified": "2025-08-07",
+   "dateModified": "2026-07-21",
    "datePublished": "2019-09-27",
    "description": "waLBerla (widely applicable Lattice Boltzmann from Erlangen) is a massively parallel framework for multiphysics simulation applications.\nBeyond computational fluid dynamics with the lattice Boltzmann method, the framework now features multiphase and free-surface flows,\nrigid body and particle dynamics as well as fluid-structure coupling with moving geometries.\nIt scales from laptops to current and future supercomputers while maintaining\nnear-perfect efficiency.\n",
    "downloadUrl": "https://i10git.cs.fau.de/walberla/walberla/-/releases",
@@ -15,7 +15,7 @@
    "operatingSystem": ["Linux", "macOS"],
    "programmingLanguage": ["C++", "Python3"],
    "relatedLink": "https://www.walberla.net",
-   "version": "7.2",
+   "version": "7.3",
    "codemeta:contIntegration": {
       "id": "https://i10git.cs.fau.de/walberla/walberla/"
    },
