@@ -79,7 +79,7 @@ inline void writeCheckpointStatistics(const DomainSizeT& domainSize, const uint_
                for (uint_t i = 0; i < codegen::tensorSize; ++i)
                {
                   checkpointTimeStatsVelocityOS << std::setw(12)
-                                                << planeAveragedProfiles_velocity->getFluidRMSProfile()[idx * codegen::tensorSize + i];
+                                                << planeAveragedProfiles_velocity->getFluidAVGSquaredProfile()[idx * codegen::tensorSize + i];
                }
 
                for (uint_t i = 0; i < codegen::vectorSize; ++i)
@@ -91,7 +91,7 @@ inline void writeCheckpointStatistics(const DomainSizeT& domainSize, const uint_
                for (uint_t i = 0; i < codegen::tensorSize; ++i)
                {
                   checkpointTimeStatsVelocityOS << std::setw(12)
-                                                << planeAveragedProfiles_velocity->getParticleRMSProfile()[idx * codegen::tensorSize + i];
+                                                << planeAveragedProfiles_velocity->getParticleAVGSquaredProfile()[idx * codegen::tensorSize + i];
                }
 
                checkpointTimeStatsVelocityOS << "\n";
