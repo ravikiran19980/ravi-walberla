@@ -323,19 +323,38 @@ class PlaneAveragedProfiles
    PlaneAveragedProfiles(const std::shared_ptr< StructuredBlockStorage >& blocks,
                        const BlockDataID fieldId,
                        const uint_t wallAxis,
-                       const Vector3<real_t>& domainSize)
+                       const Vector3<real_t>& domainSize,
+                       bool startFromCheckpoint=false,
+                       real_t averagingCount = 0,
+                       std::vector<real_t> timeAveragedFluidProfile = {},
+                       std::vector<real_t> timeAveragedFluidSquaredProfile = {},
+                       std::vector<real_t> timeAveragedParticleProfile = {},
+                       std::vector<real_t> timeAveragedParticleSquaredProfile = {}
+                       )
       : blocks_(blocks), fieldId_(fieldId), wallAxis_(wallAxis), numHeights_(uint_c(domainSize[ wallAxis])), fieldSize_(Field_T::F_SIZE),fieldSizeSquared_(Field_T::F_SIZE*Field_T::F_SIZE)
    {
-
-      timeAveragedFluidProfile_.resize(fieldSize_*numHeights_, 0_r);
-      timeAveragedFluidSquaredProfile_.resize(fieldSizeSquared_*numHeights_, 0_r);
       fluidRMSProfile_.resize(fieldSizeSquared_*numHeights_, 0_r);
-
-      timeAveragedParticleProfile_.resize(fieldSize_*numHeights_, 0_r);
-      timeAveragedParticleSquaredProfile_.resize(fieldSizeSquared_*numHeights_, 0_r);
       particleRMSProfile_.resize(fieldSizeSquared_*numHeights_, 0_r);
 
-      timeStepCount_ = 0;
+      if (startFromCheckpoint == false)
+      {
+         timeAveragedFluidProfile_.resize(fieldSize_*numHeights_, 0_r);
+         timeAveragedFluidSquaredProfile_.resize(fieldSizeSquared_*numHeights_, 0_r);
+
+         timeAveragedParticleProfile_.resize(fieldSize_*numHeights_, 0_r);
+         timeAveragedParticleSquaredProfile_.resize(fieldSizeSquared_*numHeights_, 0_r);
+         timeStepCount_ = averagingCount;
+      }
+
+      else
+      {
+         timeAveragedFluidProfile_ = std::move(timeAveragedFluidProfile);
+         timeAveragedFluidSquaredProfile_ = std::move(timeAveragedFluidSquaredProfile);
+
+         timeAveragedParticleProfile_ = std::move(timeAveragedParticleProfile);
+         timeAveragedParticleSquaredProfile_ = std::move(timeAveragedParticleSquaredProfile);
+         timeStepCount_ = averagingCount;
+      }
    }
 
    /**
@@ -496,6 +515,9 @@ class PlaneAveragedProfiles
    const std::vector< real_t >& getParticleRMSProfile() const { return particleRMSProfile_; }
    const std::vector< real_t >& getFluidAVGProfile() const { return timeAveragedFluidProfile_; }
    const std::vector< real_t >& getParticleAVGProfile() const { return timeAveragedParticleProfile_; }
+   const std::vector< real_t >& getFluidAVGSquaredProfile() const { return timeAveragedFluidSquaredProfile_; }
+   const std::vector< real_t >& getParticleAVGSquaredProfile() const { return timeAveragedParticleSquaredProfile_; }
+   const uint_t getTimeStepCount() const { return timeStepCount_; }
 
 
  private:

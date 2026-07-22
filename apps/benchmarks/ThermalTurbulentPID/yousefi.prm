@@ -73,7 +73,10 @@ vtk_params
 
 checkpoint_params
 {
-    startFromCheckPointFile false;
+    restart_simulation false;
+    startFluidFromCheckPointFile false;
+    startTemperatureFromCheckPointFile false;
+    startParticlesFromCheckPointFile false;
     checkpointingFileName testCheckpoint_cpu;
     checkPointingFrequency 250000;
     writeContinuousCheckPoints true;

@@ -48,6 +48,7 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
                     ./utilities/InitializerFunctions.cpp
                     PIDController.h
                     PIDController.cpp
+                    CheckpointStatistics.h
             )
             if (WALBERLA_BUILD_WITH_HIP OR WALBERLA_BUILD_WITH_GPU_SUPPORT)
                 list(APPEND BASE_SOURCES

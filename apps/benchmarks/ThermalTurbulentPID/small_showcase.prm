@@ -2,7 +2,7 @@ PhysicalSetup // all to be specified in SI/ref units
 {
 
     xSize 128;
-    ySize 120;
+    ySize 40;
     zSize 64;
 
     periodicInX true;
@@ -15,7 +15,7 @@ PhysicalSetup // all to be specified in SI/ref units
     dynamicFrictionCoefficient 0.15;
     coefficientOfRestitution 0.97;
     collisionTimeFactor 1.0;
-    simulationTimeFactor 3;   // total timesteps of simulation = simulationTimeFactor * turnOverPeriod
+    simulationTimeFactor 10;   // total timesteps of simulation = simulationTimeFactor * turnOverPeriod
 
 }
 
@@ -35,7 +35,7 @@ NumericalSetup
     linkedCellWidthRation 1.01;
     particleBarriers true;
     generationDomainFraction <0.95,0.95,0.95>;
-    volfraction 0.1;                  // this must be 0 if useParticles is false
+    volfraction 0;                  // this must be 0 if useParticles is false
 
 }
 
@@ -53,8 +53,8 @@ TemperatureSetup
     Thot 1;   // ThotSI = ThotLB   (concentration conversion from SI to LB)
     Tcold 0;
     Tref  0;
-    Tparticle 0.5;
-    PrandtlNumber 7;
+    Tparticle 0;
+    PrandtlNumber 1;
     diffusivityRatio  1;
     Gr 1000;
 }
@@ -63,9 +63,9 @@ vtk_params
 {
     infoSpacing 1000; // in s
     vtkSpacingParticles 0; // in s
-    vtkSpacingFluid 1000; // ins
+    vtkSpacingFluid 0; // ins
     vtkFolder vtk_out;
-    writeSlice false;
+    writeSlice true;
 
 
 
@@ -73,14 +73,17 @@ vtk_params
 
 checkpoint_params
 {
-    startFromCheckPointFile false;
-    checkpointingFileName testCheckpoint;
-    checkPointingFrequency 1000;
+    restart_simulation false;
+    startFluidFromCheckPointFile false;
+    startTemperatureFromCheckPointFile true;
+    startParticlesFromCheckPointFile false;
+    checkpointingFileName testCheckpoint_cpu;
+    checkPointingFrequency 1;                   // this is a factor that is multiplied with samplingInterval
     writeContinuousCheckPoints false;
 }
 
 statistics_params{
-    convergenceTolerance 10;                      // percentage tolerance of wall shear and nusselt numbers
+    convergenceTolerance 5;                      // percentage tolerance of wall shear and nusselt numbers
     outputFrequency 10;                        // how often you want to monitor convergence and output the wall statistics
     planeAveragingtimeBlock 10000;               // required only for heat flux budgets
     heatFluxAveragingtimeBlock 600000;           // required only for heat flux budgets

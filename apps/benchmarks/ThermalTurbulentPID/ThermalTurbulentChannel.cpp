@@ -1,5 +1,5 @@
 //
-// Created by dy94rovu on 6/24/24.
+// Created by dy94rovu
 //
 //======================================================================================================================
 //
@@ -16,8 +16,7 @@
 //  You should have received a copy of the GNU General Public License along
 //  with waLBerla (see COPYING.txt). If not, see <http://www.gnu.org/licenses/>.
 //
-//! \file thermalPSM.cpp
-//! \ingroup lbm_mesapd_coupling
+//! \file thermalTurbulentChannel.cpp
 //! \author Ravi Ayyala Somayajula <ravi.k.ayyala@fau.de>
 //
 //======================================================================================================================
@@ -107,6 +106,7 @@
 #endif
 #include "math.h"
 #include "randomPoints.h"
+#include "CheckpointStatistics.h"
 #include "turbulentFlowUtilities.h"
 #include "PIDController.h"
 
@@ -450,6 +450,11 @@ int main(int argc, char** argv)
       {
          std::filesystem::create_directories(outputPath);
       }
+      const std::filesystem::path checkpointPath("checkPointFiles");
+      if (!std::filesystem::exists(checkpointPath))
+      {
+         std::filesystem::create_directories(checkpointPath);
+      }
    }
 
 
@@ -504,6 +509,10 @@ int main(int argc, char** argv)
    const real_t volfraction = numericalSetup.getParameter< real_t >("volfraction");
    WALBERLA_CHECK(!useParticles || volfraction > real_t(0),
                   "useParticles is true, but volfraction is equal to 0, must be greater than 0");
+   if (useParticles == true && volfraction == real_t(0))
+   {
+      WALBERLA_ABORT("useParticles is set to true, but volfraction is equal to 0, must be greater than 0");
+   }
 
    Config::BlockHandle turbulenceSetup   = cfgFile->getBlock("TurbulenceSetup");
    const real_t target_bulk_Reynolds     = turbulenceSetup.getParameter< real_t >("target_bulk_Reynolds");
@@ -531,12 +540,22 @@ int main(int argc, char** argv)
    const std::string vtkFolder          = vtk_params.getParameter< std::string >("vtkFolder");
    const bool writeSlice                = vtk_params.getParameter< bool >("writeSlice");
 
-   Config::BlockHandle checkpoint_params      = cfgFile->getBlock("checkpoint_params");
-   const bool startFromCheckPointFile             = checkpoint_params.getParameter< bool >("startFromCheckPointFile");
-   const std::string checkpointingFileName = checkpoint_params.getParameter< std::string >("checkpointingFileName");
-   const uint_t checkPointingFrequency  = checkpoint_params.getParameter< uint_t >("checkPointingFrequency");
-   const bool writeContinuousCheckPoints  = checkpoint_params.getParameter< bool >("writeContinuousCheckPoints");
+   Config::BlockHandle checkpoint_params   = cfgFile->getBlock("checkpoint_params");
+   const bool restart_simulation = checkpoint_params.getParameter< bool >("restart_simulation");
+   const bool startFluidFromCheckPointFile = checkpoint_params.getParameter< bool >("startFluidFromCheckPointFile");
+   const bool startTemperatureFromCheckPointFile =
+      checkpoint_params.getParameter< bool >("startTemperatureFromCheckPointFile");
+   const bool startParticlesFromCheckPointFile =
+      checkpoint_params.getParameter< bool >("startParticlesFromCheckPointFile");
+   std::string checkpointingFileName = checkpoint_params.getParameter< std::string >("checkpointingFileName");
+   checkpointingFileName = "checkPointFiles/" + checkpointingFileName;
+   uint_t checkPointingFrequency     = checkpoint_params.getParameter< uint_t >("checkPointingFrequency");
+   const bool writeContinuousCheckPoints   = checkpoint_params.getParameter< bool >("writeContinuousCheckPoints");
 
+   if (restart_simulation==true && startFluidFromCheckPointFile==false)
+   {
+      WALBERLA_ABORT("startFluidFromCheckPointFile must be set to true when restart_simulation is set to true");
+   }
 
    Config::BlockHandle statisticsParams    = cfgFile->getBlock("statistics_params");
    const real_t convergenceTolerance       = statisticsParams.getParameter< real_t >("convergenceTolerance");
@@ -636,19 +655,33 @@ int main(int argc, char** argv)
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
    const real_t omegaT_s = lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
 #endif
-   const uint_t numTimeSteps              =  uint_c(simulationTimeFactor *turnOverPeriod);
-   const uint_t samplingInterval          =  uint_c(0.04 * turnOverPeriod);
-   uint_t startTimeStep                   =  uint_t(0);
-   real_t currentPidForce                 = 0_r;
+   const uint_t numTimeSteps     = uint_c(simulationTimeFactor * turnOverPeriod);
+   const uint_t samplingInterval = uint_c(0.04 * turnOverPeriod);
+   checkPointingFrequency        = checkPointingFrequency * samplingInterval;
+   uint_t startTimeStep          = uint_t(0);
+   real_t currentPidForce        = 0_r;
+   uint_t statsAveragingCounter  = 0;
 
-   if (startFromCheckPointFile)
+   std::vector<real_t> timeAveragedFluidProfile_velocity(domainSize[codegen::wall_axis]*codegen::vectorSize);
+   std::vector<real_t> timeAveragedFluidSquaredProfile_velocity(domainSize[codegen::wall_axis]*codegen::tensorSize);
+   std::vector<real_t> timeAveragedParticleProfile_velocity(domainSize[codegen::wall_axis]*codegen::vectorSize);
+   std::vector<real_t> timeAveragedParticleSquaredProfile_velocity(domainSize[codegen::wall_axis]*codegen::tensorSize);
+
+#ifdef run_with_temperature
+   std::vector<real_t> timeAveragedFluidProfile_temperature(domainSize[codegen::wall_axis]*codegen::vectorSize);
+   std::vector<real_t> timeAveragedFluidSquaredProfile_temperature(domainSize[codegen::wall_axis]*codegen::tensorSize);
+   std::vector<real_t> timeAveragedParticleProfile_temperature(domainSize[codegen::wall_axis]*codegen::vectorSize);
+   std::vector<real_t> timeAveragedParticleSquaredProfile_temperature(domainSize[codegen::wall_axis]*codegen::tensorSize);
+#endif
+
+   if (restart_simulation)
    {
       WALBERLA_ROOT_SECTION()
       {
          std::ifstream checkpointConfigIS(checkpointingFileName + "_config.txt");
          if (!checkpointConfigIS.is_open())
          {
-            WALBERLA_LOG_WARNING_ON_ROOT("Could not open checkpoint config file " << checkpointingFileName + "_config.txt");
+            WALBERLA_LOG_WARNING_ON_ROOT("Simulation restart is requested but could not open checkpoint file " << checkpointingFileName + "_config.txt");
          }
          else
          {
@@ -658,7 +691,20 @@ int main(int argc, char** argv)
       }
       walberla::mpi::broadcastObject(startTimeStep);
       walberla::mpi::broadcastObject(currentPidForce);
-      WALBERLA_LOG_INFO_ON_ROOT("Restarting simulation from checkpoint at time step " << startTimeStep << " with PID force " << currentPidForce);
+      WALBERLA_LOG_INFO_ON_ROOT("Restarting simulation from checkpoint at time step " << startTimeStep);
+   }
+
+   if (restart_simulation)
+   {
+      readCheckpointStatistics(
+         domainSize, checkpointingFileName, timeAveragedFluidProfile_velocity,
+         timeAveragedFluidSquaredProfile_velocity, timeAveragedParticleProfile_velocity,
+         timeAveragedParticleSquaredProfile_velocity, statsAveragingCounter
+#ifdef run_with_temperature
+         , timeAveragedFluidProfile_temperature, timeAveragedFluidSquaredProfile_temperature,
+         timeAveragedParticleProfile_temperature, timeAveragedParticleSquaredProfile_temperature
+#endif
+      );
    }
 
 
@@ -723,7 +769,7 @@ int main(int argc, char** argv)
    ///////////////////////////
 
    shared_ptr< StructuredBlockForest > blocks;
-   if (startFromCheckPointFile == false)
+   if (startFluidFromCheckPointFile == false)
    {
       blocks = blockforest::createUniformBlockGrid(numXBlocks, numYBlocks, numZBlocks, cellsPerBlockPerDirection[0],
                                                    cellsPerBlockPerDirection[1], cellsPerBlockPerDirection[2],
@@ -757,7 +803,7 @@ int main(int argc, char** argv)
    auto accessor            = walberla::make_shared< ParticleAccessor_T >(ps, ss);
    BlockDataID particleStorageID;
 
-   if (startFromCheckPointFile && std::filesystem::exists(checkpointingFileName + "_mesa.txt"))
+   if (useParticles && startParticlesFromCheckPointFile && std::filesystem::exists(checkpointingFileName + "_mesa.txt"))
    {
       WALBERLA_LOG_INFO_ON_ROOT("Initializing " << numParticles <<  " particles from checkpointing file!");
       particleStorageID =
@@ -778,7 +824,7 @@ int main(int argc, char** argv)
    auto sphereShape         = ss->create< mesa_pd::data::Sphere >(particleDiameter * real_t(0.5));
    ss->shapes[sphereShape]->updateMassAndInertia(densityParticle);
 
-   if (useParticles && !std::filesystem::exists(checkpointingFileName + "_mesa.txt") && !startFromCheckPointFile)
+   if (useParticles && !startParticlesFromCheckPointFile)
    {
       WALBERLA_LOG_INFO_ON_ROOT("Creating " << numParticles << "particles in Random positions as no Checkpoint file exists for particles");
       // prevent particles from interfering with inflow and outflow by putting the bounding planes slightly in front
@@ -845,7 +891,7 @@ int main(int argc, char** argv)
 
 
    BlockDataID pdfFieldFluidID;
-   if (startFromCheckPointFile == true)
+   if (startFluidFromCheckPointFile == true)
    {
       auto dataHandling = make_shared< field::DefaultBlockDataHandling< PdfField_fluid_T > >(
          blocks, uint_t(1), real_c(std::nan("")), field::fzyx);
@@ -871,7 +917,7 @@ int main(int argc, char** argv)
    ///////////////////////////////////////////////
 #ifdef run_with_temperature
    BlockDataID pdfFieldTemperatureID;
-   if (startFromCheckPointFile == true)
+   if (startTemperatureFromCheckPointFile == true)
    {
       auto dataHandlingTemperature = make_shared< field::DefaultBlockDataHandling< PdfField_temperature_T > >(
          blocks, uint_t(1), real_c(std::nan("")), field::fzyx);
@@ -1135,12 +1181,12 @@ int main(int argc, char** argv)
 #ifdef run_with_temperature
       settemperatureparticles(&(*blockIt));
 #endif
-      if (!startFromCheckPointFile)
+      if (!startFluidFromCheckPointFile)
       {
          pdfSetterFluid(&(*blockIt));
       }
 #ifdef run_with_temperature
-      if (!startFromCheckPointFile)
+      if (!startTemperatureFromCheckPointFile)
       {
          pdfSetterTemperature(&(*blockIt));
       }
@@ -1165,7 +1211,7 @@ int main(int argc, char** argv)
       }
    };
 
-   if (startFromCheckPointFile)
+   if (startFluidFromCheckPointFile)
    {
       getFluidMacroFields();
 #ifdef run_with_temperature
@@ -1358,8 +1404,7 @@ int main(int argc, char** argv)
    // set the outputfrequency to turnOverPeriod as it checks for convergence and also prints it to the wall_statistics.txt file every turnOverPeriod
    WallStatistics wall_statistics(domainSize[codegen::wall_axis], 1, kinematicViscosityLB, uint_c(samplingInterval));
 
-
-
+   // TODO later on evaluate these
    //////////////////////////////////////////////////////////////////////////////////////////////
    /// for obtaining plane velocity and temperature averages required to compute heat budgets ///
    //////////////////////////////////////////////////////////////////////////////////////////////
@@ -1371,19 +1416,45 @@ int main(int argc, char** argv)
    ////////////////////////////////////////
 
 #ifdef run_with_temperature
-   HeatFluxBudgets heatFluxBudgets(uint_c(domainSize[codegen::wall_axis]),1, thermalDiffusivityFluid_LB, thermalDiffusivityParticle_LB,heatFluxAveragingtimeBlock,meanPlaneAverager);
+   HeatFluxBudgets heatFluxBudgets(uint_c(domainSize[codegen::wall_axis]), 1, thermalDiffusivityFluid_LB,
+                                   thermalDiffusivityParticle_LB, heatFluxAveragingtimeBlock, meanPlaneAverager);
 #endif
+
+   // TODO later on evaluate these
 
    //////////////////////////////////////////////////
    /// for computing particle and fluid statistics //
    /////////////////////////////////////////////////
 
-   PlaneAveragedProfiles<VectorField_T> planeAveragedProfiles_velocity(blocks,velFieldFluidID,
-                       codegen::wall_axis,domainSize);
+   std::unique_ptr< PlaneAveragedProfiles< VectorField_T > > planeAveragedProfiles_velocity;
+
 #ifdef run_with_temperature
-   PlaneAveragedProfiles<ScalarField_T> planeAveragedProfiles_temperature(blocks,temperatureFieldID,
-                       codegen::wall_axis,domainSize);
+   std::unique_ptr< PlaneAveragedProfiles< ScalarField_T > > planeAveragedProfiles_temperature;
 #endif
+   if (restart_simulation)
+   {
+      planeAveragedProfiles_velocity = std::make_unique< PlaneAveragedProfiles< VectorField_T > >(
+         blocks, velFieldFluidID, codegen::wall_axis, domainSize, true, statsAveragingCounter, timeAveragedFluidProfile_velocity,
+         timeAveragedFluidSquaredProfile_velocity, timeAveragedParticleProfile_velocity, timeAveragedParticleSquaredProfile_velocity);
+
+#ifdef run_with_temperature
+      planeAveragedProfiles_temperature = std::make_unique< PlaneAveragedProfiles< ScalarField_T > >(
+         blocks, temperatureFieldID, codegen::wall_axis, domainSize, true, statsAveragingCounter,
+         timeAveragedFluidProfile_temperature, timeAveragedFluidSquaredProfile_temperature,
+         timeAveragedParticleProfile_temperature, timeAveragedParticleSquaredProfile_temperature);
+#endif
+   }
+
+   else
+   {
+      planeAveragedProfiles_velocity = std::make_unique< PlaneAveragedProfiles< VectorField_T > >(
+         blocks, velFieldFluidID, codegen::wall_axis, domainSize);
+
+#ifdef run_with_temperature
+      planeAveragedProfiles_temperature = std::make_unique< PlaneAveragedProfiles< ScalarField_T > >(
+         blocks, temperatureFieldID, codegen::wall_axis, domainSize);
+#endif
+   }
 
 
 
@@ -1400,60 +1471,76 @@ int main(int argc, char** argv)
          }
          // spatial and temporal averaging of the particle and fluid statistics
 #ifdef run_with_temperature
-         planeAveragedProfiles_velocity.computeFluidParticleAveragedVectors(
+         planeAveragedProfiles_velocity->computeFluidParticleAveragedVectors(
+            particleAndVolumeFractionSoA_temperature.BFieldID);
+         planeAveragedProfiles_temperature->computeFluidParticleAveragedVectors(
             particleAndVolumeFractionSoA_temperature.BFieldID);
 #else
-         planeAveragedProfiles_velocity.computeFluidParticleAveragedVectors(
+         planeAveragedProfiles_velocity->computeFluidParticleAveragedVectors(
             particleAndVolumeFractionSoA_fluid.BFieldID);
 #endif
 
       }
 
+      writeCheckpointStatistics(
+         domainSize, timeloop.getCurrentTimeStep(), startTimeStep, checkPointingFrequency, checkpointingFileName,nTurnovers,turnOverPeriod,
+         planeAveragedProfiles_velocity
+#ifdef run_with_temperature
+         , planeAveragedProfiles_temperature
+#endif
+      );
+
+
       if (timeloop.getCurrentTimeStep() ==
           numTimeSteps - uint_c(turnOverPeriod)) // presently does it only once and not for multiple timesteps
       {
          WALBERLA_LOG_INFO_ON_ROOT("at time Step "<< timeloop.getCurrentTimeStep() << " writing the phase statistics to file: output/phase_statistics.txt  ")
-         // computation of fluid and particle avg, rms, reynolds stresses quantities
-         planeAveragedProfiles_velocity.computeFluidParticleRMS();
+
+#ifdef run_with_temperature
+         // computation of fluid and particle velocity avg, rms, reynolds stresses quantities
+         planeAveragedProfiles_velocity->computeFluidParticleRMS();
+
+         // computation of fluid and particle temperature avg, rms
+         planeAveragedProfiles_temperature->computeFluidParticleRMS();
 
          // compute wall statistics one final time after temporal averaging and before writing to the output files
-#ifdef run_with_temperature
          wall_statistics(blocks, meanTemperatureFieldID, meanVelFieldID, timeloop.getCurrentTimeStep(), Tcold, Thot,
                          convergenceTolerance);
 #else
+         // computation of fluid and particle velocity avg, rms, reynolds stresses quantities
+         planeAveragedProfiles_velocity->computeFluidParticleRMS();
+
+         // compute wall statistics one final time after temporal averaging and before writing to the output files
          wall_statistics(blocks, meanVelFieldID, timeloop.getCurrentTimeStep(), convergenceTolerance);
 #endif
 
          WALBERLA_ROOT_SECTION()
          {
+            std::ofstream wallstatsVelocityOS;
+            wallstatsVelocityOS << std::fixed << std::setprecision(6);
+            wallstatsVelocityOS.open("output/wallstatsConverged_velocity.txt", std::ios::out);
 
+            real_t wallshearStress     = kinematicViscosityLB * wall_statistics.getWallShearStress();
+            real_t frictionVelocity    = std::sqrt(wallshearStress);
+            wallstatsVelocityOS << "wallShearStress" << "  frictionVelocity" << "\n";
+            wallstatsVelocityOS << wallshearStress << "  " << "  " << frictionVelocity << "\n";
 
-
-            // getWallShearStress() here is just dU/dy //
-            real_t wallshearStress  = kinematicViscosityLB * wall_statistics.getWallShearStress();
-            real_t nusseltNumberBottom  = wall_statistics.getNusseltNumber();
-            real_t frictionVelocity = std::sqrt(wallshearStress);
-            std::ofstream wallstatsOS;
-            wallstatsOS << std::fixed << std::setprecision(6);
-            wallstatsOS.open("output/wallstatsfinal.txt", std::ios::out);
-            wallstatsOS << "wallShearStress" << "  frictionVelocity"  <<  "  nusseltNumberBottom \n";
-            wallstatsOS << wallshearStress << "  " << "  " << frictionVelocity << "  " <<  nusseltNumberBottom << "\n";
 
             std::ofstream velocityOS;
             velocityOS << std::fixed << std::setprecision(6);
-            velocityOS.open("output/phase_statistics.txt", std::ios::out);
-            auto printRow = [&](auto&&... args) {
+            velocityOS.open("output/phase_statistics_velocity.txt", std::ios::out);
+            auto printRowVelocity = [&](auto&&... args) {
                ((velocityOS << std::setw(12) << args), ...);
                velocityOS << "\n";
             };
 
             // plotting everything in normalized wall units
-            printRow("y","y+", "Ux_f", "Uy_f", "Uz_f", "UU_f", "UV_f", "UW_f", "VU_f", "VV_f", "VW_f", "WU_f", "WV_f",
-                     "WW_f", "Ux_p", "Uy_p", "Uz_p", "UU_p", "UV_p", "UW_p", "VU_p", "VV_p", "VW_p", "WU_p", "WV_p",
-                     "WW_p");
+            printRowVelocity("y","y+", "Ux_f", "Uy_f", "Uz_f", "UU_f", "UV_f", "UW_f", "VU_f", "VV_f", "VW_f", "WU_f", "WV_f",
+                             "WW_f", "Ux_p", "Uy_p", "Uz_p", "UU_p", "UV_p", "UW_p", "VU_p", "VV_p", "VW_p", "WU_p", "WV_p",
+                             "WW_p");
             // at the wall
 
-            printRow(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+            printRowVelocity(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
             for (uint_t idx = 0; idx < domainSize[codegen::wall_axis]; ++idx)
             {
                // y and y+
@@ -1464,112 +1551,93 @@ int main(int argc, char** argv)
                for (uint_t i = 0; i < codegen::vectorSize; ++i)
                {
                   velocityOS << std::setw(12)
-                             << planeAveragedProfiles_velocity.getFluidAVGProfile()[idx * codegen::vectorSize + i]/(frictionVelocity);
+                             << planeAveragedProfiles_velocity->getFluidAVGProfile()[idx * codegen::vectorSize + i]/(frictionVelocity);
                }
 
                // fluid rms profiles
                for (uint_t i = 0; i < codegen::tensorSize; ++i)
                {
                   velocityOS << std::setw(12)
-                             << planeAveragedProfiles_velocity.getFluidRMSProfile()[idx * codegen::tensorSize + i]/(frictionVelocity*frictionVelocity);
+                             << planeAveragedProfiles_velocity->getFluidRMSProfile()[idx * codegen::tensorSize + i]/(frictionVelocity*frictionVelocity);
                }
 
                // particle averaged velocities
                for (uint_t i = 0; i < codegen::vectorSize; ++i)
                {
                   velocityOS << std::setw(12)
-                             << planeAveragedProfiles_velocity.getParticleAVGProfile()[idx * codegen::vectorSize + i]/(frictionVelocity);
+                             << planeAveragedProfiles_velocity->getParticleAVGProfile()[idx * codegen::vectorSize + i]/(frictionVelocity);
                }
 
                // particle rms profiles
                for (uint_t i = 0; i < codegen::tensorSize; ++i)
                {
                   velocityOS << std::setw(12)
-                             << planeAveragedProfiles_velocity.getParticleRMSProfile()[idx * codegen::tensorSize + i]/(frictionVelocity*frictionVelocity);
+                             << planeAveragedProfiles_velocity->getParticleRMSProfile()[idx * codegen::tensorSize + i]/(frictionVelocity*frictionVelocity);
                }
 
                velocityOS << "\n";
             }
             velocityOS.flush();
             velocityOS.close();
-         }
-      }
-   };
 
 #ifdef run_with_temperature
-   // TODO refine the postProcessingLamdaswithTemperature
-   auto postProcessingLamdaswithTemperature = [&]() {
+
+            std::ofstream wallstatsTemperatureOS;
+            wallstatsTemperatureOS << std::fixed << std::setprecision(6);
+            wallstatsTemperatureOS.open("output/wallstatsConverged_temperature.txt", std::ios::out);
 
 
-      if (timeloop.getCurrentTimeStep() >= nTurnovers*turnOverPeriod && wall_statistics.getWallStatisticsConvergence() ==true )
-      {
-         if (meanPlaneAverager.getTimeCounter() < 2 * planeAveragingtimeBlock)
-         {
-            if (meanPlaneAverager.getTimeCounter() % 1000 == 0) // just for debugging
+            real_t nusseltNumberBottom = wall_statistics.getNusseltNumber();
+            wallstatsTemperatureOS  << "  nusseltNumberBottom \n";
+            wallstatsTemperatureOS <<  nusseltNumberBottom << "\n";
+
+
+            std::ofstream temperatureOS;
+            temperatureOS << std::fixed << std::setprecision(6);
+            temperatureOS.open("output/phase_statistics_temperature.txt", std::ios::out);
+            auto printRowTemperature = [&](auto&&... args) {
+               ((temperatureOS << std::setw(12) << args), ...);
+               temperatureOS << "\n";
+            };
+
+            // plotting everything in normalized wall units
+            printRowTemperature("y","y+", "T_f", "T_p", "TT_f", "TT_p");
+
+            // at the wall
+            printRowTemperature(0,0,Thot,Thot,0,0);
+
+            for (uint_t idx = 0; idx < domainSize[codegen::wall_axis]; ++idx)
             {
-               WALBERLA_LOG_INFO_ON_ROOT("still in  the pre part  " << meanPlaneAverager.getTimeCounter())
-            }
-            meanPlaneAverager(blocks, velFieldFluidID, temperatureFieldID,
-                              particleAndVolumeFractionSoA_temperature.BFieldID);
-         }
-         if (meanPlaneAverager.getTimeCounter() == 2 * planeAveragingtimeBlock)
-         {
-            if (meanPlaneAverager.getTimeCounter() % 10000 == 0)
-            {
-               WALBERLA_LOG_INFO_ON_ROOT("entered the averagin part")
-            }
-            heatFluxBudgets(blocks, velFieldFluidID, temperatureFieldID,
-                            particleAndVolumeFractionSoA_temperature.BFieldID);
+               // y and y+
+               temperatureOS << std::setw(12) << real_c(idx) + 0.5_r ;
+               temperatureOS << std::setw(12) << ((real_c(idx) + 0.5_r)*frictionVelocity)/kinematicViscosityLB ;
 
-            planeAveragedProfiles_velocity.computeFluidParticleAveragedVectors(
-               particleAndVolumeFractionSoA_temperature.BFieldID);
-            planeAveragedProfiles_temperature.computeFluidParticleAveragedVectors(
-               particleAndVolumeFractionSoA_temperature.BFieldID);
-
-            if (heatFluxBudgets.getTimeSampleCount() == real_c(heatFluxAveragingtimeBlock))
-            {
-               // averaging is done so write out the different quantities to text files here:
-
-               planeAveragedProfiles_velocity.computeFluidParticleRMS(); // compute the rms quantities
-               planeAveragedProfiles_temperature.computeFluidParticleRMS();
-               WALBERLA_ROOT_SECTION()
+               // fluid averaged temperatures
+               for (uint_t i = 0; i < codegen::scalarSize; ++i)
                {
-                  std::ofstream velocityOS;
-                  velocityOS.open("output/statistics.txt", std::ios::out);
-                  velocityOS << "height\t Uf_x\t Uf_y\t Uf_z\t Up_x\t Up_y\t Up_z\t Urms_fx\t Urms_fy\t Urms_fz\t "
-                                "Urms_px\t Urms_py\t Urms_pz\t Tf\t Tp\t Trms_f\t Trms_p\t  \n";
-                  for (uint_t idx = 0; idx < domainSize[codegen::wall_axis]; ++idx)
-                  {
-                     velocityOS << idx << "\t";
-                     for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
-                     {
-                        velocityOS
-                           << planeAveragedProfiles_velocity.getFluidAVGProfile()[idx * VectorField_T::F_SIZE + i]
-                           << "\t";
-                        velocityOS
-                           << planeAveragedProfiles_velocity.getParticleAVGProfile()[idx * VectorField_T::F_SIZE + i]
-                           << "\t";
-                        velocityOS
-                           << planeAveragedProfiles_velocity.getParticleRMSProfile()[idx * VectorField_T::F_SIZE + i]
-                           << "\t";
-                        velocityOS
-                           << planeAveragedProfiles_velocity.getParticleRMSProfile()[idx * VectorField_T::F_SIZE + i]
-                           << "\t";
-                     }
-
-                     velocityOS << planeAveragedProfiles_temperature.getFluidAVGProfile()[idx] << "\t";
-                     velocityOS << planeAveragedProfiles_temperature.getParticleAVGProfile()[idx] << "\t";
-                     velocityOS << planeAveragedProfiles_temperature.getParticleRMSProfile()[idx] << "\t";
-                     velocityOS << planeAveragedProfiles_temperature.getParticleRMSProfile()[idx] << "\t";
-
-                     velocityOS << "\n";
-                  }
+                  temperatureOS << std::setw(12)
+                             << planeAveragedProfiles_temperature->getFluidAVGProfile()[idx * codegen::scalarSize + i];
+                  temperatureOS << std::setw(12)
+                            << planeAveragedProfiles_temperature->getFluidRMSProfile()[idx * codegen::scalarSize + i];
+                  temperatureOS << std::setw(12)
+                             << planeAveragedProfiles_temperature->getParticleAVGProfile()[idx * codegen::scalarSize + i];
+                  temperatureOS << std::setw(12)
+                             << planeAveragedProfiles_temperature->getParticleRMSProfile()[idx * codegen::scalarSize + i];
                }
+
+               temperatureOS << "\n";
             }
+            temperatureOS.flush();
+            temperatureOS.close();
+
+#endif
+
          }
       }
    };
-#endif
+
+
+   // welford fields are only updated up until wallstatistics are converged and after (nTurnovers * turnOverPeriod), not in between. Hence even checkpointing is done in these intervals only
 
    auto welfordPhasesSweepLambda =
       std::function< void(IBlock*) >([&](IBlock* block) {
@@ -1578,9 +1646,25 @@ int main(int argc, char** argv)
                welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
                welfordVelocitySweep(block);
 
+               if (checkPointingFrequency > uint_t(0) &&
+                   (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
+                   timeloop.getCurrentTimeStep() != startTimeStep)
+               {
+                  blocks->saveBlockData(checkpointingFileName + "_welfordVelocity_tmp.txt", meanVelFieldID);
+                  WALBERLA_ROOT_SECTION(){renameFile(checkpointingFileName + "_welfordVelocity_tmp.txt", checkpointingFileName + "_welfordVelocity.txt");}
+               }
+
 #ifdef run_with_temperature
                welfordTemperatureSweep.setCounter(welfordTemperatureSweep.getCounter() + real_c(1.0));
                welfordTemperatureSweep(block);
+
+               if (checkPointingFrequency > uint_t(0) &&
+                   (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
+                   timeloop.getCurrentTimeStep() != startTimeStep)
+               {
+                  blocks->saveBlockData(checkpointingFileName + "_welfordTemperature_tmp.txt", meanTemperatureFieldID);
+                  WALBERLA_ROOT_SECTION(){renameFile(checkpointingFileName + "_welfordTemperature_tmp.txt", checkpointingFileName + "_welfordTemperature.txt");}
+               }
 #endif
             }
 
@@ -1589,11 +1673,32 @@ int main(int argc, char** argv)
          {
             welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
             welfordVelocitySweep(block);
+            if (checkPointingFrequency > uint_t(0) &&
+                   (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
+                   timeloop.getCurrentTimeStep() != startTimeStep)
+            {
+               blocks->saveBlockData(checkpointingFileName + "_welfordVelocity_tmp.txt", meanVelFieldID);
+            }
+
 #ifdef run_with_temperature
 
             welfordTemperatureSweep.setCounter(welfordTemperatureSweep.getCounter() + real_c(1.0));
             welfordTemperatureSweep(block);
+
+            if (checkPointingFrequency > uint_t(0) &&
+                   (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
+                   timeloop.getCurrentTimeStep() != startTimeStep)
+            {
+               blocks->saveBlockData(checkpointingFileName + "_welfordTemperature_tmp.txt", meanTemperatureFieldID);
+            }
 #endif
+            WALBERLA_ROOT_SECTION()
+            {
+               renameFile(checkpointingFileName + "_welfordVelocity_tmp.txt",
+                          checkpointingFileName + "_welfordVelocity.txt");
+               //renameFile(checkpointingFileName + "_welfordTemperature_tmp.txt",
+                 //         checkpointingFileName + "_welfordTemperature.txt");
+            }
          }
 
             if (timeloop.getCurrentTimeStep() == numTimeSteps - uint_c(turnOverPeriod))
@@ -1729,15 +1834,7 @@ int main(int argc, char** argv)
 
    // compute the force before the psm fluid sweep.
 
-   /*timeloop.add() << BeforeFunction([&]() { forceCalculator.calculateBulkVelocity(); }, "bulk velocity calculation")
-                  << BeforeFunction(
-                        [&]() {
 
-                           const auto newForce = forceCalculator.calculateDrivingForce();
-                           setNewForce(newForce);
-                        },
-                        "new force setter")
-                  << Sweep([](IBlock*) {}, "new force setter");*/
 
   ForceAdjusterPID < VectorField_T, BField_T > forceAdjusterPID(blocks,velFieldFluidID,particleAndVolumeFractionSoA_fluid.BFieldID, targetMeanVelocityMagnitude, currentPidForce,
                     proportionalGain,  derivativeGain,  integralGain,  maxRamp,
