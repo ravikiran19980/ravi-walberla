@@ -130,6 +130,7 @@ using ScalarField_T = GhostLayerField< real_t, 1 >;
 using VectorField_T = GhostLayerField< real_t, Stencil_Fluid_T::D >;
 using TensorField_T = GhostLayerField< real_t, Stencil_Fluid_T::D*Stencil_Fluid_T::D >;
 using WelfordSweepVelocity_T = WelfordVelocity;
+using TensorGPUField_T = walberla::gpu::GPUField< real_t >;
 #ifdef run_with_temperature
 using WelfordSweepTemperature_T = WelfordTemperature;
 #endif
@@ -1610,7 +1611,7 @@ int main(int argc, char** argv)
 
                // compute viscous stresses here dU_mean/dy ny using the "meanVelFieldID" vector from above.
                auto viscousStress = computeViscousStress<VectorField_T>( blocks,meanVelFieldID ,domainSize);
-
+               wall_statistics(blocks, meanVelFieldID, timeloop.getCurrentTimeStep(), convergenceTolerance);
                // here a function to reduce welford fields to vectors is needed
                WALBERLA_ROOT_SECTION()
                {
@@ -1690,9 +1691,9 @@ int main(int argc, char** argv)
 
 
    timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")
-                  << Sweep(deviceSyncWrapper(deviceSyncWrapper(noSlip_fluid_bc.getSweep())), "Boundary Handling (No slip fluid)");
+                  << Sweep(deviceSyncWrapper((noSlip_fluid_bc.getSweep())), "Boundary Handling (No slip fluid)");
 
-   timeloop.add() << Sweep(deviceSyncWrapper(deviceSyncWrapper(freeSlip_fluid_bc.getSweep())),
+   timeloop.add() << Sweep(deviceSyncWrapper((freeSlip_fluid_bc.getSweep())),
                            "Boundary Handling (Free slip fluid)");
 
    // add the temperature to the time loop
@@ -1765,8 +1766,10 @@ int main(int argc, char** argv)
                                     block.template getData< ScalarField_T >(sosTemperatureFieldID);
                                  sosTemperatureField->setWithGhostLayer(0.0);
 #endif
+                                 gpu::fieldCpy< TensorField_T, TensorGPUField_T >(blocks, sosVelFieldID, sosVelFieldGPUID);
                                  auto* sosVelocityField = block.template getData< TensorField_T >(sosVelFieldID);
                                  sosVelocityField->setWithGhostLayer(0.0);
+                                 gpu::fieldCpy<TensorGPUField_T,TensorField_T >(blocks, sosVelFieldGPUID,sosVelFieldID);
                               }
                            }
                            //welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));

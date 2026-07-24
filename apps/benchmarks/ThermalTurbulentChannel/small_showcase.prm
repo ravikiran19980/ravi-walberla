@@ -23,9 +23,9 @@ NumericalSetup
 {
 
     // product of number of blocks should be equal to number of used processes
-    numXBlocks 2;
-    numYBlocks 2;
-    numZBlocks 2;
+    numXBlocks 1;
+    numYBlocks 1;
+    numZBlocks 1;
 
     useLubricationForces true;
     useParticles false;
@@ -35,7 +35,7 @@ NumericalSetup
     linkedCellWidthRation 1.01;
     particleBarriers true;
     generationDomainFraction <0.95,0.95,0.95>;
-    volfraction 0.2;                  // this must be 0 if useParticles is false
+    volfraction 0;                  // this must be 0 if useParticles is false
 
 }
 
@@ -45,7 +45,7 @@ TurbulenceSetup
     target_friction_Reynolds    180;
     target_bulk_velocity        0.1;
     center_line_velocity        0.1;
-    nTurnovers                  1;
+    nTurnovers                  30;
 }
 
 TemperatureSetup
@@ -53,7 +53,7 @@ TemperatureSetup
     Thot 1;   // ThotSI = ThotLB   (concentration conversion from SI to LB)
     Tcold 0;
     Tref  0;
-    Tparticle 0.5;
+    Tparticle 0;
     PrandtlNumber 1;
     diffusivityRatio  1;
     Gr 1000;
@@ -61,11 +61,11 @@ TemperatureSetup
 
 vtk_params
 {
-    infoSpacing 200; // in s
+    infoSpacing 1000; // in s
     vtkSpacingParticles 0; // in s
-    vtkSpacingFluid 1000; // ins
+    vtkSpacingFluid 0; // ins
     vtkFolder vtk_out;
-    writeSlice false;
+    writeSlice true;
 
 
 
@@ -74,32 +74,18 @@ vtk_params
 checkpoint_params
 {
     startFromCheckPointFile false;
-    checkpointingFileName testCheckpoint;
-    checkPointingFrequency 1000;
-    writeContinuousCheckPoints false;
+    checkpointingFileName testCheckpoint_gpu;
+    checkPointingFrequency 250000;
+    writeContinuousCheckPoints true;
 }
 
 statistics_params{
-    convergenceTolerance 10;                      // percentage tolerance of wall shear and nusselt numbers
-    outputFrequency 10;                        // how often you want to monitor convergence and output the wall statistics
+    convergenceTolerance 0.5;                      // percentage tolerance of wall shear and nusselt numbers
     planeAveragingtimeBlock 10000;               // required only for heat flux budgets
     heatFluxAveragingtimeBlock 600000;           // required only for heat flux budgets
-
 }
 
 performance_params{
-    performanceLogFrequency 1000000000;
+    performanceLogFrequency 2000000000;
     sendDirectlyFromGPU false;
 }
-
-PIDParameters
-{
-    targetMeanVelocityMagnitude 0.086;
-    proportionalGain            2e-4;
-    derivativeGain              1e-6;
-    integralGain                2e-4;
-    maxRamp                     1e-4;
-    minActuatingVariable        0;
-    maxActuatingVariable        1e-3;
-}
-

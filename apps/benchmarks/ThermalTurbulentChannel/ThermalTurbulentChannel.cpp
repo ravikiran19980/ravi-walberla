@@ -1645,7 +1645,7 @@ int main(int argc, char** argv)
                         [&]() {
 
                            const auto newForce = forceCalculator.calculateDrivingForce();
-                           setNewForce(newForce);
+                           setNewForce(initialForce);
                         },
                         "new force setter")
                   << Sweep([](IBlock*) {}, "new force setter");
