@@ -6,6 +6,7 @@
 #include <algorithm>
 #include "WelfordVelocity.h"
 #include "PIDController.h"
+#include "utilities/bulkVelocityReductionKernel.h"
 
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
 #include "gpu/Kernel.h"

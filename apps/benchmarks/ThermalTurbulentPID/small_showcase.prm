@@ -15,7 +15,7 @@ PhysicalSetup // all to be specified in SI/ref units
     dynamicFrictionCoefficient 0.15;
     coefficientOfRestitution 0.97;
     collisionTimeFactor 1.0;
-    simulationTimeFactor 10;   // total timesteps of simulation = simulationTimeFactor * turnOverPeriod
+    simulationTimeFactor 4;   // total timesteps of simulation = simulationTimeFactor * turnOverPeriod
 
 }
 
@@ -23,9 +23,10 @@ NumericalSetup
 {
 
     // product of number of blocks should be equal to number of used processes
-    numXBlocks 2;
-    numYBlocks 2;
-    numZBlocks 2;
+    numXBlocks 1;
+    numYBlocks 1;
+    numZBlocks 1;
+    gpuBlockSize   < 800, 1, 1>;
 
     useLubricationForces true;
     useParticles false;
@@ -35,7 +36,7 @@ NumericalSetup
     linkedCellWidthRation 1.01;
     particleBarriers true;
     generationDomainFraction <0.95,0.95,0.95>;
-    volfraction 0;                  // this must be 0 if useParticles is false
+    volfraction 0.1;                  // this must be 0 if useParticles is false
 
 }
 
@@ -63,7 +64,7 @@ vtk_params
 {
     infoSpacing 1000; // in s
     vtkSpacingParticles 0; // in s
-    vtkSpacingFluid 0; // ins
+    vtkSpacingFluid 1000; // ins
     vtkFolder vtk_out;
     writeSlice true;
 
@@ -75,10 +76,10 @@ checkpoint_params
 {
     restart_simulation false;
     startFluidFromCheckPointFile false;
-    startTemperatureFromCheckPointFile true;
+    startTemperatureFromCheckPointFile false;
     startParticlesFromCheckPointFile false;
     checkpointingFileName testCheckpoint_cpu;
-    checkPointingFrequency 1;                   // this is a factor that is multiplied with samplingInterval
+    checkPointingFrequency 10000;                   // this is a factor that is multiplied with samplingInterval
     writeContinuousCheckPoints false;
 }
 

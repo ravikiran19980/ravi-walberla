@@ -32,6 +32,7 @@ from pystencils_walberla import (
 from lbmpy_walberla import generate_boundary
 from lbmpy_walberla.additional_data_handler import DiffusionDirichletAdditionalDataHandler
 from pystencils.cache import clear_cache
+from pystencils.typing import TypedSymbol
 from thermalMethods import create_thermal_lb_method#,create_psm_thermal_collision_rule
 from lbmpy.maxwellian_equilibrium import get_weights
 from lbmpy.enums import Stencil, Method, CollisionSpace
@@ -55,6 +56,14 @@ constexpr uint_t tensorSize= 9;
 }};
 }};
 """
+
+
+sweep_block_size = (TypedSymbol("gpuBlockSize0", np.int32),
+                    TypedSymbol("gpuBlockSize1", np.int32),
+                    TypedSymbol("gpuBlockSize2", np.int32))
+
+gpu_indexing_params = {'block_size': sweep_block_size}
+
 
 def check_axis(flow_axis, wall_axis):
     assert flow_axis != wall_axis, "Axes must be distinct."
@@ -240,7 +249,7 @@ with CodeGeneration() as ctx:
         target = ps.Target.GPU
     else:
         target = ps.Target.CPU
-
+    max_threads = 256 if target == ps.Target.GPU else None
     node_collection_fluid = create_psm_update_rule(lbm_config=psm_fluid_config, lbm_optimisation=lbm_fluid_opt)
     collision_rule_temperature = create_lb_collision_rule(lb_method = method_temperature,lbm_config=psm_temperature_config,lbm_optimisation=lbm_temperature_opt)
     print("collision rule temp is  ", collision_rule_temperature)
@@ -268,6 +277,8 @@ with CodeGeneration() as ctx:
         node_collection_fluid,
         field_swaps=[(pdfs_fluid, pdfs_fluid_tmp)],
         target=target,
+        gpu_indexing_params=gpu_indexing_params,
+        #max_threads=max_threads,
     )
 
     generate_sweep(
@@ -276,6 +287,8 @@ with CodeGeneration() as ctx:
         create_lb_update_rule(collision_rule=collision_rule_temperature, lbm_config=psm_temperature_config, lbm_optimisation=lbm_temperature_opt),
         field_swaps=[(pdfs_temperature, pdfs_temperature_tmp)],
         target=target,
+        gpu_indexing_params=gpu_indexing_params,
+        #max_threads=max_threads,
     )
 
     generate_pack_info_from_kernel(
@@ -293,8 +306,22 @@ with CodeGeneration() as ctx:
         target=target,
     )
 
-    generate_sweep(ctx, "InitializeFluidDomain", pdfs_fluid_setter, target=target)
-    generate_sweep(ctx, "InitializeTemperatureDomain", pdfs_temperature_setter, target=target)
+    generate_sweep(
+        ctx,
+        "InitializeFluidDomain",
+        pdfs_fluid_setter,
+        target=target,
+        gpu_indexing_params=gpu_indexing_params,
+       # max_threads=max_threads,
+    )
+    generate_sweep(
+        ctx,
+        "InitializeTemperatureDomain",
+        pdfs_temperature_setter,
+        target=target,
+        gpu_indexing_params=gpu_indexing_params,
+        #max_threads=max_threads,
+    )
 
     # Fluid Boundary conditions
     generate_boundary(
@@ -393,11 +420,26 @@ with CodeGeneration() as ctx:
     welford_update_velocity_field = welford_assignments(field=velocity_field, mean_field=mean_velocity_field,
                                                   sum_of_squares_field=sos_velocity_field)
 
-    generate_sweep(ctx, "WelfordVelocity", welford_update_velocity_field, target=target)
+    generate_sweep(
+        ctx,
+        "WelfordVelocity",
+        welford_update_velocity_field,
+        target=target,
+        gpu_indexing_params=gpu_indexing_params,
+        #max_threads=max_threads,
+
+    )
 
     welford_update_temperature_field = welford_assignments(field=temperature_field, mean_field=mean_temperature_field,
                                                      sum_of_squares_field=sos_temperature_field)
-    generate_sweep(ctx, "WelfordTemperature", welford_update_temperature_field, target=target)
+    generate_sweep(
+        ctx,
+        "WelfordTemperature",
+        welford_update_temperature_field,
+        target=target,
+        gpu_indexing_params=gpu_indexing_params,
+        #max_threads=max_threads,
+    )
 
 
 
@@ -435,7 +477,35 @@ with CodeGeneration() as ctx:
         method_temperature, density=temperature_field, velocity=None,pdfs=pdfs_temperature.center_vector
     )
 
-    generate_sweep(ctx, "FluidMacroSetter", pdfs_fluid_setter,target=target)
-    generate_sweep(ctx, "FluidMacroGetter", pdfs_fluid_getter,target=target)
-    generate_sweep(ctx, "TemperatureMacroSetter", pdfs_temperature_setter,target=target)
-    generate_sweep(ctx, "TemperatureMacroGetter", pdfs_temperature_getter,target=target)
+    generate_sweep(
+        ctx,
+        "FluidMacroSetter",
+        pdfs_fluid_setter,
+        target=target,
+        gpu_indexing_params=gpu_indexing_params,
+        #max_threads=max_threads,
+    )
+    generate_sweep(
+        ctx,
+        "FluidMacroGetter",
+        pdfs_fluid_getter,
+        target=target,
+        gpu_indexing_params=gpu_indexing_params,
+        #max_threads=max_threads,
+    )
+    generate_sweep(
+        ctx,
+        "TemperatureMacroSetter",
+        pdfs_temperature_setter,
+        target=target,
+        gpu_indexing_params=gpu_indexing_params,
+        #max_threads=max_threads,
+    )
+    generate_sweep(
+        ctx,
+        "TemperatureMacroGetter",
+        pdfs_temperature_getter,
+        target=target,
+        gpu_indexing_params=gpu_indexing_params,
+        #max_threads=max_threads,
+    )

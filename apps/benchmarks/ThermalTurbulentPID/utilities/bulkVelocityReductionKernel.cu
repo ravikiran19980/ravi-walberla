@@ -18,64 +18,65 @@
 //
 //======================================================================================================================
 
-#include "core/DataTypes.h"
+#include "core/logging/Logging.h"
+
 #include "gpu/GPUWrapper.h"
+
+#include "bulkVelocityReductionKernel.h"
 
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
 
 namespace walberla
 {
 
-#define BLOCK_SIZE 256
-
-__global__ void bulkVelocityReductionKernel(
-    gpu::FieldAccessor< real_t > meanVelocity,
-    gpu::FieldAccessor< real_t > maskField,
-    real_t* globalVelocitySum,
-    real_t* globalWeightSum,
-    int N)
+__global__ void bulkVelocityReductionKernel(real_t * __restrict__ _data_velocity_field,real_t * __restrict__ _data_fraction_field,real_t* globalVelocitySum,
+                                            real_t* globalWeightSum, int64_t const _size_x, int64_t const _size_y,
+                                            int64_t const _size_z,int64_t _stride_x,int64_t _stride_y,int64_t _stride_z,int64_t _stride_f,
+                                            size_t threadsPerBlock)
 {
-   __shared__ real_t sVelSum[BLOCK_SIZE];
-   __shared__ real_t sWeightSum[BLOCK_SIZE];
+   extern __shared__ real_t sharedMem[];
+   real_t * VelSum = sharedMem;
+   real_t * WeightSum = sharedMem + threadsPerBlock;
 
-   const uint3 blockIdx_uint3  = make_uint3(blockIdx.x, blockIdx.y, blockIdx.z);
-   const uint3 threadIdx_uint3 = make_uint3(threadIdx.x, threadIdx.y, threadIdx.z);
+   const unsigned int tid = threadIdx.z * (blockDim.y * blockDim.x) + threadIdx.y * blockDim.x + threadIdx.x;
+   const unsigned int bid = blockIdx.z *  (gridDim.y  * gridDim.x)  + blockIdx.y  * gridDim.x  + blockIdx.x;
+   const unsigned int n   = blockDim.x * blockDim.y * blockDim.z;
 
-   meanVelocity.set(blockIdx_uint3, threadIdx_uint3);
-   maskField.set(blockIdx_uint3, threadIdx_uint3);
+   const int64_t x = blockIdx.x * blockDim.x + threadIdx.x;
+   const int64_t y = blockIdx.y * blockDim.y + threadIdx.y;
+   const int64_t z = blockIdx.z * blockDim.z + threadIdx.z;
 
-   real_t localVel = 0_r;
+   real_t localVel    = 0_r;
    real_t localWeight = 0_r;
 
-   if (idx < N)
-   {
-      real_t B = maskField.get();
-      real_t fluidWeight = 1_r - B;
-      if (fluidWeight > 0_r)
+   if (x < _size_x && y < _size_y && z < _size_z) {
+      localWeight =  _data_fraction_field[ x * _stride_x + y * _stride_y + z * _stride_z ];
+
+      if ( (1 - localWeight) > 0_r)
       {
-         localVel = meanVelocity.get(0) * fluidWeight;
-         localWeight = fluidWeight;
+         localVel   = _data_velocity_field[ x * _stride_x + y * _stride_y + z * _stride_z + 0 * _stride_f ];
+         VelSum[tid] = localVel * (1 - localWeight);
+         WeightSum[tid] = (1 - localWeight);
       }
    }
-
-   sVelSum[tid]    = localVel;
-   sWeightSum[tid] = localWeight;
    __syncthreads();
 
-   for (int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+   for ( int stride = n / 2; stride > 0; stride >>= 1 )
    {
-      if (tid < stride)
+      if ( tid < stride )
       {
-         sVelSum[tid] += sVelSum[tid + stride];
-         sWeightSum[tid] += sWeightSum[tid + stride];
+         VelSum[tid] += VelSum[tid + stride];
+         WeightSum[tid] += WeightSum[tid + stride];
+
       }
       __syncthreads();
    }
 
-   if (tid == 0)
+   // look closely at this part later for now its fine
+   if ( tid == 0 )
    {
-      atomicAdd(globalVelocitySum, sVelSum[0]);
-      atomicAdd(globalWeightSum, sWeightSum[0]);
+      atomicAdd( globalVelocitySum, VelSum[0] );
+      atomicAdd( globalWeightSum, WeightSum[0] );
    }
 }
 

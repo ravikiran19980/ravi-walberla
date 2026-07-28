@@ -347,7 +347,6 @@ struct FluidInfo
       walberla::mpi::allReduceInplace(numFluidCells, walberla::mpi::SUM);
       walberla::mpi::allReduceInplace(averageVelocity, walberla::mpi::SUM);
       walberla::mpi::allReduceInplace(maximumVelocity, walberla::mpi::MAX);
-      ;
       walberla::mpi::allReduceInplace(averageDensity, walberla::mpi::SUM);
       walberla::mpi::allReduceInplace(maximumDensity, walberla::mpi::MAX);
 #ifdef run_with_temperature
@@ -1678,6 +1677,11 @@ int main(int argc, char** argv)
                    timeloop.getCurrentTimeStep() != startTimeStep)
             {
                blocks->saveBlockData(checkpointingFileName + "_welfordVelocity_tmp.txt", meanVelFieldID);
+               WALBERLA_ROOT_SECTION()
+               {
+                  renameFile(checkpointingFileName + "_welfordVelocity_tmp.txt",
+                             checkpointingFileName + "_welfordVelocity.txt");
+               }
             }
 
 #ifdef run_with_temperature
@@ -1690,15 +1694,14 @@ int main(int argc, char** argv)
                    timeloop.getCurrentTimeStep() != startTimeStep)
             {
                blocks->saveBlockData(checkpointingFileName + "_welfordTemperature_tmp.txt", meanTemperatureFieldID);
+               WALBERLA_ROOT_SECTION()
+               {
+                  renameFile(checkpointingFileName + "_welfordTemperature_tmp.txt",
+                             checkpointingFileName + "_welfordTemperature.txt");
+               }
             }
 #endif
-            WALBERLA_ROOT_SECTION()
-            {
-               renameFile(checkpointingFileName + "_welfordVelocity_tmp.txt",
-                          checkpointingFileName + "_welfordVelocity.txt");
-               //renameFile(checkpointingFileName + "_welfordTemperature_tmp.txt",
-                 //         checkpointingFileName + "_welfordTemperature.txt");
-            }
+
          }
 
             if (timeloop.getCurrentTimeStep() == numTimeSteps - uint_c(turnOverPeriod))

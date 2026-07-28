@@ -16,8 +16,7 @@
 //  You should have received a copy of the GNU General Public License along
 //  with waLBerla (see COPYING.txt). If not, see <http://www.gnu.org/licenses/>.
 //
-//! \file thermalPSM.cpp
-//! \ingroup lbm_mesapd_coupling
+//! \file thermalTurbulentChannelGPU.cpp
 //! \author Ravi Ayyala Somayajula <ravi.k.ayyala@fau.de>
 //
 //======================================================================================================================
@@ -29,8 +28,9 @@
 #include "core/Environment.h"
 #include "core/grid_generator/SCIterator.h"
 #include "core/logging/all.h"
-#include "core/timing/RemainingTimeLogger.h"
 #include "core/math/all.h"
+#include "core/math/extern/exprtk.h"
+#include "core/timing/RemainingTimeLogger.h"
 
 #include "field/AddToStorage.h"
 #include "field/vtk/all.h"
@@ -79,30 +79,36 @@
 #include "mesa_pd/mpi/notifications/ForceTorqueNotification.h"
 #include "mesa_pd/mpi/notifications/HydrodynamicForceTorqueNotification.h"
 #include "mesa_pd/vtk/ParticleVtkOutput.h"
+#include "mesa_pd/mpi/ClearNextNeighborSync.h"
+#include "mesa_pd/mpi/ClearGhostOwnerSync.h"
+
 
 #include "sqlite/SQLite.h"
 
 #include "vtk/all.h"
 
+#include <fstream>
+#include <filesystem>
+#include <iomanip>
+
 #include "./utilities/InitializerFunctions.h"
+#ifdef run_with_temperature
+#include "./utilities/settemperaturesweep.h"
+#endif
 #include "FluidMacroGetter.h"
 #include "GeneralInfoHeader.h"
+#include "HeatEvaluators.h"
 #include "PSMFluidSweep.h"
 #include "PackInfoFluid.h"
-#include "PackInfoTemperature.h"
 #ifdef run_with_temperature
+#include "PackInfoTemperature.h"
 #include "TemperatureMacroGetter.h"
 #endif
 #include "math.h"
-#include <filesystem>
-#include <fstream>
-#include <iomanip>
 #include "randomPoints.h"
-#include "./utilities/settemperaturesweep.h"
-#include "HeatEvaluators.h"
+#include "CheckpointStatistics.h"
 #include "turbulentFlowUtilities.h"
-//#include "WelfordVelocity.h"
-//#include "WelfordTemperature.h"
+#include "PIDController.h"
 
 namespace MaterialTransport
 {
@@ -112,19 +118,25 @@ namespace MaterialTransport
 
 using namespace walberla;
 using namespace lbm_mesapd_coupling::psm::gpu;
-typedef pystencils::PackInfoFluid PackInfoFluid_T;
-typedef pystencils::PackInfoTemperature PackInfoTemperature_T;
+typedef PackInfoFluid PackInfoFluid_T;
+#ifdef run_with_temperature
+typedef PackInfoTemperature PackInfoTemperature_T;
+#endif
 
-using flag_t      = walberla::uint8_t;
+using flag_t      = uint8_t;
 using FlagField_T = FlagField< flag_t >;
 
 // Field Types
-using ScalarField_T = field::GhostLayerField< real_t, 1 >;
-using VectorField_T = field::GhostLayerField< real_t, Stencil_Fluid_T::D >;
-using TensorField_T = field::GhostLayerField< real_t, Stencil_Fluid_T::D*Stencil_Fluid_T::D >;
-using WelfordSweepVelocity_T = pystencils::WelfordVelocity;
+using ScalarField_T = GhostLayerField< real_t, 1 >;
+using VectorField_T = GhostLayerField< real_t, Stencil_Fluid_T::D >;
+using TensorField_T = GhostLayerField< real_t, Stencil_Fluid_T::D*Stencil_Fluid_T::D >;
+using WelfordSweepVelocity_T = WelfordVelocity;
+
+using maskGPUField_T = walberla::gpu::GPUField< real_t >;
+using VectorGPUField_T = walberla::gpu::GPUField< real_t >;
+using TensorGPUField_T = walberla::gpu::GPUField< real_t >;
 #ifdef run_with_temperature
-using WelfordSweepTemperature_T = pystencils::WelfordTemperature;
+using WelfordSweepTemperature_T = WelfordTemperature;
 #endif
 
 
@@ -141,6 +153,7 @@ const FlagUID Inflow_Fluid_Flag_bottom("Inflow_Fluid_Bottom");
 const FlagUID FreeSlip_Fluid_Flag("Free_Slip_Fluid");
 
 
+#ifdef run_with_temperature
 // Temperature Flags
 const FlagUID Temperature_Flag("Temperature");
 const FlagUID Density_Temperature_Flag_dynamic("Density_Temperature_dynamic");
@@ -149,6 +162,7 @@ const FlagUID Density_Temperature_Flag_static_hot("Density_Temperature_static_ho
 const FlagUID NoSlip_Temperature_Flag("NoSlip_Temperature");
 const FlagUID Inflow_Temperature_Flag("Inflow_Temperature");
 const FlagUID Neumann_Temperature_Flag("Neumann_Temperature");
+#endif
 
 void createPlane(const shared_ptr< mesa_pd::data::ParticleStorage >& ps,
                  const shared_ptr< mesa_pd::data::ShapeStorage >& ss, Vector3< real_t > position,
@@ -216,8 +230,8 @@ struct ParticleInfo
 std::ostream& operator<<(std::ostream& os, ParticleInfo const& m)
 {
    return os << "Particle Info: uAvg = " << m.averageVelocity << ", uMax = " << m.maximumVelocity
-             << ", numParticles = " << m.numParticles << ", zMax = " << m.maximumHeight << ", Vp = " << m.particleVolume
-             << ", zMass = " << m.heightOfMass;
+             << ", numParticles = " << m.numParticles << ", yMax = " << m.maximumHeight << ", Vp = " << m.particleVolume
+             << ", yMass = " << m.heightOfMass;
 }
 
 template< typename Accessor_T >
@@ -232,9 +246,9 @@ ParticleInfo evaluateParticleInfo(const Accessor_T& ac)
       if (isSet(ac.getFlags(i), mesa_pd::data::particle_flags::GLOBAL)) continue;
 
       ++info.numParticles;
-      real_t velMagnitude   = ac.getLinearVelocity(i)[2];
+      real_t velMagnitude   = ac.getLinearVelocity(i)[codegen::flow_axis];
       real_t particleVolume = ac.getShape(i)->getVolume();
-      real_t height         = ac.getPosition(i)[2];
+      real_t height         = ac.getPosition(i)[codegen::wall_axis];
       info.averageVelocity += velMagnitude;
       info.maximumVelocity = std::max(info.maximumVelocity, velMagnitude);
       info.maximumHeight   = std::max(info.maximumHeight, height);
@@ -246,6 +260,79 @@ ParticleInfo evaluateParticleInfo(const Accessor_T& ac)
 
    return info;
 }
+
+
+
+struct CollisionDistanceInfo
+{
+   uint_t numCollidingPairs = 0;
+   real_t averageDistance   = 0_r;
+   real_t minimumDistance   = std::numeric_limits< real_t >::max();
+   real_t maximumDistance   = 0_r;
+
+   void allReduce()
+   {
+      walberla::mpi::allReduceInplace(numCollidingPairs, walberla::mpi::SUM);
+      walberla::mpi::allReduceInplace(averageDistance, walberla::mpi::SUM);
+      walberla::mpi::allReduceInplace(minimumDistance, walberla::mpi::MIN);
+      walberla::mpi::allReduceInplace(maximumDistance, walberla::mpi::MAX);
+
+      if (numCollidingPairs > 0)
+      {
+         averageDistance /= real_c(numCollidingPairs);
+      }
+      else
+      {
+         minimumDistance = 0_r;
+         maximumDistance = 0_r;
+         averageDistance = 0_r;
+      }
+   }
+};
+
+std::ostream& operator<<(std::ostream& os, CollisionDistanceInfo const& m)
+{
+   return os << "Collision Distance Info: numCollidingPairs = " << m.numCollidingPairs
+             << ", averageDistance = " << m.averageDistance << ", minimumDistance = " << m.minimumDistance
+             << ", maximumDistance = " << m.maximumDistance;
+}
+
+template< typename Accessor_T >
+CollisionDistanceInfo evaluateCollisionDistanceInfo(const Accessor_T& ac,
+                                                    std::shared_ptr< mesa_pd::domain::BlockForestDomain > const& rpdDomain,
+                                                    bool useOpenMP, mesa_pd::data::LinkedCells& linkedCells)
+{
+   static_assert(std::is_base_of_v< mesa_pd::data::IAccessor, Accessor_T >, "Provide a valid accessor");
+
+   CollisionDistanceInfo info;
+
+   linkedCells.forEachParticlePairHalf(
+      useOpenMP, mesa_pd::kernel::ExcludeInfiniteInfinite(), ac,
+      [&info, &rpdDomain](const size_t idx1, const size_t idx2, auto& pairAccessor) {
+         mesa_pd::collision_detection::AnalyticContactDetection acd;
+         mesa_pd::kernel::DoubleCast double_cast;
+         mesa_pd::mpi::ContactFilter contact_filter;
+
+         if (double_cast(idx1, idx2, pairAccessor, acd, pairAccessor))
+         {
+            if (contact_filter(acd.getIdx1(), acd.getIdx2(), pairAccessor, acd.getContactPoint(), *rpdDomain))
+            {
+               const auto delta = pairAccessor.getPosition(acd.getIdx1()) - pairAccessor.getPosition(acd.getIdx2());
+               const real_t distance = delta.length();
+
+               ++info.numCollidingPairs;
+               info.averageDistance += distance;
+               info.minimumDistance = std::min(info.minimumDistance, distance);
+               info.maximumDistance = std::max(info.maximumDistance, distance);
+            }
+         }
+      },
+      ac);
+
+   info.allReduce();
+   return info;
+}
+
 
 struct FluidInfo
 {
@@ -264,7 +351,6 @@ struct FluidInfo
       walberla::mpi::allReduceInplace(numFluidCells, walberla::mpi::SUM);
       walberla::mpi::allReduceInplace(averageVelocity, walberla::mpi::SUM);
       walberla::mpi::allReduceInplace(maximumVelocity, walberla::mpi::MAX);
-      ;
       walberla::mpi::allReduceInplace(averageDensity, walberla::mpi::SUM);
       walberla::mpi::allReduceInplace(maximumDensity, walberla::mpi::MAX);
 #ifdef run_with_temperature
@@ -288,16 +374,6 @@ std::ostream& operator<<(std::ostream& os, FluidInfo const& m)
              << ", uMax = " << m.maximumVelocity << ", densityAvg = " << m.averageDensity
              << ", densityMax = " << m.maximumDensity;
 #endif
-}
-
-void renameFile(const std::string& oldName, const std::string& newName)
-{
-   int result = std::rename(oldName.c_str(), newName.c_str());
-   if (result != 0)
-   {
-      WALBERLA_LOG_WARNING_ON_ROOT("Could not rename file " << oldName << " to " << newName
-                                                            << " with error code " << result);
-   }
 }
 
 #ifdef run_with_temperature
@@ -349,6 +425,15 @@ FluidInfo evaluateFluidInfo(const shared_ptr< StructuredBlockStorage >& blocks, 
 }
 #endif
 
+void renameFile(const std::string & oldName, const std::string & newName)
+{
+   int result = std::rename(oldName.c_str(),newName.c_str());
+   if(result != 0)
+   {
+      WALBERLA_LOG_WARNING_ON_ROOT("Could not rename file " << oldName << " to " << newName << " with error code " << result);
+   }
+}
+
 
 
 //////////
@@ -361,6 +446,10 @@ int main(int argc, char** argv)
    auto cfgFile = env.config();
    if (!cfgFile) { WALBERLA_ABORT("Usage: " << argv[0] << " path-to-configuration-file \n"); }
 
+#ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
+   gpu::selectDeviceBasedOnMpiRank();
+#endif
+
    WALBERLA_ROOT_SECTION()
    {
       const std::filesystem::path outputPath("output");
@@ -368,7 +457,13 @@ int main(int argc, char** argv)
       {
          std::filesystem::create_directories(outputPath);
       }
+      const std::filesystem::path checkpointPath("checkPointFiles");
+      if (!std::filesystem::exists(checkpointPath))
+      {
+         std::filesystem::create_directories(checkpointPath);
+      }
    }
+
 
 
    WALBERLA_LOG_INFO_ON_ROOT("waLBerla revision: " << std::string(WALBERLA_GIT_SHA1).substr(0, 8));
@@ -397,6 +492,8 @@ int main(int argc, char** argv)
    const uint_t numXBlocks            = numericalSetup.getParameter< uint_t >("numXBlocks");
    const uint_t numYBlocks            = numericalSetup.getParameter< uint_t >("numYBlocks");
    const uint_t numZBlocks            = numericalSetup.getParameter< uint_t >("numZBlocks");
+   const Vector3< int32_t > gpuBlockSize =
+      numericalSetup.getParameter< Vector3< int32_t > >("gpuBlockSize", Vector3< int32_t >(64, 1, 1));
 
    WALBERLA_CHECK_EQUAL(numXBlocks * numYBlocks * numZBlocks, uint_t(MPIManager::instance()->numProcesses()),
                         "When using GPUs, the number of blocks ("
@@ -421,6 +518,10 @@ int main(int argc, char** argv)
    const real_t volfraction = numericalSetup.getParameter< real_t >("volfraction");
    WALBERLA_CHECK(!useParticles || volfraction > real_t(0),
                   "useParticles is true, but volfraction is equal to 0, must be greater than 0");
+   if (useParticles == true && volfraction == real_t(0))
+   {
+      WALBERLA_ABORT("useParticles is set to true, but volfraction is equal to 0, must be greater than 0");
+   }
 
    Config::BlockHandle turbulenceSetup   = cfgFile->getBlock("TurbulenceSetup");
    const real_t target_bulk_Reynolds     = turbulenceSetup.getParameter< real_t >("target_bulk_Reynolds");
@@ -428,6 +529,7 @@ int main(int argc, char** argv)
    const real_t target_bulk_velocity     = turbulenceSetup.getParameter< real_t >("target_bulk_velocity");
    const real_t center_line_velocity     = turbulenceSetup.getParameter< real_t >("center_line_velocity");
    const uint_t nTurnovers               = turbulenceSetup.getParameter< uint_t >("nTurnovers");
+
 
 #ifdef run_with_temperature
    Config::BlockHandle TemperatureSetup = cfgFile->getBlock("TemperatureSetup");
@@ -441,28 +543,57 @@ int main(int argc, char** argv)
 #endif
 
    Config::BlockHandle vtk_params      = cfgFile->getBlock("vtk_params");
-   const uint_t infoSpacing            = vtk_params.getParameter< uint_t >("infoSpacing");
-   const uint_t vtkSpacingParticles    = vtk_params.getParameter< uint_t >("vtkSpacingParticles");
-   const uint_t vtkSpacingFluid        = vtk_params.getParameter< uint_t >("vtkSpacingFluid");
-   const std::string vtkFolder         = vtk_params.getParameter< std::string >("vtkFolder");
-   const bool writeSlice               = vtk_params.getParameter< bool >("writeSlice");
+   const uint_t infoSpacing             = vtk_params.getParameter< uint_t >("infoSpacing");
+   const uint_t vtkSpacingParticles     = vtk_params.getParameter< uint_t >("vtkSpacingParticles");
+   const uint_t vtkSpacingFluid         = vtk_params.getParameter< uint_t >("vtkSpacingFluid");
+   const std::string vtkFolder          = vtk_params.getParameter< std::string >("vtkFolder");
+   const bool writeSlice                = vtk_params.getParameter< bool >("writeSlice");
 
-   Config::BlockHandle checkpoint_params      = cfgFile->getBlock("checkpoint_params");
-   const bool startFromCheckPointFile         = checkpoint_params.getParameter< bool >("startFromCheckPointFile");
-   const std::string checkpointingFileName    = checkpoint_params.getParameter< std::string >("checkpointingFileName");
-   const uint_t checkPointingFrequency        = checkpoint_params.getParameter< uint_t >("checkPointingFrequency");
-   const bool writeContinuousCheckPoints      = checkpoint_params.getParameter< bool >("writeContinuousCheckPoints");
+   Config::BlockHandle checkpoint_params   = cfgFile->getBlock("checkpoint_params");
+   const bool restart_simulation = checkpoint_params.getParameter< bool >("restart_simulation");
+   const bool startFluidFromCheckPointFile = checkpoint_params.getParameter< bool >("startFluidFromCheckPointFile");
+   const bool startTemperatureFromCheckPointFile =
+      checkpoint_params.getParameter< bool >("startTemperatureFromCheckPointFile");
+   const bool startParticlesFromCheckPointFile =
+      checkpoint_params.getParameter< bool >("startParticlesFromCheckPointFile");
+   std::string checkpointingFileName = checkpoint_params.getParameter< std::string >("checkpointingFileName");
+   checkpointingFileName = "checkPointFiles/" + checkpointingFileName;
+   uint_t checkPointingFrequency     = checkpoint_params.getParameter< uint_t >("checkPointingFrequency");
+   const bool writeContinuousCheckPoints   = checkpoint_params.getParameter< bool >("writeContinuousCheckPoints");
+
+   if (restart_simulation==true && startFluidFromCheckPointFile==false)
+   {
+      WALBERLA_ABORT("startFluidFromCheckPointFile must be set to true when restart_simulation is set to true");
+   }
 
    Config::BlockHandle statisticsParams    = cfgFile->getBlock("statistics_params");
-   const uint_t outputFrequency            = statisticsParams.getParameter< uint_t >("outputFrequency");
    const real_t convergenceTolerance       = statisticsParams.getParameter< real_t >("convergenceTolerance");
+#ifdef run_with_temperature
+   const uint_t planeAveragingtimeBlock    = statisticsParams.getParameter< uint_t >("planeAveragingtimeBlock");
+   const uint_t heatFluxAveragingtimeBlock = statisticsParams.getParameter< uint_t >("heatFluxAveragingtimeBlock");
+#endif
+
+
 
    Config::BlockHandle performance_params    = cfgFile->getBlock("performance_params");
    const uint_t performanceLogFrequency   = performance_params.getParameter< uint_t >("performanceLogFrequency");
    const bool sendDirectlyFromGPU         = performance_params.getParameter< bool >("sendDirectlyFromGPU");
 
-   const uint_t planeAveragingtimeBlock    = statisticsParams.getParameter< uint_t >("planeAveragingtimeBlock");
-   const uint_t heatFluxAveragingtimeBlock = statisticsParams.getParameter< uint_t >("heatFluxAveragingtimeBlock");
+
+
+   // get PID controller parameters
+   Config::BlockHandle PIDParameters        = cfgFile->getBlock("PIDParameters");
+   const real_t targetMeanVelocityMagnitude = PIDParameters.getParameter< real_t >("targetMeanVelocityMagnitude");
+   const real_t proportionalGain            = PIDParameters.getParameter< real_t >("proportionalGain");
+   const real_t derivativeGain              = PIDParameters.getParameter< real_t >("derivativeGain");
+   const real_t integralGain                = PIDParameters.getParameter< real_t >("integralGain");
+   const real_t maxRamp                     = PIDParameters.getParameter< real_t >("maxRamp");
+   const real_t minActuatingVariable        = PIDParameters.getParameter< real_t >("minActuatingVariable");
+   const real_t maxActuatingVariable        = PIDParameters.getParameter< real_t >("maxActuatingVariable");
+
+
+
+
 
    // convert SI units to simulation (LBM) units and check setup
 
@@ -505,7 +636,6 @@ int main(int argc, char** argv)
    const real_t domainVolume = domainSize[codegen::flow_axis] * domainSize[codegen::wall_axis] *
                                domainSize[codegen::remaining_axis];
    const uint_t numParticles = uint_c((volfraction*domainVolume)/(particleVolume));
-   WALBERLA_LOG_INFO_ON_ROOT(numParticles << " particles will be created");
    const real_t T_conversion = real_t(1);
    const real_t channel_half_width = real_c(domainSize[codegen::wall_axis]) / 2.0;
 #ifdef run_with_temperature
@@ -521,7 +651,8 @@ int main(int argc, char** argv)
    const real_t target_friction_velocity  = center_line_velocity/(vonkarman_kappa*std::log(target_friction_Reynolds) + B);
    const real_t turnOverPeriod = channel_half_width/target_friction_velocity;
 
-   const real_t kinematicViscosityLB = (target_friction_velocity*channel_half_width)/target_friction_Reynolds;
+   //const real_t kinematicViscosityLB = (target_friction_velocity*channel_half_width)/target_friction_Reynolds;
+   const real_t kinematicViscosityLB = (target_bulk_velocity* 2 * channel_half_width)/target_bulk_Reynolds;
 
 #ifdef run_with_temperature
    const real_t thermalDiffusivityFluid_LB = kinematicViscosityLB / Pr;
@@ -533,37 +664,63 @@ int main(int argc, char** argv)
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
    const real_t omegaT_s = lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
 #endif
-   const uint_t numTimeSteps              = uint_c(simulationTimeFactor *turnOverPeriod);
-   const uint_t samplingInterval          = uint_c(0.04 * turnOverPeriod);
-   uint_t startTimeStep                   = uint_t(0);
+   const uint_t numTimeSteps     = uint_c(simulationTimeFactor * turnOverPeriod);
+   const uint_t samplingInterval = uint_c(0.04 * turnOverPeriod);
+   checkPointingFrequency        = checkPointingFrequency * samplingInterval;
+   uint_t startTimeStep          = uint_t(0);
+   real_t currentPidForce        = 0_r;
+   uint_t statsAveragingCounter  = 0;
 
-   if (startFromCheckPointFile)
+   std::vector<real_t> timeAveragedFluidProfile_velocity(domainSize[codegen::wall_axis]*codegen::vectorSize);
+   std::vector<real_t> timeAveragedFluidSquaredProfile_velocity(domainSize[codegen::wall_axis]*codegen::tensorSize);
+   std::vector<real_t> timeAveragedParticleProfile_velocity(domainSize[codegen::wall_axis]*codegen::vectorSize);
+   std::vector<real_t> timeAveragedParticleSquaredProfile_velocity(domainSize[codegen::wall_axis]*codegen::tensorSize);
+
+#ifdef run_with_temperature
+   std::vector<real_t> timeAveragedFluidProfile_temperature(domainSize[codegen::wall_axis]*codegen::vectorSize);
+   std::vector<real_t> timeAveragedFluidSquaredProfile_temperature(domainSize[codegen::wall_axis]*codegen::tensorSize);
+   std::vector<real_t> timeAveragedParticleProfile_temperature(domainSize[codegen::wall_axis]*codegen::vectorSize);
+   std::vector<real_t> timeAveragedParticleSquaredProfile_temperature(domainSize[codegen::wall_axis]*codegen::tensorSize);
+#endif
+
+   if (restart_simulation)
    {
       WALBERLA_ROOT_SECTION()
       {
          std::ifstream checkpointConfigIS(checkpointingFileName + "_config.txt");
          if (!checkpointConfigIS.is_open())
          {
-            WALBERLA_LOG_WARNING_ON_ROOT("Could not open checkpoint config file " << checkpointingFileName + "_config.txt");
+            WALBERLA_LOG_WARNING_ON_ROOT("Simulation restart is requested but could not open checkpoint file " << checkpointingFileName + "_config.txt");
          }
          else
          {
             checkpointConfigIS >> startTimeStep;
-            if (!checkpointConfigIS.good() && !checkpointConfigIS.eof())
-            {
-               WALBERLA_ABORT("Could not parse timestep from checkpoint config file "
-                              << checkpointingFileName + "_config.txt");
-            }
+            checkpointConfigIS >> currentPidForce;
          }
       }
       walberla::mpi::broadcastObject(startTimeStep);
+      walberla::mpi::broadcastObject(currentPidForce);
       WALBERLA_LOG_INFO_ON_ROOT("Restarting simulation from checkpoint at time step " << startTimeStep);
+   }
+
+   if (restart_simulation)
+   {
+      readCheckpointStatistics(
+         domainSize, checkpointingFileName, timeAveragedFluidProfile_velocity,
+         timeAveragedFluidSquaredProfile_velocity, timeAveragedParticleProfile_velocity,
+         timeAveragedParticleSquaredProfile_velocity, statsAveragingCounter
+#ifdef run_with_temperature
+         , timeAveragedFluidProfile_temperature, timeAveragedFluidSquaredProfile_temperature,
+         timeAveragedParticleProfile_temperature, timeAveragedParticleSquaredProfile_temperature
+#endif
+      );
    }
 
 
 
 
-   WALBERLA_LOG_INFO_ON_ROOT("Known Quantities are    ");
+   WALBERLA_LOG_INFO_ON_ROOT("total number of timeSteps in simulation " << numTimeSteps);
+   WALBERLA_LOG_INFO_ON_ROOT("Remaining timeSteps in simulation " << numTimeSteps - startTimeStep);
    WALBERLA_LOG_INFO_ON_ROOT("density particle LB is " << densityParticle);
    WALBERLA_LOG_INFO_ON_ROOT("density fluid LB is " << densityFluid);
    WALBERLA_LOG_INFO_ON_ROOT("Particle Diameter is = " << particleDiameter);
@@ -575,7 +732,6 @@ int main(int argc, char** argv)
    WALBERLA_LOG_INFO_ON_ROOT("Temperature Relaxation rate fluid is " << omegaT_f);
 #endif
    WALBERLA_LOG_INFO_ON_ROOT("Hydrodynamic Relaxation rate  fluid is " << omega_f);
-   WALBERLA_LOG_INFO_ON_ROOT("Sanity checks------------------------------");
 #ifdef run_with_temperature
    WALBERLA_LOG_INFO_ON_ROOT("Prandtl number = " << (kinematicViscosityLB / thermalDiffusivityFluid_LB));
    WALBERLA_LOG_INFO_ON_ROOT("thermal diffusivity alpha fluid = " <<  thermalDiffusivityFluid_LB);
@@ -585,6 +741,7 @@ int main(int argc, char** argv)
 
 
    // outputting turbulent related parameters
+   WALBERLA_LOG_INFO_ON_ROOT("Channel half width  " << channel_half_width);
    WALBERLA_LOG_INFO_ON_ROOT("target friction Reynolds number = " <<  target_friction_Reynolds);
    WALBERLA_LOG_INFO_ON_ROOT("target_friction_velocity = " <<  target_friction_velocity);
    WALBERLA_LOG_INFO_ON_ROOT("turnOverPeriod = " <<  turnOverPeriod);
@@ -603,7 +760,7 @@ int main(int argc, char** argv)
       uint_t(zSize)
    );
 
-   forceParams.wallAxis = codegen::wall_axis;  // wall-normal direction along y
+   forceParams.wallAxis = codegen::wall_axis;  // example if Y is wall direction
 
    forceParams.channelHalfWidth = real_c(domainSize[codegen::wall_axis]) / 2.0;
 
@@ -621,7 +778,7 @@ int main(int argc, char** argv)
    ///////////////////////////
 
    shared_ptr< StructuredBlockForest > blocks;
-   if (startFromCheckPointFile == false)
+   if (startFluidFromCheckPointFile == false)
    {
       blocks = blockforest::createUniformBlockGrid(numXBlocks, numYBlocks, numZBlocks, cellsPerBlockPerDirection[0],
                                                    cellsPerBlockPerDirection[1], cellsPerBlockPerDirection[2],
@@ -635,9 +792,8 @@ int main(int argc, char** argv)
    }
    else
    {
-      blocks = blockforest::createUniformBlockGrid(checkpointingFileName + "_forest.txt",
-                                                   cellsPerBlockPerDirection[0], cellsPerBlockPerDirection[1],
-                                                   cellsPerBlockPerDirection[2], false);
+      blocks = blockforest::createUniformBlockGrid(checkpointingFileName + "_forest.txt", cellsPerBlockPerDirection[0],
+                                                   cellsPerBlockPerDirection[1], cellsPerBlockPerDirection[2], false);
    }
 
    auto simulationDomain = blocks->getDomain();
@@ -651,13 +807,14 @@ int main(int argc, char** argv)
    // Init data structures
    auto ps                  = walberla::make_shared< mesa_pd::data::ParticleStorage >(1);
    auto ss                  = walberla::make_shared< mesa_pd::data::ShapeStorage >();
+
    using ParticleAccessor_T = mesa_pd::data::ParticleAccessorWithShape;
    auto accessor            = walberla::make_shared< ParticleAccessor_T >(ps, ss);
    BlockDataID particleStorageID;
 
-   if (startFromCheckPointFile && std::filesystem::exists(checkpointingFileName + "_mesa.txt"))
+   if (useParticles && startParticlesFromCheckPointFile && std::filesystem::exists(checkpointingFileName + "_mesa.txt"))
    {
-      WALBERLA_LOG_INFO_ON_ROOT("Initializing " << numParticles << " particles from checkpointing file!");
+      WALBERLA_LOG_INFO_ON_ROOT("Initializing " << numParticles <<  " particles from checkpointing file!");
       particleStorageID =
          blocks->loadBlockData(checkpointingFileName + "_mesa.txt", mesa_pd::domain::createBlockForestDataHandling(ps),
                                "Particle Storage");
@@ -666,6 +823,7 @@ int main(int argc, char** argv)
 
       mesa_pd::mpi::ClearGhostOwnerSync CGOS;
       CGOS(*accessor);
+
    }
    else
    {
@@ -675,9 +833,10 @@ int main(int argc, char** argv)
    auto sphereShape         = ss->create< mesa_pd::data::Sphere >(particleDiameter * real_t(0.5));
    ss->shapes[sphereShape]->updateMassAndInertia(densityParticle);
 
-   // prevent particles from interfering with inflow and outflow by putting the bounding planes slightly in front
-   if (useParticles && !startFromCheckPointFile && !std::filesystem::exists(checkpointingFileName + "_mesa.txt"))
+   if (useParticles && !startParticlesFromCheckPointFile)
    {
+      WALBERLA_LOG_INFO_ON_ROOT("Creating " << numParticles << "particles in Random positions as no Checkpoint file exists for particles");
+      // prevent particles from interfering with inflow and outflow by putting the bounding planes slightly in front
       const real_t planeOffsetFromInflow  = 1_r;
       const real_t planeOffsetFromOutflow = 1_r;
       createPlaneSetup(ps, ss, simulationDomain, periodicInX, periodicInY, periodicInZ, planeOffsetFromInflow,
@@ -739,10 +898,11 @@ int main(int argc, char** argv)
    ///////////////////////////////////////////////
 
 
+
    BlockDataID pdfFieldFluidID;
    BlockDataID pdfFieldFluidGPUID;
 
-   if (startFromCheckPointFile == true)
+   if (startFluidFromCheckPointFile == true)
    {
 
       auto dataHandling = make_shared< field::DefaultBlockDataHandling< PdfField_fluid_T > >(
@@ -789,14 +949,15 @@ int main(int argc, char** argv)
 
 
 
-#ifdef run_with_temperature
+
    ////////////////////////////////////////////////
    // Temperature related fields creation on CPU //
    ///////////////////////////////////////////////
+   #ifdef run_with_temperature
    BlockDataID pdfFieldTemperatureID;
    BlockDataID pdfFieldTemperatureGPUID;
 
-   if (startFromCheckPointFile == true)
+   if (startTemperatureFromCheckPointFile == true)
    {
       auto dataHandlingTemperature = make_shared< field::DefaultBlockDataHandling< PdfField_temperature_T > >(
          blocks, uint_t(1), real_c(std::nan("")), field::fzyx);
@@ -850,8 +1011,6 @@ int main(int argc, char** argv)
    BlockDataID BFieldID   = field::addToStorage< BField_T >(blocks, "B field CPU", real_t(0), field::fzyx, uint_t(1), true);
    BlockDataID BsFieldID  = field::addToStorage< BsField_T >(blocks, "Bs field CPU", real_t(0), field::fzyx, uint_t(1), true);
 
-
-   WcTimer checkpointTimer;
 
    // Synchronize particles between the blocks for the correct mapping of ghost particles
    // set up RPD functionality
@@ -914,6 +1073,7 @@ int main(int argc, char** argv)
 
    boundariesBlockString += "}";
 
+#ifdef run_with_temperature
    boundariesBlockString += "\n BoundariesTemperature";
    boundariesBlockString +=    "{";
 
@@ -924,17 +1084,18 @@ int main(int argc, char** argv)
    }
    if (!periodicInY)
    {
-      boundariesBlockString += "Border { direction S;    walldistance -1;  flag Neumann_Temperature; }"
-                               "Border { direction N;    walldistance -1;  flag Neumann_Temperature; }";
+      boundariesBlockString += "Border { direction S;    walldistance -1;  flag Density_Temperature_static_hot; }"
+                               "Border { direction N;    walldistance -1;  flag Density_Temperature_static_cold; }";
    }
 
    if (!periodicInZ)
    {
       boundariesBlockString +=
-         "Border { direction T;    walldistance -1;  flag Density_Temperature_static_cold; }"
-         "Border { direction B;    walldistance -1;  flag Density_Temperature_static_hot; }"; // Neumann_Energy
+         "Border { direction T;    walldistance -1;  flag Neumann_Temperature; }"
+         "Border { direction B;    walldistance -1;  flag Neumann_Temperature; }"; // Neumann_Energy
    }
    boundariesBlockString += "}";
+#endif
 
    WALBERLA_ROOT_SECTION()
    {
@@ -947,7 +1108,9 @@ int main(int argc, char** argv)
    auto boundariesCfgFile = Config();
    boundariesCfgFile.readParameterFile("boundaries.prm");
    auto boundariesConfigFluid         = boundariesCfgFile.getBlock("BoundariesFluid");
+#ifdef run_with_temperature
    auto boundariesConfigTemperature = boundariesCfgFile.getBlock("BoundariesTemperature");
+#endif
 
 
    // map boundaries into the fluid field simulation
@@ -959,9 +1122,8 @@ int main(int argc, char** argv)
    lbm::BC_Fluid_FreeSlip freeSlip_fluid_bc(blocks, pdfFieldFluidGPUID);
    freeSlip_fluid_bc.fillFromFlagField<FlagField_T>(blocks, flagFieldFluidID, FreeSlip_Fluid_Flag, Fluid_Flag);
 
-   #ifdef run_with_temperature
    // map boundaries into the temperature field simulation
-
+#ifdef run_with_temperature
    geometry::initBoundaryHandling< FlagField_T >(*blocks, flagFieldTemperatureID, boundariesConfigTemperature);
    geometry::setNonBoundaryCellsToDomain< FlagField_T >(*blocks, flagFieldTemperatureID, Temperature_Flag);
 
@@ -982,12 +1144,11 @@ int main(int argc, char** argv)
                                                          Density_Temperature_Flag_static_hot, Temperature_Flag);
    #endif
 
-
    // create the welford fluid and temperature sweep objects:
 
-   WelfordSweepVelocity_T welfordVelocitySweep(meanVelFieldGPUID, sosVelFieldGPUID, velFieldFluidGPUID, 0_r);
+   WelfordSweepVelocity_T welfordVelocitySweep(meanVelFieldGPUID, sosVelFieldGPUID, velFieldFluidGPUID,0_r,gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2]);
    #ifdef run_with_temperature
-   WelfordSweepTemperature_T welfordTemperatureSweep(meanTemperatureFieldGPUID, sosTemperatureFieldGPUID, temperatureFieldGPUID, 0_r);
+   WelfordSweepTemperature_T welfordTemperatureSweep(meanTemperatureFieldGPUID, sosTemperatureFieldGPUID, temperatureFieldGPUID,0_r,gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2]);
    #endif
 
    ////////////////////////////////////
@@ -1009,7 +1170,6 @@ int main(int argc, char** argv)
                                               particleSubBlockSize);
 
 
-
    #ifdef run_with_temperature
    ParticleAndVolumeFractionSoA_T< 1 > particleAndVolumeFractionSoA_temperature(blocks,omegaT_f);
    PSMSweepCollection psmSweepCollectionTemperature(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
@@ -1020,90 +1180,104 @@ int main(int argc, char** argv)
                                                          temperatureFieldGPUID,
                                                          particleTemperaturesFieldGPUID,
                                                          true);
-   #endif
+#endif
 
    // create the force and bulk velocity calculator:
    // use B-field as mask to exclude particle-occupied fractions from bulk velocity.
 #ifdef run_with_temperature
    ForceCalculator< VectorField_T, BField_T > forceCalculator(blocks, velFieldFluidID,
-                                                                    particleAndVolumeFractionSoA_temperature.BFieldID,
-                                                                    forceParams);
+                                                               particleAndVolumeFractionSoA_temperature.BFieldID,
+                                                               forceParams);
 #else
    ForceCalculator< VectorField_T, BField_T > forceCalculator(blocks, velFieldFluidID,
-                                                                    particleAndVolumeFractionSoA_fluid.BFieldID,
-                                                                    forceParams);
+                                                               particleAndVolumeFractionSoA_fluid.BFieldID,
+                                                               forceParams);
 #endif
 
    // calculate the initial force for initialization:
    forceCalculator.setBulkVelocity(forceParams.targetBulkVelocity);
-   const auto initialForce = forceCalculator.getCurrentDrivingForce();
+   const auto initialForce = forceCalculator.calculateDrivingForce();
+   WALBERLA_LOG_INFO_ON_ROOT("Initial driving force: " << initialForce);
+
 
    // Initialize PDFs
 
    pystencils::InitializeFluidDomain pdfSetterFluid(
       particleAndVolumeFractionSoA_fluid.BsFieldID, particleAndVolumeFractionSoA_fluid.BFieldID,
       particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID,
-      pdfFieldFluidGPUID, velFieldFluidGPUID, initialForce,
-      real_t(1));
+      pdfFieldFluidGPUID, velFieldFluidGPUID, initialForce,gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2]
+      ,real_t(1));
 
    #ifdef run_with_temperature
-   pystencils::InitializeTemperatureDomain pdfSetterTemperature(
-      pdfFieldTemperatureGPUID, temperatureFieldGPUID, velFieldFluidGPUID);
+   pystencils::InitializeTemperatureDomain pdfSetterTemperature(particleAndVolumeFractionSoA_temperature.BFieldID,
+      pdfFieldTemperatureGPUID, temperatureFieldGPUID, velFieldFluidGPUID, 0 ,gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2]);
    #endif
 
 
    for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
    {
       psmSweepCollectionFluid.particleMappingSweep(&(*blockIt));
-      #ifdef run_with_temperature
+#ifdef run_with_temperature
       psmSweepCollectionTemperature.particleMappingSweep(&(*blockIt));
-      #endif
+#endif
    }
 
-   #ifdef run_with_temperature
-   # TODO
-   /*walberla::initConcentrationFieldCoutte(blocks, temperatureFieldID,particleAndVolumeFractionSoA_fluid.BFieldID,
-                                domainSize);*/
-   #endif
-
-   pystencils::FluidMacroGetter getterSweep_fluid(particleAndVolumeFractionSoA_fluid.BFieldID, densityFluidFieldGPUID,
-                                                  pdfFieldFluidGPUID, velFieldFluidGPUID, initialForce);
-   #ifdef run_with_temperature
-   pystencils::TemperatureMacroGetter getterSweep_temperature(pdfFieldTemperatureGPUID, temperatureFieldGPUID);
-   #endif
+#ifdef run_with_temperature
+   walberla::initConcentrationFieldCoutte(blocks, temperatureFieldID,particleAndVolumeFractionSoA_fluid.BFieldID,
+                                domainSize);
+#endif
 
 
    for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
    {
       psmSweepCollectionFluid.setParticleVelocitiesSweep(&(*blockIt));
-      #ifdef run_with_temperature
+#ifdef run_with_temperature
       settemperatureparticles(&(*blockIt));
       gpu::fieldCpy< particleTemperaturesFieldGPU_T, particleTemperaturesField_T >(blocks, particleTemperaturesFieldGPUID,
                                                                                    particleTemperaturesFieldID);
       gpu::fieldCpy< gpu::GPUField< real_t >, DensityField_temperature_T >(blocks, temperatureFieldGPUID,
                                                                            temperatureFieldID);
       #endif
-      if (!startFromCheckPointFile)
+      if (!startFluidFromCheckPointFile)
       {
          pdfSetterFluid(&(*blockIt));
       }
-      #ifdef run_with_temperature
-      if (!startFromCheckPointFile)
+#ifdef run_with_temperature
+      if (!startTemperatureFromCheckPointFile)
       {
          pdfSetterTemperature(&(*blockIt));
       }
-      #endif
+#endif
    }
 
-   if (startFromCheckPointFile)
-   {
-      for (auto& block : *blocks)
+
+  // objects to get the macroscopic quantities
+   pystencils::FluidMacroGetter getterSweep_fluid(particleAndVolumeFractionSoA_fluid.BFieldID, densityFluidFieldGPUID,
+                                                  pdfFieldFluidGPUID, velFieldFluidGPUID, initialForce,gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2]);
+#ifdef run_with_temperature
+   pystencils::TemperatureMacroGetter getterSweep_temperature(pdfFieldTemperatureGPUID, temperatureFieldGPUID,gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2]);
+#endif
+
+   auto getFluidMacroFields = [&]() {
+      getterSweep_fluid.setForcex(currentPidForce);
+      for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
       {
-         getterSweep_fluid(&block);
+         getterSweep_fluid(&(*blockIt));
+      }
+   };
+
+   if (startFluidFromCheckPointFile)
+   {
+    getFluidMacroFields();
+#ifdef run_with_temperature
+      for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
+      {
+        
          #ifdef run_with_temperature
-         getterSweep_temperature(&block);
+         getterSweep_temperature(&(*blockIt));
          #endif
       }
+#endif
       gpu::fieldCpy< VelocityField_fluid_T, gpu::GPUField< real_t > >(blocks, velFieldFluidID, velFieldFluidGPUID);
       gpu::fieldCpy< DensityField_fluid_T, gpu::GPUField< real_t > >(blocks, densityFluidFieldID,
                                                                      densityFluidFieldGPUID);
@@ -1111,7 +1285,7 @@ int main(int argc, char** argv)
       gpu::fieldCpy< DensityField_temperature_T, gpu::GPUField< real_t > >(blocks, temperatureFieldID,
                                                                           temperatureFieldGPUID);
 #endif
-   }
+      }
 
    ///////////////////////
    // ADD COMMUNICATION //
@@ -1126,14 +1300,15 @@ int main(int argc, char** argv)
    gpu::communication::UniformGPUScheme< Stencil_Temperature_T > com_temperature(blocks, sendDirectlyFromGPU, false);
    com_temperature.addPackInfo(make_shared< PackInfoTemperature_T >(pdfFieldTemperatureGPUID));
    auto communication_temperature = std::function< void() >([&]() { com_temperature.communicate(); });
-   #endif
+#endif
 
    // time loop objects for communication with and without hiding
 
    SweepTimeloop commTimeloop(blocks->getBlockStorage(), numTimeSteps);
    SweepTimeloop timeloop(blocks->getBlockStorage(), numTimeSteps);
    timeloop.setCurrentTimeStep(startTimeStep);
-   timeloop.addFuncBeforeTimeStep(RemainingTimeLogger(timeloop.getNrOfTimeSteps()), "Remaining Time Logger");
+   timeloop.addFuncBeforeTimeStep( RemainingTimeLogger( numTimeSteps - startTimeStep ), "Remaining Time Logger" );
+
 
    // vtk output
    if (vtkSpacingParticles != uint_t(0))
@@ -1143,10 +1318,12 @@ int main(int argc, char** argv)
       particleVtkOutput->addOutput< mesa_pd::data::SelectParticleUid >("uid");
       particleVtkOutput->addOutput< mesa_pd::data::SelectParticleLinearVelocity >("velocity");
       particleVtkOutput->addOutput< mesa_pd::data::SelectParticleInteractionRadius >("radius");
+#ifdef run_with_temperature
       particleVtkOutput->addOutput< mesa_pd::data::SelectParticleTemperature >("temperature");
+#endif
       // limit output to process-local spheres
-      particleVtkOutput->setParticleSelector([sphereShape](const mesa_pd::data::ParticleStorage::iterator& pIt) {
-         return pIt->getShapeID() == sphereShape &&
+      particleVtkOutput->setParticleSelector([](const mesa_pd::data::ParticleStorage::iterator& pIt) {
+         return pIt->getType() == 1 &&
                 !(mesa_pd::data::particle_flags::isSet(pIt->getFlags(), mesa_pd::data::particle_flags::GHOST));
       });
       auto particleVtkWriter = vtk::createVTKOutput_PointData(particleVtkOutput, "particles", vtkSpacingParticles, vtkFolder);
@@ -1169,6 +1346,7 @@ int main(int argc, char** argv)
          gpu::fieldCpy< DensityField_fluid_T, gpu::GPUField< real_t > >(blocks, densityFluidFieldID,
                                                                         densityFluidFieldGPUID);
       });
+
 #ifdef run_with_temperature
       auto vtkOutput_Temperature =
          vtk::createVTKOutput_BlockData(blocks, "vtk_files_temperature", vtkSpacingFluid, 0, false, vtkFolder);
@@ -1225,10 +1403,9 @@ int main(int argc, char** argv)
 
 
       if(writeSlice){
-         const AABB sliceAABB(real_t(0), real_c(domainSize[codegen::wall_axis]) * real_t(0.5) - real_t(1), real_t(0),
-                              real_c(domainSize[codegen::flow_axis]),
-                              real_c(domainSize[codegen::wall_axis]) * real_t(0.5) + real_t(1),
-                              real_c(domainSize[codegen::remaining_axis]));
+         const AABB sliceAABB(real_t(0), real_t(0),real_c(domainSize[codegen::wall_axis]) * real_t(0.5) - real_t(1),
+                           real_c(domainSize[codegen::flow_axis]), real_c(domainSize[codegen::remaining_axis]),real_c(domainSize[codegen::wall_axis]) * real_t(0.5) + real_t(1)
+                           );
          const walberla::vtk::AABBCellFilter aabbSliceFilter(sliceAABB);
          field::FlagFieldCellFilter< FlagField_T > fluidFilter(flagFieldFluidID);
          fluidFilter.addFlag(Fluid_Flag);
@@ -1259,11 +1436,17 @@ int main(int argc, char** argv)
    pystencils::PSMFluidSweep psmFluidSweep(
       particleAndVolumeFractionSoA_fluid.BsFieldID, particleAndVolumeFractionSoA_fluid.BFieldID,
       particleAndVolumeFractionSoA_fluid.particleForcesFieldID, particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID,
-      pdfFieldFluidGPUID, velFieldFluidGPUID, initialForce, omega_f);
+      pdfFieldFluidGPUID, velFieldFluidGPUID, initialForce,gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2], omega_f);
+
+   /*pystencils::PSMFluidSweep psmFluidSweep(
+     particleAndVolumeFractionSoA_fluid.BsFieldID, particleAndVolumeFractionSoA_fluid.BFieldID,
+     particleAndVolumeFractionSoA_fluid.particleForcesFieldID, particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID,
+     pdfFieldFluidGPUID, velFieldFluidGPUID, initialForce, omega_f);*/
+
 
    #ifdef run_with_temperature
    pystencils::PSMTemperatureSweep psmTemperatureSweep(
-      pdfFieldTemperatureGPUID, temperatureFieldGPUID, velFieldFluidGPUID, omegaT_f, 1, 1, 1);
+      pdfFieldTemperatureGPUID, temperatureFieldGPUID, velFieldFluidGPUID,gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2], omegaT_f, 1, 1, 1);
    #endif
 
 
@@ -1274,6 +1457,9 @@ int main(int argc, char** argv)
    };
    auto psmFluidSweeplamda = [&psmFluidSweep](IBlock * block) {
       psmFluidSweep(block);
+#ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
+      WALBERLA_GPU_CHECK(gpuDeviceSynchronize());
+#endif
    };
 
 
@@ -1292,6 +1478,7 @@ int main(int argc, char** argv)
 
    WcTimingPool timeloopTiming;
    const bool useOpenMP = true;
+   WcTimer checkpointTimer;
 
    real_t linkedCellWidth = linkedCellWidthRation * particleDiameter;
    mesa_pd::data::LinkedCells linkedCells(rpdDomain->getUnionOfLocalAABBs().getExtended(linkedCellWidth),
@@ -1301,8 +1488,11 @@ int main(int argc, char** argv)
    ////////////////////////////////////////////////////////
    /// needed to monitor stationary state or convergence ///
    ////////////////////////////////////////////////////////
+
+   // set the outputfrequency to turnOverPeriod as it checks for convergence and also prints it to the wall_statistics.txt file every turnOverPeriod
    WallStatistics wall_statistics(domainSize[codegen::wall_axis], 1, kinematicViscosityLB, uint_c(samplingInterval));
 
+   // TODO later on evaluate these
    //////////////////////////////////////////////////////////////////////////////////////////////
    /// for obtaining plane velocity and temperature averages required to compute heat budgets ///
    //////////////////////////////////////////////////////////////////////////////////////////////
@@ -1313,102 +1503,174 @@ int main(int argc, char** argv)
    // for computation of heatflux budgets //
    ////////////////////////////////////////
 
-   #ifdef run_with_temperature
-   HeatFluxBudgets heatFluxBudgets(uint_c(domainSize[codegen::wall_axis]),1, thermalDiffusivityFluid_LB,
+#ifdef run_with_temperature
+   HeatFluxBudgets heatFluxBudgets(uint_c(domainSize[codegen::wall_axis]), 1, thermalDiffusivityFluid_LB,
                                    thermalDiffusivityParticle_LB, heatFluxAveragingtimeBlock, meanPlaneAverager);
-   #endif
+#endif
+
+   // TODO later on evaluate these
 
    //////////////////////////////////////////////////
    /// for computing particle and fluid statistics //
    /////////////////////////////////////////////////
 
-   PlaneAveragedProfiles<VectorField_T> planeAveragedProfiles_velocity(blocks, velFieldFluidID,
-                                                                        codegen::wall_axis, domainSize);
-   #ifdef run_with_temperature
-   PlaneAveragedProfiles<ScalarField_T> planeAveragedProfiles_temperature(blocks, temperatureFieldID,
-                                                                          codegen::wall_axis, domainSize);
-   #endif
+   std::unique_ptr< PlaneAveragedProfiles< VectorField_T > > planeAveragedProfiles_velocity;
 
+#ifdef run_with_temperature
+   std::unique_ptr< PlaneAveragedProfiles< ScalarField_T > > planeAveragedProfiles_temperature;
+#endif
+   if (restart_simulation)
+   {
+      planeAveragedProfiles_velocity = std::make_unique< PlaneAveragedProfiles< VectorField_T > >(
+         blocks, velFieldFluidID, codegen::wall_axis, domainSize, true, statsAveragingCounter, timeAveragedFluidProfile_velocity,
+         timeAveragedFluidSquaredProfile_velocity, timeAveragedParticleProfile_velocity, timeAveragedParticleSquaredProfile_velocity);
+
+#ifdef run_with_temperature
+      planeAveragedProfiles_temperature = std::make_unique< PlaneAveragedProfiles< ScalarField_T > >(
+         blocks, temperatureFieldID, codegen::wall_axis, domainSize, true, statsAveragingCounter,
+         timeAveragedFluidProfile_temperature, timeAveragedFluidSquaredProfile_temperature,
+         timeAveragedParticleProfile_temperature, timeAveragedParticleSquaredProfile_temperature);
+#endif
+   }
+
+   else
+   {
+      planeAveragedProfiles_velocity = std::make_unique< PlaneAveragedProfiles< VectorField_T > >(
+         blocks, velFieldFluidID, codegen::wall_axis, domainSize);
+
+#ifdef run_with_temperature
+      planeAveragedProfiles_temperature = std::make_unique< PlaneAveragedProfiles< ScalarField_T > >(
+         blocks, temperatureFieldID, codegen::wall_axis, domainSize);
+#endif
+   }
+
+
+
+   uint_t printchecker = 0;
    auto postProcessingLamdas = [&]() {
-      if (timeloop.getCurrentTimeStep() >= nTurnovers*turnOverPeriod && wall_statistics.getWallStatisticsConvergence() ==true )
+
+      if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod) && timeloop.getCurrentTimeStep() % samplingInterval == 0 && wall_statistics.getWallStatisticsConvergence() == true)
       {
+         printchecker += 1;
+         if (printchecker == 1)
+         {
+            WALBERLA_LOG_INFO_ON_ROOT("starting the phase statistics ");
+
+         }
+
+
          gpu::fieldCpy< VelocityField_fluid_T, gpu::GPUField< real_t > >(blocks, velFieldFluidID, velFieldFluidGPUID);
 
          // spatial and temporal averaging of the particle and fluid statistics
-#ifdef run_with_temperature
-         gpu::fieldCpy< BField_T, gpu::GPUField< real_t > >(blocks, BFieldID, particleAndVolumeFractionSoA_temperature.BFieldID);
-         planeAveragedProfiles_velocity.computeFluidParticleAveragedVectors(BFieldID);
+         #ifdef run_with_temperature
 
-#else
+         gpu::fieldCpy< BField_T, gpu::GPUField< real_t > >(blocks, BFieldID, particleAndVolumeFractionSoA_temperature.BFieldID);
+          planeAveragedProfiles_velocity->computeFluidParticleAveragedVectors(
+            BFieldID);
+         planeAveragedProfiles_temperature->computeFluidParticleAveragedVectors(
+            BFieldID);
+
+         #else
          gpu::fieldCpy< BField_T, gpu::GPUField< real_t > >(blocks, BFieldID, particleAndVolumeFractionSoA_fluid.BFieldID);
-         planeAveragedProfiles_velocity.computeFluidParticleAveragedVectors(BFieldID);
-#endif
+         planeAveragedProfiles_velocity->computeFluidParticleAveragedVectors(BFieldID);
+         #endif
 
       }
 
-      if (timeloop.getCurrentTimeStep() == numTimeSteps - uint_c(turnOverPeriod))
+      writeCheckpointStatistics(
+         domainSize, timeloop.getCurrentTimeStep(), startTimeStep, checkPointingFrequency, checkpointingFileName,nTurnovers,turnOverPeriod,
+         planeAveragedProfiles_velocity
+#ifdef run_with_temperature
+         , planeAveragedProfiles_temperature
+#endif
+      );
+
+
+      if (timeloop.getCurrentTimeStep() ==
+          numTimeSteps - uint_c(turnOverPeriod)) // presently does it only once and not for multiple timesteps
       {
          WALBERLA_LOG_INFO_ON_ROOT("at time Step "<< timeloop.getCurrentTimeStep() << " writing the phase statistics to file: output/phase_statistics.txt  ")
          // computation of fluid and particle avg, rms, reynolds stresses quantities
          gpu::fieldCpy< VelocityField_fluid_T, gpu::GPUField< real_t > >(blocks, velFieldFluidID, velFieldFluidGPUID);
-         planeAveragedProfiles_velocity.computeFluidParticleRMS();
+
+#ifdef run_with_temperature
+         gpu::fieldCpy< DensityField_temperature_T, gpu::GPUField< real_t > >(blocks, temperatureFieldID, temperatureFieldGPUID);
+         // computation of fluid and particle velocity avg, rms, reynolds stresses quantities
+         planeAveragedProfiles_velocity->computeFluidParticleRMS();
+
+         // computation of fluid and particle temperature avg, rms
+         planeAveragedProfiles_temperature->computeFluidParticleRMS();
+
+         // compute wall statistics one final time after temporal averaging and before writing to the output files
+         wall_statistics(blocks, meanTemperatureFieldID, meanVelFieldID, timeloop.getCurrentTimeStep(), Tcold, Thot,
+                         convergenceTolerance);
+#else
+         // computation of fluid and particle velocity avg, rms, reynolds stresses quantities
+         planeAveragedProfiles_velocity->computeFluidParticleRMS();
+
+         // compute wall statistics one final time after temporal averaging and before writing to the output files
+         wall_statistics(blocks, meanVelFieldID, timeloop.getCurrentTimeStep(), convergenceTolerance);
+#endif
 
          WALBERLA_ROOT_SECTION()
          {
+            std::ofstream wallstatsVelocityOS;
+            wallstatsVelocityOS << std::fixed << std::setprecision(6);
+            wallstatsVelocityOS.open("output/wallstatsConverged_velocity.txt", std::ios::out);
+
+            real_t wallshearStress     = kinematicViscosityLB * wall_statistics.getWallShearStress();
+            real_t frictionVelocity    = std::sqrt(wallshearStress);
+            wallstatsVelocityOS << "wallShearStress" << "  frictionVelocity" << "\n";
+            wallstatsVelocityOS << wallshearStress << "  " << "  " << frictionVelocity << "\n";
+
+
             std::ofstream velocityOS;
             velocityOS << std::fixed << std::setprecision(6);
-            velocityOS.open("output/phase_statistics.txt", std::ios::out);
-            auto printRow = [&](auto&&... args) {
+            velocityOS.open("output/phase_statistics_velocity.txt", std::ios::out);
+            auto printRowVelocity = [&](auto&&... args) {
                ((velocityOS << std::setw(12) << args), ...);
                velocityOS << "\n";
             };
 
             // plotting everything in normalized wall units
-            printRow("y", "y+", "Ux_f", "Uy_f", "Uz_f", "UU_f", "UV_f", "UW_f", "VU_f", "VV_f", "VW_f", "WU_f", "WV_f",
+            printRowVelocity("y","y+", "Ux_f", "Uy_f", "Uz_f", "UU_f", "UV_f", "UW_f", "VU_f", "VV_f", "VW_f", "WU_f", "WV_f",
                      "WW_f", "Ux_p", "Uy_p", "Uz_p", "UU_p", "UV_p", "UW_p", "VU_p", "VV_p", "VW_p", "WU_p", "WV_p",
                      "WW_p");
-            printRow(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+            // at the wall
 
+            printRowVelocity(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
             for (uint_t idx = 0; idx < domainSize[codegen::wall_axis]; ++idx)
             {
-               velocityOS << std::setw(12) << idx;
+               // y and y+
+               velocityOS << std::setw(12) << real_c(idx) + 0.5_r ;
+               velocityOS << std::setw(12) << ((real_c(idx) + 0.5_r)*frictionVelocity)/kinematicViscosityLB ;
 
                // fluid averaged velocities
-               for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+               for (uint_t i = 0; i < codegen::vectorSize; ++i)
                {
-                  velocityOS << std::setw(12) <<
-                  planeAveragedProfiles_velocity.getFluidAVGProfile()[idx * VectorField_T::F_SIZE + i];
+                  velocityOS << std::setw(12)
+                             << planeAveragedProfiles_velocity->getFluidAVGProfile()[idx * codegen::vectorSize + i]/(frictionVelocity);
                }
 
                // fluid rms profiles
-               for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+               for (uint_t i = 0; i < codegen::tensorSize; ++i)
                {
-                  for (uint_t j = 0; j < VectorField_T::F_SIZE; ++j)
-                  {
-                     velocityOS << std::setw(12)
-                                << planeAveragedProfiles_velocity
-                                      .getFluidRMSProfile()[idx * VectorField_T::F_SIZE * VectorField_T::F_SIZE +
-                                                            i * VectorField_T::F_SIZE + j];
-                  }
+                  velocityOS << std::setw(12)
+                             << planeAveragedProfiles_velocity->getFluidRMSProfile()[idx * codegen::tensorSize + i]/(frictionVelocity*frictionVelocity);
                }
 
                // particle averaged velocities
-               for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+               for (uint_t i = 0; i < codegen::vectorSize; ++i)
                {
-                  velocityOS << std::setw(12) <<
-                  planeAveragedProfiles_velocity.getParticleAVGProfile()[idx * VectorField_T::F_SIZE + i];
+                  velocityOS << std::setw(12)
+                             << planeAveragedProfiles_velocity->getParticleAVGProfile()[idx * codegen::vectorSize + i]/(frictionVelocity);
                }
 
                // particle rms profiles
-               for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+               for (uint_t i = 0; i < codegen::tensorSize; ++i)
                {
-                  for (uint_t j = 0; j < VectorField_T::F_SIZE; ++j)
-                  {
-                     velocityOS << std::setw(12)
-                                << planeAveragedProfiles_velocity
-                                      .getParticleRMSProfile()[idx * VectorField_T::F_SIZE * VectorField_T::F_SIZE +
-                                                            i * VectorField_T::F_SIZE + j];
-                  }
+                  velocityOS << std::setw(12)
+                             << planeAveragedProfiles_velocity->getParticleRMSProfile()[idx * codegen::tensorSize + i]/(frictionVelocity*frictionVelocity);
                }
 
                velocityOS << "\n";
@@ -1416,114 +1678,147 @@ int main(int argc, char** argv)
             velocityOS.flush();
             velocityOS.close();
 
-         }
-      }
-   };
-
 #ifdef run_with_temperature
-   auto postProcessingLamdaswithTemperature = [&]() {
-      if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod) && wall_statistics.getWallStatisticsConvergence() == true)
-      {
-         if (meanPlaneAverager.getTimeCounter() < 2 * planeAveragingtimeBlock)
-         {
-            if (meanPlaneAverager.getTimeCounter() % 1000 == 0) // just for debugging
-            {
-               WALBERLA_LOG_INFO_ON_ROOT("still in  the pre part  " << meanPlaneAverager.getTimeCounter())
-            }
-            meanPlaneAverager(blocks, velFieldFluidID, temperatureFieldID,
-                              particleAndVolumeFractionSoA_temperature.BFieldID);
-         }
-         if (meanPlaneAverager.getTimeCounter() == 2 * planeAveragingtimeBlock)
-         {
-            if (meanPlaneAverager.getTimeCounter() % 10000 == 0)
-            {
-               WALBERLA_LOG_INFO_ON_ROOT("entered the averagin part")
-            }
-            heatFluxBudgets(blocks, velFieldFluidID, temperatureFieldID,
-                            particleAndVolumeFractionSoA_temperature.BFieldID);
 
-            planeAveragedProfiles_velocity.computeFluidParticleAveragedVectors(
-               particleAndVolumeFractionSoA_temperature.BFieldID);
-            planeAveragedProfiles_temperature.computeFluidParticleAveragedVectors(
-               particleAndVolumeFractionSoA_temperature.BFieldID);
+            std::ofstream wallstatsTemperatureOS;
+            wallstatsTemperatureOS << std::fixed << std::setprecision(6);
+            wallstatsTemperatureOS.open("output/wallstatsConverged_temperature.txt", std::ios::out);
 
-            if (heatFluxBudgets.getTimeSampleCount() == real_c(heatFluxAveragingtimeBlock))
-            {
-               // averaging is done so write out the different quantities to text files here:
 
-               planeAveragedProfiles_velocity.computeFluidParticleRMS(); // compute the rms quantities
-               planeAveragedProfiles_temperature.computeFluidParticleRMS();
-               WALBERLA_ROOT_SECTION()
-               {
-                  std::ofstream velocityOS;
-                  velocityOS.open("statistics.txt", std::ios::out);
-                  velocityOS << "height\t Uf_x\t Uf_y\t Uf_z\t Up_x\t Up_y\t Up_z\t Urms_fx\t Urms_fy\t Urms_fz\t "
-                                "Urms_px\t Urms_py\t Urms_pz\t Tf\t Tp\t Trms_f\t Trms_p\t  \n";
+            real_t nusseltNumberBottom = wall_statistics.getNusseltNumber();
+            wallstatsTemperatureOS  << "  nusseltNumberBottom \n";
+            wallstatsTemperatureOS <<  nusseltNumberBottom << "\n";
+
+
+            std::ofstream temperatureOS;
+            temperatureOS << std::fixed << std::setprecision(6);
+            temperatureOS.open("output/phase_statistics_temperature.txt", std::ios::out);
+            auto printRowTemperature = [&](auto&&... args) {
+               ((temperatureOS << std::setw(12) << args), ...);
+               temperatureOS << "\n";
+            };
+
+            // plotting everything in normalized wall units
+            printRowTemperature("y","y+", "T_f", "T_p", "TT_f", "TT_p");
+
+            // at the wall
+            printRowTemperature(0,0,Thot,Thot,0,0);
+
                   for (uint_t idx = 0; idx < domainSize[codegen::wall_axis]; ++idx)
                   {
-                     velocityOS << idx << "\t";
-                     for (uint_t i = 0; i < VectorField_T::F_SIZE; ++i)
+               // y and y+
+               temperatureOS << std::setw(12) << real_c(idx) + 0.5_r ;
+               temperatureOS << std::setw(12) << ((real_c(idx) + 0.5_r)*frictionVelocity)/kinematicViscosityLB ;
+
+               // fluid averaged temperatures
+               for (uint_t i = 0; i < codegen::scalarSize; ++i)
                      {
-                        velocityOS
-                           << planeAveragedProfiles_velocity.getFluidAVGProfile()[idx * VectorField_T::F_SIZE + i]
-                           << "\t";
-                        velocityOS
-                           << planeAveragedProfiles_velocity.getParticleAVGProfile()[idx * VectorField_T::F_SIZE + i]
-                           << "\t";
-                        velocityOS
-                           << planeAveragedProfiles_velocity.getParticleRMSProfile()[idx * VectorField_T::F_SIZE + i]
-                           << "\t";
-                        velocityOS
-                           << planeAveragedProfiles_velocity.getParticleRMSProfile()[idx * VectorField_T::F_SIZE + i]
-                           << "\t";
+                  temperatureOS << std::setw(12)
+                             << planeAveragedProfiles_temperature->getFluidAVGProfile()[idx * codegen::scalarSize + i];
+                  temperatureOS << std::setw(12)
+                            << planeAveragedProfiles_temperature->getFluidRMSProfile()[idx * codegen::scalarSize + i];
+                  temperatureOS << std::setw(12)
+                             << planeAveragedProfiles_temperature->getParticleAVGProfile()[idx * codegen::scalarSize + i];
+                  temperatureOS << std::setw(12)
+                             << planeAveragedProfiles_temperature->getParticleRMSProfile()[idx * codegen::scalarSize + i];
                      }
 
-                     velocityOS << planeAveragedProfiles_temperature.getFluidAVGProfile()[idx] << "\t";
-                     velocityOS << planeAveragedProfiles_temperature.getParticleAVGProfile()[idx] << "\t";
-                     velocityOS << planeAveragedProfiles_temperature.getParticleRMSProfile()[idx] << "\t";
-                     velocityOS << planeAveragedProfiles_temperature.getParticleRMSProfile()[idx] << "\t";
-
-                     velocityOS << "\n";
-                  }
-               }
+               temperatureOS << "\n";
             }
+            temperatureOS.flush();
+            temperatureOS.close();
+
+#endif
+
          }
       }
    };
-#endif
+
+
+   // welford fields are only updated up until wallstatistics are converged and after (nTurnovers * turnOverPeriod), not in between. Hence even checkpointing is done in these intervals only
 
    auto welfordPhasesSweepLambda =
       std::function< void(IBlock*) >([&](IBlock* block) {
             if (wall_statistics.getWallStatisticsConvergence() == false)
             {
+               welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
                welfordVelocitySweep(block);
+               WALBERLA_GPU_CHECK(gpuDeviceSynchronize());
+               
+               if (checkPointingFrequency > uint_t(0) &&
+                   (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
+                   timeloop.getCurrentTimeStep() != startTimeStep)
+               {
+                  blocks->saveBlockData(checkpointingFileName + "_welfordVelocity_tmp.txt", meanVelFieldID);
+                  WALBERLA_ROOT_SECTION(){renameFile(checkpointingFileName + "_welfordVelocity_tmp.txt", checkpointingFileName + "_welfordVelocity.txt");}
+               }
+
 #ifdef run_with_temperature
+               welfordTemperatureSweep.setCounter(welfordTemperatureSweep.getCounter() + real_c(1.0));
                welfordTemperatureSweep(block);
+               WALBERLA_GPU_CHECK(gpuDeviceSynchronize());
+               
+               if (checkPointingFrequency > uint_t(0) &&
+                   (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
+                   timeloop.getCurrentTimeStep() != startTimeStep)
+               {
+                  blocks->saveBlockData(checkpointingFileName + "_welfordTemperature_tmp.txt", meanTemperatureFieldID);
+                  WALBERLA_ROOT_SECTION(){renameFile(checkpointingFileName + "_welfordTemperature_tmp.txt", checkpointingFileName + "_welfordTemperature.txt");}
+               }
 #endif
             }
 
-         if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod) &&
-             timeloop.getCurrentTimeStep() % samplingInterval == 0 &&
-             wall_statistics.getWallStatisticsConvergence() == true)
+
+         if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod) && timeloop.getCurrentTimeStep() % samplingInterval == 0 && wall_statistics.getWallStatisticsConvergence() == true)
          {
+            welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
             welfordVelocitySweep(block);
+            WALBERLA_GPU_CHECK(gpuDeviceSynchronize());
+            if (checkPointingFrequency > uint_t(0) &&
+                   (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
+                   timeloop.getCurrentTimeStep() != startTimeStep)
+            {
+               blocks->saveBlockData(checkpointingFileName + "_welfordVelocity_tmp.txt", meanVelFieldID);
+               WALBERLA_ROOT_SECTION()
+               {
+                  // renameFile(checkpointingFileName + "_welfordVelocity_tmp.txt",
+                  //            checkpointingFileName + "_welfordVelocity.txt");
+               }
+            }
+
 #ifdef run_with_temperature
+
+            welfordTemperatureSweep.setCounter(welfordTemperatureSweep.getCounter() + real_c(1.0));
             welfordTemperatureSweep(block);
+            WALBERLA_GPU_CHECK(gpuDeviceSynchronize());
+
+            if (checkPointingFrequency > uint_t(0) &&
+                   (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
+                   timeloop.getCurrentTimeStep() != startTimeStep)
+            {
+               blocks->saveBlockData(checkpointingFileName + "_welfordTemperature_tmp.txt", meanTemperatureFieldID);
+               WALBERLA_ROOT_SECTION()
+               {
+                  renameFile(checkpointingFileName + "_welfordTemperature_tmp.txt",
+                          checkpointingFileName + "_welfordTemperature.txt");
+               }
+            }
 #endif
+
+
+
          }
 
-         if (timeloop.getCurrentTimeStep() == numTimeSteps - uint_c(turnOverPeriod))
+            if (timeloop.getCurrentTimeStep() == numTimeSteps - uint_c(turnOverPeriod))
             {
-            WALBERLA_LOG_INFO_ON_ROOT("at time Step "<< timeloop.getCurrentTimeStep() << " writing the welford statistics to file: output/welford_statistics.txt");
+               WALBERLA_LOG_INFO_ON_ROOT("at time Step "<< timeloop.getCurrentTimeStep() << " writing the welford statistics to file: output/welford_statistics.txt");
                // computation of welford statistics
                gpu::fieldCpy< VelocityField_fluid_T, gpu::GPUField< real_t > >(blocks, meanVelFieldID,
                                                                                 meanVelFieldGPUID);
                gpu::fieldCpy< TensorField_T, gpu::GPUField< real_t > >(blocks, sosVelFieldID, sosVelFieldGPUID);
 
-               reduceWelfordFields<VectorField_T, TensorField_T> reduceWelford_velocity(
-                  blocks, meanVelFieldID, sosVelFieldID, codegen::wall_axis,
-                  uint_c(domainSize[codegen::wall_axis]), welfordVelocitySweep);
-
+               reduceWelfordFields<VectorField_T, TensorField_T> reduceWelford_velocity(blocks,meanVelFieldID,sosVelFieldID,
+                              codegen::wall_axis, domainSize[codegen::wall_axis], welfordVelocitySweep);
                reduceWelford_velocity();
                auto welford_mean_velocity = reduceWelford_velocity.getPlaneMeans();
                auto welford_sos_velocity = reduceWelford_velocity.getPlaneSoSMeans();
@@ -1531,9 +1826,19 @@ int main(int argc, char** argv)
                // compute viscous stresses here dU_mean/dy ny using the "meanVelFieldID" vector from above.
                auto viscousStress = computeViscousStress<VectorField_T>( blocks,meanVelFieldID ,domainSize);
 
-               // here a function to reduce welford fields to vectors is needed
+#ifdef run_with_temperature
+               wall_statistics(blocks, meanTemperatureFieldID, meanVelFieldID, timeloop.getCurrentTimeStep(), Tcold,
+                               Thot, convergenceTolerance);
+#else
+               wall_statistics(blocks, meanVelFieldID, timeloop.getCurrentTimeStep(), convergenceTolerance);
+#endif
+
                WALBERLA_ROOT_SECTION()
                {
+
+                  // getWallShearStress() here is just dU/dy //
+                  real_t wallshearStress  = kinematicViscosityLB * wall_statistics.getWallShearStress();
+                  real_t frictionVelocity = std::sqrt(wallshearStress );
 
 
                   std::ofstream velocityOS;
@@ -1548,19 +1853,19 @@ int main(int argc, char** argv)
                   printRow("y","y+", "Ux", "Uy", "Uz", "UU", "UV", "UW", "VU", "VV", "VW", "WU", "WV",
                            "WW", "dUmean/dy");
                   // at the wall:
-                  printRow(0,0,0,0,0,0,0,0,0,0,0,0,0,0, (wall_statistics.getWallShearStress()* kinematicViscosityLB)/(target_friction_velocity*target_friction_velocity));
+                  printRow(0,0,0,0,0,0,0,0,0,0,0,0,0,0,(wall_statistics.getWallShearStress()* kinematicViscosityLB)/(frictionVelocity*frictionVelocity));
                   for (uint_t idx = 0; idx < domainSize[codegen::wall_axis]; ++idx)
                   {
                      velocityOS << std::setw(12) << real_c(idx) + 0.5_r;
                      velocityOS << std::setw(12)
-                                << ((real_c(idx) + 0.5_r) * target_friction_velocity) / kinematicViscosityLB;
+                                << ((real_c(idx) + 0.5_r) * frictionVelocity) / kinematicViscosityLB;
 
                      // averaged velocities of fluid/ virtual fluid in case of particle-laden case
                      for (uint_t i = 0; i < codegen::vectorSize; ++i)
                      {
                         velocityOS
                            << std::setw(12)
-                           << welford_mean_velocity[idx * codegen::vectorSize + i]/target_friction_velocity;
+                           << welford_mean_velocity[idx * codegen::vectorSize + i]/frictionVelocity;
                      }
 
                      // rms profiles of fluid/virtual fluid in case of particle-laden case
@@ -1568,12 +1873,12 @@ int main(int argc, char** argv)
                      {
                            velocityOS << std::setw(12)
                                       << welford_sos_velocity[idx * codegen::tensorSize
-                                                                  + i]/(target_friction_velocity*target_friction_velocity);
+                                                                  + i]/(frictionVelocity*frictionVelocity);
                      }
 
                      // viscous stress
 
-                     velocityOS << std::setw(12) << (viscousStress[idx] * kinematicViscosityLB)/(target_friction_velocity*target_friction_velocity);
+                     velocityOS << std::setw(12) << (viscousStress[idx] * kinematicViscosityLB)/(frictionVelocity*frictionVelocity);
 
 
 
@@ -1581,32 +1886,40 @@ int main(int argc, char** argv)
                   }
                   velocityOS.flush();
                   velocityOS.close();
+
                }
-         }
+            }
+
+
+
       });
 
    auto wallstatisticsLamda = [&]() {
-      if (timeloop.getCurrentTimeStep() % samplingInterval == 0)
+      if (timeloop.getCurrentTimeStep() % samplingInterval == 0  && wall_statistics.getWallStatisticsConvergence() == false )
       {
 #ifdef run_with_temperature
          gpu::fieldCpy< DensityField_temperature_T, gpu::GPUField< real_t > >(blocks, meanTemperatureFieldID,
                                                                               meanTemperatureFieldGPUID);
+         gpu::fieldCpy< VelocityField_fluid_T, gpu::GPUField< real_t > >(blocks, meanVelFieldID, meanVelFieldGPUID);
          wall_statistics(blocks, meanTemperatureFieldID, meanVelFieldID, timeloop.getCurrentTimeStep(), Tcold, Thot,
                          convergenceTolerance);
 #else
          gpu::fieldCpy< VelocityField_fluid_T, gpu::GPUField< real_t > >(blocks, meanVelFieldID, meanVelFieldGPUID);
          wall_statistics(blocks, meanVelFieldID, timeloop.getCurrentTimeStep(), convergenceTolerance);
-      }
+
 #endif
+      }
       };
    ///////////////////////////////////
    // add everything to the timeloop//
    ///////////////////////////////////
 
+
    timeloop.add() << BeforeFunction(communication_fluid, "LBM fluid Communication")
                   << Sweep(deviceSyncWrapper(noSlip_fluid_bc.getSweep()), "Boundary Handling (No slip fluid)");
 
-   timeloop.add() << Sweep(deviceSyncWrapper(freeSlip_fluid_bc.getSweep()), "Boundary Handling (Free slip fluid)");
+   timeloop.add() << Sweep(deviceSyncWrapper(freeSlip_fluid_bc.getSweep()),
+                           "Boundary Handling (Free slip fluid)");
 
    // add the temperature to the time loop
 
@@ -1624,28 +1937,48 @@ int main(int argc, char** argv)
 
    if (useParticles)
    {
-      timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.particleMappingSweep),
-                              "Particle mapping Fluid"); // uses weighting for hydrodynamics specified in Cmakelists file
+      timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.particleMappingSweep), "Particle mapping Fluid"); // uses weighting for hydrodynamics specified in Cmakelists file
 
       timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.setParticleVelocitiesSweep),
                               "Set particle velocities from fluid sweepcollection");
    }
 #ifdef run_with_temperature
-   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep),
-                           "Particle mapping Thermal"); // always uses a weighting of 1
+   timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep), "Particle mapping Thermal"); // always uses a weighting of 1
 #endif
 
    // compute the force before the psm fluid sweep.
 
-   timeloop.add() //<< BeforeFunction([&]() { forceCalculator.calculateBulkVelocity(); }, "bulk velocity calculation")
+
+
+  ForceAdjusterPID < VectorGPUField_T, maskGPUField_T > forceAdjusterPID(blocks,velFieldFluidGPUID,particleAndVolumeFractionSoA_fluid.BFieldID, targetMeanVelocityMagnitude, currentPidForce,
+                    proportionalGain,  derivativeGain,  integralGain,  maxRamp,
+                    minActuatingVariable,  maxActuatingVariable);
+
+   timeloop.add() << BeforeFunction([&]() {
+      if (timeloop.getCurrentTimeStep() % 10 == 0)
+      {
+         forceAdjusterPID.calculateBulkVelocity(gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2]);
+      }
+   }, "bulk velocity calculation")
+               << BeforeFunction(
+                     [&]() {
+                        forceAdjusterPID(forceAdjusterPID.bulkVelocity());
+                        currentPidForce = forceAdjusterPID.getCurrentDrivingForce();
+                      //  WALBERLA_LOG_INFO_ON_ROOT("current pid focre: " << forceAdjusterPID.getCurrentDrivingForce());
+                        setNewForce(currentPidForce);
+                     },
+                     "new force setter")
+               << Sweep([](IBlock*) {}, "new force setter");
+
+  /* timeloop.add() //<< BeforeFunction([&]() { forceCalculator.calculateBulkVelocity(); }, "bulk velocity calculation")
                   << BeforeFunction(
                         [&]() {
                            // const auto newForce = forceCalculator.calculateDrivingForce();
+                             // WALBERLA_LOG_INFO_ON_ROOT("force is  " << initialForce);
                            setNewForce(initialForce);
                         },
                         "new force setter")
-                  << Sweep([](IBlock*) {}, "new force setter");
-
+                  << Sweep([](IBlock*) {}, "new force setter");*/
    timeloop.add() << Sweep(psmFluidSweeplamda, "PSM Fluid sweep");
 
 #ifdef run_with_temperature
@@ -1663,8 +1996,7 @@ int main(int argc, char** argv)
    timeloop.addFuncAfterTimeStep(postProcessingLamdas, "custom HeatFlux, velocity statistics and other post processing");
    timeloop.add() << BeforeFunction(
                         [&]() {
-                           if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod) &&
-                               wall_statistics.getWallStatisticsConvergence() == true && resetCounters == false)
+                           if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod) && wall_statistics.getWallStatisticsConvergence() == true && resetCounters == false)
                            {
                               WALBERLA_LOG_INFO_ON_ROOT("Resetting Welford fields and counters")
                               resetCounters = true;
@@ -1678,16 +2010,17 @@ int main(int argc, char** argv)
 #ifdef run_with_temperature
                                  auto* sosTemperatureField =
                                     block.template getData< ScalarField_T >(sosTemperatureFieldID);
-
                                  sosTemperatureField->setWithGhostLayer(0.0);
 #endif
+                                 gpu::fieldCpy< TensorField_T, TensorGPUField_T >(blocks, sosVelFieldID, sosVelFieldGPUID);
                                  auto* sosVelocityField = block.template getData< TensorField_T >(sosVelFieldID);
                                  sosVelocityField->setWithGhostLayer(0.0);
+                                 gpu::fieldCpy<TensorGPUField_T,TensorField_T >(blocks, sosVelFieldGPUID,sosVelFieldID);
                               }
                            }
-                           welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
+                           //welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
 #ifdef run_with_temperature
-                           welfordTemperatureSweep.setCounter(welfordTemperatureSweep.getCounter() + real_c(1.0));
+                           //welfordTemperatureSweep.setCounter(welfordTemperatureSweep.getCounter() + real_c(1.0));
 #endif
                         },
                         "welford sweep")
@@ -1698,11 +2031,10 @@ int main(int argc, char** argv)
 
    for (uint_t timeStep = startTimeStep; timeStep < numTimeSteps; ++timeStep)
    {
-      //WALBERLA_LOG_INFO_ON_ROOT("reached here 0001");
+
       if (checkPointingFrequency > uint_t(0) && (timeStep % checkPointingFrequency == 0) && timeStep != startTimeStep)
       {
-
-         WALBERLA_LOG_INFO_ON_ROOT("writing checkpoint at timestep " << timeStep << " (pre-step)");
+         //WALBERLA_LOG_INFO_ON_ROOT("writing checkpoint at timestep " << timeStep << " (pre-step)");
          checkpointTimer.start();
          gpu::fieldCpy<PdfField_fluid_T,gpu::GPUField< real_t >>(blocks,pdfFieldFluidID,pdfFieldFluidGPUID);
          blocks->saveBlockData(checkpointingFileName + "_lbm_tmp.txt", pdfFieldFluidID,false);
@@ -1726,29 +2058,29 @@ int main(int argc, char** argv)
                                                             << checkpointingFileName + "_config_tmp.txt"
                                                             << " for writing");
             checkpointConfigOS << timeStep << "\n";
+            checkpointConfigOS << currentPidForce << "\n";
             checkpointConfigOS.close();
          }
          WALBERLA_MPI_BARRIER();
 
          WALBERLA_ROOT_SECTION()
          {
-            if (writeContinuousCheckPoints)
-            {
-               renameFile(checkpointingFileName + "_lbm_tmp.txt", checkpointingFileName + "_lbm_" + std::to_string(timeStep) + ".txt");
+            if (writeContinuousCheckPoints){
+               renameFile(checkpointingFileName + "_lbm_tmp.txt", checkpointingFileName + "_lbm_"+std::to_string(timeStep)+".txt");
 #ifdef run_with_temperature
                renameFile(checkpointingFileName + "_lbm_tmp_temperature.txt",
-                          checkpointingFileName + "_lbm_temperature_" + std::to_string(timeStep) + ".txt");
+                          checkpointingFileName + "_lbm_temperature_"+std::to_string(timeStep)+".txt");
 #endif
+               renameFile(checkpointingFileName + "_config_tmp.txt", checkpointingFileName + "_config_"+std::to_string(timeStep)+".txt");
                if (useParticles)
                {
-                  renameFile(checkpointingFileName + "_mesa_tmp.txt",
-                             checkpointingFileName + "_mesa_" + std::to_string(timeStep) + ".txt");
+                  renameFile(checkpointingFileName + "_mesa_tmp.txt", checkpointingFileName + "_mesa_"+std::to_string(timeStep)+".txt");
                }
-               renameFile(checkpointingFileName + "_config_tmp.txt", checkpointingFileName + "_config_" + std::to_string(timeStep) + ".txt");
 
-               if (timeStep >= 2 * checkPointingFrequency)
+               if (timeStep >= 2*checkPointingFrequency)
                {
                   uint_t oldStep = timeStep - 2 * checkPointingFrequency;
+
                   std::string oldBase_lbm = checkpointingFileName + "_lbm_" + std::to_string(oldStep);
                   std::string oldBase_config = checkpointingFileName + "_config_" + std::to_string(oldStep);
                   std::string oldBase_particles = checkpointingFileName + "_mesa_" + std::to_string(oldStep);
@@ -1771,6 +2103,7 @@ int main(int argc, char** argv)
                   {
                      std::filesystem::remove(oldBase_particles + ".txt");
                   }
+
                }
             }
             else
@@ -1780,14 +2113,15 @@ int main(int argc, char** argv)
                renameFile(checkpointingFileName + "_lbm_tmp_temperature.txt",
                           checkpointingFileName + "_lbm_temperature.txt");
 #endif
+               renameFile(checkpointingFileName + "_config_tmp.txt", checkpointingFileName + "_config.txt");
                if (useParticles)
                {
                   renameFile(checkpointingFileName + "_mesa_tmp.txt", checkpointingFileName + "_mesa.txt");
                }
-               renameFile(checkpointingFileName + "_config_tmp.txt", checkpointingFileName + "_config.txt");
             }
          }
       }
+      WALBERLA_MPI_BARRIER();
 
       // perform a single simulation step -> this contains LBM and setting of the hydrodynamic interactions
       timeloop.singleStep(timeloopTiming);
@@ -1935,8 +2269,11 @@ int main(int argc, char** argv)
       {
          timeloopTiming["Evaluate infos"].start();
 
-         auto particleInfo = evaluateParticleInfo(*accessor);
-         WALBERLA_LOG_INFO_ON_ROOT(particleInfo);
+         if (useParticles)
+         {
+            auto particleInfo = evaluateParticleInfo(*accessor);
+            WALBERLA_LOG_INFO_ON_ROOT(particleInfo);
+         }
 
          #ifdef run_with_temperature
          gpu::fieldCpy< DensityField_temperature_T,gpu::GPUField< real_t >  >(blocks,temperatureFieldID, temperatureFieldGPUID);
@@ -1946,11 +2283,13 @@ int main(int argc, char** argv)
          auto fluidInfo =
             evaluateFluidInfo(blocks, densityFluidFieldID, velFieldFluidID,temperatureFieldID);
          #else
+         getFluidMacroFields();
          gpu::fieldCpy<VelocityField_fluid_T ,gpu::GPUField< real_t >  >(blocks,velFieldFluidID, velFieldFluidGPUID);
          gpu::fieldCpy< DensityField_fluid_T, gpu::GPUField< real_t > >(blocks, densityFluidFieldID,
                                                                     densityFluidFieldGPUID);
          auto fluidInfo =
            evaluateFluidInfo(blocks, densityFluidFieldID, velFieldFluidID);
+
 
          #endif
          WALBERLA_LOG_INFO_ON_ROOT(fluidInfo);
