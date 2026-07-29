@@ -1,5 +1,5 @@
 //
-// Created by dy94rovu on 6/24/24.
+// Created by dy94rovu
 //
 //======================================================================================================================
 //
@@ -16,8 +16,7 @@
 //  You should have received a copy of the GNU General Public License along
 //  with waLBerla (see COPYING.txt). If not, see <http://www.gnu.org/licenses/>.
 //
-//! \file thermalPSM.cpp
-//! \ingroup lbm_mesapd_coupling
+//! \file catalyst.cpp
 //! \author Ravi Ayyala Somayajula <ravi.k.ayyala@fau.de>
 //
 //======================================================================================================================

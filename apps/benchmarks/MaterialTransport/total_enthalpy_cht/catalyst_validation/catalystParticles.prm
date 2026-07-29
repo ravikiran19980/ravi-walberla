@@ -30,7 +30,6 @@ NumericalSetup
     numYBlocks 8;
     numZBlocks 16;
 
-    use2DRefVel false;
     useLubricationForces true;
     numberOfParticleSubCycles 10;
     useParticles true;
@@ -57,9 +56,9 @@ TemperatureSetup
 
 Output
 {
-    infoSpacing 0.001; // in s
-    vtkSpacingParticles 0; // in s
-    vtkSpacingFluid 0; // in s
+    infoSpacing 0.001;
+    vtkSpacingParticles 0;
+    vtkSpacingFluid 0;
     vtkFolder vtk_out;
     performanceLogFrequency 5000000000;
 }
