@@ -6,12 +6,12 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
                 "The catalyst validation test is only supported for CPU builds. "
                 "Please configure with WALBERLA_BUILD_WITH_GPU_SUPPORT=OFF."
         )
-    endif()
+    endif ()
     if (NOT WALBERLA_BUILD_WITH_GPU_SUPPORT)
-        foreach(solid_collision 1 2 3)
+        foreach (solid_collision 1 2 3)
 
             set(config sc_${solid_collision})
-            add_executable(catalyst_virtualfluid_cht_${config}  catalyst.cpp ../../utilities/InitializerFunctions.cpp)
+            add_executable(catalyst_virtualfluid_cht_${config} catalyst.cpp ../../utilities/InitializerFunctions.cpp)
             target_link_libraries(catalyst_virtualfluid_cht_${config} walberla::blockforest walberla::core walberla::field walberla::geometry walberla::gpu walberla::lbm walberla::lbm_mesapd_coupling walberla::mesa_pd walberla::sqlite walberla::vtk codegenThermal_${config})
             target_compile_definitions(catalyst_virtualfluid_cht_${config} PRIVATE Weighting=1)
         endforeach ()
