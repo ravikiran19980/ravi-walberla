@@ -1,7 +1,7 @@
 add_subdirectory(codegenThermal)
-add_subdirectory(ardekani_validation)
 if (NOT WALBERLA_BUILD_WITH_GPU_SUPPORT)
     add_subdirectory(catalyst_validation)
+    add_subdirectory(ardekani_validation)
 endif ()
 add_subdirectory(specific_heats_validation)
 add_subdirectory(hpc-performance)

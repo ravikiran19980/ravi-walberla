@@ -28,7 +28,6 @@
 #include "field/vtk/VTKWriter.h"
 
 // #include "python_coupling/DictWrapper.h"
-#include "GeneralInfoHeader.h"
 #include "InitializerFunctions.h"
 #pragma once
 
@@ -64,7 +63,7 @@ void initConcentrationField(const shared_ptr< StructuredBlockStorage >& blocks, 
 
 
 void initConcentrationFieldCoutte(const shared_ptr< StructuredBlockStorage >& blocks, BlockDataID& ConcentrationFieldID,
-                                  BlockDataID& BFieldID,Vector3< uint_t > domainSize )
+                                  BlockDataID& BFieldID,Vector3< uint_t > domainSize, const real_t particleTemperature )
 {
 
    for (auto& block : *blocks)
@@ -81,7 +80,7 @@ void initConcentrationFieldCoutte(const shared_ptr< StructuredBlockStorage >& bl
          const real_t posY   = position[1]; // cellCenter[1];
          const real_t posZ   = position[2]; // cellCenter[2];
 
-         ConcentrationField->get(x, y, z) = (1 - Bfield->get(x,y,z)) * (0.5 - posZ/(domainSize[2])) + Bfield->get(x,y,z)*((0.5 - posZ/(domainSize[2])));
+         ConcentrationField->get(x, y, z) = (1 - Bfield->get(x,y,z)) * (0.5 - posZ/(domainSize[2])) + Bfield->get(x,y,z)*particleTemperature;
 
       }) // WALBERLA_FOR_ALL_CELLS_INCLUDING_GHOST_LAYER_XYZ
    }

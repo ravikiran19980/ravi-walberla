@@ -98,7 +98,6 @@ def create_thermal_lb_method(lbm_config: ThermalPSMConfig):
         order=2,
         c_s_sq=lbm_config.c_s_sq,
         substitutions=None,
-        #temperature=T,
         Cp_ref=sp.Symbol("rho_Cp_ref")
     )
 

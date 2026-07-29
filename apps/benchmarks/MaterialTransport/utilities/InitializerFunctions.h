@@ -27,7 +27,7 @@
 #include "field/vtk/VTKWriter.h"
 
 //#include "python_coupling/DictWrapper.h"
-//#include "GeneralInfoHeader.h"
+#include "GeneralInfoHeader.h"
 #pragma once
 
 namespace walberla
@@ -38,7 +38,7 @@ void initFluidField(const shared_ptr< StructuredBlockStorage >& blocks, BlockDat
 void initFluidFieldCoutte(const shared_ptr< StructuredBlockStorage >& blocks, BlockDataID& FluidFieldID, const real_t h,
                      const Vector3< real_t > uInflow);
 void initConcentrationFieldCoutte(const shared_ptr< StructuredBlockStorage >& blocks, BlockDataID& ConcentrationFieldID,
-                                  BlockDataID& BFieldID,Vector3< uint_t > domainSize );
+                                  BlockDataID& BFieldID,Vector3< uint_t > domainSize,const real_t particleTemperature );
 void initFluidFieldPoiseuille(const shared_ptr< StructuredBlockStorage >& blocks, BlockDataID& FluidFieldID,
                               const Vector3< real_t > uInflow,Vector3< uint_t > domainSize);
 
