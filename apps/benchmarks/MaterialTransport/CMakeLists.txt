@@ -1,4 +1,3 @@
 add_subdirectory(one_way_coupling)
 add_subdirectory(two_way_coupling)
-add_subdirectory(particles_total_enthalpy_cht)
-add_subdirectory(thermal_PSM)
+add_subdirectory(total_enthalpy_cht)
