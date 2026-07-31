@@ -42,17 +42,21 @@ __global__ void bulkVelocityReductionKernel(real_t * __restrict__ _data_velocity
    const unsigned int bid = blockIdx.z *  (gridDim.y  * gridDim.x)  + blockIdx.y  * gridDim.x  + blockIdx.x;
    const unsigned int n   = blockDim.x * blockDim.y * blockDim.z;
 
+   // Every thread must initialize its shared-memory entries.
+    VelSum[tid] = real_t(0);
+    WeightSum[tid]   = real_t(0);
    const int64_t x = blockIdx.x * blockDim.x + threadIdx.x;
    const int64_t y = blockIdx.y * blockDim.y + threadIdx.y;
    const int64_t z = blockIdx.z * blockDim.z + threadIdx.z;
 
-   real_t localVel    = 0_r;
-   real_t localWeight = 0_r;
+   real_t localVel    = 0;
+   real_t localWeight = 0;
+
 
    if (x < _size_x && y < _size_y && z < _size_z) {
       localWeight =  _data_fraction_field[ x * _stride_x + y * _stride_y + z * _stride_z ];
 
-      if ( (1 - localWeight) > 0_r)
+      if ( (1 - localWeight) > 0)
       {
          localVel   = _data_velocity_field[ x * _stride_x + y * _stride_y + z * _stride_z + 0 * _stride_f ];
          VelSum[tid] = localVel * (1 - localWeight);

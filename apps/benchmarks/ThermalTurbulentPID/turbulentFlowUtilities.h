@@ -209,6 +209,10 @@ class ForceAdjusterPID
 
          CellInterval localCi;
          blocks->transformGlobalToBlockLocalCellInterval(localCi, *block, ci_);
+         localCi.intersect(meanVelocityField->xyzSize());
+         if (localCi.empty())
+            continue;
+
          WALBERLA_ASSERT_GREATER_EQUAL(localCi.xMin(), -int_c(gpuField->nrOfGhostLayers()));
          WALBERLA_ASSERT_GREATER_EQUAL(localCi.yMin(), -int_c(gpuField->nrOfGhostLayers()));
          WALBERLA_ASSERT_GREATER_EQUAL(localCi.zMin(), -int_c(gpuField->nrOfGhostLayers()));

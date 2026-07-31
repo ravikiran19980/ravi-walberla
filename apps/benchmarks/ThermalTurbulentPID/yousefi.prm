@@ -26,6 +26,7 @@ NumericalSetup
     numXBlocks 30;
     numYBlocks 6;
     numZBlocks 24;
+    gpuBlockSize   < 64, 1, 1>;
 
     useLubricationForces true;
     useParticles false;
