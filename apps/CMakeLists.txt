@@ -31,4 +31,3 @@ if ( WALBERLA_BUILD_WITH_PYTHON )
     add_subdirectory( pythonmodule )
 endif()
 
-#add_subdirectory( run_brenden )
