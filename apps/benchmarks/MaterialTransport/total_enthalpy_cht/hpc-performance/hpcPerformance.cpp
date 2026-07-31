@@ -1,5 +1,5 @@
 //
-// Created by dy94rovu on 6/24/24.
+// Created by dy94rovu
 //
 //======================================================================================================================
 //
@@ -16,8 +16,7 @@
 //  You should have received a copy of the GNU General Public License along
 //  with waLBerla (see COPYING.txt). If not, see <http://www.gnu.org/licenses/>.
 //
-//! \file thermalPSM.cpp
-//! \ingroup lbm_mesapd_coupling
+//! \file hpcPerformance.cpp
 //! \author Ravi Ayyala Somayajula <ravi.k.ayyala@fau.de>
 //
 //======================================================================================================================
@@ -62,7 +61,6 @@
 #include "mesa_pd/data/ShapeStorage.h"
 #include "mesa_pd/data/shape/HalfSpace.h"
 #include "mesa_pd/data/shape/Sphere.h"
-#include "mesa_pd/domain/BlockForestDataHandling.h"
 #include "mesa_pd/domain/BlockForestDomain.h"
 #include "mesa_pd/kernel/AssocToBlock.h"
 #include "mesa_pd/kernel/DoubleCast.h"
@@ -89,7 +87,6 @@
 #include "PSMFluidSweep.h"
 #include "PackInfoFluid.h"
 #include "PackInfoEnergy.h"
-#include "math.h"
 #include <fstream>
 #include <iomanip>
 #include "../../utilities/settemperaturesweep.h"
@@ -324,24 +321,24 @@ int main(int argc, char** argv)
    // read all parameters from the config file
 
    Config::BlockHandle physicalSetup         = cfgFile->getBlock("PhysicalSetup");
-   const real_t xSize_SI                   = physicalSetup.getParameter< real_t >("xSize");
-   const real_t ySize_SI                   = physicalSetup.getParameter< real_t >("ySize");
-   const real_t zSize_SI                   = physicalSetup.getParameter< real_t >("zSize");
+   const real_t xSize                   = physicalSetup.getParameter< real_t >("xSize");
+   const real_t ySize                   = physicalSetup.getParameter< real_t >("ySize");
+   const real_t zSize                   = physicalSetup.getParameter< real_t >("zSize");
    const bool periodicInX                  = physicalSetup.getParameter< bool >("periodicInX");
    const bool periodicInY                  = physicalSetup.getParameter< bool >("periodicInY");
    const bool periodicInZ                  = physicalSetup.getParameter< bool >("periodicInZ");
-   const real_t runtime_SI                    = physicalSetup.getParameter< real_t >("runtime");
-   const real_t densityFluid_SI               = physicalSetup.getParameter< real_t >("densityFluid");
-   const real_t particleDiameter_SI           = physicalSetup.getParameter< real_t >("particleDiameter");
-   const real_t densityParticle_SI            = physicalSetup.getParameter< real_t >("densityParticle");
+   const real_t runtime                    = physicalSetup.getParameter< real_t >("runtime");
+   real_t densityFluid               = physicalSetup.getParameter< real_t >("densityFluid");
+   real_t particleDiameter           = physicalSetup.getParameter< real_t >("particleDiameter");
+   real_t densityParticle            = physicalSetup.getParameter< real_t >("densityParticle");
    const real_t particleRe                 = physicalSetup.getParameter< real_t >("particleRe");
    const real_t dynamicFrictionCoefficient = physicalSetup.getParameter< real_t >("dynamicFrictionCoefficient");
    const real_t coefficientOfRestitution   = physicalSetup.getParameter< real_t >("coefficientOfRestitution");
    const real_t collisionTimeFactor        = physicalSetup.getParameter< real_t >("collisionTimeFactor");
 
    Config::BlockHandle numericalSetup = cfgFile->getBlock("NumericalSetup");
-   const real_t dx_SI                 = numericalSetup.getParameter< real_t >("dx");
-   const real_t dt_SI          = numericalSetup.getParameter< real_t >("dt");
+   const real_t dx                 = numericalSetup.getParameter< real_t >("dx");
+   const real_t dt          = numericalSetup.getParameter< real_t >("dt");
    const real_t Uc          = numericalSetup.getParameter< real_t >("Uc");
    const uint_t numXBlocks            = numericalSetup.getParameter< uint_t >("numXBlocks");
    const uint_t numYBlocks            = numericalSetup.getParameter< uint_t >("numYBlocks");
@@ -364,8 +361,6 @@ int main(int argc, char** argv)
    const real_t linkedCellWidthRation = numericalSetup.getParameter< real_t >("linkedCellWidthRation");
    const bool particleBarriers        = numericalSetup.getParameter< bool >("particleBarriers");
 
-   const Vector3< real_t > SingleparticleLocation =
-      numericalSetup.getParameter< Vector3< real_t > >("SingleparticleLocation");
    const Vector3< real_t > generationDomainFraction =
       numericalSetup.getParameter< Vector3< real_t > >("generationDomainFraction");
    const Vector3< real_t > particleGenerationSpacing =
@@ -385,21 +380,21 @@ int main(int argc, char** argv)
    const bool useCommunicationHiding = numericalSetup.getParameter< bool >("useCommunicationHiding");
 
    Config::BlockHandle TemperatureSetup         = cfgFile->getBlock("TemperatureSetup");
-   const real_t Thot_SI           = TemperatureSetup.getParameter< real_t >("Thot");
-   const real_t Tcold_SI          = TemperatureSetup.getParameter< real_t >("Tcold");
-   const real_t Tref_SI           = TemperatureSetup.getParameter< real_t >("Tref");
-   const real_t Tparticle_SI           = TemperatureSetup.getParameter< real_t >("Tparticle");
+   const real_t Thot           = TemperatureSetup.getParameter< real_t >("Thot");
+   const real_t Tcold          = TemperatureSetup.getParameter< real_t >("Tcold");
+   const real_t Tref           = TemperatureSetup.getParameter< real_t >("Tref");
+   const real_t Tparticle           = TemperatureSetup.getParameter< real_t >("Tparticle");
    const real_t Pr                = TemperatureSetup.getParameter< real_t >("PrandtlNumber");
-   const real_t Cp_f_SI                    = TemperatureSetup.getParameter<real_t>("Cpf");
-   const real_t Cp_s_SI                    = TemperatureSetup.getParameter<real_t>("Cps");
+   const real_t Cp_f                    = TemperatureSetup.getParameter<real_t>("Cpf");
+   const real_t Cp_s                    = TemperatureSetup.getParameter<real_t>("Cps");
    const real_t Kr                    = TemperatureSetup.getParameter<real_t>("Kr");
    const real_t Gr                    = TemperatureSetup.getParameter<real_t>("Gr");
    const real_t Qso                    = TemperatureSetup.getParameter<real_t>("Qso");
 
    Config::BlockHandle outputSetup      = cfgFile->getBlock("Output");
-   const real_t infoSpacing_SI          = outputSetup.getParameter< real_t >("infoSpacing");
-   const real_t vtkSpacingParticles_SI  = outputSetup.getParameter< real_t >("vtkSpacingParticles");
-   const real_t vtkSpacingFluid_SI      = outputSetup.getParameter< real_t >("vtkSpacingFluid");
+   real_t infoSpacing          = outputSetup.getParameter< real_t >("infoSpacing");
+   real_t vtkSpacingParticles  = outputSetup.getParameter< real_t >("vtkSpacingParticles");
+   real_t vtkSpacingFluid      = outputSetup.getParameter< real_t >("vtkSpacingFluid");
    const std::string vtkFolder          = outputSetup.getParameter< std::string >("vtkFolder");
    const uint_t performanceLogFrequency = outputSetup.getParameter< uint_t >("performanceLogFrequency");
 
@@ -409,12 +404,12 @@ int main(int argc, char** argv)
 
    // convert SI units to simulation (LBM) units and check setup
 
-   Vector3< uint_t > domainSize(uint_c(std::ceil(xSize_SI / dx_SI)), uint_c(std::ceil(ySize_SI / dx_SI)),
-                                uint_c(std::ceil(zSize_SI / dx_SI)));
+   Vector3< uint_t > domainSize(uint_c(std::ceil(xSize / dx)), uint_c(std::ceil(ySize / dx)),
+                                uint_c(std::ceil(zSize / dx)));
    WALBERLA_LOG_INFO_ON_ROOT("domain size is " << domainSize);
-   WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[0]) * dx_SI, xSize_SI, "domain size in x is not divisible by given dx");
-   WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[1]) * dx_SI, ySize_SI, "domain size in y is not divisible by given dx");
-   WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[2]) * dx_SI, zSize_SI, "domain size in z is not divisible by given dx");
+   WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[0]) * dx, xSize, "domain size in x is not divisible by given dx");
+   WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[1]) * dx, ySize, "domain size in y is not divisible by given dx");
+   WALBERLA_CHECK_FLOAT_EQUAL(real_t(domainSize[2]) * dx, zSize, "domain size in z is not divisible by given dx");
 
    Vector3< uint_t > cellsPerBlockPerDirection(domainSize[0] / numXBlocks, domainSize[1] / numYBlocks,
                                                domainSize[2] / numZBlocks);
@@ -430,24 +425,18 @@ int main(int argc, char** argv)
                                                    << " is not divisible by given number of blocks in z direction");
 
    WALBERLA_CHECK_GREATER_EQUAL(
-      particleDiameter_SI / dx_SI, 5_r,
+      particleDiameter / dx, 5_r,
       "Your numerical resolution is below 5 cells per diameter and thus too small for such simulations!");
-
-   real_t densityRatio           = densityParticle_SI / densityFluid_SI;
 
    // in simulation units: dt = 1, dx = 1, densityFluid = 1
 
-   const real_t particleDiameter = particleDiameter_SI / dx_SI;
+   particleDiameter = particleDiameter / dx;
    const real_t particleVolume   = math::pi / 6_r * particleDiameter * particleDiameter * particleDiameter;
 
-   const real_t densityFluid = real_t(1);
-   real_t densityParticle    = densityRatio;
-   const real_t dx           = real_t(1);
-
-   const uint_t numTimeSteps        = uint_c(std::ceil(runtime_SI / dt_SI));
-   const uint_t infoSpacing         = uint_c(std::ceil(infoSpacing_SI / dt_SI));
-   const uint_t vtkSpacingParticles = uint_c(std::ceil(vtkSpacingParticles_SI / dt_SI));
-   const uint_t vtkSpacingFluid     = uint_c(std::ceil(vtkSpacingFluid_SI / dt_SI));
+   const uint_t numTimeSteps = uint_c(std::ceil(runtime / dt));
+   infoSpacing               = uint_c(std::ceil(infoSpacing / dt));
+   vtkSpacingParticles       = uint_c(std::ceil(vtkSpacingParticles / dt));
+   vtkSpacingFluid           = uint_c(std::ceil(vtkSpacingFluid / dt));
 
 
    const real_t poissonsRatio         = real_t(0.22);
@@ -461,15 +450,9 @@ int main(int argc, char** argv)
    const uint_t numParticles = uint_c((volfraction*domainVolume)/(particleVolume));
    WALBERLA_LOG_INFO_ON_ROOT(numParticles << " particles will be created");
 
-   const real_t T_conversion = real_t(1);
    // conversion for the various temperature quantities:
    const real_t rho_0 = densityFluid;
-   const real_t Thot = Thot_SI;
-   const real_t Tcold = Tcold_SI;
-   real_t Cp_f =  Cp_f_SI;
-   real_t Cp_s = Cp_s_SI;
-   const real_t Tref = Tref_SI;
-   const real_t particleTemperature = Tparticle_SI;
+   const real_t particleTemperature = Tparticle;
    const real_t delta_T = Thot - Tcold;
    const real_t Uchar = Uc;
    const real_t kinematicViscosityLB  = (Uchar*particleDiameter)/(particleRe);
@@ -564,11 +547,10 @@ int main(int argc, char** argv)
    WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.yMin(), real_t(0));
    WALBERLA_CHECK_FLOAT_EQUAL(simulationDomain.zMin(), real_t(0));
 
-   //const real_t spacing  = uint_c(std::ceil(particleGenerationSpacing / dx_SI));
    const Vector3<real_t> spacingVector(
-      uint_c(std::ceil(particleGenerationSpacing[0] / dx_SI)),
-      uint_c(std::ceil(particleGenerationSpacing[1] / dx_SI)),
-      uint_c(std::ceil(particleGenerationSpacing[2] / dx_SI))
+      uint_c(std::ceil(particleGenerationSpacing[0] / dx)),
+      uint_c(std::ceil(particleGenerationSpacing[1] / dx)),
+      uint_c(std::ceil(particleGenerationSpacing[2] / dx))
    );
 
    auto generationDomain = math::AABB::createFromMinMaxCorner(
@@ -1211,8 +1193,6 @@ int main(int argc, char** argv)
 
 
 
-      //timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionTemperature.particleMappingSweep),
-      //                        "Particle mapping Thermal"); // always uses a weighting of 1
 
       timeloop.add() << Sweep(deviceSyncWrapper(psmEnergySweep), "PSM Energy sweep");
 
@@ -1383,13 +1363,12 @@ int main(int argc, char** argv)
       if (particleBarriers) WALBERLA_MPI_BARRIER();
       timeloopTiming["RPD forEachParticle resetHydrodynamicForceTorque"].end();
 
-      if (infoSpacing != 0 && timeStep % infoSpacing == 0)
+      if (infoSpacing != 0 && timeStep % uint_c(infoSpacing) == 0)
       {
          timeloopTiming["Evaluate infos"].start();
 
          auto particleInfo = evaluateParticleInfo(*accessor);
          WALBERLA_LOG_INFO_ON_ROOT(particleInfo);
-         //if (mpi::MPIManager::instance()->rank() == 0) { (writeVelocityToFile(particleInfo, timeStep)); }
 
 #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
          gpu::fieldCpy< PdfField_fluid_T, gpu::GPUField< real_t > >(blocks, pdfFieldFluidID, pdfFieldFluidCPUGPUID);
