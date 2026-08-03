@@ -78,10 +78,6 @@ if __name__ == '__main__':
     ps.add_property("totalDisplacement", "walberla::real_t", defValue="0_r", syncMode="ON_OWNERSHIP_CHANGE")
     ps.add_property("collisionForceNorm", "walberla::real_t", defValue="0_r", syncMode="ON_OWNERSHIP_CHANGE")
 
-    # Properties for evaluation purposes
-    ps.add_property("totalDisplacement", "walberla::real_t", defValue="real_t(0)", syncMode="ON_OWNERSHIP_CHANGE")
-    ps.add_property("collisionForceNorm", "walberla::real_t", defValue="real_t(0)", syncMode="ON_OWNERSHIP_CHANGE")
-
     # Properties for virtual mass:
     ps.add_property("virtualMass",                  "walberla::real_t",        defValue="0_r",
                     syncMode="ON_OWNERSHIP_CHANGE")
