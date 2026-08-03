@@ -1,9 +1,9 @@
 PhysicalSetup // all to be specified in SI/ref units
 {
 
-    xSize 600;
-    ySize 260;
-    zSize 260;
+    xSize 1440;
+    ySize 480;
+    zSize 720;
 
     periodicInX true;
     periodicInY false;
@@ -23,9 +23,10 @@ NumericalSetup
 {
 
     // product of number of blocks should be equal to number of used processes
-    numXBlocks 25;
-    numYBlocks 10;
-    numZBlocks 10;
+    numXBlocks 30;
+    numYBlocks 6;
+    numZBlocks 24;
+    gpuBlockSize   < 64, 1, 1>;
 
     useLubricationForces true;
     useParticles false;
@@ -43,9 +44,9 @@ TurbulenceSetup
 {
     target_bulk_Reynolds        5600;
     target_friction_Reynolds    180;
-    target_bulk_velocity        0.1;
+    target_bulk_velocity        0.086;
     center_line_velocity        0.1;
-    nTurnovers                  1;
+    nTurnovers                  30;
 }
 
 TemperatureSetup
@@ -61,9 +62,9 @@ TemperatureSetup
 
 vtk_params
 {
-    infoSpacing 10000; // in s
+    infoSpacing 1000; // in s
     vtkSpacingParticles 0; // in s
-    vtkSpacingFluid 100000; // ins
+    vtkSpacingFluid 1000; // ins
     vtkFolder vtk_out;
     writeSlice true;
 
@@ -73,7 +74,10 @@ vtk_params
 
 checkpoint_params
 {
-    startFromCheckPointFile false;
+    restart_simulation false;
+    startFluidFromCheckPointFile false;
+    startTemperatureFromCheckPointFile false;
+    startParticlesFromCheckPointFile false;
     checkpointingFileName testCheckpoint_cpu;
     checkPointingFrequency 250000;
     writeContinuousCheckPoints true;
@@ -89,4 +93,18 @@ statistics_params{
 performance_params{
     performanceLogFrequency 1000000000;
     sendDirectlyFromGPU false;
+    performanceRun false;
 }
+
+
+PIDParameters
+{
+    targetMeanVelocityMagnitude 0.086;
+    proportionalGain            2e-4;
+    derivativeGain              1e-6;
+    integralGain                2e-4;
+    maxRamp                     1e-4;
+    minActuatingVariable        0;
+    maxActuatingVariable        1e-3;
+}
+

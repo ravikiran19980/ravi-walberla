@@ -568,6 +568,7 @@ int main(int argc, char** argv)
    Config::BlockHandle performance_params    = cfgFile->getBlock("performance_params");
    const uint_t performanceLogFrequency   = performance_params.getParameter< uint_t >("performanceLogFrequency");
    const bool sendDirectlyFromGPU         = performance_params.getParameter< bool >("sendDirectlyFromGPU");
+   const bool performanceRun              = performance_params.getParameter< bool >("performanceRun");
 
 
 
@@ -654,7 +655,9 @@ int main(int argc, char** argv)
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
    const real_t omegaT_s = lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
 #endif
-   const uint_t numTimeSteps     = uint_c(simulationTimeFactor * turnOverPeriod);
+   uint_t numTimeSteps;
+   if (performanceRun){numTimeSteps = 3000;}
+   else{numTimeSteps = uint_c(simulationTimeFactor * turnOverPeriod);}
    const uint_t samplingInterval = uint_c(0.04 * turnOverPeriod);
    checkPointingFrequency        = checkPointingFrequency * samplingInterval;
    uint_t startTimeStep          = uint_t(0);
@@ -1142,6 +1145,7 @@ int main(int argc, char** argv)
    // calculate the initial force for initialization:
    forceCalculator.setBulkVelocity(forceParams.targetBulkVelocity);
    const auto initialForce = forceCalculator.calculateDrivingForce();
+   WALBERLA_LOG_INFO_ON_ROOT("Initial driving force: " << initialForce);
 
 
    // Initialize PDFs
@@ -1152,11 +1156,7 @@ int main(int argc, char** argv)
 
 #ifdef run_with_temperature
    pystencils::InitializeTemperatureDomain pdfSetterTemperature(particleAndVolumeFractionSoA_temperature.BFieldID,
-                                                                pdfFieldTemperatureID, temperatureFieldID,
-                                                                velFieldFluidID, particleTemperature);
-   /*pystencils::InitializeTemperatureDomain pdfSetterTemperature(
-                                                                pdfFieldTemperatureID, temperatureFieldID,
-                                                                velFieldFluidID);*/
+                                                                pdfFieldTemperatureID, temperatureFieldID,velFieldFluidID, particleTemperature);
 #endif
 
 
@@ -1313,11 +1313,13 @@ int main(int argc, char** argv)
       vtkOutput_Temperature->addCellDataWriter(
          make_shared< field::VTKWriter< DensityField_temperature_T > >(meanTemperatureFieldID, "mean temperature field"));
 #endif
-
-      timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Fluid), "VTK output Fluid");
+      if (!writeSlice)
+      {
+         timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Fluid), "VTK output Fluid");
 #ifdef run_with_temperature
-      timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Temperature), "VTK output Temperature");
+         timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Temperature), "VTK output Temperature");
 #endif
+      }
 
 
       if(writeSlice){

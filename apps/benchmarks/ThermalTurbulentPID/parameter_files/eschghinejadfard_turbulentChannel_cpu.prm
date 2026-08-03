@@ -26,6 +26,7 @@ NumericalSetup
     numXBlocks 25;
     numYBlocks 10;
     numZBlocks 10;
+    gpuBlockSize   < 64, 1, 1>;
 
     useLubricationForces true;
     useParticles false;
@@ -73,8 +74,11 @@ vtk_params
 
 checkpoint_params
 {
-    startFromCheckPointFile false;
-    checkpointingFileName testCheckpoint_gpu;
+    restart_simulation false;
+    startFluidFromCheckPointFile false;
+    startTemperatureFromCheckPointFile false;
+    startParticlesFromCheckPointFile false;
+    checkpointingFileName testCheckpoint_cpu;
     checkPointingFrequency 250000;
     writeContinuousCheckPoints true;
 }
@@ -89,4 +93,17 @@ statistics_params{
 performance_params{
     performanceLogFrequency 1000000000;
     sendDirectlyFromGPU false;
+    performanceRun false;
+}
+
+
+PIDParameters
+{
+    targetMeanVelocityMagnitude 0.086;
+    proportionalGain            2e-4;
+    derivativeGain              1e-6;
+    integralGain                2e-4;
+    maxRamp                     1e-4;
+    minActuatingVariable        0;
+    maxActuatingVariable        1e-3;
 }

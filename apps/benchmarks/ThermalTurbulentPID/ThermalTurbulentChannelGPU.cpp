@@ -1,5 +1,5 @@
 //
-// Created by dy94rovu on 6/24/24.
+// Created by dy94rovu
 //
 //======================================================================================================================
 //
@@ -578,6 +578,7 @@ int main(int argc, char** argv)
    Config::BlockHandle performance_params    = cfgFile->getBlock("performance_params");
    const uint_t performanceLogFrequency   = performance_params.getParameter< uint_t >("performanceLogFrequency");
    const bool sendDirectlyFromGPU         = performance_params.getParameter< bool >("sendDirectlyFromGPU");
+   const bool performanceRun              = performance_params.getParameter< bool >("performanceRun");
 
 
 
@@ -664,7 +665,9 @@ int main(int argc, char** argv)
    const real_t omegaT_f = lbm::collision_model::omegaFromViscosity(thermalDiffusivityFluid_LB);
    const real_t omegaT_s = lbm::collision_model::omegaFromViscosity(thermalDiffusivityParticle_LB);
 #endif
-   const uint_t numTimeSteps     = uint_c(simulationTimeFactor * turnOverPeriod);
+   uint_t numTimeSteps;
+   if (performanceRun){numTimeSteps = 3000;}
+   else{numTimeSteps = uint_c(simulationTimeFactor * turnOverPeriod);}
    const uint_t samplingInterval = uint_c(0.04 * turnOverPeriod);
    checkPointingFrequency        = checkPointingFrequency * samplingInterval;
    uint_t startTimeStep          = uint_t(0);
@@ -1161,7 +1164,7 @@ int main(int argc, char** argv)
       target_friction_velocity, uint_c(forceParams.channelHalfWidth),
       5.5_r, 0.4_r, kinematicViscosityLB,
       forceParams.wallAxis, codegen::flow_axis );
-   gpu::fieldCpy< gpu::GPUField< real_t >, VelocityField_fluid_T >(blocks, velFieldFluidGPUID, velFieldFluidID);
+  // gpu::fieldCpy< gpu::GPUField< real_t >, VelocityField_fluid_T >(blocks, velFieldFluidGPUID, velFieldFluidID);
 
    // Map particles into the fluid domain
    ParticleAndVolumeFractionSoA_T< Weighting > particleAndVolumeFractionSoA_fluid(blocks, omega_f);
@@ -1170,15 +1173,13 @@ int main(int argc, char** argv)
                                               particleSubBlockSize);
 
 
-   #ifdef run_with_temperature
+#ifdef run_with_temperature
    ParticleAndVolumeFractionSoA_T< 1 > particleAndVolumeFractionSoA_temperature(blocks,omegaT_f);
    PSMSweepCollection psmSweepCollectionTemperature(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
                                                     particleAndVolumeFractionSoA_temperature,
                                                     particleSubBlockSize);
    SetParticleTemperaturesSweepp settemperatureparticles(blocks, accessor, lbm_mesapd_coupling::RegularParticlesSelector(),
-                                                         particleAndVolumeFractionSoA_temperature,
-                                                         temperatureFieldGPUID,
-                                                         particleTemperaturesFieldGPUID,
+                                                         particleAndVolumeFractionSoA_temperature, temperatureFieldGPUID,particleTemperaturesFieldGPUID,
                                                          true);
 #endif
 
@@ -1223,7 +1224,8 @@ int main(int argc, char** argv)
    }
 
 #ifdef run_with_temperature
-   walberla::initConcentrationFieldCoutte(blocks, temperatureFieldID,particleAndVolumeFractionSoA_fluid.BFieldID,
+   gpu::fieldCpy< BField_T, BFieldGPU_T >(blocks, BFieldID, particleAndVolumeFractionSoA_temperature.BFieldID);
+   walberla::initConcentrationFieldCoutte(blocks, temperatureFieldID,BFieldID,
                                 domainSize);
 #endif
 
@@ -1231,6 +1233,7 @@ int main(int argc, char** argv)
    for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
    {
       psmSweepCollectionFluid.setParticleVelocitiesSweep(&(*blockIt));
+      psmSweepCollectionTemperature.setParticleVelocitiesSweep(&(*blockIt));
 #ifdef run_with_temperature
       settemperatureparticles(&(*blockIt));
       gpu::fieldCpy< particleTemperaturesFieldGPU_T, particleTemperaturesField_T >(blocks, particleTemperaturesFieldGPUID,
@@ -1360,6 +1363,8 @@ int main(int argc, char** argv)
          }
          gpu::fieldCpy< PdfField_temperature_T, gpu::GPUField< real_t > >(blocks, pdfFieldTemperatureID,
                                                                           pdfFieldTemperatureGPUID);
+         gpu::fieldCpy< DensityField_temperature_T, gpu::GPUField< real_t > >(blocks, temperatureFieldID,
+                                                                          temperatureFieldGPUID);
       });
 #endif
 
