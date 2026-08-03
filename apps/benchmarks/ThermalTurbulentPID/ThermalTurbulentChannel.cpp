@@ -104,7 +104,6 @@
 #include "PackInfoTemperature.h"
 #include "TemperatureMacroGetter.h"
 #endif
-#include "math.h"
 #include "randomPoints.h"
 #include "CheckpointStatistics.h"
 #include "turbulentFlowUtilities.h"
@@ -118,9 +117,9 @@ namespace MaterialTransport
 
 using namespace walberla;
 using namespace lbm_mesapd_coupling::psm::gpu;
-typedef PackInfoFluid PackInfoFluid_T;
+using PackInfoFluid_T = PackInfoFluid;
 #ifdef run_with_temperature
-typedef PackInfoTemperature PackInfoTemperature_T;
+using PackInfoTemperature_T = PackInfoTemperature;
 #endif
 
 using flag_t      = uint8_t;
