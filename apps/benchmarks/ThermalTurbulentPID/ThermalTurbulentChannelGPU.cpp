@@ -1960,30 +1960,19 @@ int main(int argc, char** argv)
                     minActuatingVariable,  maxActuatingVariable);
 
    timeloop.add() << BeforeFunction([&]() {
-      if (timeloop.getCurrentTimeStep() % 10 == 0)
-      {
+
          forceAdjusterPID.calculateBulkVelocity(gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2]);
-      }
+
    }, "bulk velocity calculation")
                << BeforeFunction(
                      [&]() {
                         forceAdjusterPID(forceAdjusterPID.bulkVelocity());
                         currentPidForce = forceAdjusterPID.getCurrentDrivingForce();
-                      //  WALBERLA_LOG_INFO_ON_ROOT("current pid focre: " << forceAdjusterPID.getCurrentDrivingForce());
                         setNewForce(currentPidForce);
                      },
                      "new force setter")
                << Sweep([](IBlock*) {}, "new force setter");
 
-  /* timeloop.add() //<< BeforeFunction([&]() { forceCalculator.calculateBulkVelocity(); }, "bulk velocity calculation")
-                  << BeforeFunction(
-                        [&]() {
-                           // const auto newForce = forceCalculator.calculateDrivingForce();
-                             // WALBERLA_LOG_INFO_ON_ROOT("force is  " << initialForce);
-                           setNewForce(initialForce);
-                        },
-                        "new force setter")
-                  << Sweep([](IBlock*) {}, "new force setter");*/
    timeloop.add() << Sweep(psmFluidSweeplamda, "PSM Fluid sweep");
 
 #ifdef run_with_temperature
