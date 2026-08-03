@@ -80,10 +80,10 @@ using FlagField_T = FlagField<flag_t>;
 // FLAGS //
 ///////////
 
-const FlagUID Fluid_Flag ( "fluid" );
-const FlagUID MO_Flag ( "moving obstacle" );
-const FlagUID FormerMO_Flag ( "former moving obstacle" );
-const FlagUID NoSlip_Flag( "no slip" );
+const FlagUID & Fluid_Flag() { static const FlagUID flag("fluid"); return flag; }
+const FlagUID & MO_Flag() { static const FlagUID flag("moving obstacle"); return flag; }
+const FlagUID & FormerMO_Flag() { static const FlagUID flag("former moving obstacle"); return flag; }
+const FlagUID & NoSlip_Flag() { static const FlagUID flag("no slip"); return flag; }
 
 
 /////////////////////////////////////
@@ -112,11 +112,11 @@ public:
       auto *  pdfField     = block->getData< PdfField_T > ( pdfFieldID_ );
       auto * particleField = block->getData< lbm_mesapd_coupling::ParticleField_T > ( particleFieldID_ );
 
-      const auto fluid = flagField->flagExists( Fluid_Flag ) ? flagField->getFlag( Fluid_Flag ) : flagField->registerFlag( Fluid_Flag );
+      const auto fluid = flagField->flagExists( Fluid_Flag() ) ? flagField->getFlag( Fluid_Flag() ) : flagField->registerFlag( Fluid_Flag() );
 
       Type * handling = new Type( "moving obstacle boundary handling", flagField, fluid,
-                                  NoSlip_T( "NoSlip", NoSlip_Flag, pdfField ),
-                                  MO_T("MO_BB",  MO_Flag, pdfField, flagField, particleField, ac_, fluid, *storage, *block ) );
+                                  NoSlip_T( "NoSlip", NoSlip_Flag(), pdfField ),
+                                  MO_T("MO_BB",  MO_Flag(), pdfField, flagField, particleField, ac_, fluid, *storage, *block ) );
 
       handling->fillWithDomain( FieldGhostLayers );
 
@@ -145,8 +145,8 @@ public:
    // check the mapping and check mapped volume against real sphere volume located at position pos
    void operator()(std::string testIdentifier, const Vector3<real_t> & pos, real_t sphereRadius )
    {
-      real_t sphereVolume = math::pi * real_t(4) / real_t(3) * sphereRadius * sphereRadius * sphereRadius;
-      uint_t cellCounter( uint_t(0) );
+      real_t sphereVolume = math::pi * 4_r / 3_r * sphereRadius * sphereRadius * sphereRadius;
+      uint_t cellCounter( uint_t{0} );
       for( auto blockIt = blocks_->begin(); blockIt != blocks_->end(); ++blockIt )
       {
          auto * boundaryHandling = blockIt->getData< BoundaryHandling_T >( boundaryHandlingID_ );
@@ -170,7 +170,7 @@ public:
       }
       // mapped volume has to be - approximately - the same as the real volume
       real_t mappedVolume = real_c(cellCounter); // dx=1
-      WALBERLA_CHECK(std::fabs( mappedVolume - sphereVolume ) / sphereVolume <= real_t(0.1),
+      WALBERLA_CHECK(std::fabs( mappedVolume - sphereVolume ) / sphereVolume <= 0.1_r,
                      testIdentifier << " Mapped volume " << mappedVolume << " does not fit to real sphere volume " << sphereVolume << ".");
    }
 
@@ -265,16 +265,16 @@ int main( int argc, char **argv )
    ///////////////////////////
 
    bool writeVTK = true;
-   const real_t omega  = real_t(1);
-   const real_t dx     = real_t(1);
-   const real_t radius = real_t(5);
+   const real_t omega  = 1_r;
+   const real_t dx     = 1_r;
+   const real_t radius = 5_r;
 
    ///////////////////////////
    // DATA STRUCTURES SETUP //
    ///////////////////////////
 
-   Vector3<uint_t> blocksPerDirection(uint_t(1), uint_t(1), uint_t(1));
-   Vector3<uint_t> cellsPerBlock(uint_t(30), uint_t(30), uint_t(30));
+   Vector3<uint_t> blocksPerDirection(uint_t{1}, uint_t{1}, uint_t{1});
+   Vector3<uint_t> cellsPerBlock(uint_t{30}, uint_t{30}, uint_t{30});
    Vector3<bool> periodicity(false, false, false);
 
    auto blocks = blockforest::createUniformBlockGrid( blocksPerDirection[0], blocksPerDirection[1], blocksPerDirection[2],
@@ -289,7 +289,7 @@ int main( int argc, char **argv )
 
    // add PDF field
    BlockDataID pdfFieldID = lbm::addPdfFieldToStorage< LatticeModel_T >( blocks, "pdf field (fzyx)", latticeModel,
-                                                                         Vector3<real_t>(real_t(0)), real_t(1),
+                                                                         Vector3<real_t>(0_r), 1_r,
                                                                          FieldGhostLayers, field::fzyx );
 
    // add flag field
@@ -301,7 +301,7 @@ int main( int argc, char **argv )
    using ParticleAccessor_T = mesa_pd::data::ParticleAccessorWithShape;
    shared_ptr<ParticleAccessor_T> accessor = make_shared<ParticleAccessor_T>(ps, ss);
    auto sphereShape = ss->create<mesa_pd::data::Sphere>( radius );
-   auto planeShape = ss->create<mesa_pd::data::HalfSpace>( Vector3<real_t>(real_t(1), real_t(0), real_t(0)) );
+   auto planeShape = ss->create<mesa_pd::data::HalfSpace>( Vector3<real_t>(1_r, 0_r, 0_r) );
 
    // add particle field
    BlockDataID particleFieldID = field::addToStorage<lbm_mesapd_coupling::ParticleField_T>( blocks, "particle field", accessor->getInvalidUid(), field::fzyx, FieldGhostLayers );
@@ -312,7 +312,7 @@ int main( int argc, char **argv )
    auto bhBlockSweep = BoundaryHandling_T::getBlockSweep( boundaryHandlingID );
 
    // reconstructor
-   auto reconstructionManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag, Fluid_Flag, false);
+   auto reconstructionManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag(), Fluid_Flag(), false);
 
    // vtk
    auto flagFieldVTK = vtk::createVTKOutput_BlockData( blocks, "flag_field" );
@@ -323,8 +323,8 @@ int main( int argc, char **argv )
    MappingResetter<BoundaryHandling_T> mappingResetter(blocks, boundaryHandlingID, particleFieldID, accessor->getInvalidUid());
 
    // mapping functors
-   auto regularParticleMapper = lbm_mesapd_coupling::makeMovingParticleMapping<PdfField_T, BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, MO_Flag, FormerMO_Flag, lbm_mesapd_coupling::RegularParticlesSelector(), true );
-   auto globalParticleMapper = lbm_mesapd_coupling::makeMovingParticleMapping<PdfField_T, BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, MO_Flag, FormerMO_Flag, lbm_mesapd_coupling::GlobalParticlesSelector(), true );
+   auto regularParticleMapper = lbm_mesapd_coupling::makeMovingParticleMapping<PdfField_T, BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, MO_Flag(), FormerMO_Flag(), lbm_mesapd_coupling::RegularParticlesSelector(), true );
+   auto globalParticleMapper = lbm_mesapd_coupling::makeMovingParticleMapping<PdfField_T, BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, MO_Flag(), FormerMO_Flag(), lbm_mesapd_coupling::GlobalParticlesSelector(), true );
 
    /////////////////////////////
    // SPHERE - SPHERE MAPPING //
@@ -368,10 +368,10 @@ int main( int argc, char **argv )
       for(auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt) bhBlockSweep(&(*blockIt));
 
       // check force on particles (should be zero)
-      ps->forEachParticle(false, lbm_mesapd_coupling::RegularParticlesSelector(), *accessor, [](const size_t idx, const ParticleAccessor_T& ac){ WALBERLA_CHECK_EQUAL(ac.getHydrodynamicForce(idx), Vector3<real_t>(real_t(0)));}, *accessor);
+      ps->forEachParticle(false, lbm_mesapd_coupling::RegularParticlesSelector(), *accessor, [](const size_t idx, const ParticleAccessor_T& ac){ WALBERLA_CHECK_EQUAL(ac.getHydrodynamicForce(idx), Vector3<real_t>(0_r));}, *accessor);
 
       // update position
-      auto updatedPos2 = pos2 + Vector3<real_t>(real_t(1), real_t(0), real_t(0));
+      auto updatedPos2 = pos2 + Vector3<real_t>(1_r, 0_r, 0_r);
       accessor->setPosition(accessor->uidToIdx(sphere2Uid),updatedPos2 );
 
       // update mapping
@@ -439,12 +439,12 @@ int main( int argc, char **argv )
       for(auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt) bhBlockSweep(&(*blockIt));
 
       // check force on particles (should be zero)
-      ps->forEachParticle(false, lbm_mesapd_coupling::RegularParticlesSelector(), *accessor, [](const size_t idx, const ParticleAccessor_T& ac){ WALBERLA_CHECK_EQUAL(ac.getHydrodynamicForce(idx), Vector3<real_t>(real_t(0)));}, *accessor);
+      ps->forEachParticle(false, lbm_mesapd_coupling::RegularParticlesSelector(), *accessor, [](const size_t idx, const ParticleAccessor_T& ac){ WALBERLA_CHECK_EQUAL(ac.getHydrodynamicForce(idx), Vector3<real_t>(0_r));}, *accessor);
 
       // update position
-      auto updatedPos1 = pos1 + Vector3<real_t>(-real_t(1), real_t(0), real_t(0));
+      auto updatedPos1 = pos1 + Vector3<real_t>(-1_r, 0_r, 0_r);
       accessor->setPosition(accessor->uidToIdx(sphere1Uid),updatedPos1 );
-      auto updatedPos2 = pos2 + Vector3<real_t>(real_t(1), real_t(0), real_t(0));
+      auto updatedPos2 = pos2 + Vector3<real_t>(1_r, 0_r, 0_r);
       accessor->setPosition(accessor->uidToIdx(sphere2Uid),updatedPos2 );
 
       // update mapping
@@ -505,7 +505,7 @@ int main( int argc, char **argv )
       if( writeVTK ) flagFieldVTK->write();
 
       // check initial mapping
-      math::AABB planeAABB(real_t(0), real_t(0), real_t(0), pos1[0], real_c(cellsPerBlock[1]), real_c(cellsPerBlock[2]));
+      math::AABB planeAABB(0_r, 0_r, 0_r, pos1[0], real_c(cellsPerBlock[1]), real_c(cellsPerBlock[2]));
       mappingChecker(testIdentifier + " mapping check 1, plane", planeAABB);
       mappingChecker(testIdentifier + " mapping check 1, sphere", pos2, radius);
 
@@ -513,10 +513,10 @@ int main( int argc, char **argv )
       for(auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt) bhBlockSweep(&(*blockIt));
 
       // check force on particles (should be zero)
-      ps->forEachParticle(false, lbm_mesapd_coupling::RegularParticlesSelector(), *accessor, [](const size_t idx, const ParticleAccessor_T& ac){ WALBERLA_CHECK_EQUAL(ac.getHydrodynamicForce(idx), Vector3<real_t>(real_t(0)));}, *accessor);
+      ps->forEachParticle(false, lbm_mesapd_coupling::RegularParticlesSelector(), *accessor, [](const size_t idx, const ParticleAccessor_T& ac){ WALBERLA_CHECK_EQUAL(ac.getHydrodynamicForce(idx), Vector3<real_t>(0_r));}, *accessor);
 
       // update position
-      auto updatedPos2 = pos2 + Vector3<real_t>(real_t(1), real_t(0), real_t(0));
+      auto updatedPos2 = pos2 + Vector3<real_t>(1_r, 0_r, 0_r);
       accessor->setPosition(accessor->uidToIdx(sphere2Uid),updatedPos2 );
 
       // update mapping
@@ -572,13 +572,13 @@ int main( int argc, char **argv )
 
       // map
       lbm_mesapd_coupling::ParticleMappingKernel<BoundaryHandling_T> particleMappingKernel(blocks, boundaryHandlingID);
-      ps->forEachParticle(false, lbm_mesapd_coupling::GlobalParticlesSelector(), *accessor, particleMappingKernel, *accessor, NoSlip_Flag);
+      ps->forEachParticle(false, lbm_mesapd_coupling::GlobalParticlesSelector(), *accessor, particleMappingKernel, *accessor, NoSlip_Flag());
       for( auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt ) (regularParticleMapper)(&(*blockIt));
 
       if( writeVTK ) flagFieldVTK->write();
 
       // check initial mapping
-      math::AABB planeAABB(real_t(0), real_t(0), real_t(0), pos1[0], real_c(cellsPerBlock[1]), real_c(cellsPerBlock[2]));
+      math::AABB planeAABB(0_r, 0_r, 0_r, pos1[0], real_c(cellsPerBlock[1]), real_c(cellsPerBlock[2]));
       mappingChecker(testIdentifier + " mapping check 1, boundary", planeAABB);
       mappingChecker(testIdentifier + " mapping check 1, sphere", pos2, radius);
 
@@ -586,10 +586,10 @@ int main( int argc, char **argv )
       for(auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt) bhBlockSweep(&(*blockIt));
 
       // check force on particles (should be zero)
-      ps->forEachParticle(false, lbm_mesapd_coupling::RegularParticlesSelector(), *accessor, [](const size_t idx, const ParticleAccessor_T& ac){ WALBERLA_CHECK_EQUAL(ac.getHydrodynamicForce(idx), Vector3<real_t>(real_t(0)));}, *accessor);
+      ps->forEachParticle(false, lbm_mesapd_coupling::RegularParticlesSelector(), *accessor, [](const size_t idx, const ParticleAccessor_T& ac){ WALBERLA_CHECK_EQUAL(ac.getHydrodynamicForce(idx), Vector3<real_t>(0_r));}, *accessor);
 
       // update position
-      auto updatedPos2 = pos2 + Vector3<real_t>(real_t(1), real_t(0), real_t(0));
+      auto updatedPos2 = pos2 + Vector3<real_t>(1_r, 0_r, 0_r);
       accessor->setPosition(accessor->uidToIdx(sphere2Uid),updatedPos2 );
 
       // update mapping

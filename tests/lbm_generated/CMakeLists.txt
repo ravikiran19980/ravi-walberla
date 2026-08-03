@@ -54,6 +54,20 @@ waLBerla_add_test_executable ( FreeSlipRefinement FreeSlipRefinement.cpp )
 target_link_libraries ( FreeSlipRefinement FreeSlipRefinementGenerated walberla::blockforest walberla::field
         walberla::lbm_generated walberla::timeloop )
 
+waLBerla_generate_target_from_python(NAME AdaptiveRefinementGenerated
+        FILE AdaptiveRefinement.py
+        CODEGEN_CFG adaptive_refinement_codegen
+        OUT_FILES AdaptiveRefinementStorageSpecification.h AdaptiveRefinementStorageSpecification.cpp
+        AdaptiveRefinementSweepCollection.h AdaptiveRefinementSweepCollection.cpp
+        NoSlip.h NoSlip.cpp
+        AdaptiveRefinementBoundaryCollection.h
+        AdaptiveRefinementInfoHeader.h)
+waLBerla_add_test_executable ( AdaptiveRefinement AdaptiveRefinement.cpp )
+target_link_libraries ( AdaptiveRefinement AdaptiveRefinementGenerated walberla::blockforest walberla::field
+        walberla::geometry walberla::lbm_generated walberla::timeloop )
+waLBerla_execute_test( NAME AdaptiveRefinement1 COMMAND $<TARGET_FILE:AdaptiveRefinement> PROCESSES 1 )
+waLBerla_execute_test( NAME AdaptiveRefinement4 COMMAND $<TARGET_FILE:AdaptiveRefinement> PROCESSES 4 )
+
 if( WALBERLA_DOUBLE_ACCURACY )
    waLBerla_add_test_executable ( LDC LDC.cpp )
    target_link_libraries ( LDC walberla::blockforest walberla::field walberla::lbm_generated walberla::timeloop )

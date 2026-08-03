@@ -87,9 +87,9 @@ using FlagField_T = FlagField<flag_t>;
 // FLAGS //
 ///////////
 
-const FlagUID Fluid_Flag ( "fluid" );
-const FlagUID MO_Flag ( "moving obstacle" );
-const FlagUID FormerMO_Flag ( "former moving obstacle" );
+const FlagUID & Fluid_Flag() { static const FlagUID flag("fluid"); return flag; }
+const FlagUID & MO_Flag() { static const FlagUID flag("moving obstacle"); return flag; }
+const FlagUID & FormerMO_Flag() { static const FlagUID flag("former moving obstacle"); return flag; }
 
 
 /////////////////////////////////////
@@ -117,10 +117,10 @@ public:
       auto *  pdfField     = block->getData< PdfField_T > ( pdfFieldID_ );
       auto * particleField = block->getData< lbm_mesapd_coupling::ParticleField_T > ( particleFieldID_ );
 
-      const auto fluid = flagField->flagExists( Fluid_Flag ) ? flagField->getFlag( Fluid_Flag ) : flagField->registerFlag( Fluid_Flag );
+      const auto fluid = flagField->flagExists( Fluid_Flag() ) ? flagField->getFlag( Fluid_Flag() ) : flagField->registerFlag( Fluid_Flag() );
 
       Type * handling = new Type( "moving obstacle boundary handling", flagField, fluid,
-                                  MO_T("MO_BB",  MO_Flag, pdfField, flagField, particleField, ac_, fluid, *storage, *block ) );
+                                  MO_T("MO_BB",  MO_Flag(), pdfField, flagField, particleField, ac_, fluid, *storage, *block ) );
 
       handling->fillWithDomain( FieldGhostLayers );
 
@@ -196,13 +196,13 @@ public:
    MappingChecker(const shared_ptr< StructuredBlockStorage > & blocks,
                   const BlockDataID & boundaryHandlingID, real_t sphereRadius) :
          blocks_( blocks ), boundaryHandlingID_( boundaryHandlingID ),
-         sphereRadius_( sphereRadius ), sphereVolume_( math::pi * real_t(4) / real_t(3) * sphereRadius * sphereRadius * sphereRadius )
+         sphereRadius_( sphereRadius ), sphereVolume_( math::pi * 4_r / 3_r * sphereRadius * sphereRadius * sphereRadius )
    { }
 
    // check the mapping in the inner domain of the block and check mapped volume against real sphere volume
    void operator()(std::string testIdentifier, const Vector3<real_t> & pos, bool periodic )
    {
-      uint_t cellCounter( uint_t(0) );
+      uint_t cellCounter( uint_t{0} );
 
       for( auto blockIt = blocks_->begin(); blockIt != blocks_->end(); ++blockIt )
       {
@@ -244,7 +244,7 @@ public:
 
       // mapped volume has to be - approximately - the same as the real volume
       real_t mappedVolume = real_c(cellCounter); // dx=1
-      WALBERLA_CHECK(std::fabs( mappedVolume - sphereVolume_ ) / sphereVolume_ <= real_t(0.1),
+      WALBERLA_CHECK(std::fabs( mappedVolume - sphereVolume_ ) / sphereVolume_ <= 0.1_r,
                      "Mapped volume " << mappedVolume << " does not fit to real sphere volume " << sphereVolume_ << ".");
    }
 
@@ -344,15 +344,15 @@ void checkExtrapolationDirectionFinder( std::string identifier,
    mesa_pd::domain::BlockForestDomain domain(blocks->getBlockForestPointer());
    auto sphereShape = ss->create<mesa_pd::data::Sphere>( radius );
    mesa_pd::mpi::SyncNextNeighbors syncNextNeighborFunc;
-   const real_t overlap = real_t( 1.5 );
+   const real_t overlap = 1.5_r;
 
    MappingResetter<BoundaryHandling_T> mappingResetter(blocks, boundaryHandlingID, particleFieldID, accessor->getInvalidUid());
-   auto regularParticleMapper = lbm_mesapd_coupling::makeMovingParticleMapping<PdfField_T, BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, MO_Flag, FormerMO_Flag, mesa_pd::kernel::SelectAll(), conserveMomentum);
+   auto regularParticleMapper = lbm_mesapd_coupling::makeMovingParticleMapping<PdfField_T, BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, MO_Flag(), FormerMO_Flag(), mesa_pd::kernel::SelectAll(), conserveMomentum);
 
    std::string testIdentifier(identifier + " Test:");
    WALBERLA_LOG_DEVEL_ON_ROOT(testIdentifier << " - started");
 
-   Vector3<real_t> spherePosition(real_t(9.5), real_t(9.5), real_t(9.5));
+   Vector3<real_t> spherePosition(9.5_r, 9.5_r, 9.5_r);
 
    std::array<Vector3<real_t>,3> referenceNormals = {{Vector3<real_t>(1,0,0), Vector3<real_t>(0,-1,0), Vector3<real_t>(-1,0,1)/sqrt(2)}};
    std::array<Vector3<real_t>,3> evaluationPoints = {{spherePosition + referenceNormals[0] * radius, spherePosition + referenceNormals[1] * radius, spherePosition + referenceNormals[2] * radius}};
@@ -420,13 +420,13 @@ void checkReconstruction( std::string testIdentifier, Vector3<real_t> spherePosi
    mesa_pd::domain::BlockForestDomain domain(blocks->getBlockForestPointer());
    auto sphereShape = ss->create<mesa_pd::data::Sphere>( radius );
    mesa_pd::mpi::SyncNextNeighbors syncNextNeighborFunc;
-   const real_t overlap = real_t( 1.5 );
+   const real_t overlap = 1.5_r;
 
    MappingChecker<BoundaryHandling_T> mappingChecker(blocks, boundaryHandlingID, radius);
    MappingResetter<BoundaryHandling_T> mappingResetter(blocks, boundaryHandlingID, particleFieldID, accessor->getInvalidUid());
-   ReconstructionChecker<PdfField_T, BoundaryHandling_T> reconstructionChecker(blocks, pdfFieldID, boundaryHandlingID, velocity, density, FormerMO_Flag );
+   ReconstructionChecker<PdfField_T, BoundaryHandling_T> reconstructionChecker(blocks, pdfFieldID, boundaryHandlingID, velocity, density, FormerMO_Flag() );
 
-   auto regularParticleMapper = lbm_mesapd_coupling::makeMovingParticleMapping<PdfField_T, BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, MO_Flag, FormerMO_Flag, mesa_pd::kernel::SelectAll(), conserveMomentum);
+   auto regularParticleMapper = lbm_mesapd_coupling::makeMovingParticleMapping<PdfField_T, BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, MO_Flag(), FormerMO_Flag(), mesa_pd::kernel::SelectAll(), conserveMomentum);
 
    WALBERLA_LOG_DEVEL_ON_ROOT(testIdentifier << " - started");
 
@@ -530,11 +530,11 @@ int main( int argc, char **argv )
    // SIMULATION PROPERTIES //
    ///////////////////////////
 
-   const real_t omega  = real_t(1);
-   const real_t dx     = real_t(1);
-   const real_t radius = real_t(5);
-   const Vector3<real_t> velocity( real_t(0.1), real_t(0), real_t(0) );
-   const real_t density = real_t(1);
+   const real_t omega  = 1_r;
+   const real_t dx     = 1_r;
+   const real_t radius = 5_r;
+   const Vector3<real_t> velocity( 0.1_r, 0_r, 0_r );
+   const real_t density = 1_r;
 
    bool conserveMomentum = true;
 
@@ -542,8 +542,8 @@ int main( int argc, char **argv )
    // DATA STRUCTURES SETUP //
    ///////////////////////////
 
-   Vector3<uint_t> blocksPerDirection(uint_t(3), uint_t(1), uint_t(1));
-   Vector3<uint_t> cellsPerBlock(uint_t(20), uint_t(20), uint_t(20));
+   Vector3<uint_t> blocksPerDirection(uint_t{3}, uint_t{1}, uint_t{1});
+   Vector3<uint_t> cellsPerBlock(uint_t{20}, uint_t{20}, uint_t{20});
    Vector3<bool> periodicity(true, false, false);
 
    auto blocks = blockforest::createUniformBlockGrid( blocksPerDirection[0], blocksPerDirection[1], blocksPerDirection[2],
@@ -585,18 +585,18 @@ int main( int argc, char **argv )
 
    // test setups -> tuple of (setupName, spherePosition, periodicityTested)
    std::vector<std::tuple<std::string, Vector3<real_t>, bool> > testSetups;
-   testSetups.emplace_back( "sphere inside block",          Vector3<real_t>(real_t(10), real_t(10), real_t(10)),        false );
-   testSetups.emplace_back( "sphere on block boarder",      Vector3<real_t>(real_t(19.5), real_t(10), real_t(10)),      false );
-   testSetups.emplace_back( "sphere on block boarder 2",    Vector3<real_t>(real_t(20)+radius, real_t(10), real_t(10)), false );
-   testSetups.emplace_back( "sphere on periodic boarder",   Vector3<real_t>(real_t(59.5), real_t(10), real_t(10)),      true );
-   testSetups.emplace_back( "sphere on periodic boarder 2", Vector3<real_t>(radius, real_t(10), real_t(10)),            true );
+   testSetups.emplace_back( "sphere inside block",          Vector3<real_t>(10_r, 10_r, 10_r),        false );
+   testSetups.emplace_back( "sphere on block boarder",      Vector3<real_t>(19.5_r, 10_r, 10_r),      false );
+   testSetups.emplace_back( "sphere on block boarder 2",    Vector3<real_t>(20_r+radius, 10_r, 10_r), false );
+   testSetups.emplace_back( "sphere on periodic boarder",   Vector3<real_t>(59.5_r, 10_r, 10_r),      true );
+   testSetups.emplace_back( "sphere on periodic boarder 2", Vector3<real_t>(radius, 10_r, 10_r),            true );
 
 
    /////////////////////////////////////
    // EQUILIBRIUM RECONSTRUCTOR TESTS //
    /////////////////////////////////////
 
-   auto equilibriumReconstructionManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag, Fluid_Flag, conserveMomentum);
+   auto equilibriumReconstructionManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag(), Fluid_Flag(), conserveMomentum);
    for(auto & testSetup : testSetups)
    {
       checkReconstruction<BoundaryHandling_T>( "Equilibrium Reconstructor Test: " + std::get<0>(testSetup), std::get<1>(testSetup), std::get<2>(testSetup),
@@ -609,7 +609,7 @@ int main( int argc, char **argv )
    //  for small obstacle fractions   //
    /////////////////////////////////////
 
-   auto equilibriumReconstructionSmallObstacleFractionManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag, Fluid_Flag, conserveMomentum, true);
+   auto equilibriumReconstructionSmallObstacleFractionManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag(), Fluid_Flag(), conserveMomentum, true);
    for(auto & testSetup : testSetups)
    {
       checkReconstruction<BoundaryHandling_T>( "Equilibrium Reconstructor Small Obstacle Fraction Test: " + std::get<0>(testSetup), std::get<1>(testSetup), std::get<2>(testSetup),
@@ -629,7 +629,7 @@ int main( int argc, char **argv )
 
 
    auto equilibriumAndNonEquilibriumSphereNormalReconstructor = lbm_mesapd_coupling::makeEquilibriumAndNonEquilibriumReconstructor<BoundaryHandling_T>(blocks, boundaryHandlingID, sphereNormalExtrapolationDirectionFinder, 3);
-   auto equilibriumAndNonEquilibriumSphereNormalReconstructionManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag, Fluid_Flag, equilibriumAndNonEquilibriumSphereNormalReconstructor, conserveMomentum);
+   auto equilibriumAndNonEquilibriumSphereNormalReconstructionManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag(), Fluid_Flag(), equilibriumAndNonEquilibriumSphereNormalReconstructor, conserveMomentum);
 
    for(auto & testSetup : testSetups)
    {
@@ -650,7 +650,7 @@ int main( int argc, char **argv )
                                                           *flagFieldNormalExtrapolationDirectionFinder, radius, conserveMomentum );
 
    auto equilibriumAndNonEquilibriumFlagFieldNormalReconstructor = lbm_mesapd_coupling::makeEquilibriumAndNonEquilibriumReconstructor<BoundaryHandling_T>(blocks, boundaryHandlingID, flagFieldNormalExtrapolationDirectionFinder, 2);
-   auto equilibriumAndNonEquilibriumFlagFieldNormalReconstructionManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag, Fluid_Flag, equilibriumAndNonEquilibriumFlagFieldNormalReconstructor, conserveMomentum);
+   auto equilibriumAndNonEquilibriumFlagFieldNormalReconstructionManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag(), Fluid_Flag(), equilibriumAndNonEquilibriumFlagFieldNormalReconstructor, conserveMomentum);
 
    for(auto & testSetup : testSetups)
    {
@@ -665,7 +665,7 @@ int main( int argc, char **argv )
    /////////////////////////////////////////////////////////
 
    auto equilibriumAndNonEquilibriumSphereNormal1Reconstructor = lbm_mesapd_coupling::makeEquilibriumAndNonEquilibriumReconstructor<BoundaryHandling_T>(blocks, boundaryHandlingID, sphereNormalExtrapolationDirectionFinder, 1);
-   auto equilibriumAndNonEquilibriumSphereNormal1ReconstructionManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag, Fluid_Flag, equilibriumAndNonEquilibriumSphereNormal1Reconstructor, conserveMomentum);
+   auto equilibriumAndNonEquilibriumSphereNormal1ReconstructionManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag(), Fluid_Flag(), equilibriumAndNonEquilibriumSphereNormal1Reconstructor, conserveMomentum);
 
    for(auto & testSetup : testSetups)
    {
@@ -679,7 +679,7 @@ int main( int argc, char **argv )
    ///////////////////////////////////////
 
    auto extrapolationReconstructor = lbm_mesapd_coupling::makeExtrapolationReconstructor<BoundaryHandling_T>(blocks, boundaryHandlingID, sphereNormalExtrapolationDirectionFinder);
-   auto extrapolationReconstructionManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag, Fluid_Flag, extrapolationReconstructor, conserveMomentum);
+   auto extrapolationReconstructionManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag(), Fluid_Flag(), extrapolationReconstructor, conserveMomentum);
 
    for(auto & testSetup : testSetups)
    {
@@ -694,7 +694,7 @@ int main( int argc, char **argv )
    ///////////////////////////////////////
 
    auto extrapolationConstrainReconstructor = lbm_mesapd_coupling::makeExtrapolationReconstructor<BoundaryHandling_T, lbm_mesapd_coupling::SphereNormalExtrapolationDirectionFinder, true>(blocks, boundaryHandlingID, sphereNormalExtrapolationDirectionFinder);
-   auto extrapolationConstrainReconstructionManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag, Fluid_Flag, extrapolationReconstructor, conserveMomentum);
+   auto extrapolationConstrainReconstructionManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag(), Fluid_Flag(), extrapolationReconstructor, conserveMomentum);
 
    for(auto & testSetup : testSetups)
    {
@@ -708,7 +708,7 @@ int main( int argc, char **argv )
    //////////////////////////////////////////////
 
    auto gradReconstructor = lbm_mesapd_coupling::makeGradsMomentApproximationReconstructor<BoundaryHandling_T>(blocks, boundaryHandlingID, omega, false);
-   auto gradReconstructorManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag, Fluid_Flag, gradReconstructor, conserveMomentum);
+   auto gradReconstructorManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag(), Fluid_Flag(), gradReconstructor, conserveMomentum);
 
    for(auto & testSetup : testSetups)
    {
@@ -723,7 +723,7 @@ int main( int argc, char **argv )
    //////////////////////////////////////////////
 
    auto gradReconstructorWithRecomp = lbm_mesapd_coupling::makeGradsMomentApproximationReconstructor<BoundaryHandling_T>(blocks, boundaryHandlingID, omega, true);
-   auto gradReconstructorWithRecompManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag, Fluid_Flag, gradReconstructorWithRecomp, conserveMomentum);
+   auto gradReconstructorWithRecompManager = lbm_mesapd_coupling::makePdfReconstructionManager<PdfField_T,BoundaryHandling_T>(blocks, pdfFieldID, boundaryHandlingID, particleFieldID, accessor, FormerMO_Flag(), Fluid_Flag(), gradReconstructorWithRecomp, conserveMomentum);
 
    for(auto & testSetup : testSetups)
    {

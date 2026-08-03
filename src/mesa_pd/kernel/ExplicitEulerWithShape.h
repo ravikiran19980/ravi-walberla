@@ -77,7 +77,7 @@ public:
    template <typename Accessor>
    void operator()(const size_t i, Accessor& ac) const;
 private:
-   real_t dt_ = real_t(0.0);
+   real_t dt_ = 0.0_r;
 };
 
 template <typename Accessor>
@@ -115,8 +115,8 @@ inline void ExplicitEuler::operator()(const size_t idx,
       ac.setAngularVelocity(idx, wdot * dt_ + ac.getAngularVelocity(idx));
    }
 
-   ac.setForce (idx, Vec3(real_t(0), real_t(0), real_t(0)));
-   ac.setTorque(idx, Vec3(real_t(0), real_t(0), real_t(0)));
+   ac.setForce (idx, Vec3(0_r, 0_r, 0_r));
+   ac.setTorque(idx, Vec3(0_r, 0_r, 0_r));
 }
 
 } //namespace kernel

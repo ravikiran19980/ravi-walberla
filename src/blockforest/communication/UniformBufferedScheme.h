@@ -74,6 +74,7 @@ namespace communication {
 *
 * When running multiple Schemes concurrently different MPI tags have to be used
 * for the schemes: the tag can be passed in the constructor.
+* Default MPI tag: "waLBerla" = 119+97+76+66+101+114+108+97 = 778
 */
 //*******************************************************************************************************************
 template< typename Stencil_T >
@@ -96,27 +97,20 @@ public:
    //@{
 
    explicit UniformBufferedScheme( weak_ptr<StructuredBlockForest> bf,
-                                   const int tag = 778 ) // waLBerla = 119+97+76+66+101+114+108+97
-      : blockForest_( bf ),
-        localMode_( START ),
-        bufferSystem_( mpi::MPIManager::instance()->comm(), tag ),
-        setupBeforeNextCommunication_( true ),
-        communicationInProgress_( false ),
-        requiredBlockSelectors_( Set<SUID>::emptySet() ),
-        incompatibleBlockSelectors_( Set<SUID>::emptySet() )
-   {
-      auto forest = blockForest_.lock();
-      WALBERLA_CHECK_NOT_NULLPTR( forest, "Trying to access communication for a block storage object that doesn't exist anymore" );
-      forestModificationStamp_ = forest->getBlockForest().getModificationStamp();
-   }
+                                   std::optional<int> tag = std::nullopt) 
+      : UniformBufferedScheme( bf,
+                            Set<SUID>::emptySet(),
+                            Set<SUID>::emptySet(),
+                            tag )
+   {}
 
    UniformBufferedScheme( weak_ptr<StructuredBlockForest> bf,
                           const Set<SUID> & requiredBlockSelectors,
                           const Set<SUID> & incompatibleBlockSelectors,
-                          const int tag = 778 ) // waLBerla = 119+97+76+66+101+114+108+97
+                          std::optional<int> tag = std::nullopt )
       : blockForest_( bf ),
         localMode_( START ),
-        bufferSystem_( mpi::MPIManager::instance()->comm(), tag ),
+        bufferSystem_( mpi::MPIManager::instance()->comm(), tag.value_or(778) ),
         setupBeforeNextCommunication_( true ),
         communicationInProgress_( false ),
         requiredBlockSelectors_( requiredBlockSelectors ),
@@ -295,18 +289,18 @@ void UniformBufferedScheme<Stencil>::startCommunication()
          {
             const auto neighborIdx = blockforest::getBlockNeighborhoodSectionIndex( *dir );
 
-            if( block->getNeighborhoodSectionSize(neighborIdx) == uint_t(0) )
+            if( block->getNeighborhoodSectionSize(neighborIdx) == uint_t{0} )
                continue;
 
             WALBERLA_ASSERT( block->neighborhoodSectionHasEquallySizedBlock(neighborIdx) );
-            WALBERLA_ASSERT_EQUAL( block->getNeighborhoodSectionSize(neighborIdx), uint_t(1) );
+            WALBERLA_ASSERT_EQUAL( block->getNeighborhoodSectionSize(neighborIdx), uint_t{1} );
 
-            const BlockID nBlockId = block->getNeighborId( neighborIdx, uint_t(0) );
+            const BlockID nBlockId = block->getNeighborId( neighborIdx, uint_t{0} );
 
-            if( !selectable::isSetSelected( block->getNeighborState( neighborIdx, uint_t(0) ), requiredBlockSelectors_, incompatibleBlockSelectors_ ) )
+            if( !selectable::isSetSelected( block->getNeighborState( neighborIdx, uint_t{0} ), requiredBlockSelectors_, incompatibleBlockSelectors_ ) )
                continue;
 
-            if( block->neighborExistsLocally( neighborIdx, uint_t(0) ) && localMode_ != NO_OPTIMIZATION )
+            if( block->neighborExistsLocally( neighborIdx, uint_t{0} ) && localMode_ != NO_OPTIMIZATION )
             {
                auto neighbor = dynamic_cast< Block * >( forest->getBlock(nBlockId) );
                WALBERLA_ASSERT_EQUAL( neighbor->getProcess(), block->getProcess() );
@@ -317,7 +311,7 @@ void UniformBufferedScheme<Stencil>::startCommunication()
                   {
                      SendBuffer const buffer;
                      localBuffers_.push_back( buffer );
-                     const uint_t index = uint_c( localBuffers_.size() ) - uint_t(1);
+                     const uint_t index = uint_c( localBuffers_.size() ) - uint_t{1};
 
                      VoidFunction pack = [this, index, pi=packInfo, block, direction = *dir]() {
                         this->localBufferPacking(index, pi, block, direction);
@@ -349,7 +343,7 @@ void UniformBufferedScheme<Stencil>::startCommunication()
             }
             else
             {
-               auto nProcess = block->getNeighborProcess( neighborIdx, uint_t(0) );
+               auto nProcess = block->getNeighborProcess( neighborIdx, uint_t{0} );
 
                if( !packInfos_.empty() ){
                   auto writeHeader = [bId=nBlockId, direction = *dir](SendBuffer & buf){

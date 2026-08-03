@@ -44,9 +44,9 @@ delete_loop = """
 standard_parameter_registration = """
 for (uint_t level = 0; level < blocks->getNumberOfLevels(); level++)
 {{
-    const {dtype} level_scale_factor = {dtype}(uint_t(1) << level);
-    const {dtype} one                = {dtype}(1.0);
-    const {dtype} half               = {dtype}(0.5);
+    const {dtype} level_scale_factor = {dtype}(uint_t{{1}} << level);
+    const {dtype} one                = {dtype}{{1.0}};
+    const {dtype} half               = {dtype}{{0.5}};
     
     {name}Vector.push_back( {dtype}({name} / (level_scale_factor * (-{name} * half + one) + {name} * half)) );
 }}
@@ -269,7 +269,9 @@ def generate_refs_for_kernel_parameters(kernel_info, prefix, parameters_to_ignor
             dtype = type_information[s].c_name
             if not level_known:
                 result.append("const uint_t level = block->getBlockStorage().getLevel(*block);")
-            result.append(f"{dtype} & {s} = {s}Vector[level];")
+            result.append(f"const {dtype} {s} = {dtype}({prefix}{s}_ / "
+                          f"({dtype}(uint_t(1) << level) * (-{prefix}{s}_ * {dtype}(0.5) + {dtype}(1.0)) "
+                          f"+ {prefix}{s}_ * {dtype}(0.5)));")
         else:
             result.append(f"auto & {s} = {prefix}{s}_;")
     return "\n".join(result)
@@ -486,9 +488,6 @@ def generate_constructor_initializer_list(kernel_infos, parameters_to_ignore=Non
                 parameters_to_skip.append(param.field_name)
 
     # Then free parameters
-    if parameter_registration is not None:
-        parameters_to_skip.extend(parameter_registration.scaling_info)
-
     for kernel_info in kernel_infos:
         for param in kernel_info.parameters:
             if not param.is_field_parameter and param.symbol.name not in parameters_to_skip:
@@ -594,10 +593,7 @@ def generate_members(ctx, kernel_infos, parameters_to_ignore=None, only_fields=F
             if only_fields and not param.is_field_parameter:
                 continue
             if not param.is_field_parameter and param.symbol.name not in params_to_skip:
-                if parameter_registration and param.symbol.name in parameter_registration.scaling_info:
-                    result.append(f"std::vector<{param.symbol.dtype}> {param.symbol.name}Vector;")
-                else:
-                    result.append(f"{param.symbol.dtype} {param.symbol.name}_;")
+                result.append(f"{param.symbol.dtype} {param.symbol.name}_;")
                 params_to_skip.append(param.symbol.name)
 
     for kernel_info in kernel_infos:
@@ -753,45 +749,6 @@ def generate_setter(kernel_infos, parameter_registration=None):
     return "\n".join(result)
 
 
-def generate_parameter_registration(kernel_infos, parameter_registration):
-    if parameter_registration is None:
-        return ""
-    if not isinstance(kernel_infos, Iterable):
-        kernel_infos = [kernel_infos]
-
-    params_to_skip = []
-    result = []
-    for kernel_info in kernel_infos:
-        for param in kernel_info.parameters:
-            if not param.is_field_parameter and param.symbol.name not in params_to_skip:
-                if param.symbol.name in parameter_registration.scaling_info:
-                    result.append(standard_parameter_registration.format(dtype=param.symbol.dtype,
-                                                                         name=param.symbol.name))
-                    params_to_skip.append(param.symbol.name)
-
-    return "\n".join(result)
-
-
-def generate_constructor(kernel_infos, parameter_registration):
-    if parameter_registration is None:
-        return ""
-    if not isinstance(kernel_infos, Iterable):
-        kernel_infos = [kernel_infos]
-
-    params_to_skip = []
-    result = []
-    for kernel_info in kernel_infos:
-        for param in kernel_info.parameters:
-            if not param.is_field_parameter and param.symbol.name not in params_to_skip:
-                if param.symbol.name in parameter_registration.scaling_info:
-                    name = param.symbol.name
-                    dtype = param.symbol.dtype
-                    result.append(standard_parameter_registration.format(dtype=dtype, name=name))
-                    params_to_skip.append(name)
-
-    return "\n".join(result)
-
-
 def generate_field_strides(kernel_info):
     result = []
     for param in kernel_info.parameters:
@@ -867,8 +824,6 @@ def add_pystencils_filters_to_jinja_env(jinja_env):
     jinja_env.filters['generate_destructor'] = generate_destructor
     jinja_env.filters['generate_field_type'] = generate_field_type
     jinja_env.filters['nested_class_method_definition_prefix'] = nested_class_method_definition_prefix
-    jinja_env.filters['generate_parameter_registration'] = generate_parameter_registration
-    jinja_env.filters['generate_constructor'] = generate_constructor
     jinja_env.filters['type_identifier_list'] = type_identifier_list
     jinja_env.filters['identifier_list'] = identifier_list
     jinja_env.filters['list_of_expressions'] = generate_list_of_expressions

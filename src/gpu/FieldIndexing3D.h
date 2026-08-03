@@ -39,12 +39,12 @@ namespace gpu
    {
    public:
 
-      static void setPreferredBlockDim( dim3 blockDim ) { preferredBlockDim_ = blockDim; }
-      static void setPreferredBlockDim( unsigned int x, unsigned int y, unsigned int z ) { preferredBlockDim_ = dim3( x, y, z ); }
+      static void setPreferredBlockDim( dim3 blockDim ) { preferredBlockDim() = blockDim; }
+      static void setPreferredBlockDim( unsigned int x, unsigned int y, unsigned int z ) { preferredBlockDim() = dim3( x, y, z ); }
 
    protected:
 
-      static dim3 preferredBlockDim_;
+      static dim3& preferredBlockDim();
    };
 
 

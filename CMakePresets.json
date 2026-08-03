@@ -7,43 +7,66 @@
   },
   "include": [
     "utilities/workflows/cmake-fragments.json"
-    ],
-    "configurePresets": [
-        {
-            "name": "present-custom_thermal_psm_branch",
-            "displayName": "present-custom_thermal_psm_branch",
-            "description": "Sets Ninja generator, build and install directory",
-            "generator": "Unix Makefiles",
-            "binaryDir": "${sourceDir}/build_gpu_virtual_cht",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "/usr/bin/gcc",
-                "CMAKE_CXX_COMPILER": "/usr/bin/g++",
-                "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_INSTALL_PREFIX": "${sourceDir}/build_gpu_virtual_cht",
-                "WALBERLA_OPTIMIZE_FOR_LOCALHOST": "OFF",
-                "WALBERLA_BUILD_WITH_CODEGEN": "ON",
-                "Python_ROOT_DIR": "/home/rzlin/dy94rovu/miniconda3/envs/venv_custom_psm/bin",
-                "Python_EXECUTABLE": "/home/rzlin/dy94rovu/miniconda3/envs/venv_custom_psm/bin/python",
-                "WALBERLA_BUILD_BENCHMARKS": "ON",
-                "WALBERLA_BUILD_SHOWCASES": "ON",
-                "WALBERLA_BUILD_TESTS": "ON",
-                "WALBERLA_BUILD_TUTORIALS": "ON",
-                "WALBERLA_BUILD_WITH_PYTHON": "ON",
-                "WALBERLA_LOGLEVEL": "INFO",
-                "WALBERLA_BUILD_WITH_FASTMATH": "OFF",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-            }
+  ],
+  "configurePresets": [
+    {
+      "name": "ParallelPlates",
+      "displayName": "ParallelPlates Config",
+      "inherits": [
+        ".serial",
+        ".sweepgen",
+        ".make",
+        ".debugOptimized",
+        ".gcc",
+        ".user-base"
+      ]
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "ParallelPlates",
+      "displayName": "ParallelPlates Build",
+      "configurePreset": "ParallelPlates",
+      "targets": [
+        "ParallelPlates"
+      ],
+      "jobs": 0
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "ParallelPlates",
+      "displayName": "ParallelPlates Tests",
+      "configurePreset": "ParallelPlates",
+      "output": {
+        "outputOnFailure": true,
+        "outputJUnitFile": "junit-report.xml"
+      },
+      "filter": {
+        "include": {
+          "name": "ParallelPlates"
         }
-    ],
-
-"buildPresets": [
-  {
-    "name": "custom-build",
-    "displayName": "Custom Build",
-    "configurePreset": "present-custom_thermal_psm_branch",
-    "description": "Build using the custom config preset",
-    "jobs": 12
-  }
-]
-
+      }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "ParallelPlates",
+      "displayName": "ParallelPlates Workflow",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "ParallelPlates"
+        },
+        {
+          "type": "build",
+          "name": "ParallelPlates"
+        },
+        {
+          "type": "test",
+          "name": "ParallelPlates"
+        }
+      ]
+    }
+  ]
 }

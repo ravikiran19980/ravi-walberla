@@ -314,6 +314,8 @@ class NonuniformGeneratedPdfPackInfo : public blockforest::communication::NonUni
 
    void communicateLocalFineToCoarse(const Block* fineSender, Block* coarseReceiver, stencil::Direction dir) override;
 
+   void recalculateNonuniformCommData(IBlock* block);
+
  protected:
    void packDataEqualLevelImpl(const Block* sender, stencil::Direction dir, mpi::SendBuffer& buffer) const override;
 

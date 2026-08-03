@@ -112,24 +112,28 @@ template< typename T > inline flag_t flag_c( T t ) { return numeric_cast< flag_t
 
 using BoundaryCollection_T = lbm::LBComplexGeometryBoundaryCollection< FlagField_T >;
 
-const FlagUID FluidFlagUID("Fluid");
-const FlagUID NoSlipFlagUID("NoSlip");
-const FlagUID NoSlipQBBFlagUID("NoSlipQBB");
-const FlagUID MeshObjNoSlipQBBFlagUID("ObjNoSlipQBB");
-const FlagUID FreeSlipFlagUID("FreeSlip");
-const FlagUID UBBFlagUID("UBB");
-const FlagUID OutflowFlagUID("Outflow");
+const FlagUID& FluidFlagUID() { static const FlagUID uid("Fluid"); return uid; }
+const FlagUID& NoSlipFlagUID() { static const FlagUID uid("NoSlip"); return uid; }
+const FlagUID& NoSlipQBBFlagUID() { static const FlagUID uid("NoSlipQBB"); return uid; }
+const FlagUID& MeshObjNoSlipQBBFlagUID() { static const FlagUID uid("ObjNoSlipQBB"); return uid; }
+const FlagUID& FreeSlipFlagUID() { static const FlagUID uid("FreeSlip"); return uid; }
+const FlagUID& UBBFlagUID() { static const FlagUID uid("UBB"); return uid; }
+const FlagUID& OutflowFlagUID() { static const FlagUID uid("Outflow"); return uid; }
 
-const BoundaryUID NoSlipBoundaryUID("NoSlip");
+const BoundaryUID& NoSlipBoundaryUID() { static const BoundaryUID uid("NoSlip"); return uid; }
 
-std::unordered_map<std::string, FlagUID> flagMap = {  {"NoSlip", NoSlipFlagUID},
-                                                      {"NoSlipQBB", NoSlipQBBFlagUID},
-                                                      {"ObjNoSlipQBB", MeshObjNoSlipQBBFlagUID},
-                                                      {"FreeSlip", FreeSlipFlagUID},
-                                                      {"UBB", UBBFlagUID},
-                                                      {"Outflow", OutflowFlagUID} 
-                                                      // add more as needed
-                                                   };
+const std::unordered_map<std::string, FlagUID>& flagMap()
+{
+   static const std::unordered_map<std::string, FlagUID> map = {  {"NoSlip", NoSlipFlagUID()},
+                                                                  {"NoSlipQBB", NoSlipQBBFlagUID()},
+                                                                  {"ObjNoSlipQBB", MeshObjNoSlipQBBFlagUID()},
+                                                                  {"FreeSlip", FreeSlipFlagUID()},
+                                                                  {"UBB", UBBFlagUID()},
+                                                                  {"Outflow", OutflowFlagUID()}
+                                                                  // add more as needed
+                                                               };
+   return map;
+}
 
 template< typename MeshType >
 void vertexToFaceColor(MeshType& mesh, const typename MeshType::Color& defaultColor)
@@ -180,8 +184,8 @@ public:
 
    void getMappedUID(FlagUID & UID, const std::string & handle) const
    {
-      auto it = flagMap.find( handle );
-      if (it != flagMap.end()) {
+      auto it = flagMap().find( handle );
+      if (it != flagMap().end()) {
          UID = it->second;
       } else {
          WALBERLA_ABORT("Specified boundary condition: " << handle << " not defined.");
@@ -324,7 +328,7 @@ int main(int argc, char** argv)
       const Vector3< uint_t > domainScaling = domainParameters.getParameter< Vector3< uint_t > >("domainScaling", Vector3< uint_t >(1));
       const Vector3< bool >   periodicity   = domainParameters.getParameter< Vector3< bool > >("periodic", Vector3< bool >(true));
       const Vector3< uint_t > cellsPerBlock = domainParameters.getParameter< Vector3< uint_t > >("cellsPerBlock");
-      const real_t            dx_SI         = domainParameters.getParameter< real_t >("dx_SI", real_t(1));
+      const real_t            dx_SI         = domainParameters.getParameter< real_t >("dx_SI", 1_r);
       
       /*-----------------------------------------------------------------------------------------------------*/
       
@@ -364,7 +368,7 @@ int main(int argc, char** argv)
 
       oss   << "\n- Time Parameters:"
             << "\n   + No. Course Timesteps:        " << timesteps
-            << "\n   + Simulation Time (s) [actual/specified]:  [" << real_t(timesteps)*dt_SI <<"/"<<simulationTime<<"]";
+            << "\n   + Simulation Time (s) [actual/specified]:  [" << static_cast< real_t >(timesteps)*dt_SI <<"/"<<simulationTime<<"]";
 
       std::string str = oss.str();
 
@@ -460,7 +464,7 @@ int main(int argc, char** argv)
       /*------------------------------------------------------------------------------------------------------
       *------------------------------------------- BOUNDARY HANDLING -----------------------------------------
       *------------------------------------------------------------------------------------------------------*/
-      mesh::ColorToBoundaryMapper< Mesh_T > colorToBoundaryMapper(( mesh::BoundaryInfo( NoSlipBoundaryUID ) ));
+      mesh::ColorToBoundaryMapper< Mesh_T > colorToBoundaryMapper(( mesh::BoundaryInfo( NoSlipBoundaryUID() ) ));
       
       auto boundaryLocations = colorToBoundaryMapper.addBoundaryInfoToMesh( *mesh );
 
@@ -490,7 +494,7 @@ int main(int argc, char** argv)
       boundarySetup.setFlag<FlagField_T>(flagFieldId, ObjectBCFlagUID, mesh::BoundarySetup::INSIDE);
 
       // Set remaining cells to fluid
-      geometry::setNonBoundaryCellsToDomain< FlagField_T >(*blocks, flagFieldId, FluidFlagUID);
+      geometry::setNonBoundaryCellsToDomain< FlagField_T >(*blocks, flagFieldId, FluidFlagUID());
 
       WALBERLA_MPI_WORLD_BARRIER();
 
@@ -510,19 +514,19 @@ int main(int argc, char** argv)
                                  std::placeholders::_3, velocity_LB);      
 
       #ifdef WALBERLA_BUILD_WITH_GPU_SUPPORT
-         BoundaryCollection_T boundaryCollection( blocks, flagFieldId, pdfFieldGpuId, FluidFlagUID, omega, pdfFieldCpuId, inflowVelocity, wallDistanceFunctor, meshWallDistanceFunctor);
+         BoundaryCollection_T boundaryCollection( blocks, flagFieldId, pdfFieldGpuId, FluidFlagUID(), omega, pdfFieldCpuId, inflowVelocity, wallDistanceFunctor, meshWallDistanceFunctor);
       #else 
-         BoundaryCollection_T boundaryCollection( blocks, flagFieldId, pdfFieldCpuId, FluidFlagUID, omega, inflowVelocity, wallDistanceFunctor, meshWallDistanceFunctor  );
+         BoundaryCollection_T boundaryCollection( blocks, flagFieldId, pdfFieldCpuId, FluidFlagUID(), omega, inflowVelocity, wallDistanceFunctor, meshWallDistanceFunctor  );
       #endif
      
       const std::string vtkFlagStr = parameters.getParameter< std::string >("vtkFlagOutputString");
-      auto vtkFlagOutput = vtk::createVTKOutput_BlockData(*blocks, vtkFlagStr, uint_t(1), FieldGhostLayer, false, "vtk_out",
+      auto vtkFlagOutput = vtk::createVTKOutput_BlockData(*blocks, vtkFlagStr, uint_t{1}, FieldGhostLayer, false, "vtk_out",
                                                          "flags", false, true, true, false, 0);
       auto flagWriter = make_shared< field::VTKWriter< FlagField_T > >(flagFieldId, "flag");
       vtkFlagOutput->addCellDataWriter(flagWriter);
       vtkFlagOutput->write();
 
-      lbm::BlockForestEvaluation<FlagField_T>( blocks, flagFieldId, FluidFlagUID ).logInfoOnRoot();
+      lbm::BlockForestEvaluation<FlagField_T>( blocks, flagFieldId, FluidFlagUID() ).logInfoOnRoot();
 
       /*------------------------------------------------------------------------------------------------------
       *--------------------------------------------- COMMUNICATION -------------------------------------------
@@ -569,7 +573,7 @@ int main(int argc, char** argv)
       {
          const std::string vtkStr = parameters.getParameter< std::string >("vtkOutputString");
 
-         auto vtkOutput = vtk::createVTKOutput_BlockData(*blocks, vtkStr, vtkWriteFrequency, uint_t(0), false, "vtk_out",
+         auto vtkOutput = vtk::createVTKOutput_BlockData(*blocks, vtkStr, vtkWriteFrequency, uint_t{0}, false, "vtk_out",
                                                          "simulation_step", false, true, true, false, 0);
          
          auto velocityWriter = make_shared< field::VTKWriter< VelocityField_T > >(velocityFieldCpuId, "velocity");

@@ -155,13 +155,13 @@ LinkedCells::LinkedCells(const math::AABB& domain, const Vec3& cellDiameter)
      static_cast<int>(std::ceil( domain.sizes()[1] / cellDiameter[1])),
      static_cast<int>(std::ceil( domain.sizes()[2] / cellDiameter[2])) )
    , cellDiameter_( cellDiameter)
-   , invCellDiameter_( real_t(1) / cellDiameter_[0], real_t(1) / cellDiameter_[1], real_t(1) / cellDiameter_[2] )
+   , invCellDiameter_( 1_r / cellDiameter_[0], 1_r / cellDiameter_[1], 1_r / cellDiameter_[2] )
    , cells_(uint_c(numCellsPerDim_[0]*numCellsPerDim_[1]*numCellsPerDim_[2]))
 {
    //precondition
-   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter[0], real_t(0));
-   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter[1], real_t(0));
-   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter[2], real_t(0));
+   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter[0], 0_r);
+   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter[1], 0_r);
+   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter[2], 0_r);
 
    //postcondition
    WALBERLA_CHECK_GREATER_EQUAL(real_c(numCellsPerDim_[0]) * cellDiameter_[0], domain.size(0));

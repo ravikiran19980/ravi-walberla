@@ -82,6 +82,12 @@ class NonuniformCommData
    PartialCoalescenceMaskField& getMaskField() { return maskField_; }
    const PartialCoalescenceMaskField& getMaskField() const { return maskField_; }
 
+   void recompute()
+   {
+      maskField_.setWithGhostLayer(typename PartialCoalescenceMaskField::value_type(0));
+      computeBitMask();
+   }
+
  private:
 #if defined(USE_CELL_INTERVALS)
    void prepareIntervals();

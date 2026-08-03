@@ -29,31 +29,14 @@ namespace communication {
    UniformGPUScheme<Stencil>::UniformGPUScheme( const weak_ptr< StructuredBlockForest >& bf,
                                                 const bool sendDirectlyFromGPU,
                                                 const bool useLocalCommunication,
-                                                const int tag )
-        : blockForest_( bf ),
-          setupBeforeNextCommunication_( true ),
-          communicationInProgress_( false ),
-          sendFromGPU_( sendDirectlyFromGPU ),
-          useLocalCommunication_(useLocalCommunication),
-          bufferSystemCPU_( mpi::MPIManager::instance()->comm(), tag ),
-          bufferSystemGPU_( mpi::MPIManager::instance()->comm(), tag ),
-          requiredBlockSelectors_( Set<SUID>::emptySet() ),
-          incompatibleBlockSelectors_( Set<SUID>::emptySet() )
-   {
-      WALBERLA_MPI_SECTION()
-      {
-// Open MPI supports compile time CUDA-aware support check
-#if (defined(OPEN_MPI) && OPEN_MPI) && !(defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT)
-         WALBERLA_CHECK(!sendDirectlyFromGPU)
-#endif
-      }
-      if(sendFromGPU_){WALBERLA_LOG_DETAIL_ON_ROOT("Using GPU-Direct Communication in UniformGPUScheme")}
-      else{WALBERLA_LOG_DETAIL_ON_ROOT("Using Communication via CPU Memory")}
-
-      for (uint_t i = 0; i < Stencil::Q; ++i){
-         streams_[i] = StreamRAII::newStream();
-      }
-   }
+                                                std::optional<int> tag )
+        : UniformGPUScheme( bf,
+                       Set<SUID>::emptySet(),
+                       Set<SUID>::emptySet(),
+                       sendDirectlyFromGPU,
+                       useLocalCommunication,
+                       tag )
+   {}
 
    template<typename Stencil>
    UniformGPUScheme<Stencil>::UniformGPUScheme( const weak_ptr< StructuredBlockForest >& bf,
@@ -61,20 +44,21 @@ namespace communication {
                                                 const Set<SUID> & incompatibleBlockSelectors,
                                                 const bool sendDirectlyFromGPU,
                                                 const bool useLocalCommunication,
-                                                const int tag )
+                                                std::optional<int> tag )
       : blockForest_( bf ),
         setupBeforeNextCommunication_( true ),
         communicationInProgress_( false ),
         sendFromGPU_( sendDirectlyFromGPU ),
         useLocalCommunication_(useLocalCommunication),
-        bufferSystemCPU_( mpi::MPIManager::instance()->comm(), tag ),
-        bufferSystemGPU_( mpi::MPIManager::instance()->comm(), tag ),
+        bufferSystemCPU_( mpi::MPIManager::instance()->comm(), tag.value_or(5432) ),
+        bufferSystemGPU_( mpi::MPIManager::instance()->comm(), tag.value_or(5432) ),
         requiredBlockSelectors_( requiredBlockSelectors ),
         incompatibleBlockSelectors_( incompatibleBlockSelectors )
    {
       WALBERLA_MPI_SECTION()
       {
-#if !(defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT)
+// Open MPI supports compile time CUDA-aware support check
+#if (defined(OPEN_MPI) && OPEN_MPI) && !(defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT)
          WALBERLA_CHECK(!sendDirectlyFromGPU)
 #endif
       }
@@ -125,15 +109,15 @@ namespace communication {
                const uint_t dirIdx = Stencil::idx[*dir];
                const auto neighborIdx = blockforest::getBlockNeighborhoodSectionIndex( *dir );
 
-               if( senderBlock->getNeighborhoodSectionSize( neighborIdx ) == uint_t( 0 ))
+               if( senderBlock->getNeighborhoodSectionSize( neighborIdx ) == uint_t{ 0 })
                   continue;
 
-               if( !selectable::isSetSelected( senderBlock->getNeighborState( neighborIdx, uint_t(0) ), requiredBlockSelectors_, incompatibleBlockSelectors_ ) )
+               if( !selectable::isSetSelected( senderBlock->getNeighborState( neighborIdx, uint_t{0} ), requiredBlockSelectors_, incompatibleBlockSelectors_ ) )
                   continue;
 
-               if( senderBlock->neighborExistsLocally( neighborIdx, uint_t(0) ) && useLocalCommunication_ )
+               if( senderBlock->neighborExistsLocally( neighborIdx, uint_t{0} ) && useLocalCommunication_ )
                {
-                  auto receiverBlock = dynamic_cast< Block * >( forest->getBlock( senderBlock->getNeighborId( neighborIdx, uint_t(0) )) );
+                  auto receiverBlock = dynamic_cast< Block * >( forest->getBlock( senderBlock->getNeighborId( neighborIdx, uint_t{0} )) );
                   for (auto& pi : packInfos_)
                   {
                      pi->communicateLocal(*dir, senderBlock, receiverBlock, streams_[dirIdx]);
@@ -141,7 +125,7 @@ namespace communication {
                }
                else
                {
-                  auto nProcess = mpi::MPIRank( senderBlock->getNeighborProcess( neighborIdx, uint_t( 0 )));
+                  auto nProcess = mpi::MPIRank( senderBlock->getNeighborProcess( neighborIdx, uint_t{ 0 }));
 
                   for( auto &pi : packInfos_ )
                   {
@@ -256,23 +240,23 @@ namespace communication {
             // skip if block has no neighbors in this direction
             const auto neighborIdx = blockforest::getBlockNeighborhoodSectionIndex( *dir );
 
-            if( block->getNeighborhoodSectionSize( neighborIdx ) == uint_t( 0 ))
+            if( block->getNeighborhoodSectionSize( neighborIdx ) == uint_t{ 0 })
                continue;
 
             WALBERLA_ASSERT( block->neighborhoodSectionHasEquallySizedBlock( neighborIdx ),
                              "Works for uniform setups only" )
-            WALBERLA_ASSERT_EQUAL( block->getNeighborhoodSectionSize( neighborIdx ), uint_t( 1 ),
+            WALBERLA_ASSERT_EQUAL( block->getNeighborhoodSectionSize( neighborIdx ), uint_t{ 1 },
                                    "Works for uniform setups only" )
 
-            const BlockID &nBlockId = block->getNeighborId( neighborIdx, uint_t( 0 ));
+            const BlockID &nBlockId = block->getNeighborId( neighborIdx, uint_t{ 0 });
 
-            if( !selectable::isSetSelected( block->getNeighborState( neighborIdx, uint_t(0) ), requiredBlockSelectors_, incompatibleBlockSelectors_ ) )
+            if( !selectable::isSetSelected( block->getNeighborState( neighborIdx, uint_t{0} ), requiredBlockSelectors_, incompatibleBlockSelectors_ ) )
                continue;
 
-            if( block->neighborExistsLocally( neighborIdx, uint_t(0) ) && useLocalCommunication_ )
+            if( block->neighborExistsLocally( neighborIdx, uint_t{0} ) && useLocalCommunication_ )
                continue;
 
-            auto nProcess = mpi::MPIRank( block->getNeighborProcess( neighborIdx, uint_t( 0 )));
+            auto nProcess = mpi::MPIRank( block->getNeighborProcess( neighborIdx, uint_t{ 0 }));
 
             for( auto &pi : packInfos_ )
                receiverInfo[nProcess] += mpi::MPISize( pi->size( *dir, block ));
@@ -300,8 +284,8 @@ namespace communication {
       bufferSystemGPU_.setReceiverInfo( receiverInfo );
 
       for( auto it : receiverInfo ) {
-         bufferSystemCPU_.sendBuffer( it.first ).resize( size_t(it.second) );
-         bufferSystemGPU_.sendBuffer( it.first ).resize( size_t(it.second) );
+         bufferSystemCPU_.sendBuffer( it.first ).resize( static_cast< size_t >(it.second) );
+         bufferSystemGPU_.sendBuffer( it.first ).resize( static_cast< size_t >(it.second) );
       }
 
       forestModificationStamp_ = forest->getBlockForest().getModificationStamp();

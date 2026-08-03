@@ -66,7 +66,7 @@ private:
 };
 
 Plane::Plane() :
-   normal_( Vec3Real( real_t(1), real_t(0), real_t(0) ) ), d_( real_t(0) )
+   normal_( Vec3Real( 1_r, 0_r, 0_r ) ), d_( 0_r )
 {
 }
 
@@ -85,7 +85,7 @@ Plane::Plane( const Vec3Real & _normal, const real_t _d ) :
 
 bool Plane::operator==( const Plane & other ) const
 {
-   return isIdentical(normal_, other.normal_ ) && isIdentical( d_, other.d_ );
+   return (normal_ == other.normal_) && isIdentical( d_, other.d_ );
 }
 
 

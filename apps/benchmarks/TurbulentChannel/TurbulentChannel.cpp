@@ -194,7 +194,7 @@ namespace walberla {
 
          WALBERLA_ASSERT_NOT_IDENTICAL(wallAxis, flowAxis, "Wall and flow axis must be different.")
 
-         const auto sizeFactor = channelHalfWidth / uint_t(10);
+         const auto sizeFactor = channelHalfWidth / uint_t{10};
          if( !sizeFlowAxis) sizeFlowAxis = sizeFactor * 64;
          if( !sizeRemainingAxis) sizeRemainingAxis = sizeFactor * 32;
 
@@ -205,7 +205,7 @@ namespace walberla {
          periodicity[wallAxis] = false;
 
          boundaryCondition = config.getParameter<std::string>("wall_boundary_condition", "WFB");
-         velocityFilterWidth = targetFrictionVelocity / real_t(channelHalfWidth);
+         velocityFilterWidth = targetFrictionVelocity / static_cast< real_t >(channelHalfWidth);
          WALBERLA_LOG_INFO_ON_ROOT("velocity filter width = " << velocityFilterWidth)
          samplingShift = config.getParameter<uint_t>("sampling_shift", 0);
 
@@ -317,7 +317,7 @@ namespace walberla {
       void createBoundaryConfig(const SimulationParameters & parameters, Config::Block & boundaryBlock) {
 
          auto & bottomWall = boundaryBlock.createBlock("Border");
-         bottomWall.addParameter("direction", stencil::dirToString[stencil::directionFromAxis(parameters.wallAxis, true)]);
+         bottomWall.addParameter("direction", std::string(stencil::dirToString[stencil::directionFromAxis(parameters.wallAxis, true)]));
          bottomWall.addParameter("walldistance", "-1");
          if(parameters.boundaryCondition == "NoSlip") {
             bottomWall.addParameter("flag", "NoSlip");
@@ -326,7 +326,7 @@ namespace walberla {
          }
 
          auto & topWall = boundaryBlock.createBlock("Border");
-         topWall.addParameter("direction", stencil::dirToString[stencil::directionFromAxis(parameters.wallAxis, false)]);
+         topWall.addParameter("direction", std::string(stencil::dirToString[stencil::directionFromAxis(parameters.wallAxis, false)]));
          topWall.addParameter("walldistance", "-1");
          if(parameters.fullChannel) {
             if (parameters.boundaryCondition == "NoSlip") {
@@ -511,8 +511,8 @@ namespace walberla {
          std::vector<real_t> tkeResolvedVector(parameters_->channelHalfWidth, 0_r);
          std::vector<real_t> reynoldsStressVector(parameters_->channelHalfWidth * TensorField_T::F_SIZE, 0_r);
 
-         const auto idxFlow = int_c(parameters_->domainSize[parameters_->flowAxis] / uint_t(2));
-         const auto idxRem = int_c(parameters_->domainSize[3 - parameters_->flowAxis - parameters_->wallAxis] / uint_t(2));
+         const auto idxFlow = int_c(parameters_->domainSize[parameters_->flowAxis] / uint_t{2});
+         const auto idxRem = int_c(parameters_->domainSize[3 - parameters_->flowAxis - parameters_->wallAxis] / uint_t{2});
 
          Cell point;
          point[parameters_->flowAxis] = idxFlow;

@@ -73,68 +73,68 @@ protected:
 
 template< typename CM, bool C, typename FM, int EAO > const char*  D3Q27<CM,C,FM,EAO>::NAME = "D3Q27";
 
-template< typename CM, bool C, typename FM, int EAO > const real_t D3Q27<CM,C,FM,EAO>::w_0 = real_t(8.0) / real_t( 27.0);
-template< typename CM, bool C, typename FM, int EAO > const real_t D3Q27<CM,C,FM,EAO>::w_1 = real_t(2.0) / real_t( 27.0);
-template< typename CM, bool C, typename FM, int EAO > const real_t D3Q27<CM,C,FM,EAO>::w_2 = real_t(1.0) / real_t( 54.0);
-template< typename CM, bool C, typename FM, int EAO > const real_t D3Q27<CM,C,FM,EAO>::w_3 = real_t(1.0) / real_t(216.0);
+template< typename CM, bool C, typename FM, int EAO > const real_t D3Q27<CM,C,FM,EAO>::w_0 = 8.0_r / 27.0_r;
+template< typename CM, bool C, typename FM, int EAO > const real_t D3Q27<CM,C,FM,EAO>::w_1 = 2.0_r / 27.0_r;
+template< typename CM, bool C, typename FM, int EAO > const real_t D3Q27<CM,C,FM,EAO>::w_2 = 1.0_r / 54.0_r;
+template< typename CM, bool C, typename FM, int EAO > const real_t D3Q27<CM,C,FM,EAO>::w_3 = 1.0_r / 216.0_r;
 
 // must match with the static array 'dir' in stencil::D3Q27
-template< typename CM, bool C, typename FM, int EAO > const real_t D3Q27<CM,C,FM,EAO>::w[27] = { real_t(8.0) / real_t( 27.0),   // C
-                                                                                                 real_t(2.0) / real_t( 27.0),   // N
-                                                                                                 real_t(2.0) / real_t( 27.0),   // S
-                                                                                                 real_t(2.0) / real_t( 27.0),   // W
-                                                                                                 real_t(2.0) / real_t( 27.0),   // E
-                                                                                                 real_t(2.0) / real_t( 27.0),   // T
-                                                                                                 real_t(2.0) / real_t( 27.0),   // B
-                                                                                                 real_t(1.0) / real_t( 54.0),   // NW
-                                                                                                 real_t(1.0) / real_t( 54.0),   // NE
-                                                                                                 real_t(1.0) / real_t( 54.0),   // SW
-                                                                                                 real_t(1.0) / real_t( 54.0),   // SE
-                                                                                                 real_t(1.0) / real_t( 54.0),   // TN
-                                                                                                 real_t(1.0) / real_t( 54.0),   // TS
-                                                                                                 real_t(1.0) / real_t( 54.0),   // TW
-                                                                                                 real_t(1.0) / real_t( 54.0),   // TE
-                                                                                                 real_t(1.0) / real_t( 54.0),   // BN
-                                                                                                 real_t(1.0) / real_t( 54.0),   // BS
-                                                                                                 real_t(1.0) / real_t( 54.0),   // BW
-                                                                                                 real_t(1.0) / real_t( 54.0),   // BE
-                                                                                                 real_t(1.0) / real_t(216.0),   // TNE
-                                                                                                 real_t(1.0) / real_t(216.0),   // TNW
-                                                                                                 real_t(1.0) / real_t(216.0),   // TSE
-                                                                                                 real_t(1.0) / real_t(216.0),   // TSW
-                                                                                                 real_t(1.0) / real_t(216.0),   // BNE
-                                                                                                 real_t(1.0) / real_t(216.0),   // BNW
-                                                                                                 real_t(1.0) / real_t(216.0),   // BSE
-                                                                                                 real_t(1.0) / real_t(216.0) }; // BSW
+template< typename CM, bool C, typename FM, int EAO > const real_t D3Q27<CM,C,FM,EAO>::w[27] = { 8.0_r / 27.0_r,   // C
+                                                                                                 2.0_r / 27.0_r,   // N
+                                                                                                 2.0_r / 27.0_r,   // S
+                                                                                                 2.0_r / 27.0_r,   // W
+                                                                                                 2.0_r / 27.0_r,   // E
+                                                                                                 2.0_r / 27.0_r,   // T
+                                                                                                 2.0_r / 27.0_r,   // B
+                                                                                                 1.0_r / 54.0_r,   // NW
+                                                                                                 1.0_r / 54.0_r,   // NE
+                                                                                                 1.0_r / 54.0_r,   // SW
+                                                                                                 1.0_r / 54.0_r,   // SE
+                                                                                                 1.0_r / 54.0_r,   // TN
+                                                                                                 1.0_r / 54.0_r,   // TS
+                                                                                                 1.0_r / 54.0_r,   // TW
+                                                                                                 1.0_r / 54.0_r,   // TE
+                                                                                                 1.0_r / 54.0_r,   // BN
+                                                                                                 1.0_r / 54.0_r,   // BS
+                                                                                                 1.0_r / 54.0_r,   // BW
+                                                                                                 1.0_r / 54.0_r,   // BE
+                                                                                                 1.0_r / 216.0_r,   // TNE
+                                                                                                 1.0_r / 216.0_r,   // TNW
+                                                                                                 1.0_r / 216.0_r,   // TSE
+                                                                                                 1.0_r / 216.0_r,   // TSW
+                                                                                                 1.0_r / 216.0_r,   // BNE
+                                                                                                 1.0_r / 216.0_r,   // BNW
+                                                                                                 1.0_r / 216.0_r,   // BSE
+                                                                                                 1.0_r / 216.0_r }; // BSW
 
 // must match with the static array 'dir' in stencil::D3Q27
-template< typename CM, bool C, typename FM, int EAO > const real_t D3Q27<CM,C,FM,EAO>::wInv[27] = { real_t(27.0) / real_t( 8.0),   // C
-                                                                                                    real_t(27.0) / real_t( 2.0),   // N
-                                                                                                    real_t(27.0) / real_t( 2.0),   // S
-                                                                                                    real_t(27.0) / real_t( 2.0),   // W
-                                                                                                    real_t(27.0) / real_t( 2.0),   // E
-                                                                                                    real_t(27.0) / real_t( 2.0),   // T
-                                                                                                    real_t(27.0) / real_t( 2.0),   // B
-                                                                                                    real_t( 54.0),                 // NW
-                                                                                                    real_t( 54.0),                 // NE
-                                                                                                    real_t( 54.0),                 // SW
-                                                                                                    real_t( 54.0),                 // SE
-                                                                                                    real_t( 54.0),                 // TN
-                                                                                                    real_t( 54.0),                 // TS
-                                                                                                    real_t( 54.0),                 // TW
-                                                                                                    real_t( 54.0),                 // TE
-                                                                                                    real_t( 54.0),                 // BN
-                                                                                                    real_t( 54.0),                 // BS
-                                                                                                    real_t( 54.0),                 // BW
-                                                                                                    real_t( 54.0),                 // BE
-                                                                                                    real_t(216.0),                 // TNE
-                                                                                                    real_t(216.0),                 // TNW
-                                                                                                    real_t(216.0),                 // TSE
-                                                                                                    real_t(216.0),                 // TSW
-                                                                                                    real_t(216.0),                 // BNE
-                                                                                                    real_t(216.0),                 // BNW
-                                                                                                    real_t(216.0),                 // BSE
-                                                                                                    real_t(216.0) };               // BSW
+template< typename CM, bool C, typename FM, int EAO > const real_t D3Q27<CM,C,FM,EAO>::wInv[27] = { 27.0_r / 8.0_r,   // C
+                                                                                                    27.0_r / 2.0_r,   // N
+                                                                                                    27.0_r / 2.0_r,   // S
+                                                                                                    27.0_r / 2.0_r,   // W
+                                                                                                    27.0_r / 2.0_r,   // E
+                                                                                                    27.0_r / 2.0_r,   // T
+                                                                                                    27.0_r / 2.0_r,   // B
+                                                                                                    54.0_r,                 // NW
+                                                                                                    54.0_r,                 // NE
+                                                                                                    54.0_r,                 // SW
+                                                                                                    54.0_r,                 // SE
+                                                                                                    54.0_r,                 // TN
+                                                                                                    54.0_r,                 // TS
+                                                                                                    54.0_r,                 // TW
+                                                                                                    54.0_r,                 // TE
+                                                                                                    54.0_r,                 // BN
+                                                                                                    54.0_r,                 // BS
+                                                                                                    54.0_r,                 // BW
+                                                                                                    54.0_r,                 // BE
+                                                                                                    216.0_r,                 // TNE
+                                                                                                    216.0_r,                 // TNW
+                                                                                                    216.0_r,                 // TSE
+                                                                                                    216.0_r,                 // TSW
+                                                                                                    216.0_r,                 // BNE
+                                                                                                    216.0_r,                 // BNW
+                                                                                                    216.0_r,                 // BSE
+                                                                                                    216.0_r };               // BSW
 
 } // namespace lbm
 } // namespace walberla

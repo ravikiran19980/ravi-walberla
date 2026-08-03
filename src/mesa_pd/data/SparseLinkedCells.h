@@ -160,25 +160,25 @@ SparseLinkedCells::SparseLinkedCells(const math::AABB& domain, const Vec3& cellD
    , cellDiameter_( domain.sizes()[0] / real_c(numCellsPerDim_[0]),
      domain.sizes()[1] / real_c(numCellsPerDim_[1]),
      domain.sizes()[2] / real_c(numCellsPerDim_[2]) )
-   , invCellDiameter_( real_t(1) / cellDiameter_[0], real_t(1) / cellDiameter_[1], real_t(1) / cellDiameter_[2] )
+   , invCellDiameter_( 1_r / cellDiameter_[0], 1_r / cellDiameter_[1], 1_r / cellDiameter_[2] )
    , cells_(uint_c(numCellsPerDim_[0]*numCellsPerDim_[1]*numCellsPerDim_[2]))
    , nonEmptyCells_(uint_c(numCellsPerDim_[0]*numCellsPerDim_[1]*numCellsPerDim_[2]))
 {
    //precondition
-   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter[0], real_t(0));
-   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter[1], real_t(0));
-   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter[2], real_t(0));
+   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter[0], 0_r);
+   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter[1], 0_r);
+   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter[2], 0_r);
 
    //postcondition
-   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter_[0], real_t(0));
+   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter_[0], 0_r);
    WALBERLA_CHECK_LESS_EQUAL(cellDiameter_[0], cellDiameter[0]);
 
    WALBERLA_CHECK_GREATER_EQUAL(numCellsPerDim_[0], 0);
-   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter_[1], real_t(0));
+   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter_[1], 0_r);
    WALBERLA_CHECK_LESS_EQUAL(cellDiameter_[1], cellDiameter[1]);
 
    WALBERLA_CHECK_GREATER_EQUAL(numCellsPerDim_[1], 0);
-   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter_[2], real_t(0));
+   WALBERLA_CHECK_GREATER_EQUAL(cellDiameter_[2], 0_r);
    WALBERLA_CHECK_LESS_EQUAL(cellDiameter_[2], cellDiameter[2]);
 
    WALBERLA_CHECK_GREATER_EQUAL(numCellsPerDim_[2], 0);

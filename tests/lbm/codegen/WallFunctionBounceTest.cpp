@@ -43,7 +43,7 @@ using FlagField_T = FlagField< flag_t >;
 
 auto pdfFieldAdder = [](IBlock* const block, StructuredBlockStorage* const storage) {
    return new PdfField_T(storage->getNumberOfXCells(*block), storage->getNumberOfYCells(*block),
-                         storage->getNumberOfZCells(*block), uint_t(1), field::fzyx,
+                         storage->getNumberOfZCells(*block), uint_t{1}, field::fzyx,
                          make_shared< field::AllocateAligned< real_t, 64 > >());
 };
 
@@ -83,9 +83,9 @@ int main(int argc, char** argv)
    auto blocks = blockforest::createUniformBlockGridFromConfig(globalConfig);
 
    // dummy values without physical importance
-   const real_t omega{1.4};
-   [[maybe_unused]] const real_t filterWidth{1e-3};
-   const real_t targetUTau{1e-5};
+   const real_t omega{1.4_r};
+   [[maybe_unused]] const real_t filterWidth{1e-3_r};
+   const real_t targetUTau{1e-5_r};
 
    // create fields
    BlockDataID pdfFieldID     = blocks->addStructuredBlockData< PdfField_T >(pdfFieldAdder, "PDFs");

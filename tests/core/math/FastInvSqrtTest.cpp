@@ -35,29 +35,33 @@ int main( int argc, char ** argv )
    walberla::Environment walberlaEnv( argc, argv );
 
    WALBERLA_LOG_RESULT( "Testing double" );
-   for ( double testNr = 1e-12; testNr < 1e12; testNr = testNr * 2.1 )
+   for ( double testNr = 1e-12; testNr < 1e12; )
    {
       double error = math::fastInvSqrt<3>( testNr ) - ( 1.0 / std::sqrt( testNr ) );
       WALBERLA_CHECK( floatIsEqual(error, 0.0, 1e-4 ) );
+      testNr *= 2.1;
    }
 
-   for ( double testNr = 1e-3; testNr < 1e12; testNr = testNr * 2.1 )
+   for ( double testNr = 1e-3; testNr < 1e12; )
    {
       double error = math::fastInvSqrt<3>( testNr ) - ( 1.0 / std::sqrt( testNr ) );
       WALBERLA_CHECK( floatIsEqual(error, 0.0, 1e-9 ) );
+      testNr *= 2.1;
    }
 
-   for ( double testNr = 1e-3; testNr < 1e12; testNr = testNr * 2.1 )
+   for ( double testNr = 1e-3; testNr < 1e12; )
    {
       double error = math::fastInvSqrt<2>( testNr ) - ( 1.0 / std::sqrt( testNr ) );
       WALBERLA_CHECK( floatIsEqual(error, 0.0, 1e-4 ) );
+      testNr *= 2.1;
    }
 
    WALBERLA_LOG_RESULT( "Testing float" );
-   for ( float testNr = 1e-4f; testNr < 1e12f; testNr = testNr * 2.1f )
+   for ( float testNr = 1e-4f; testNr < 1e12f; )
    {
       double error = math::fastInvSqrt<2>( testNr ) - ( 1.0 / std::sqrt( testNr ) );
       WALBERLA_CHECK( floatIsEqual(error, 0.0, 1e-2 ) );
+      testNr *= 2.1f;
    }
 
 

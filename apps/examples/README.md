@@ -1,4 +1,4 @@
-# Example Apps {#example-apps}
+@page example-apps Example Apps
 
 \viewOnGitlab{apps/examples}
 
@@ -16,9 +16,7 @@ Examples usually consist of:
 - Optionally:
   - A SweepGen `.py` file for generating application-specific sweeps.
   - Simulation setup parameter `.prm` files.
-
-> **Note:** All code is subject to the GNU General Public License v3.
-
+  
 ---
 
 ## Content
@@ -32,4 +30,5 @@ Examples usually consist of:
 ### Framework Tools and Features {#example-tools-and-features}
 
 - \subpage example-MeshRefinementExample
+- \subpage example-AdaptiveMeshRefinementExample
 - \subpage example-TimingPool

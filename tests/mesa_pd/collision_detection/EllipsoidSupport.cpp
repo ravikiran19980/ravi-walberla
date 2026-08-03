@@ -43,27 +43,27 @@ void check( )
 {
    using namespace walberla::mesa_pd::collision_detection;
 
-   Vec3 pos      = Vec3(real_t(1),real_t(2),real_t(3));
-   Vec3 semiAxes = Vec3(real_t(2),real_t(3),real_t(1));
+   Vec3 pos      = Vec3(1_r,2_r,3_r);
+   Vec3 semiAxes = Vec3(2_r,3_r,1_r);
 
    auto el = data::Ellipsoid(semiAxes);
    Support e0(pos, Rot3(), el);
-   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(real_t(1),real_t(0),real_t(0))), Vec3(real_t(3),real_t(2),real_t(3)));
-   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(real_t(0),real_t(1),real_t(0))), Vec3(real_t(1),real_t(5),real_t(3)));
-   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(real_t(0),real_t(0),real_t(1))), Vec3(real_t(1),real_t(2),real_t(4)));
-   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(real_t(-1),real_t(0),real_t(0))), Vec3(real_t(-1),real_t(2),real_t(3)));
-   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(real_t(0),real_t(-1),real_t(0))), Vec3(real_t(1),real_t(-1),real_t(3)));
-   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(real_t(0),real_t(0),real_t(-1))), Vec3(real_t(1),real_t(2),real_t(2)));
+   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(1_r,0_r,0_r)), Vec3(3_r,2_r,3_r));
+   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(0_r,1_r,0_r)), Vec3(1_r,5_r,3_r));
+   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(0_r,0_r,1_r)), Vec3(1_r,2_r,4_r));
+   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(-1_r,0_r,0_r)), Vec3(-1_r,2_r,3_r));
+   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(0_r,-1_r,0_r)), Vec3(1_r,-1_r,3_r));
+   WALBERLA_CHECK_FLOAT_EQUAL(e0.support(Vec3(0_r,0_r,-1_r)), Vec3(1_r,2_r,2_r));
 
-   WALBERLA_CHECK_FLOAT_EQUAL( contour(e0.support(Vec3(real_t(-1),real_t(-2),real_t(-3)).getNormalized()) - pos, semiAxes), real_t(1) );
-   WALBERLA_CHECK_FLOAT_EQUAL( contour(e0.support(Vec3(real_t(-2),real_t(-3),real_t(-1)).getNormalized()) - pos, semiAxes), real_t(1) );
-   WALBERLA_CHECK_FLOAT_EQUAL( contour(e0.support(Vec3(real_t(-3),real_t(-1),real_t(-2)).getNormalized()) - pos, semiAxes), real_t(1) );
+   WALBERLA_CHECK_FLOAT_EQUAL( contour(e0.support(Vec3(-1_r,-2_r,-3_r).getNormalized()) - pos, semiAxes), 1_r );
+   WALBERLA_CHECK_FLOAT_EQUAL( contour(e0.support(Vec3(-2_r,-3_r,-1_r).getNormalized()) - pos, semiAxes), 1_r );
+   WALBERLA_CHECK_FLOAT_EQUAL( contour(e0.support(Vec3(-3_r,-1_r,-2_r).getNormalized()) - pos, semiAxes), 1_r );
 
-   Rot3 rot = Rot3(Vec3(1,3,2).getNormalized(), real_t(1.56));
+   Rot3 rot = Rot3(Vec3(1,3,2).getNormalized(), 1.56_r);
    Support e1(pos, rot, el);
-   WALBERLA_CHECK_FLOAT_EQUAL( contour( rot.getMatrix().getTranspose() * (e1.support(Vec3(real_t(-1),real_t(-2),real_t(-3)).getNormalized()) - pos), semiAxes), real_t(1) );
-   WALBERLA_CHECK_FLOAT_EQUAL( contour( rot.getMatrix().getTranspose() * (e1.support(Vec3(real_t(-2),real_t(-3),real_t(-1)).getNormalized()) - pos), semiAxes), real_t(1) );
-   WALBERLA_CHECK_FLOAT_EQUAL( contour( rot.getMatrix().getTranspose() * (e1.support(Vec3(real_t(-3),real_t(-1),real_t(-2)).getNormalized()) - pos), semiAxes), real_t(1) );
+   WALBERLA_CHECK_FLOAT_EQUAL( contour( rot.getMatrix().getTranspose() * (e1.support(Vec3(-1_r,-2_r,-3_r).getNormalized()) - pos), semiAxes), 1_r );
+   WALBERLA_CHECK_FLOAT_EQUAL( contour( rot.getMatrix().getTranspose() * (e1.support(Vec3(-2_r,-3_r,-1_r).getNormalized()) - pos), semiAxes), 1_r );
+   WALBERLA_CHECK_FLOAT_EQUAL( contour( rot.getMatrix().getTranspose() * (e1.support(Vec3(-3_r,-1_r,-2_r).getNormalized()) - pos), semiAxes), 1_r );
 }
 
 } //namespace mesa_pd

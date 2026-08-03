@@ -37,38 +37,38 @@ void main( int argc, char ** argv )
 
    using namespace walberla::mesa_pd;
 
-   WALBERLA_CHECK_FLOAT_EQUAL( sqDistanceLineToPoint(real_t(0.7), real_t(0.9), real_t(1.2)) + real_t(1),
-                               real_t(0.04) + real_t(1) );
-   WALBERLA_CHECK_FLOAT_EQUAL( sqDistanceLineToPoint(real_t(1.0), real_t(0.9), real_t(1.2)) + real_t(1),
-                               real_t(0) + real_t(1) );
-   WALBERLA_CHECK_FLOAT_EQUAL( sqDistanceLineToPoint(real_t(1.5), real_t(0.9), real_t(1.2)) + real_t(1),
-                               real_t(0.09) + real_t(1) );
+   WALBERLA_CHECK_FLOAT_EQUAL( sqDistanceLineToPoint(0.7_r, 0.9_r, 1.2_r) + 1_r,
+                               0.04_r + 1_r );
+   WALBERLA_CHECK_FLOAT_EQUAL( sqDistanceLineToPoint(1.0_r, 0.9_r, 1.2_r) + 1_r,
+                               0_r + 1_r );
+   WALBERLA_CHECK_FLOAT_EQUAL( sqDistanceLineToPoint(1.5_r, 0.9_r, 1.2_r) + 1_r,
+                               0.09_r + 1_r );
 
    WALBERLA_CHECK_FLOAT_EQUAL( sqDistancePointToAABB( Vec3(1,1,1),
-                                                      math::AABB(real_t(2),real_t(2),real_t(2),real_t(3),real_t(3),real_t(3)) ) + real_t(1),
-                               real_t(3) + real_t(1) );
+                                                      math::AABB(2_r,2_r,2_r,3_r,3_r,3_r) ) + 1_r,
+                               3_r + 1_r );
 
-   WALBERLA_CHECK_FLOAT_EQUAL( sqDistancePointToAABB( Vec3(real_t(0.5),real_t(0.5),real_t(0.5)),
-                                                      math::AABB(real_t(2),real_t(2),real_t(2),real_t(3),real_t(3),real_t(3)) ) + real_t(1),
-                               real_t(6.75) + real_t(1) );
+   WALBERLA_CHECK_FLOAT_EQUAL( sqDistancePointToAABB( Vec3(0.5_r,0.5_r,0.5_r),
+                                                      math::AABB(2_r,2_r,2_r,3_r,3_r,3_r) ) + 1_r,
+                               6.75_r + 1_r );
 
-   WALBERLA_CHECK_FLOAT_EQUAL( sqDistancePointToAABBPeriodic( Vec3(real_t(0.5),real_t(0.5),real_t(0.5)),
-                                                              math::AABB(real_t(2),real_t(2),real_t(2),real_t(3),real_t(3),real_t(3)),
-                                                              math::AABB(real_t(1),real_t(1),real_t(1),real_t(3),real_t(3),real_t(3)),
-                                                              std::array< bool, 3 >{{false, false, false}}) + real_t(1),
-                               real_t(6.75) + real_t(1) );
+   WALBERLA_CHECK_FLOAT_EQUAL( sqDistancePointToAABBPeriodic( Vec3(0.5_r,0.5_r,0.5_r),
+                                                              math::AABB(2_r,2_r,2_r,3_r,3_r,3_r),
+                                                              math::AABB(1_r,1_r,1_r,3_r,3_r,3_r),
+                                                              std::array< bool, 3 >{{false, false, false}}) + 1_r,
+                               6.75_r + 1_r );
 
-   WALBERLA_CHECK_FLOAT_EQUAL( sqDistancePointToAABBPeriodic( Vec3(real_t(0.5),real_t(0.5),real_t(0.5)),
-                                                              math::AABB(real_t(2),real_t(2),real_t(2),real_t(3),real_t(3),real_t(3)),
-                                                              math::AABB(real_t(1),real_t(1),real_t(1),real_t(3),real_t(3),real_t(3)),
-                                                              std::array< bool, 3 >{{true, true, true}}) + real_t(1),
-                               real_t(0) + real_t(1) );
+   WALBERLA_CHECK_FLOAT_EQUAL( sqDistancePointToAABBPeriodic( Vec3(0.5_r,0.5_r,0.5_r),
+                                                              math::AABB(2_r,2_r,2_r,3_r,3_r,3_r),
+                                                              math::AABB(1_r,1_r,1_r,3_r,3_r,3_r),
+                                                              std::array< bool, 3 >{{true, true, true}}) + 1_r,
+                               0_r + 1_r );
 
-   WALBERLA_CHECK_FLOAT_EQUAL( sqDistancePointToAABBPeriodic( Vec3(real_t(1.1),real_t(1.1),real_t(1.1)),
-                                                              math::AABB(real_t(2),real_t(2),real_t(2),real_t(3),real_t(3),real_t(3)),
-                                                              math::AABB(real_t(1),real_t(1),real_t(1),real_t(3),real_t(3),real_t(3)),
-                                                              std::array< bool, 3 >{{true, true, true}}) + real_t(1),
-                               real_t(0.03) + real_t(1) );
+   WALBERLA_CHECK_FLOAT_EQUAL( sqDistancePointToAABBPeriodic( Vec3(1.1_r,1.1_r,1.1_r),
+                                                              math::AABB(2_r,2_r,2_r,3_r,3_r,3_r),
+                                                              math::AABB(1_r,1_r,1_r,3_r,3_r,3_r),
+                                                              std::array< bool, 3 >{{true, true, true}}) + 1_r,
+                               0.03_r + 1_r );
 }
 
 }

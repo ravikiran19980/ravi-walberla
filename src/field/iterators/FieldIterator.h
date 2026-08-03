@@ -94,11 +94,20 @@ namespace field {
       inline bool           operator==( const FieldIterator& it ) const;
       inline bool           operator!=( const FieldIterator& it ) const;
 
+#if defined(__NVCC__) && defined(__NVCC_DIAG_PRAGMA_SUPPORT__)
+#pragma nv_diagnostic push
+#pragma nv_diag_suppress 554
+#endif
+
       operator const FieldIterator<const T, fieldFSize> & () const {
          const FieldIterator<const T, fieldFSize> * ptr;
          ptr = reinterpret_cast< const FieldIterator<const T, fieldFSize>* > ( this );
          return *ptr;
       }
+
+#if defined(__NVCC__) && defined(__NVCC_DIAG_PRAGMA_SUPPORT__)
+#pragma nv_diagnostic pop
+#endif
 
       //@}
       //****************************************************************************************************************
@@ -152,7 +161,7 @@ namespace field {
       /*!\name Constructor/Destructor */
       //@{
 
-      explicit FieldIterator();
+      explicit FieldIterator() noexcept;
 
       explicit FieldIterator(const FieldType * f,
                              cell_idx_t xBeg, cell_idx_t yBeg, cell_idx_t zBeg, cell_idx_t fBeg,
@@ -231,7 +240,7 @@ namespace field {
          : FieldIterator<T,fieldFSize>( field, xBeg, yBeg,zBeg, fBeg,xs ,ys, zs, fs, true ) {}
 
 
-      explicit ForwardFieldIterator()
+      explicit ForwardFieldIterator() noexcept
          : FieldIterator<T,fieldFSize> ()  {}
       //@}
       //****************************************************************************************************************
@@ -274,7 +283,7 @@ namespace field {
           : FieldIterator<T,fieldFSize>( field, xBeg, yBeg,zBeg, fBeg,xs ,ys, zs, fs, false )
       { }
 
-      explicit ReverseFieldIterator()
+      explicit ReverseFieldIterator() noexcept
          : FieldIterator<T,fieldFSize> ()  {}
       //@}
       //****************************************************************************************************************

@@ -62,7 +62,7 @@ int main()
 
       int x = 0;
       int* notNullPointer = &x;
-      shared_ptr<int> sharedNotNullPointer(new int(0));
+      shared_ptr<int> sharedNotNullPointer = std::make_shared<int>(0);
       WALBERLA_CHECK_NOT_NULLPTR(notNullPointer);
       WALBERLA_CHECK_NOT_NULLPTR(sharedNotNullPointer);
 

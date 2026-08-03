@@ -37,7 +37,7 @@
 namespace walberla {
 namespace mesa_pd {
 
-const real_t radius = real_t(3);
+const real_t radius = 3_r;
 
 walberla::id_t createSphere(data::ParticleStorage& ps, domain::IDomain& domain)
 {
@@ -96,14 +96,14 @@ void main( int argc, char ** argv )
 
    if (walberla::mpi::MPIManager::instance()->rank() == 0)
    {
-      WALBERLA_CHECK_FLOAT_EQUAL( pIt->getForce(), Vec3(real_t(28)) );
-      WALBERLA_CHECK_FLOAT_EQUAL( pIt->getTorque(), Vec3(real_t(28)) );
-      WALBERLA_CHECK_FLOAT_EQUAL( pIt->getHeatFlux(), real_t(28) );
+      WALBERLA_CHECK_FLOAT_EQUAL( pIt->getForce(), Vec3(28_r) );
+      WALBERLA_CHECK_FLOAT_EQUAL( pIt->getTorque(), Vec3(28_r) );
+      WALBERLA_CHECK_FLOAT_EQUAL( pIt->getHeatFlux(), 28_r );
    } else
    {
       WALBERLA_CHECK_FLOAT_EQUAL( pIt->getForce(), Vec3(0) );
       WALBERLA_CHECK_FLOAT_EQUAL( pIt->getTorque(), Vec3(0) );
-      WALBERLA_CHECK_FLOAT_EQUAL( pIt->getHeatFlux(), real_t(0) );
+      WALBERLA_CHECK_FLOAT_EQUAL( pIt->getHeatFlux(), 0_r );
    }
 }
 

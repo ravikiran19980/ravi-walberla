@@ -69,7 +69,7 @@ using FlagField_T = FlagField< flag_t > ;
 using NoSlip_T = lbm::CumulantMRTNoSlip ;
 
 #if defined(WALBERLA_BUILD_WITH_GPU_SUPPORT)
-typedef gpu::GPUField< real_t > GPUField;
+using GPUField =  gpu::GPUField< real_t >;
 #endif
 
 //////////////////////////////////////////
@@ -140,7 +140,7 @@ int main(int argc, char** argv)
 #if defined(WALBERLA_BUILD_WITH_GPU_SUPPORT)
    // GPU Field for PDFs
    BlockDataID const pdfFieldId = gpu::addGPUFieldToStorage< gpu::GPUField< real_t > >(
-      blocks, "pdf field on GPU", Stencil_T::Size, field::fzyx, uint_t(1));
+      blocks, "pdf field on GPU", Stencil_T::Size, field::fzyx, uint_t{1});
 
    // GPU Velocity Field
    BlockDataID velocityFieldIdGPU =

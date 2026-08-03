@@ -1,5 +1,35 @@
 # Changelog
 
+## [7.3] - 2026-07-21
+
+### CMake & C++
+
+ - Bump minimum CMake version to 3.24 (!822)
+ - Remove various custom CMake functions in favor of modern CMake best practice (!774)
+ - Remove support for Windows / MSVC
+ - Add support for GCC 15 and LLVM 22 compilers
+
+### Code Generation
+
+ - Introduce SweepGen, the new code generation library based on pystencils 2.0 (!763, !781, !779, !788, !789, !809, !827, !829, !831, !832, !837, !844)
+ - Bump lbmpy dependency of legacy code generators to 1.4.1
+
+### Framework
+
+ - Introduce the foundations of the new, experimental `walberla::v8` core library (!815, !828, !829, !836)
+ - Clear away unused and obsolete wrapper classes from `core` (!795)
+ - Make most of the `stencil` module `constexpr` (!812, !814)
+
+### LBM
+
+ - Various improvements and bug fixes for static LBM mesh refinment (!804, !807)
+ - Reintroduce support for adaptive mesh refinement with the `lbm_generated` module (!843)
+ 
+### Documentation
+
+ - Add a suite of example applications demonstrating waLBerla's features (!763, !801, !803, !815, !824, )
+ - Add contribution and AI guidelines (!815, !822, !845)
+
 ## [7.2] - 2025-08-07
 
 ### CMake & C++

@@ -1,38 +1,30 @@
-walberla_link_files_to_builddir( params )
+walberla_link_files_to_builddir (params)
 
-set( AppName ParallelPlates )
+set (AppName ParallelPlates)
 
-add_executable( ${AppName} )
-target_sources( ${AppName} PRIVATE ${AppName}.cpp )
+add_executable (${AppName})
+target_sources (${AppName} PRIVATE ${AppName}.cpp)
+walberla_set_gpu_language (${AppName}.cpp)
 
-walberla_generate_sources(
+walberla_generate_sources (${AppName} SCRIPTS ParallelPlatesSweeps.py AUTO_LANGUAGE)
+
+target_link_libraries (
     ${AppName}
-    SCRIPTS ParallelPlatesSweeps.py
+    PRIVATE walberla::v8
 )
 
-target_link_libraries(
-    ${AppName}
-    PRIVATE
-    walberla::core
-    walberla::experimental
-    walberla::blockforest
-    walberla::geometry
-    walberla::stencil
-    walberla::vtk
-)
+add_dependencies (waLBerlaTestsuite ${AppName})
 
-add_dependencies( waLBerlaTestsuite ${AppName} )
-
-walberla_execute_test(
+waLBerla_execute_test (
     NO_MODULE_LABEL
-    NAME "ParallelPlates - CPU - Couette"
-    COMMAND $<TARGET_FILE:${AppName}> params/Couette.prm 
+    NAME "ParallelPlates - Couette"
+    COMMAND $<TARGET_FILE:${AppName}> params/Couette.prm
     PROCESSES 1
 )
 
-walberla_execute_test(
+waLBerla_execute_test (
     NO_MODULE_LABEL
-    NAME "ParallelPlates - CPU - Poiseuille"
-    COMMAND $<TARGET_FILE:${AppName}> params/Poiseuille.prm 
+    NAME "ParallelPlates - Poiseuille"
+    COMMAND $<TARGET_FILE:${AppName}> params/Poiseuille.prm
     PROCESSES 1
 )

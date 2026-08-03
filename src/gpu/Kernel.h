@@ -195,7 +195,7 @@ namespace gpu
    {
       std::vector<char> paramInfo;
       paramInfo.resize( sizeof(T) );
-      std::memcpy ( paramInfo.data(), &param, sizeof(T) );
+      std::memcpy ( paramInfo.data(),  static_cast<const void*>(&param), sizeof(T) );
 
       WALBERLA_ASSERT( checkParameter<T>( params_.size() ),
                        "gpu::Kernel type mismatch of parameter " << params_.size()  )
@@ -243,6 +243,7 @@ namespace gpu
 
       // register all parameters
       std::vector<void*> args;
+      args.reserve(params_.size());
       for(const auto & param : params_)  {
          args.push_back( const_cast<char*>(param.data()) );
       }
@@ -252,7 +253,7 @@ namespace gpu
                      "object pointer and function pointer sizes must be equal" );
       WALBERLA_DEVICE_SECTION()
       {
-         WALBERLA_GPU_CHECK(gpuLaunchKernel((void*) funcPtr_, gridDim_, blockDim_, args.data(), sharedMemSize_, stream))
+         WALBERLA_GPU_CHECK(gpuLaunchKernel(reinterpret_cast< void* >(funcPtr_), gridDim_, blockDim_, args.data(), sharedMemSize_, stream))
       }
    }
 

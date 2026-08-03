@@ -51,6 +51,9 @@ public:
 
    void addInitializationFunction( const InitializationFunction_T & initFunction ) { initFunction_ = initFunction; }
 
+   void serializeGhostLayers( const bool serializeGhostLayers ) { serializeGhostLayers_ = serializeGhostLayers; }
+   bool serializeGhostLayers() const { return serializeGhostLayers_; }
+
    Field_T * initialize( IBlock * const block ) override
    {
       auto * field = allocate( block );
@@ -94,15 +97,17 @@ protected:
 
    void sizeCheck( const uint_t xSize, const uint_t ySize, const uint_t zSize )
    {
-      WALBERLA_CHECK( (xSize & uint_t(1)) == uint_t(0), "The x-size of your field must be divisible by 2." )
-      WALBERLA_CHECK( (ySize & uint_t(1)) == uint_t(0), "The y-size of your field must be divisible by 2." )
+      WALBERLA_CHECK( (xSize & uint_t{1}) == uint_t{0}, "The x-size of your field must be divisible by 2." )
+      WALBERLA_CHECK( (ySize & uint_t{1}) == uint_t{0}, "The y-size of your field must be divisible by 2." )
       if( Pseudo2D )
-      { WALBERLA_CHECK( zSize == uint_t(1), "The z-size of your field must be equal to 1 (pseudo 2D mode)." ) }
+      { WALBERLA_CHECK( zSize == uint_t{1}, "The z-size of your field must be equal to 1 (pseudo 2D mode)." ) }
       else
-      { WALBERLA_CHECK( (zSize & uint_t(1)) == uint_t(0), "The z-size of your field must be divisible by 2." ) }
+      { WALBERLA_CHECK( (zSize & uint_t{1}) == uint_t{0}, "The z-size of your field must be divisible by 2." ) }
    }
 
    InitializationFunction_T initFunction_;
+
+   bool serializeGhostLayers_{ true };
 
 }; // class BlockDataHandling
 // NOLINTEND(portability-template-virtual-member-function)
@@ -119,8 +124,16 @@ inline void BlockDataHandling< Field_T, Pseudo2D >::serialize( IBlock * const bl
    buffer << field->xSize() << field->ySize() << field->zSize() << field->fSize();
 #endif
 
-   for( const auto &value : *field )
-      buffer << value;
+   if( serializeGhostLayers_ )
+   {
+      for( auto it = field->beginWithGhostLayer(); it != field->end(); ++it )
+         buffer << *it;
+   }
+   else
+   {
+      for( const auto &value : *field )
+         buffer << value;
+   }
 }
 
 
@@ -131,31 +144,34 @@ void BlockDataHandling< Field_T, Pseudo2D >::serializeCoarseToFine( Block * cons
    auto * field = block->template getData< Field_T >(id);
    WALBERLA_ASSERT_NOT_NULLPTR( field )
 
-   const uint_t xSize = field->xSize();
-   const uint_t ySize = field->ySize();
-   const uint_t zSize = field->zSize();
-   const uint_t fSize = field->fSize();
-   sizeCheck( xSize, ySize, zSize );
+   const cell_idx_t xSize = cell_idx_c( field->xSize() );
+   const cell_idx_t ySize = cell_idx_c( field->ySize() );
+   const cell_idx_t zSize = cell_idx_c( field->zSize() );
+   const uint_t     fSize = field->fSize();
+   sizeCheck( field->xSize(), field->ySize(), field->zSize() );
 
 #ifndef NDEBUG
-   buffer << child << ( xSize / uint_t(2) ) << ( ySize / uint_t(2) ) << ( Pseudo2D ? zSize : ( zSize / uint_t(2) ) ) << fSize;
+   buffer << child << uint_c( xSize / cell_idx_c(2) ) << uint_c( ySize / cell_idx_c(2) )
+          << ( Pseudo2D ? uint_c( zSize ) : uint_c( zSize / cell_idx_c(2) ) ) << fSize;
 #endif
 
-   const cell_idx_t zBegin = Pseudo2D ? cell_idx_t(0) : ( (child & uint_t(4)) ? ( cell_idx_c( zSize ) / cell_idx_t(2) ) : cell_idx_t(0) );
-   const cell_idx_t zEnd = Pseudo2D ? cell_idx_t(1) : ( (child & uint_t(4)) ? cell_idx_c( zSize ) : ( cell_idx_c( zSize ) / cell_idx_t(2) ) );
+   const cell_idx_t gl = serializeGhostLayers_ ? cell_idx_c( field->nrOfGhostLayers() ) : cell_idx_c(0);
+   const cell_idx_t cg = ( gl + cell_idx_c(1) ) / cell_idx_c(2);
+
+   const cell_idx_t xHalf = xSize / cell_idx_c(2);
+   const cell_idx_t yHalf = ySize / cell_idx_c(2);
+   const cell_idx_t zHalf = zSize / cell_idx_c(2);
+   const cell_idx_t x0 = (child & uint_t{1}) ? xHalf : cell_idx_c(0);
+   const cell_idx_t y0 = (child & uint_t{2}) ? yHalf : cell_idx_c(0);
+   const cell_idx_t z0 = (child & uint_t{4}) ? zHalf : cell_idx_c(0);
+
+   const cell_idx_t zBegin = Pseudo2D ? ( -gl )       : ( z0 - cg );
+   const cell_idx_t zEnd   = Pseudo2D ? ( zSize + gl ) : ( z0 + zHalf + cg );
    for( cell_idx_t z = zBegin; z < zEnd; ++z )
-   {
-      const cell_idx_t yEnd = (child & uint_t(2)) ? cell_idx_c( ySize ) : ( cell_idx_c( ySize ) / cell_idx_t(2) );
-      for( cell_idx_t y = (child & uint_t(2)) ? ( cell_idx_c( ySize ) / cell_idx_t(2) ) : cell_idx_t(0); y < yEnd; ++y )
-      {
-         const cell_idx_t xEnd = (child & uint_t(1)) ? cell_idx_c( xSize ) : ( cell_idx_c( xSize ) / cell_idx_t(2) );
-         for( cell_idx_t x = (child & uint_t(1)) ? ( cell_idx_c( xSize ) / cell_idx_t(2) ) : cell_idx_t(0); x < xEnd; ++x )
-         {
+      for( cell_idx_t y = y0 - cg; y < y0 + yHalf + cg; ++y )
+         for( cell_idx_t x = x0 - cg; x < x0 + xHalf + cg; ++x )
             for( uint_t f = 0; f < fSize; ++f )
                buffer << field->get(x,y,z,f);
-         }
-      }
-   }
 }
 
 
@@ -166,31 +182,57 @@ void BlockDataHandling< Field_T, Pseudo2D >::serializeFineToCoarse( Block * cons
    auto * field = block->template getData< Field_T >(id);
    WALBERLA_ASSERT_NOT_NULLPTR( field )
 
-   const uint_t xSize = field->xSize();
-   const uint_t ySize = field->ySize();
-   const uint_t zSize = field->zSize();
-   const uint_t fSize = field->fSize();
-   sizeCheck( xSize, ySize, zSize );
+   const cell_idx_t xSize = cell_idx_c( field->xSize() );
+   const cell_idx_t ySize = cell_idx_c( field->ySize() );
+   const cell_idx_t zSize = cell_idx_c( field->zSize() );
+   const uint_t     fSize = field->fSize();
+   sizeCheck( field->xSize(), field->ySize(), field->zSize() );
+
+   const uint_t child = block->getId().getBranchId();
 
 #ifndef NDEBUG
-   buffer << block->getId().getBranchId() << ( xSize / uint_t(2) ) << ( ySize / uint_t(2) ) << ( Pseudo2D ? zSize : ( zSize / uint_t(2) ) ) << fSize;
+   buffer << child << uint_c( xSize / cell_idx_c(2) ) << uint_c( ySize / cell_idx_c(2) )
+          << ( Pseudo2D ? uint_c( zSize ) : uint_c( zSize / cell_idx_c(2) ) ) << fSize;
 #endif
 
-   for( cell_idx_t z = 0; z < cell_idx_c( zSize ); z += cell_idx_t(2) ) {
-      for( cell_idx_t y = 0; y < cell_idx_c( ySize ); y += cell_idx_t(2) ) {
-         for( cell_idx_t x = 0; x < cell_idx_c( xSize ); x += cell_idx_t(2) ) {
+   const cell_idx_t gl = serializeGhostLayers_ ? cell_idx_c( field->nrOfGhostLayers() ) : cell_idx_c(0);
+   const cell_idx_t cg = gl / cell_idx_c(2);
+
+   const cell_idx_t xHalf = xSize / cell_idx_c(2);
+   const cell_idx_t yHalf = ySize / cell_idx_c(2);
+   const cell_idx_t zHalf = zSize / cell_idx_c(2);
+   const cell_idx_t x0 = (child & uint_t{1}) ? xHalf : cell_idx_c(0);
+   const cell_idx_t y0 = (child & uint_t{2}) ? yHalf : cell_idx_c(0);
+   const cell_idx_t z0 = (child & uint_t{4}) ? zHalf : cell_idx_c(0);
+
+   const cell_idx_t xBegin = (child & uint_t{1}) ? x0 : ( x0 - cg );
+   const cell_idx_t xEnd   = (child & uint_t{1}) ? ( x0 + xHalf + cg ) : ( x0 + xHalf );
+   const cell_idx_t yBegin = (child & uint_t{2}) ? y0 : ( y0 - cg );
+   const cell_idx_t yEnd   = (child & uint_t{2}) ? ( y0 + yHalf + cg ) : ( y0 + yHalf );
+   const cell_idx_t zBegin = Pseudo2D ? ( -gl )       : ( (child & uint_t{4}) ? z0 : ( z0 - cg ) );
+   const cell_idx_t zEnd   = Pseudo2D ? ( zSize + gl ) : ( (child & uint_t{4}) ? ( z0 + zHalf + cg ) : ( z0 + zHalf ) );
+
+   for( cell_idx_t z = zBegin; z < zEnd; ++z )
+   {
+      const cell_idx_t fz = Pseudo2D ? z : ( cell_idx_c(2) * ( z - z0 ) );
+      for( cell_idx_t y = yBegin; y < yEnd; ++y )
+      {
+         const cell_idx_t fy = cell_idx_c(2) * ( y - y0 );
+         for( cell_idx_t x = xBegin; x < xEnd; ++x )
+         {
+            const cell_idx_t fx = cell_idx_c(2) * ( x - x0 );
             for( uint_t f = 0; f < fSize; ++f )
             {
-               Value_T result =                                  field->get( x,                 y,                 z,                 f );
-                       result = static_cast< Value_T >( result + field->get( x + cell_idx_t(1), y                , z                , f ) );
-                       result = static_cast< Value_T >( result + field->get( x                , y + cell_idx_t(1), z                , f ) );
-                       result = static_cast< Value_T >( result + field->get( x + cell_idx_t(1), y + cell_idx_t(1), z                , f ) );
+               Value_T result =                                  field->get( fx,                 fy,                 fz,                 f );
+                       result = static_cast< Value_T >( result + field->get( fx + cell_idx_c(1), fy                , fz                , f ) );
+                       result = static_cast< Value_T >( result + field->get( fx                , fy + cell_idx_c(1), fz                , f ) );
+                       result = static_cast< Value_T >( result + field->get( fx + cell_idx_c(1), fy + cell_idx_c(1), fz                , f ) );
                if( ! Pseudo2D )
                {
-                       result = static_cast< Value_T >( result + field->get( x                , y                , z + cell_idx_t(1), f ) );
-                       result = static_cast< Value_T >( result + field->get( x + cell_idx_t(1), y                , z + cell_idx_t(1), f ) );
-                       result = static_cast< Value_T >( result + field->get( x                , y + cell_idx_t(1), z + cell_idx_t(1), f ) );
-                       result = static_cast< Value_T >( result + field->get( x + cell_idx_t(1), y + cell_idx_t(1), z + cell_idx_t(1), f ) );
+                       result = static_cast< Value_T >( result + field->get( fx                , fy                , fz + cell_idx_c(1), f ) );
+                       result = static_cast< Value_T >( result + field->get( fx + cell_idx_c(1), fy                , fz + cell_idx_c(1), f ) );
+                       result = static_cast< Value_T >( result + field->get( fx                , fy + cell_idx_c(1), fz + cell_idx_c(1), f ) );
+                       result = static_cast< Value_T >( result + field->get( fx + cell_idx_c(1), fy + cell_idx_c(1), fz + cell_idx_c(1), f ) );
                }
 
                buffer << Merge< Value_T >::result( result );
@@ -219,8 +261,16 @@ inline void BlockDataHandling< Field_T, Pseudo2D >::deserialize( IBlock * const 
    WALBERLA_ASSERT_EQUAL( fSender, field->fSize() )
 #endif
 
-   for( auto &value : *field )
-      buffer >> value;
+   if( serializeGhostLayers_ )
+   {
+      for( auto it = field->beginWithGhostLayer(); it != field->end(); ++it )
+         buffer >> *it;
+   }
+   else
+   {
+      for( auto &value : *field )
+         buffer >> value;
+   }
 }
 
 
@@ -230,11 +280,11 @@ void BlockDataHandling< Field_T, Pseudo2D >::deserializeCoarseToFine( Block * co
 {
    auto * field = block->template getData< Field_T >( id );
 
-   const uint_t xSize = field->xSize();
-   const uint_t ySize = field->ySize();
-   const uint_t zSize = field->zSize();
-   const uint_t fSize = field->fSize();
-   sizeCheck( xSize, ySize, zSize );
+   const cell_idx_t xSize = cell_idx_c( field->xSize() );
+   const cell_idx_t ySize = cell_idx_c( field->ySize() );
+   const cell_idx_t zSize = cell_idx_c( field->zSize() );
+   const uint_t     fSize = field->fSize();
+   sizeCheck( field->xSize(), field->ySize(), field->zSize() );
 
 #ifndef NDEBUG
    uint_t branchId( 0 );
@@ -244,33 +294,59 @@ void BlockDataHandling< Field_T, Pseudo2D >::deserializeCoarseToFine( Block * co
    uint_t fSender( 0 );
    buffer >> branchId >> xSender >> ySender >> zSender >> fSender;
    WALBERLA_ASSERT_EQUAL( branchId, block->getId().getBranchId() )
-   WALBERLA_ASSERT_EQUAL( xSender, xSize / uint_t(2) )
-   WALBERLA_ASSERT_EQUAL( ySender, ySize / uint_t(2) )
+   WALBERLA_ASSERT_EQUAL( xSender, uint_c( xSize / cell_idx_c(2) ) )
+   WALBERLA_ASSERT_EQUAL( ySender, uint_c( ySize / cell_idx_c(2) ) )
    if( Pseudo2D )
-   { WALBERLA_ASSERT_EQUAL( zSender, zSize ) }
+   { WALBERLA_ASSERT_EQUAL( zSender, uint_c( zSize ) ) }
    else
-   { WALBERLA_ASSERT_EQUAL( zSender, zSize / uint_t(2) ) }
+   { WALBERLA_ASSERT_EQUAL( zSender, uint_c( zSize / cell_idx_c(2) ) ) }
    WALBERLA_ASSERT_EQUAL( fSender, fSize )
 #endif
 
-   for( cell_idx_t z = 0; z < cell_idx_c( zSize ); z += cell_idx_t(2) ) {
-      for( cell_idx_t y = 0; y < cell_idx_c( ySize ); y += cell_idx_t(2) ) {
-         for( cell_idx_t x = 0; x < cell_idx_c( xSize ); x += cell_idx_t(2) ) {
+   const cell_idx_t gl = serializeGhostLayers_ ? cell_idx_c( field->nrOfGhostLayers() ) : cell_idx_c(0);
+   const cell_idx_t cg = ( gl + cell_idx_c(1) ) / cell_idx_c(2);
+
+   const cell_idx_t xHalf = xSize / cell_idx_c(2);
+   const cell_idx_t yHalf = ySize / cell_idx_c(2);
+   const cell_idx_t zHalf = zSize / cell_idx_c(2);
+
+   const cell_idx_t numX = xHalf + cell_idx_c(2) * cg;
+   const cell_idx_t numY = yHalf + cell_idx_c(2) * cg;
+   const cell_idx_t numZ = Pseudo2D ? ( zSize + cell_idx_c(2) * gl ) : ( zHalf + cell_idx_c(2) * cg );
+
+   const cell_idx_t xLimit = xSize + gl;
+   const cell_idx_t yLimit = ySize + gl;
+   const cell_idx_t zLimit = zSize + gl;
+
+   for( cell_idx_t iz = 0; iz < numZ; ++iz )
+   {
+      const cell_idx_t fz0 = Pseudo2D ? ( iz - gl ) : cell_idx_c(2) * ( iz - cg );
+      for( cell_idx_t iy = 0; iy < numY; ++iy )
+      {
+         const cell_idx_t fy0 = cell_idx_c(2) * ( iy - cg );
+         for( cell_idx_t ix = 0; ix < numX; ++ix )
+         {
+            const cell_idx_t fx0 = cell_idx_c(2) * ( ix - cg );
             for( uint_t f = 0; f < fSize; ++f )
             {
                Value_T value;
                buffer >> value;
 
-               field->get( x,                 y,                 z,                 f ) = value;
-               field->get( x + cell_idx_t(1), y                , z                , f ) = value;
-               field->get( x                , y + cell_idx_t(1), z                , f ) = value;
-               field->get( x + cell_idx_t(1), y + cell_idx_t(1), z                , f ) = value;
-               if( ! Pseudo2D )
+               for( cell_idx_t dz = 0; dz < ( Pseudo2D ? cell_idx_c(1) : cell_idx_c(2) ); ++dz )
                {
-                  field->get( x                , y                , z + cell_idx_t(1), f ) = value;
-                  field->get( x + cell_idx_t(1), y                , z + cell_idx_t(1), f ) = value;
-                  field->get( x                , y + cell_idx_t(1), z + cell_idx_t(1), f ) = value;
-                  field->get( x + cell_idx_t(1), y + cell_idx_t(1), z + cell_idx_t(1), f ) = value;
+                  const cell_idx_t fz = fz0 + dz;
+                  if( fz < -gl || fz >= zLimit ) continue;
+                  for( cell_idx_t dy = 0; dy < cell_idx_c(2); ++dy )
+                  {
+                     const cell_idx_t fy = fy0 + dy;
+                     if( fy < -gl || fy >= yLimit ) continue;
+                     for( cell_idx_t dx = 0; dx < cell_idx_c(2); ++dx )
+                     {
+                        const cell_idx_t fx = fx0 + dx;
+                        if( fx < -gl || fx >= xLimit ) continue;
+                        field->get( fx, fy, fz, f ) = value;
+                     }
+                  }
                }
             }
          }
@@ -285,11 +361,11 @@ void BlockDataHandling< Field_T, Pseudo2D >::deserializeFineToCoarse( Block * co
 {
    auto * field = block->template getData< Field_T >( id );
 
-   const uint_t xSize = field->xSize();
-   const uint_t ySize = field->ySize();
-   const uint_t zSize = field->zSize();
-   const uint_t fSize = field->fSize();
-   sizeCheck( xSize, ySize, zSize );
+   const cell_idx_t xSize = cell_idx_c( field->xSize() );
+   const cell_idx_t ySize = cell_idx_c( field->ySize() );
+   const cell_idx_t zSize = cell_idx_c( field->zSize() );
+   const uint_t     fSize = field->fSize();
+   sizeCheck( field->xSize(), field->ySize(), field->zSize() );
 
 #ifndef NDEBUG
    uint_t branchId( 0 );
@@ -299,30 +375,37 @@ void BlockDataHandling< Field_T, Pseudo2D >::deserializeFineToCoarse( Block * co
    uint_t fSender( 0 );
    buffer >> branchId >> xSender >> ySender >> zSender >> fSender;
    WALBERLA_ASSERT_EQUAL( branchId, child )
-   WALBERLA_ASSERT_EQUAL( xSender, xSize / uint_t(2) )
-   WALBERLA_ASSERT_EQUAL( ySender, ySize / uint_t(2) )
+   WALBERLA_ASSERT_EQUAL( xSender, uint_c( xSize / cell_idx_c(2) ) )
+   WALBERLA_ASSERT_EQUAL( ySender, uint_c( ySize / cell_idx_c(2) ) )
    if( Pseudo2D )
-   { WALBERLA_ASSERT_EQUAL( zSender, zSize ) }
+   { WALBERLA_ASSERT_EQUAL( zSender, uint_c( zSize ) ) }
    else
-   { WALBERLA_ASSERT_EQUAL( zSender, zSize / uint_t(2) ) }
+   { WALBERLA_ASSERT_EQUAL( zSender, uint_c( zSize / cell_idx_c(2) ) ) }
    WALBERLA_ASSERT_EQUAL( fSender, fSize )
 #endif
 
-   const cell_idx_t zBegin = Pseudo2D ? cell_idx_t(0) : ( (child & uint_t(4)) ? ( cell_idx_c( zSize ) / cell_idx_t(2) ) : cell_idx_t(0) );
-   const cell_idx_t zEnd = Pseudo2D ? cell_idx_t(1) : ( (child & uint_t(4)) ? cell_idx_c( zSize ) : ( cell_idx_c( zSize ) / cell_idx_t(2) ) );
+   const cell_idx_t gl = serializeGhostLayers_ ? cell_idx_c( field->nrOfGhostLayers() ) : cell_idx_c(0);
+   const cell_idx_t cg = gl / cell_idx_c(2);
+
+   const cell_idx_t xHalf = xSize / cell_idx_c(2);
+   const cell_idx_t yHalf = ySize / cell_idx_c(2);
+   const cell_idx_t zHalf = zSize / cell_idx_c(2);
+   const cell_idx_t x0 = (child & uint_t{1}) ? xHalf : cell_idx_c(0);
+   const cell_idx_t y0 = (child & uint_t{2}) ? yHalf : cell_idx_c(0);
+   const cell_idx_t z0 = (child & uint_t{4}) ? zHalf : cell_idx_c(0);
+
+   const cell_idx_t xBegin = (child & uint_t{1}) ? x0 : ( x0 - cg );
+   const cell_idx_t xEnd   = (child & uint_t{1}) ? ( x0 + xHalf + cg ) : ( x0 + xHalf );
+   const cell_idx_t yBegin = (child & uint_t{2}) ? y0 : ( y0 - cg );
+   const cell_idx_t yEnd   = (child & uint_t{2}) ? ( y0 + yHalf + cg ) : ( y0 + yHalf );
+   const cell_idx_t zBegin = Pseudo2D ? ( -gl )        : ( (child & uint_t{4}) ? z0 : ( z0 - cg ) );
+   const cell_idx_t zEnd   = Pseudo2D ? ( zSize + gl ) : ( (child & uint_t{4}) ? ( z0 + zHalf + cg ) : ( z0 + zHalf ) );
+
    for( cell_idx_t z = zBegin; z < zEnd; ++z )
-   {
-      const cell_idx_t yEnd = (child & uint_t(2)) ? cell_idx_c( ySize ) : ( cell_idx_c( ySize ) / cell_idx_t(2) );
-      for( cell_idx_t y = (child & uint_t(2)) ? ( cell_idx_c( ySize ) / cell_idx_t(2) ) : cell_idx_t(0); y < yEnd; ++y )
-      {
-         const cell_idx_t xEnd = (child & uint_t(1)) ? cell_idx_c( xSize ) : ( cell_idx_c( xSize ) / cell_idx_t(2) );
-         for( cell_idx_t x = (child & uint_t(1)) ? ( cell_idx_c( xSize ) / cell_idx_t(2) ) : cell_idx_t(0); x < xEnd; ++x )
-         {
+      for( cell_idx_t y = yBegin; y < yEnd; ++y )
+         for( cell_idx_t x = xBegin; x < xEnd; ++x )
             for( uint_t f = 0; f < fSize; ++f )
                buffer >> field->get(x,y,z,f);
-         }
-      }
-   }
 }
 
 
@@ -416,7 +499,7 @@ public:
    DefaultBlockDataHandling( const weak_ptr< StructuredBlockStorage > & blocks,
                              const std::function< Vector3< uint_t > ( const shared_ptr< StructuredBlockStorage > &, IBlock * const ) >& calculateSize = internal::defaultSize,
                              const shared_ptr< field::FieldAllocator<Value_T> > alloc = nullptr) :
-      blocks_( blocks ), nrOfGhostLayers_( uint_t(1) ), initValue_(), layout_( fzyx ), calculateSize_( calculateSize ), alloc_(alloc)
+      blocks_( blocks ), nrOfGhostLayers_( uint_t{1} ), initValue_(), layout_( fzyx ), calculateSize_( calculateSize ), alloc_(alloc)
    {}
 
    DefaultBlockDataHandling( const weak_ptr< StructuredBlockStorage > & blocks, const uint_t nrOfGhostLayers,
@@ -483,7 +566,7 @@ public:
    AlwaysInitializeBlockDataHandling( const weak_ptr< StructuredBlockStorage > & blocks,
                                       const std::function< Vector3< uint_t > ( const shared_ptr< StructuredBlockStorage > &, IBlock * const ) >& calculateSize = internal::defaultSize,
                                       const shared_ptr< field::FieldAllocator<Value_T> > alloc = nullptr) :
-      blocks_( blocks ), nrOfGhostLayers_( uint_t(1) ), initValue_(), layout_( fzyx ), calculateSize_( calculateSize ), alloc_(alloc)
+      blocks_( blocks ), nrOfGhostLayers_( uint_t{1} ), initValue_(), layout_( fzyx ), calculateSize_( calculateSize ), alloc_(alloc)
    {}
 
    AlwaysInitializeBlockDataHandling( const weak_ptr< StructuredBlockStorage > & blocks, const uint_t nrOfGhostLayers,

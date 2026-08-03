@@ -46,14 +46,14 @@ class ParticleUpdateNotification {
 public:
    struct Parameters {
    walberla::id_t uid {UniqueID<data::Particle>::invalidID()};
-   walberla::mesa_pd::Vec3 position {real_t(0)};
-   walberla::mesa_pd::Vec3 linearVelocity {real_t(0)};
-   walberla::real_t charge {real_t(0)};
+   walberla::mesa_pd::Vec3 position {0_r};
+   walberla::mesa_pd::Vec3 linearVelocity {0_r};
+   walberla::real_t charge {0_r};
    walberla::mesa_pd::Rot3 rotation {};
-   walberla::mesa_pd::Vec3 angularVelocity {real_t(0)};
-   walberla::real_t radiusAtTemperature {real_t(0)};
+   walberla::mesa_pd::Vec3 angularVelocity {0_r};
+   walberla::real_t radiusAtTemperature {0_r};
    std::map<walberla::id_t, walberla::mesa_pd::data::ContactHistory> oldContactHistory {};
-   walberla::real_t temperature {real_t(0)};
+   walberla::real_t temperature {0_r};
    };
 
    inline explicit ParticleUpdateNotification( const data::Particle& particle ) : particle_(particle) {}

@@ -39,6 +39,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <string>
+#include <string_view>
 #include <type_traits>
 
 
@@ -51,12 +52,12 @@ namespace internal {
 using FlowRateSolution_T = std::function<real_t ()>;
 using FlowRateVelocitySolution_T = std::function<Vector3<real_t> (const Vector3<real_t> &)>;
 
-const std::string     volumetricFlowRateEvaluationFilename("flowrate.dat");
-const real_t          volumetricFlowRateEvaluationNormalization( real_t(1) );
-const Vector3<bool>   volumetricFlowRateEvaluationAxis( Vector3<bool>( true, false, false ) );
-const Vector3<real_t> volumetricFlowRateEvaluationPoint( Vector3<real_t>( real_c(0.5) ) );
+constexpr std::string_view    volumetricFlowRateEvaluationFilename = "flowrate.dat";
+constexpr real_t          volumetricFlowRateEvaluationNormalization( 1_r );
+constexpr Vector3<bool>   volumetricFlowRateEvaluationAxis( Vector3<bool>( true, false, false ) );
+constexpr Vector3<real_t> volumetricFlowRateEvaluationPoint( 0.5_r );
 
-const std::string volumetricFlowRateEvaluationConfigBlock("VolumetricFlowRateEvaluation");
+constexpr std::string_view    volumetricFlowRateEvaluationConfigBlock = "VolumetricFlowRateEvaluation";
 
 }
 
@@ -161,11 +162,11 @@ public:
                                  const Set<SUID> & requiredSelectors     = Set<SUID>::emptySet(),
                                  const Set<SUID> & incompatibleSelectors = Set<SUID>::emptySet() ) :
       blocks_( blocks ), fieldId_( fieldId ), filter_( filter ), solution_( _solution ), velocitySolution_( velocitySolution ),
-      executionCounter_( uint_t(0) ), plotFrequency_( plotFrequency ), logFrequency_( logFrequency ),
+      executionCounter_( uint_t{0} ), plotFrequency_( plotFrequency ), logFrequency_( logFrequency ),
       filename_( internal::volumetricFlowRateEvaluationFilename ),
       normalizationFactor_( internal::volumetricFlowRateEvaluationNormalization ),
       axis_( internal::volumetricFlowRateEvaluationAxis ), surfacePoint_( internal::volumetricFlowRateEvaluationPoint ),
-      flowRate_( real_t(0) ), velocitySolutionFlowRate_( real_t(0) ),
+      flowRate_( 0_r ), velocitySolutionFlowRate_( 0_r ),
       requiredSelectors_(requiredSelectors), incompatibleSelectors_( incompatibleSelectors )
    {
       auto _blocks = blocks.lock();
@@ -180,11 +181,11 @@ public:
                                  const Set<SUID> & requiredSelectors     = Set<SUID>::emptySet(),
                                  const Set<SUID> & incompatibleSelectors = Set<SUID>::emptySet() ) :
       blocks_( blocks ), fieldId_( fieldId ), filter_( Filter_T() ), solution_( _solution ), velocitySolution_( velocitySolution ),
-      executionCounter_( uint_t(0) ), plotFrequency_( plotFrequency ), logFrequency_( logFrequency ),
+      executionCounter_( uint_t{0} ), plotFrequency_( plotFrequency ), logFrequency_( logFrequency ),
       filename_( internal::volumetricFlowRateEvaluationFilename ),
       normalizationFactor_( internal::volumetricFlowRateEvaluationNormalization ),
       axis_( internal::volumetricFlowRateEvaluationAxis ), surfacePoint_( internal::volumetricFlowRateEvaluationPoint ),
-      flowRate_( real_t(0) ), velocitySolutionFlowRate_( real_t(0) ),
+      flowRate_( 0_r ), velocitySolutionFlowRate_( 0_r ),
       requiredSelectors_(requiredSelectors), incompatibleSelectors_( incompatibleSelectors )
    {
       static_assert( (std::is_same_v< Filter_T, DefaultEvaluationFilter >),
@@ -207,7 +208,7 @@ public:
    real_t solution() const
    {
       if( !solution_ )
-         return real_t(0);
+         return 0_r;
 
       auto blocks = blocks_.lock();
       WALBERLA_CHECK_NOT_NULLPTR( blocks, "Trying to access 'VolumetricFlowRateEvaluation' for a block storage object that doesn't exist anymore" );
@@ -267,13 +268,13 @@ private:
 template< typename VelocityField_T, typename Filter_T >
 void VolumetricFlowRateEvaluation< VelocityField_T, Filter_T >::operator()()
 {
-   if( logFrequency_ == uint_t(0) && ( plotFrequency_ == uint_t(0) || filename_.empty() ) )
+   if( logFrequency_ == uint_t{0} && ( plotFrequency_ == uint_t{0} || filename_.empty() ) )
       return;
 
    ++executionCounter_;
 
-   const bool plot = ( plotFrequency_ != uint_t(0) && ( executionCounter_ - uint_c(1) ) % plotFrequency_ == uint_t(0) && !filename_.empty() );
-   const bool log  = ( logFrequency_  != uint_t(0) && ( executionCounter_ - uint_c(1) ) % logFrequency_  == uint_t(0) );
+   const bool plot = ( plotFrequency_ != uint_t{0} && ( executionCounter_ - uint_c(1) ) % plotFrequency_ == uint_t{0} && !filename_.empty() );
+   const bool log  = ( logFrequency_  != uint_t{0} && ( executionCounter_ - uint_c(1) ) % logFrequency_  == uint_t{0} );
 
    if( !log && !plot )
       return;
@@ -288,8 +289,8 @@ void VolumetricFlowRateEvaluation< VelocityField_T, Filter_T >::operator()()
    sp[1] += surfacePoint_[1] * domainAABB.ySize();
    sp[2] += surfacePoint_[2] * domainAABB.zSize();
 
-   real_t _flowRate( real_t(0) );
-   real_t _velocitySolutionFlowRate( real_t(0) );
+   real_t _flowRate( 0_r );
+   real_t _velocitySolutionFlowRate( 0_r );
 
    for( auto block = blocks->begin( requiredSelectors_, incompatibleSelectors_ ); block != blocks->end(); ++block )
    {
@@ -415,7 +416,7 @@ void VolumetricFlowRateEvaluation< VelocityField_T, Filter_T >::operator()()
    {
       const auto & id = blocks->getBlockDataIdentifier( fieldId_ );
 
-      if( plot && executionCounter_ == uint_t(1) )
+      if( plot && executionCounter_ == uint_t{1} )
       {
          std::ofstream file( filename_.c_str() );
          file << "# volumetric flow rate evaluation of data '" << id <<  "'\n"
@@ -468,9 +469,9 @@ void VolumetricFlowRateEvaluation< VelocityField_T, Filter_T >::operator()()
       if( plot )
       {
          std::ofstream file( filename_.c_str(), std::ofstream::out | std::ofstream::app );
-         file << ( executionCounter_ - uint_t(1) ) << " " << flowRate_ << " " << velocitySolutionFlowRate_ << " " << _solution << " "
-              << ( isIdentical( velocitySolutionFlowRate_, real_t(0) ) ? real_t(0) : std::abs( ( flowRate_ - velocitySolutionFlowRate_ ) / velocitySolutionFlowRate_ ) ) << " "
-              << ( isIdentical( _solution, real_t(0) ) ? real_t(0) : std::abs( ( flowRate_ - _solution ) / _solution ) ) << std::endl;
+         file << ( executionCounter_ - uint_t{1} ) << " " << flowRate_ << " " << velocitySolutionFlowRate_ << " " << _solution << " "
+              << ( isIdentical( velocitySolutionFlowRate_, 0_r ) ? 0_r : std::abs( ( flowRate_ - velocitySolutionFlowRate_ ) / velocitySolutionFlowRate_ ) ) << " "
+              << ( isIdentical( _solution, 0_r ) ? 0_r : std::abs( ( flowRate_ - _solution ) / _solution ) ) << std::endl;
          file.close();
       }
    }
@@ -565,9 +566,9 @@ inline void volumetricFlowRateEvaluationConfigParser( const shared_ptr< Config >
 } // namespace internal
 
 #define WALBERLA_FIELD_MAKE_VOLUMETRIC_FLOW_RATE_EVALUATION_CONFIG_PARSER( config ) \
-   uint_t defaultPlotFrequency = uint_t(0); \
-   uint_t defaultLogFrequency = uint_t(0); \
-   std::string defaultFilename = internal::volumetricFlowRateEvaluationFilename; \
+   uint_t defaultPlotFrequency = uint_t{0}; \
+   uint_t defaultLogFrequency = uint_t{0}; \
+   std::string defaultFilename = std::string(internal::volumetricFlowRateEvaluationFilename); \
    real_t defaultNormalizationFactor = internal::volumetricFlowRateEvaluationNormalization; \
    auto _blocks = blocks.lock(); \
    WALBERLA_CHECK_NOT_NULLPTR( _blocks, "Trying to execute 'makeVolumetricFlowRateEvaluation' for a block storage object that doesn't exist anymore" ); \
@@ -591,7 +592,7 @@ shared_ptr< VolumetricFlowRateEvaluation< VelocityField_T > > makeVolumetricFlow
                                                                                                 const ConstBlockDataID & velocityFieldId,
                                                                                                 const internal::FlowRateSolution_T & solution = internal::FlowRateSolution_T(),
                                                                                                 const internal::FlowRateVelocitySolution_T & velocitySolution = internal::FlowRateVelocitySolution_T(),
-                                                                                                const std::string & configBlockName = internal::volumetricFlowRateEvaluationConfigBlock,
+                                                                                                const std::string & configBlockName = std::string(internal::volumetricFlowRateEvaluationConfigBlock),
                                                                                                 const Set<SUID> & requiredSelectors = Set<SUID>::emptySet(),
                                                                                                 const Set<SUID> & incompatibleSelectors = Set<SUID>::emptySet() )
 {
@@ -609,7 +610,7 @@ makeVolumetricFlowRateEvaluation( const Config_T & config,
                                   const ConstBlockDataID & velocityFieldId, const ConstBlockDataID & flagFieldId, const Set< FlagUID > & cellsToEvaluate,
                                   const internal::FlowRateSolution_T & solution = internal::FlowRateSolution_T(),
                                   const internal::FlowRateVelocitySolution_T & velocitySolution = internal::FlowRateVelocitySolution_T(),
-                                  const std::string & configBlockName = internal::volumetricFlowRateEvaluationConfigBlock,
+                                  const std::string & configBlockName = std::string(internal::volumetricFlowRateEvaluationConfigBlock),
                                   const Set<SUID> & requiredSelectors = Set<SUID>::emptySet(),
                                   const Set<SUID> & incompatibleSelectors = Set<SUID>::emptySet() )
 {
@@ -627,7 +628,7 @@ makeVolumetricFlowRateEvaluation( const Config_T & config,
                                   const ConstBlockDataID & velocityFieldId, const Filter_T & filter,
                                   const internal::FlowRateSolution_T & solution = internal::FlowRateSolution_T(),
                                   const internal::FlowRateVelocitySolution_T & velocitySolution = internal::FlowRateVelocitySolution_T(),
-                                  const std::string & configBlockName = internal::volumetricFlowRateEvaluationConfigBlock,
+                                  const std::string & configBlockName = std::string(internal::volumetricFlowRateEvaluationConfigBlock),
                                   const Set<SUID> & requiredSelectors = Set<SUID>::emptySet(),
                                   const Set<SUID> & incompatibleSelectors = Set<SUID>::emptySet() )
 {

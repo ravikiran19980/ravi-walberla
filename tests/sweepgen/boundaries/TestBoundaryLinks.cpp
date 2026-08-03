@@ -36,7 +36,7 @@
 
 #include "timeloop/all.h"
 
-#include "walberla/experimental/Sweep.hpp"
+#include "walberla/v8/Sweep.hpp"
 
 #if defined(WALBERLA_BUILD_WITH_OPENMESH)
 #   include "mesh_common/DistanceFunction.h"
@@ -83,7 +83,7 @@ std::vector< Link > createSolutionIndexVector()
 template< typename Link >
 void testIndexVector(
    shared_ptr< StructuredBlockForest > blocks,
-   walberla::experimental::sweep::SparseIndexList< Link, walberla::experimental::memory::memtag::host > indexVector)
+   walberla::v8::sweep::SparseIndexList< Link, walberla::v8::memory::memtag::host > indexVector)
 {
    auto reference_vec = createSolutionIndexVector< Link >();
    for (auto& block : *blocks)
@@ -95,7 +95,7 @@ void testIndexVector(
          WALBERLA_CHECK(std::ranges::any_of(reference_vec, [&](const Link& link) {
             if constexpr (std::same_as< Link, gen::QBBLink >)
                return link.x == idx.x && link.y == idx.y && link.z == idx.z && link.dir == idx.dir &&
-                      abs(link.q - idx.q) < 0.01;
+                      fabs(link.q - idx.q) < 0.01;
             else
                return link.x == idx.x && link.y == idx.y && link.z == idx.z && link.dir == idx.dir;
          }))

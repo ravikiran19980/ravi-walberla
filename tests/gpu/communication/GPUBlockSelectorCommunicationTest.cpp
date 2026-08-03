@@ -52,15 +52,15 @@ using Stencil_T        = stencil::D3Q27;
 using ScalarField_T    = field::GhostLayerField< Type_T, 1 >;
 using GPUScalarField_T = gpu::GPUField< Type_T >;
 
-const Set< SUID > requiredBlockSelector("communication");
-const Set< SUID > incompatibleBlockSelector("no communication");
+const Set< SUID >& requiredBlockSelector() { static const Set< SUID > selector("communication"); return selector; }
+const Set< SUID >& incompatibleBlockSelector() { static const Set< SUID > selector("no communication"); return selector; }
 
 void suidAssignmentFunction(blockforest::SetupBlockForest& forest)
 {
    for (auto& sblock : forest)
    {
-      if (forest.atDomainXMinBorder(sblock)) { sblock.addState(incompatibleBlockSelector); }
-      else { sblock.addState(requiredBlockSelector); }
+      if (forest.atDomainXMinBorder(sblock)) { sblock.addState(incompatibleBlockSelector()); }
+      else { sblock.addState(requiredBlockSelector()); }
       sblock.setWorkload(walberla::numeric_cast< walberla::workload_t >(1));
    }
 }
@@ -70,9 +70,9 @@ void initScalarField(std::shared_ptr< StructuredBlockForest >& blocks, const Blo
    for (auto& block : *blocks)
    {
       Type_T val;
-      if (blocks->atDomainXMinBorder(block)) { val = Type_T(-1); }
-      else if (blocks->atDomainXMaxBorder(block)) { val = Type_T(1); }
-      else { val = Type_T(0); }
+      if (blocks->atDomainXMinBorder(block)) { val = Type_T{-1}; }
+      else if (blocks->atDomainXMaxBorder(block)) { val = Type_T{1}; }
+      else { val = Type_T{0}; }
 
       auto* field = block.getData< ScalarField_T >(fieldID);
       WALBERLA_ASSERT_NOT_NULLPTR(field)
@@ -98,9 +98,9 @@ std::shared_ptr< StructuredBlockForest >
 
    sforest.addWorkloadMemorySUIDAssignmentFunction(suidAssignmentFunction);
 
-   AABB const domainAABB{ real_c(0),
-                          real_c(0),
-                          real_c(0),
+   AABB const domainAABB{ 0_r,
+                          0_r,
+                          0_r,
                           dx * real_c(numberOfXBlocks * numberOfXCellsPerBlock),
                           dx * real_c(numberOfYBlocks * numberOfYCellsPerBlock),
                           dx * real_c(numberOfZBlocks * numberOfZCellsPerBlock) };
@@ -149,13 +149,13 @@ int main(int argc, char** argv)
    auto blocks = createSelectorBlockGrid(nBlocks[0], nBlocks[1], nBlocks[2], cells[0], cells[1], cells[2], 1, false,
                                          true, true, true);
 
-   BlockDataID const fieldID = field::addToStorage< ScalarField_T >(blocks, "scalar", Type_T(0), field::fzyx, uint_t(1));
+   BlockDataID const fieldID = field::addToStorage< ScalarField_T >(blocks, "scalar", Type_T{0}, field::fzyx, uint_t{1});
    initScalarField(blocks, fieldID);
 
    BlockDataID const gpuFieldID = gpu::addGPUFieldToStorage< ScalarField_T >(blocks, fieldID, "GPU scalar");
 
    // Setup communication schemes for GPUPackInfo
-   gpu::communication::UniformGPUScheme< Stencil_T > communication(blocks, requiredBlockSelector, incompatibleBlockSelector);
+   gpu::communication::UniformGPUScheme< Stencil_T > communication(blocks, requiredBlockSelector(), incompatibleBlockSelector());
    communication.addPackInfo(std::make_shared< gpu::communication::MemcpyPackInfo< GPUScalarField_T > >(gpuFieldID));
 
    // Perform one communication step

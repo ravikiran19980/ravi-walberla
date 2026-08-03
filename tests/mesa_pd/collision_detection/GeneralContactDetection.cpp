@@ -40,41 +40,41 @@ void generalContactDetection()
    data::ParticleAccessorWithShape accessor(ps, ss);
 
    auto e0 = ps->create();
-   e0->setPosition(Vec3(real_t(0),real_t(0),real_t(0)));
-   e0->setShapeID(ss->create<data::Ellipsoid>(Vec3(real_t(1),real_t(2),real_t(3))));
+   e0->setPosition(Vec3(0_r,0_r,0_r));
+   e0->setShapeID(ss->create<data::Ellipsoid>(Vec3(1_r,2_r,3_r)));
 
    auto e1 = ps->create();
-   e1->setPosition(Vec3(real_t(1.9),real_t(0),real_t(0)));
-   e1->setShapeID(ss->create<data::Ellipsoid>(Vec3(real_t(1),real_t(2),real_t(3))));
+   e1->setPosition(Vec3(1.9_r,0_r,0_r));
+   e1->setShapeID(ss->create<data::Ellipsoid>(Vec3(1_r,2_r,3_r)));
 
    auto p1 = ps->create();
-   p1->setPosition(Vec3(real_t(-0.9),real_t(0),real_t(0)));
-   p1->setShapeID(ss->create<data::HalfSpace>(Vec3(real_t(1),real_t(0),real_t(0))));
+   p1->setPosition(Vec3(-0.9_r,0_r,0_r));
+   p1->setShapeID(ss->create<data::HalfSpace>(Vec3(1_r,0_r,0_r)));
 
    auto cb1 = ps->create();
-   cb1->setPosition(Vec3(real_t(0),real_t(0),real_t(0)));
-   cb1->setShapeID(ss->create<data::CylindricalBoundary>(real_t(3), Vec3(real_t(0),real_t(0),real_t(1))));
+   cb1->setPosition(Vec3(0_r,0_r,0_r));
+   cb1->setShapeID(ss->create<data::CylindricalBoundary>(3_r, Vec3(0_r,0_r,1_r)));
 
    collision_detection::GeneralContactDetection gcd;
    kernel::DoubleCast double_cast;
 
    WALBERLA_CHECK(double_cast(0, 1, accessor, gcd, accessor));
-   WALBERLA_CHECK_FLOAT_EQUAL( gcd.getContactPoint(), Vec3(real_t(0.95),real_t(0),real_t(0)) );
-   WALBERLA_CHECK_FLOAT_EQUAL_EPSILON( gcd.getContactNormal(), Vec3(real_t(-1),real_t(0),real_t(0)), real_t(1e-3) );
-   WALBERLA_CHECK_FLOAT_EQUAL_EPSILON( gcd.getPenetrationDepth(), real_t(-0.1), real_t(1e-3)  );
-   e1->setPosition(Vec3(real_t(2.1),real_t(0),real_t(0)));
+   WALBERLA_CHECK_FLOAT_EQUAL( gcd.getContactPoint(), Vec3(0.95_r,0_r,0_r) );
+   WALBERLA_CHECK_FLOAT_EQUAL_EPSILON( gcd.getContactNormal(), Vec3(-1_r,0_r,0_r), 1e-3_r );
+   WALBERLA_CHECK_FLOAT_EQUAL_EPSILON( gcd.getPenetrationDepth(), -0.1_r, 1e-3_r  );
+   e1->setPosition(Vec3(2.1_r,0_r,0_r));
    WALBERLA_CHECK(!double_cast(0, 1, accessor, gcd, accessor));
 
    WALBERLA_CHECK(double_cast(0, 2, accessor, gcd, accessor));
-   WALBERLA_CHECK_FLOAT_EQUAL( gcd.getContactPoint(), Vec3(real_t(-0.95),real_t(0),real_t(0)) );
-   WALBERLA_CHECK_FLOAT_EQUAL_EPSILON( gcd.getContactNormal(), Vec3(real_t(-1),real_t(0),real_t(0)), real_t(1e-3) );
-   WALBERLA_CHECK_FLOAT_EQUAL_EPSILON( gcd.getPenetrationDepth(), real_t(-0.1), real_t(1e-3) );
+   WALBERLA_CHECK_FLOAT_EQUAL( gcd.getContactPoint(), Vec3(-0.95_r,0_r,0_r) );
+   WALBERLA_CHECK_FLOAT_EQUAL_EPSILON( gcd.getContactNormal(), Vec3(-1_r,0_r,0_r), 1e-3_r );
+   WALBERLA_CHECK_FLOAT_EQUAL_EPSILON( gcd.getPenetrationDepth(), -0.1_r, 1e-3_r );
    WALBERLA_CHECK(!double_cast(1, 2, accessor, gcd, accessor));
 
    WALBERLA_CHECK(double_cast(1, 3, accessor, gcd, accessor));
-   WALBERLA_CHECK_FLOAT_EQUAL( gcd.getContactPoint(), Vec3(real_t(3.05),real_t(0),real_t(0)) );
-   WALBERLA_CHECK_FLOAT_EQUAL_EPSILON( gcd.getContactNormal(), Vec3(real_t(+1),real_t(0),real_t(0)), real_t(1e-3) );
-   WALBERLA_CHECK_FLOAT_EQUAL_EPSILON( gcd.getPenetrationDepth(), real_t(-0.1), real_t(1e-3) );
+   WALBERLA_CHECK_FLOAT_EQUAL( gcd.getContactPoint(), Vec3(3.05_r,0_r,0_r) );
+   WALBERLA_CHECK_FLOAT_EQUAL_EPSILON( gcd.getContactNormal(), Vec3(real_t(+1),0_r,0_r), 1e-3_r );
+   WALBERLA_CHECK_FLOAT_EQUAL_EPSILON( gcd.getPenetrationDepth(), -0.1_r, 1e-3_r );
    WALBERLA_CHECK(!double_cast(0, 3, accessor, gcd, accessor));
 }
 

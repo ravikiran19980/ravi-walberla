@@ -48,7 +48,7 @@ using flag_t      = walberla::uint32_t;
 using FlagField_T = FlagField< flag_t >;
 
 using BoundaryCollection_T = lbm::MeshRefinementExampleBoundaryCollection< FlagField_T >;
-const FlagUID FluidFlagUID("Fluid");
+const FlagUID& FluidFlagUID() { static const FlagUID uid("Fluid"); return uid; }
 
 
 class AABBRefinement
@@ -58,8 +58,8 @@ class AABBRefinement
 
    void operator()(SetupBlockForest& forest) const
    {
-      auto extendedAABB = AABB(objectAABB_.minCorner()[0] - objectAABB_.xSize() * 0.00, objectAABB_.minCorner()[1] - objectAABB_.ySize() * 0.0, objectAABB_.minCorner()[2] - objectAABB_.zSize() * 0.0,
-                              objectAABB_.maxCorner()[0] + 0.3 * objectAABB_.xSize(), objectAABB_.maxCorner()[1] + objectAABB_.ySize() * 0.0, objectAABB_.maxCorner()[2] + objectAABB_.zSize() * 0.0);
+      auto extendedAABB = AABB(objectAABB_.minCorner()[0] - objectAABB_.xSize() * 0.0_r, objectAABB_.minCorner()[1] - objectAABB_.ySize() * 0.0_r, objectAABB_.minCorner()[2] - objectAABB_.zSize() * 0.0_r,
+                              objectAABB_.maxCorner()[0] + 0.3_r * objectAABB_.xSize(), objectAABB_.maxCorner()[1] + objectAABB_.ySize() * 0.0_r, objectAABB_.maxCorner()[2] + objectAABB_.zSize() * 0.0_r);
       for(auto & block : forest) {
          auto blockAABB = block.getAABB();
          if (extendedAABB.intersects(blockAABB)) {
@@ -100,7 +100,7 @@ int main(int argc, char** argv)
 
 
    // Create block forest
-   const uint_t numProcs = uint_t(mpi::MPIManager::instance()->numProcesses());
+   const uint_t numProcs = uint_c(mpi::MPIManager::instance()->numProcesses());
    SetupBlockForest setupBfs;
    AABBRefinement refinement( sphere.boundingBox(), refinementLevels );
    setupBfs.addRefinementSelectionFunction(std::function<void(SetupBlockForest &)>(refinement));
@@ -123,7 +123,7 @@ int main(int argc, char** argv)
    SweepCollection_T sweepCollection( blocks, densityFieldCpuId, pdfFieldCpuId, velocityFieldCpuId, omega);
 
    // Initialize Velocity and PDF field
-   Vector3<real_t> initialVel(0.1, 0, 0);
+   Vector3<real_t> initialVel(0.1_r, 0, 0);
    for (auto& block : *blocks)
    {
       auto velField = block.getData<VelocityField_T>(velocityFieldCpuId);
@@ -155,11 +155,11 @@ int main(int argc, char** argv)
       )
    }
 
-   geometry::setNonBoundaryCellsToDomain< FlagField_T >(*blocks, flagFieldId, FluidFlagUID);
+   geometry::setNonBoundaryCellsToDomain< FlagField_T >(*blocks, flagFieldId, FluidFlagUID());
    WALBERLA_MPI_WORLD_BARRIER();
-   BoundaryCollection_T boundaryCollection( blocks, flagFieldId, pdfFieldCpuId, FluidFlagUID, initialVel[0] );
+   BoundaryCollection_T boundaryCollection( blocks, flagFieldId, pdfFieldCpuId, FluidFlagUID(), initialVel[0] );
 
-   lbm::BlockForestEvaluation<FlagField_T>( blocks, flagFieldId, FluidFlagUID ).logInfoOnRoot();
+   lbm::BlockForestEvaluation<FlagField_T>( blocks, flagFieldId, FluidFlagUID() ).logInfoOnRoot();
 
    // Communication
    auto communication = std::make_shared< blockforest::communication::NonUniformBufferedScheme< LBMCommunicationStencil_T > >(blocks);
@@ -185,7 +185,7 @@ int main(int argc, char** argv)
       vtkOutput->addCellDataWriter(densityWriter);
 
       field::FlagFieldCellFilter< FlagField_T > fluidFilter(flagFieldId);
-      fluidFilter.addFlag(FluidFlagUID);
+      fluidFilter.addFlag(FluidFlagUID());
       vtkOutput->addCellInclusionFilter(fluidFilter);
 
       timeloop.addFuncAfterTimeStep(vtk::writeFiles(vtkOutput), "VTK Output");
@@ -202,7 +202,7 @@ int main(int argc, char** argv)
    double time = simTimer.max();
 
    // Performance metrics
-   lbm_generated::PerformanceEvaluation<FlagField_T> const performance(blocks, flagFieldId, FluidFlagUID);
+   lbm_generated::PerformanceEvaluation<FlagField_T> const performance(blocks, flagFieldId, FluidFlagUID());
    performance.logResultOnRoot(timesteps, time);
    timingPool.unifyRegisteredTimersAcrossProcesses();
    timingPool.logResultOnRoot( timing::REDUCE_TOTAL, true );

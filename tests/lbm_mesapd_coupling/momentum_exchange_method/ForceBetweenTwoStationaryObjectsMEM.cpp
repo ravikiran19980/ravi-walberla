@@ -70,6 +70,7 @@
 
 #include <iomanip>
 #include <iostream>
+#include <string>
 
 namespace force_between_two_stationary_objects
 {
@@ -94,9 +95,9 @@ const uint_t FieldGhostLayers = 1;
 // FLAGS //
 ///////////
 
-const FlagUID Fluid_Flag   ( "fluid" );
-const FlagUID BB_Flag   ( "obstacle BB" );
-const FlagUID CLI_Flag  ( "obstacle CLI" );
+const FlagUID & Fluid_Flag() { static const FlagUID flag("fluid"); return flag; }
+const FlagUID & BB_Flag() { static const FlagUID flag("obstacle BB"); return flag; }
+const FlagUID & CLI_Flag() { static const FlagUID flag("obstacle CLI"); return flag; }
 
 /////////////////////////////////////
 // BOUNDARY HANDLING CUSTOMIZATION //
@@ -125,11 +126,11 @@ public:
       auto *  pdfField     = block->getData< PdfField_T > ( pdfFieldID_ );
       auto * particleField = block->getData< lbm_mesapd_coupling::ParticleField_T > ( particleFieldID_ );
 
-      const auto fluid = flagField->flagExists( Fluid_Flag ) ? flagField->getFlag( Fluid_Flag ) : flagField->registerFlag( Fluid_Flag );
+      const auto fluid = flagField->flagExists( Fluid_Flag() ) ? flagField->getFlag( Fluid_Flag() ) : flagField->registerFlag( Fluid_Flag() );
 
       Type * handling = new Type( "moving obstacle boundary handling", flagField, fluid,
-                                  SBB_T("SBB_BB", BB_Flag,  pdfField, flagField, particleField, ac_, fluid, *storage, *block ),
-                                  CLI_T("CLI_BB", CLI_Flag, pdfField, flagField, particleField, ac_, fluid, *storage, *block ) );
+                                  SBB_T("SBB_BB", BB_Flag(),  pdfField, flagField, particleField, ac_, fluid, *storage, *block ),
+                                  CLI_T("CLI_BB", CLI_Flag(), pdfField, flagField, particleField, ac_, fluid, *storage, *block ) );
 
       handling->fillWithDomain( FieldGhostLayers );
 
@@ -210,13 +211,13 @@ void createSimulationSetup( shared_ptr< StructuredBlockForest > blocks, shared_p
                             bool useSBB, shared_ptr<mesa_pd::data::ParticleStorage> ps, Vector3<real_t> velocity,
                             SweepTimeloop & timeloop )
 {
-   real_t omega = real_t(1);
+   real_t omega = 1_r;
 
    // create the lattice model
    LM_T latticeModel = LM_T( lbm::collision_model::TRT::constructWithMagicNumber( omega ) );
 
    // add PDF field
-   BlockDataID pdfFieldID = lbm::addPdfFieldToStorage< LM_T >( blocks, "pdf field (fzyx)", latticeModel, velocity, real_t(1), uint_t(1), field::fzyx );
+   BlockDataID pdfFieldID = lbm::addPdfFieldToStorage< LM_T >( blocks, "pdf field (fzyx)", latticeModel, velocity, 1_r, uint_t{1}, field::fzyx );
 
    // add flag field
    BlockDataID flagFieldID = field::addFlagFieldToStorage<FlagField_T>( blocks, "flag field" );
@@ -232,16 +233,16 @@ void createSimulationSetup( shared_ptr< StructuredBlockForest > blocks, shared_p
    timeloop.add() << Sweep( BoundaryHandling_T::getBlockSweep( boundaryHandlingID ), "Boundary Handling" );
 
    // LBM
-   auto sweep = lbm::makeCellwiseSweep< LM_T, FlagField_T >( pdfFieldID, flagFieldID, Fluid_Flag );
+   auto sweep = lbm::makeCellwiseSweep< LM_T, FlagField_T >( pdfFieldID, flagFieldID, Fluid_Flag() );
    timeloop.add() << Sweep( makeSharedSweep(sweep), "cell-wise LB sweep" );
 
    // map particles
    lbm_mesapd_coupling::MovingParticleMappingKernel<BoundaryHandling_T> movingParticleMappingKernel(blocks, boundaryHandlingID, particleFieldID);
    if( useSBB )
    {
-      ps->forEachParticle(false, mesa_pd::kernel::SelectAll(), *accessor, movingParticleMappingKernel, *accessor, BB_Flag);
+      ps->forEachParticle(false, mesa_pd::kernel::SelectAll(), *accessor, movingParticleMappingKernel, *accessor, BB_Flag());
    }else{
-      ps->forEachParticle(false, mesa_pd::kernel::SelectAll(), *accessor, movingParticleMappingKernel, *accessor, CLI_Flag);
+      ps->forEachParticle(false, mesa_pd::kernel::SelectAll(), *accessor, movingParticleMappingKernel, *accessor, CLI_Flag());
    }
 }
 
@@ -300,20 +301,20 @@ int main( int argc, char **argv )
    bool useCompressible = false;
    bool useSBB = false;
    bool useSphereWallSetup = false;
-   real_t surfaceDistance = real_t(0.1);
-   real_t systemVelocity = real_t(0);
-   uint_t timesteps = uint_t(10);
-   real_t radius = real_t(5);
+   real_t surfaceDistance = 0.1_r;
+   real_t systemVelocity = 0_r;
+   uint_t timesteps = uint_t{10};
+   real_t radius = 5_r;
 
    for( int i = 1; i < argc; ++i )
    {
       if( std::strcmp( argv[i], "--useCompressible"  ) == 0 ) { useCompressible  = true; continue;}
       if( std::strcmp( argv[i], "--useSBB"  ) == 0 ) { useSBB  = true; continue;}
       if( std::strcmp( argv[i], "--useSphereWallSetup"  ) == 0 ) { useSphereWallSetup  = true; continue;}
-      if( std::strcmp( argv[i], "--surfaceDistance"    ) == 0 ) { surfaceDistance = real_c(std::atof( argv[++i])); continue;}
-      if( std::strcmp( argv[i], "--systemVelocity"    ) == 0 ) { systemVelocity = real_c(std::atof( argv[++i])); continue;}
-      if( std::strcmp( argv[i], "--radius"    ) == 0 ) { radius = real_c(std::atof( argv[++i])); continue;}
-      if( std::strcmp( argv[i], "--timesteps"    ) == 0 ) { timesteps = uint_c(std::atof( argv[++i])); continue;}
+      if( std::strcmp( argv[i], "--surfaceDistance"    ) == 0 ) { surfaceDistance = real_c(std::stod( argv[++i])); continue;}
+      if( std::strcmp( argv[i], "--systemVelocity"    ) == 0 ) { systemVelocity = real_c(std::stod( argv[++i])); continue;}
+      if( std::strcmp( argv[i], "--radius"    ) == 0 ) { radius = real_c(std::stod( argv[++i])); continue;}
+      if( std::strcmp( argv[i], "--timesteps"    ) == 0 ) { timesteps = uint_c(std::stoul( argv[++i])); continue;}
       WALBERLA_ABORT("Unrecognized command line argument found: " << argv[i]);
    }
 
@@ -322,21 +323,21 @@ int main( int argc, char **argv )
    // SIMULATION PROPERTIES //
    ///////////////////////////
 
-   const uint_t length = uint_t(real_t(4) * radius);
-   const Vector3<real_t> velocity(systemVelocity, real_t(0), real_t(0));
+   const uint_t length = static_cast< uint_t >(4_r * radius);
+   const Vector3<real_t> velocity(systemVelocity, 0_r, 0_r);
 
    ///////////////////////////
    // BLOCK STRUCTURE SETUP //
    ///////////////////////////
 
-   const uint_t XBlocks = uint_t( 1 );
-   const uint_t YBlocks = uint_t( 1 );
-   const uint_t ZBlocks = uint_t( 1 );
+   const uint_t XBlocks = uint_t{ 1 };
+   const uint_t YBlocks = uint_t{ 1 };
+   const uint_t ZBlocks = uint_t{ 1 };
    const uint_t XCells = length / XBlocks;
    const uint_t YCells = length / YBlocks;
    const uint_t ZCells = length / ZBlocks;
 
-   auto blocks = blockforest::createUniformBlockGrid( XBlocks, YBlocks, ZBlocks, XCells, YCells, ZCells, uint_t(1), true,
+   auto blocks = blockforest::createUniformBlockGrid( XBlocks, YBlocks, ZBlocks, XCells, YCells, ZCells, uint_t{1}, true,
                                                       false, false, false );
 
 
@@ -348,7 +349,7 @@ int main( int argc, char **argv )
    auto accessor = make_shared<ParticleAccessor_T >(ps, ss);
    auto sphereShape = ss->create<mesa_pd::data::Sphere>( radius );
 
-   createPlaneSetup(ps, ss, walberla::math::AABB(real_t(0), real_t(0), real_t(0), real_c(length), real_c(length), real_c(length)), velocity);
+   createPlaneSetup(ps, ss, walberla::math::AABB(0_r, 0_r, 0_r, real_c(length), real_c(length), real_c(length)), velocity);
 
    walberla::id_t sphereID;
    if(useSphereWallSetup)
@@ -368,7 +369,7 @@ int main( int argc, char **argv )
       }
    } else {
       // create two spheres
-      Vector3<real_t> position1 (real_c(length) * real_c(0.5) - radius - surfaceDistance*real_t(0.5),
+      Vector3<real_t> position1 (real_c(length) * real_c(0.5) - radius - surfaceDistance*0.5_r,
                                  real_c(length) * real_c(0.5),
                                  real_c(length) * real_c(0.5));
       {
@@ -382,7 +383,7 @@ int main( int argc, char **argv )
       }
 
 
-      Vector3<real_t> position2 (real_c(length) * real_c(0.5) + radius + surfaceDistance*real_t(0.5),
+      Vector3<real_t> position2 (real_c(length) * real_c(0.5) + radius + surfaceDistance*0.5_r,
                                  real_c(length) * real_c(0.5),
                                  real_c(length) * real_c(0.5));
       {
@@ -412,7 +413,7 @@ int main( int argc, char **argv )
 
       //WALBERLA_LOG_INFO(hydrodynamicForce);
 
-      WALBERLA_CHECK_FLOAT_EQUAL(hydrodynamicForce, Vector3<real_t>(real_t(0)), "Found non-zero force");
+      WALBERLA_CHECK_FLOAT_EQUAL(hydrodynamicForce, Vector3<real_t>(0_r), "Found non-zero force");
 
 
       lbm_mesapd_coupling::ResetHydrodynamicForceTorqueKernel resetHydrodynamicForceTorque;

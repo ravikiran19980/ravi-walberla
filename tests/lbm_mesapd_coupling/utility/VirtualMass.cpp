@@ -47,8 +47,8 @@ int main( int argc, char **argv )
    using ParticleAccessor = mesa_pd::data::ParticleAccessorWithShape;
    ParticleAccessor accessor(ps, ss);
 
-   real_t sphereRadius = real_t(1);
-   real_t sphereDensity = real_t(1);
+   real_t sphereRadius = 1_r;
+   real_t sphereDensity = 1_r;
    auto sphereShape = ss->create<mesa_pd::data::Sphere>(sphereRadius);
    ss->shapes[sphereShape]->updateMassAndInertia(sphereDensity);
 
@@ -59,9 +59,9 @@ int main( int argc, char **argv )
    using VirtualMass_ParticleAccessor_T = lbm_mesapd_coupling::ParticleAccessorWithShapeVirtualMassWrapper<ParticleAccessor>;
    auto virtualMassAccessor = walberla::make_shared<VirtualMass_ParticleAccessor_T>(ps, ss);
 
-   auto C_v = real_t(0.5);
-   auto C_v_omega = real_t(0.5);
-   auto fluidDensity = real_t(0.5);
+   auto C_v = 0.5_r;
+   auto C_v_omega = 0.5_r;
+   auto fluidDensity = 0.5_r;
 
    lbm_mesapd_coupling::InitializeVirtualMassKernel virtualMassInit;
    virtualMassInit(idx, accessor, C_v, C_v_omega, fluidDensity);
@@ -69,7 +69,7 @@ int main( int argc, char **argv )
    const real_t sphereVirtualMass = C_v * fluidDensity * accessor.getVolume(idx);
 
    WALBERLA_CHECK_FLOAT_EQUAL(sphereVirtualMass, accessor.getVirtualMass(idx));
-   WALBERLA_CHECK_FLOAT_EQUAL(real_t(1.) / (accessor.getMass(idx) + sphereVirtualMass),
+   WALBERLA_CHECK_FLOAT_EQUAL(1._r / (accessor.getMass(idx) + sphereVirtualMass),
                               virtualMassAccessor->getInvMass(idx));
    WALBERLA_CHECK_FLOAT_EQUAL(accessor.getMass(idx) + sphereVirtualMass,
                               virtualMassAccessor->getMass(idx));
@@ -85,19 +85,19 @@ int main( int argc, char **argv )
 
    lbm_mesapd_coupling::AddVirtualForceTorqueKernel addVirtualForceTorque(ps);
 
-   accessor.setForce(idx, Vector3(real_t(1)));
+   accessor.setForce(idx, Vector3(1_r));
    auto oldForce = accessor.getForce(idx);
    addVirtualForceTorque(idx, accessor);
    WALBERLA_CHECK_FLOAT_EQUAL(oldForce, accessor.getForce(idx));
    WALBERLA_CHECK_FLOAT_EQUAL(accessor.getOldLinearAcceleration(idx),
-                              Vector3<real_t>(real_t(1) / (accessor.getMass(idx) + accessor.getVirtualMass(idx))));
+                              Vector3<real_t>(1_r / (accessor.getMass(idx) + accessor.getVirtualMass(idx))));
 
-   Vector3 oldAcceleration(real_t(2));
+   Vector3 oldAcceleration(2_r);
    accessor.setOldLinearAcceleration(idx, oldAcceleration);
    accessor.setOldAngularAcceleration(idx, oldAcceleration);
-   oldForce = Vector3(real_t(2));
+   oldForce = Vector3(2_r);
    accessor.setForce(idx, oldForce);
-   Vector3 oldTorque(real_t(2));
+   Vector3 oldTorque(2_r);
    accessor.setTorque(idx, oldTorque);
    addVirtualForceTorque(idx, accessor);
    WALBERLA_CHECK_FLOAT_EQUAL(accessor.getForce(idx), oldForce + sphereVirtualMass*oldAcceleration);

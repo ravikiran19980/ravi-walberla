@@ -233,14 +233,14 @@ int main( int argc, char **argv )
    std::string fileNameEnding = "";
    std::string baseFolder = "vtk_out_Lubrication";
 
-   real_t radius = real_t(5);
-   real_t ReynoldsNumber = real_t(1e-2);
-   real_t tau = real_t(1);
-   real_t gapSize = real_t(0);
-   real_t bulkViscRateFactor = real_t(1);
-   real_t magicNumber = real_t(3)/real_t(16);
+   real_t radius = 5_r;
+   real_t ReynoldsNumber = 1e-2_r;
+   real_t tau = 1_r;
+   real_t gapSize = 0_r;
+   real_t bulkViscRateFactor = 1_r;
+   real_t magicNumber = 3_r/16_r;
    bool useOmegaBulkAdaption = false;
-   real_t adaptionLayerSize = real_t(2);
+   real_t adaptionLayerSize = 2_r;
    bool useSBB = false;
 
    // 1: translation in normal direction -> normal Lubrication force
@@ -256,7 +256,7 @@ int main( int argc, char **argv )
       if( std::strcmp( argv[i], "--vtkIOFreq" )            == 0 ) { vtkIOFreq = uint_c( std::atof( argv[++i] ) ); continue; }
       if( std::strcmp( argv[i], "--setup" )                == 0 ) { setup = uint_c( std::atof( argv[++i] ) ); continue; }
       if( std::strcmp( argv[i], "--baseFolder" )           == 0 ) { baseFolder = argv[++i]; continue; }
-      if( std::strcmp( argv[i], "--diameter" )             == 0 ) { radius = real_t(0.5)*real_c(std::atof(argv[++i])); continue; }
+      if( std::strcmp( argv[i], "--diameter" )             == 0 ) { radius = 0.5_r*real_c(std::atof(argv[++i])); continue; }
       if( std::strcmp( argv[i], "--gapSize" )              == 0 ) { gapSize = real_c(std::atof(argv[++i])); continue; }
       if( std::strcmp( argv[i], "--bulkViscRateFactor" )   == 0 ) { bulkViscRateFactor = real_c(std::atof( argv[++i] ) ); continue; }
       if( std::strcmp( argv[i], "--tau" )                  == 0 ) { tau = real_c(std::atof( argv[++i] ) ); continue; }
@@ -272,9 +272,9 @@ int main( int argc, char **argv )
    // SIMULATION PROPERTIES //
    ///////////////////////////
 
-   uint_t xSize = uint_c(real_t(24) * radius);
-   uint_t ySize = uint_c(real_t(24) * radius);
-   uint_t zSize = uint_c(real_t(24) * radius);
+   uint_t xSize = uint_c(24_r * radius);
+   uint_t ySize = uint_c(24_r * radius);
+   uint_t zSize = uint_c(24_r * radius);
 
    uint_t xBlocks = uint_c(4); // number of blocks in x-direction
    uint_t yBlocks = uint_c(1); // number of blocks in y-direction
@@ -285,15 +285,15 @@ int main( int argc, char **argv )
    uint_t zCells = zSize / zBlocks; // number of cells in z-direction on each block
 
    // Perform missing variable calculations
-   real_t omega = real_t(1) / tau;
+   real_t omega = 1_r / tau;
    real_t nu = walberla::lbm::collision_model::viscosityFromOmega(omega);
-   real_t velocity = ReynoldsNumber * nu / (real_t(2) * radius);
+   real_t velocity = ReynoldsNumber * nu / (2_r * radius);
    real_t omegaBulk = lbm_mesapd_coupling::omegaBulkFromOmega(omega, bulkViscRateFactor);
 
    uint_t timesteps = uint_c( 10000 );
 
-   real_t fStokes = real_t(6) * math::pi * nu * radius * velocity;
-   real_t tStokes = real_t(8) * math::pi * nu * radius * radius * velocity;
+   real_t fStokes = 6_r * math::pi * nu * radius * velocity;
+   real_t tStokes = 8_r * math::pi * nu * radius * radius * velocity;
 
    WALBERLA_LOG_INFO_ON_ROOT_SECTION()
    {
@@ -331,7 +331,7 @@ int main( int argc, char **argv )
    }
 
 
-   auto blocks = blockforest::createUniformBlockGrid( xBlocks, yBlocks, zBlocks, xCells, yCells, zCells, real_t(1),
+   auto blocks = blockforest::createUniformBlockGrid( xBlocks, yBlocks, zBlocks, xCells, yCells, zCells, 1_r,
                                                       0, false, false,
                                                       sphSphTest, true, true,  //periodicity
                                                       false );
@@ -357,10 +357,10 @@ int main( int argc, char **argv )
    mpi::broadcastObject(randomSeed); // root process chooses seed and broadcasts it
    std::mt19937 randomNumberGenerator(static_cast<unsigned int>(randomSeed));
 
-   Vector3<real_t> domainCenter( real_c(xSize) * real_t(0.5), real_c(ySize) * real_t(0.5), real_c(zSize) * real_t(0.5) );
-   Vector3<real_t> offsetVector(math::realRandom<real_t>(real_t(0), real_t(1), randomNumberGenerator),
-                                math::realRandom<real_t>(real_t(0), real_t(1), randomNumberGenerator),
-                                math::realRandom<real_t>(real_t(0), real_t(1), randomNumberGenerator));
+   Vector3<real_t> domainCenter( real_c(xSize) * 0.5_r, real_c(ySize) * 0.5_r, real_c(zSize) * 0.5_r );
+   Vector3<real_t> offsetVector(math::realRandom<real_t>(0_r, 1_r, randomNumberGenerator),
+                                math::realRandom<real_t>(0_r, 1_r, randomNumberGenerator),
+                                math::realRandom<real_t>(0_r, 1_r, randomNumberGenerator));
 
    if ( sphSphTest )
    {
@@ -376,28 +376,28 @@ int main( int argc, char **argv )
          if(setup == 1)
          {
             // only normal translational vel
-            p.setLinearVelocity(Vector3<real_t>( velocity, real_t(0), real_t(0)));
-            p.setAngularVelocity(Vector3<real_t>( real_t(0), real_t(0), real_t(0)));
+            p.setLinearVelocity(Vector3<real_t>( velocity, 0_r, 0_r));
+            p.setAngularVelocity(Vector3<real_t>( 0_r, 0_r, 0_r));
          } else if (setup == 2)
          {
             // only tangential translational velocity
-            p.setLinearVelocity(Vector3<real_t>( real_t(0), real_t(0), velocity));
-            p.setAngularVelocity(Vector3<real_t>( real_t(0), real_t(0), real_t(0)));
+            p.setLinearVelocity(Vector3<real_t>( 0_r, 0_r, velocity));
+            p.setAngularVelocity(Vector3<real_t>( 0_r, 0_r, 0_r));
          } else if (setup == 3)
          {
             // only rotation around axis perpendicular to center line
-            p.setLinearVelocity(Vector3<real_t>( real_t(0), real_t(0), real_t(0)));
-            p.setAngularVelocity(Vector3<real_t>( real_t(0), velocity / radius, real_t(0)));
+            p.setLinearVelocity(Vector3<real_t>( 0_r, 0_r, 0_r));
+            p.setAngularVelocity(Vector3<real_t>( 0_r, velocity / radius, 0_r));
          } else if (setup == 4)
          {
             // only rotation around center line
-            p.setLinearVelocity(Vector3<real_t>( real_t(0), real_t(0), real_t(0)));
-            p.setAngularVelocity(Vector3<real_t>( velocity / radius, real_t(0) , real_t(0)));
+            p.setLinearVelocity(Vector3<real_t>( 0_r, 0_r, 0_r));
+            p.setAngularVelocity(Vector3<real_t>( velocity / radius, 0_r , 0_r));
          }
          id1 = p.getUid();
       }
 
-      Vector3<real_t> pos2 = pos1 + Vector3<real_t>(real_t(2) * radius + gapSize, real_t(0), real_t(0));
+      Vector3<real_t> pos2 = pos1 + Vector3<real_t>(2_r * radius + gapSize, 0_r, 0_r);
       if (rpdDomain->isContainedInProcessSubdomain( uint_c(mpi::MPIManager::instance()->rank()), pos2 ))
       {
          mesa_pd::data::Particle&& p = *ps->create();
@@ -408,23 +408,23 @@ int main( int argc, char **argv )
          if(setup == 1)
          {
             // only normal translational vel
-            p.setLinearVelocity(Vector3<real_t>( -velocity, real_t(0), real_t(0)));
-            p.setAngularVelocity(Vector3<real_t>( real_t(0), real_t(0), real_t(0)));
+            p.setLinearVelocity(Vector3<real_t>( -velocity, 0_r, 0_r));
+            p.setAngularVelocity(Vector3<real_t>( 0_r, 0_r, 0_r));
          } else if (setup == 2)
          {
             // only tangential translational velocity
-            p.setLinearVelocity(Vector3<real_t>( real_t(0), real_t(0), -velocity));
-            p.setAngularVelocity(Vector3<real_t>( real_t(0), real_t(0), real_t(0)));
+            p.setLinearVelocity(Vector3<real_t>( 0_r, 0_r, -velocity));
+            p.setAngularVelocity(Vector3<real_t>( 0_r, 0_r, 0_r));
          } else if (setup == 3)
          {
             // only rotation around axis perpendicular to center line
-            p.setLinearVelocity(Vector3<real_t>( real_t(0), real_t(0), real_t(0)));
-            p.setAngularVelocity(Vector3<real_t>( real_t(0), velocity / radius, real_t(0)));
+            p.setLinearVelocity(Vector3<real_t>( 0_r, 0_r, 0_r));
+            p.setAngularVelocity(Vector3<real_t>( 0_r, velocity / radius, 0_r));
          } else if (setup == 4)
          {
             // only rotation around center line
-            p.setLinearVelocity(Vector3<real_t>( real_t(0), real_t(0), real_t(0)));
-            p.setAngularVelocity(Vector3<real_t>( -velocity / radius, real_t(0) , real_t(0)));
+            p.setLinearVelocity(Vector3<real_t>( 0_r, 0_r, 0_r));
+            p.setAngularVelocity(Vector3<real_t>( -velocity / radius, 0_r , 0_r));
          }
          id2 = p.getUid();
       }
@@ -458,7 +458,7 @@ int main( int argc, char **argv )
       mesa_pd::data::particle_flags::set(p1.getFlagsRef(), mesa_pd::data::particle_flags::INFINITE);
       mesa_pd::data::particle_flags::set(p1.getFlagsRef(), mesa_pd::data::particle_flags::FIXED);
 
-      Vector3<real_t> pos1 = referenceVector + Vector3<real_t>(radius + gapSize, real_t(0), real_t(0));
+      Vector3<real_t> pos1 = referenceVector + Vector3<real_t>(radius + gapSize, 0_r, 0_r);
       if (rpdDomain->isContainedInProcessSubdomain( uint_c(mpi::MPIManager::instance()->rank()), pos1 ))
       {
          mesa_pd::data::Particle&& p = *ps->create();
@@ -469,23 +469,23 @@ int main( int argc, char **argv )
          if(setup == 1)
          {
             // only normal translational vel
-            p.setLinearVelocity(Vector3<real_t>( -velocity, real_t(0), real_t(0)));
-            p.setAngularVelocity(Vector3<real_t>( real_t(0), real_t(0), real_t(0)));
+            p.setLinearVelocity(Vector3<real_t>( -velocity, 0_r, 0_r));
+            p.setAngularVelocity(Vector3<real_t>( 0_r, 0_r, 0_r));
          } else if (setup == 2)
          {
             // only tangential translational velocity
-            p.setLinearVelocity(Vector3<real_t>( real_t(0), velocity, real_t(0)));
-            p.setAngularVelocity(Vector3<real_t>( real_t(0), real_t(0), real_t(0)));
+            p.setLinearVelocity(Vector3<real_t>( 0_r, velocity, 0_r));
+            p.setAngularVelocity(Vector3<real_t>( 0_r, 0_r, 0_r));
          } else if (setup == 3)
          {
             // only rotation around axis perpendicular to center line
-            p.setLinearVelocity(Vector3<real_t>( real_t(0), real_t(0), real_t(0)));
-            p.setAngularVelocity(Vector3<real_t>( real_t(0), velocity / radius, real_t(0)));
+            p.setLinearVelocity(Vector3<real_t>( 0_r, 0_r, 0_r));
+            p.setAngularVelocity(Vector3<real_t>( 0_r, velocity / radius, 0_r));
          } else if (setup == 4)
          {
             // only rotation around center line
-            p.setLinearVelocity(Vector3<real_t>( real_t(0), real_t(0), real_t(0)));
-            p.setAngularVelocity(Vector3<real_t>( velocity / radius, real_t(0) , real_t(0)));
+            p.setLinearVelocity(Vector3<real_t>( 0_r, 0_r, 0_r));
+            p.setAngularVelocity(Vector3<real_t>( velocity / radius, 0_r , 0_r));
          }
          id1 = p.getUid();
       }
@@ -517,8 +517,8 @@ int main( int argc, char **argv )
 
    // add PDF field
    BlockDataID pdfFieldID = lbm::addPdfFieldToStorage< LatticeModel_T >( blocks, "pdf field", latticeModel,
-                                                                         Vector3< real_t >( real_t(0) ), real_t(1),
-                                                                         uint_t(1), field::fzyx );
+                                                                         Vector3< real_t >( 0_r ), 1_r,
+                                                                         uint_t{1}, field::fzyx );
    // add flag field
    BlockDataID flagFieldID = field::addFlagFieldToStorage<FlagField_T>( blocks, "flag field" );
 
@@ -531,7 +531,7 @@ int main( int argc, char **argv )
 
    // set up RPD functionality
    std::function<void(void)> syncCall = [&ps,&rpdDomain](){
-      const real_t overlap = real_t( 1.5 );
+      const real_t overlap = 1.5_r;
       mesa_pd::mpi::SyncNextNeighbors syncNextNeighborFunc;
       syncNextNeighborFunc(*ps, *rpdDomain, overlap);
    };
@@ -540,10 +540,10 @@ int main( int argc, char **argv )
 
    lbm_mesapd_coupling::ResetHydrodynamicForceTorqueKernel resetHydrodynamicForceTorque;
 
-   real_t lubricationCutOffDistanceNormal = real_t(2) / real_t(3);
-   real_t lubricationCutOffDistanceTangentialTranslational = real_t(0.5);
-   real_t lubricationCutOffDistanceTangentialRotational = real_t(0.5);
-   lbm_mesapd_coupling::LubricationCorrectionKernel lubricationCorrectionKernel(nu, [](real_t){return real_t(0);}, lubricationCutOffDistanceNormal, lubricationCutOffDistanceTangentialTranslational, lubricationCutOffDistanceTangentialRotational );
+   real_t lubricationCutOffDistanceNormal = 2_r / 3_r;
+   real_t lubricationCutOffDistanceTangentialTranslational = 0.5_r;
+   real_t lubricationCutOffDistanceTangentialRotational = 0.5_r;
+   lbm_mesapd_coupling::LubricationCorrectionKernel lubricationCorrectionKernel(nu, [](real_t){return 0_r;}, lubricationCutOffDistanceNormal, lubricationCutOffDistanceTangentialTranslational, lubricationCutOffDistanceTangentialRotational );
    real_t maximalCutOffDistance = std::max(lubricationCutOffDistanceNormal, std::max(lubricationCutOffDistanceTangentialTranslational,lubricationCutOffDistanceTangentialRotational ));
 
    lbm_mesapd_coupling::RegularParticlesSelector sphereSelector;
@@ -576,7 +576,7 @@ int main( int argc, char **argv )
    timeloop.addFuncBeforeTimeStep( RemainingTimeLogger( timeloop.getNrOfTimeSteps() ), "Remaining Time Logger" );
 
 
-   if( vtkIOFreq != uint_t(0) )
+   if( vtkIOFreq != uint_t{0} )
    {
       // spheres
       auto particleVtkOutput = make_shared<mesa_pd::vtk::ParticleVtkOutput>(ps);
@@ -605,7 +605,7 @@ int main( int argc, char **argv )
       timeloop.addFuncBeforeTimeStep( vtk::writeFiles( pdfFieldVTK ), "VTK (fluid field data)" );
 
       // omega bulk field
-      timeloop.addFuncBeforeTimeStep( field::createVTKOutput<ScalarField_T, float>( omegaBulkFieldID, *blocks, "omega_bulk_field", vtkIOFreq, uint_t(0), false, baseFolder ), "VTK (omega bulk field)" );
+      timeloop.addFuncBeforeTimeStep( field::createVTKOutput<ScalarField_T, float>( omegaBulkFieldID, *blocks, "omega_bulk_field", vtkIOFreq, uint_t{0}, false, baseFolder ), "VTK (omega bulk field)" );
 
    }
 
@@ -613,7 +613,7 @@ int main( int argc, char **argv )
    if(useOmegaBulkAdaption)
    {
       using OmegaBulkAdapter_T = lbm_mesapd_coupling::OmegaBulkAdapter<ParticleAccessor_T, decltype(sphereSelector)>;
-      real_t defaultOmegaBulk = lbm_mesapd_coupling::omegaBulkFromOmega(omega, real_t(1));
+      real_t defaultOmegaBulk = lbm_mesapd_coupling::omegaBulkFromOmega(omega, 1_r);
       shared_ptr<OmegaBulkAdapter_T> omegaBulkAdapter = make_shared<OmegaBulkAdapter_T>(blocks, omegaBulkFieldID, accessor, defaultOmegaBulk, omegaBulk, adaptionLayerSize, sphereSelector);
       for( auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
       {
@@ -647,12 +647,12 @@ int main( int argc, char **argv )
    Vector3<real_t> hydTorque(0.);
    Vector3<real_t> lubTorque(0.);
 
-   real_t curForceNorm = real_t(0);
-   real_t oldForceNorm = real_t(0);
-   real_t curTorqueNorm = real_t(0);
-   real_t oldTorqueNorm = real_t(0);
+   real_t curForceNorm = 0_r;
+   real_t oldForceNorm = 0_r;
+   real_t curTorqueNorm = 0_r;
+   real_t oldTorqueNorm = 0_r;
 
-   real_t convergenceLimit = real_t(1e-5);
+   real_t convergenceLimit = 1e-5_r;
 
    // time loop
    for (uint_t i = 1; i <= timesteps; ++i )
@@ -735,8 +735,8 @@ int main( int argc, char **argv )
       // reset forces
       ps->forEachParticle(false, mesa_pd::kernel::SelectAll(), *accessor,
                           [](const size_t idx, auto& ac){
-                             ac.getForceRef(idx) = Vector3<real_t>(real_t(0));
-                             ac.getTorqueRef(idx) = Vector3<real_t>(real_t(0));
+                             ac.getForceRef(idx) = Vector3<real_t>(0_r);
+                             ac.getTorqueRef(idx) = Vector3<real_t>(0_r);
                           }, *accessor );
       ps->forEachParticle(false, mesa_pd::kernel::SelectAll(), *accessor, resetHydrodynamicForceTorque, *accessor );
 
@@ -749,7 +749,7 @@ int main( int argc, char **argv )
       if( sphSphTest ) loggingFileName += "_SphSph";
       else loggingFileName += "_SphPla";
       loggingFileName += "_Setup" + std::to_string(setup);
-      loggingFileName += "_gapSize" + std::to_string(uint_c(gapSize*real_t(100)));
+      loggingFileName += "_gapSize" + std::to_string(uint_c(gapSize*100_r));
       loggingFileName += "_radius" + std::to_string(uint_c(radius));
       loggingFileName += "_bvrf" + std::to_string(uint_c(bulkViscRateFactor));
       loggingFileName += "_mn" + std::to_string(float(magicNumber));

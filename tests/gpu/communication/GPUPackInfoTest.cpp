@@ -32,7 +32,7 @@
 #include "stencil/D3Q27.h"
 
 #include <cstring>
-#include <vector>
+#include <array>
 
 #include "gpu/FieldCopy.h"
 #include "gpu/GPUField.h"
@@ -41,7 +41,7 @@
 
 using namespace walberla;
 
-static std::vector< field::Layout > fieldLayouts = { field::fzyx, field::zyxf };
+static std::array< field::Layout, 2 > fieldLayouts = { field::fzyx, field::zyxf };
 static uint_t fieldLayoutIndex                   = 0;
 
 gpu::GPUField< int >* createGPUField(IBlock* const block, StructuredBlockStorage* const storage)

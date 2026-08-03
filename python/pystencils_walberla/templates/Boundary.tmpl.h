@@ -30,6 +30,7 @@
 {%- endif %}
 #include "domain_decomposition/BlockDataID.h"
 #include "domain_decomposition/IBlock.h"
+#include "blockforest/BlockDataHandling.h"
 #include "blockforest/StructuredBlockForest.h"
 #include "field/FlagField.h"
 #include "core/debug/Debug.h"
@@ -134,6 +135,12 @@ public:
         {%- endif %}
     };
 
+    class IndexVectorsHandling : public blockforest::AlwaysInitializeBlockDataHandling< IndexVectors >
+    {
+     public:
+        IndexVectors * initialize( IBlock * const /*block*/ ) override { return new IndexVectors(); }
+    };
+
     {% if calculate_force -%}
 
     struct ForceStruct {
@@ -225,17 +232,21 @@ public:
        {%- endif %}
     };
 
+    class ForceVectorHandling : public blockforest::AlwaysInitializeBlockDataHandling< ForceVector >
+    {
+     public:
+        ForceVector * initialize( IBlock * const /*block*/ ) override { return new ForceVector(); }
+    };
+
     {%- endif %}
 
     {{class_name}}( const std::shared_ptr<StructuredBlockForest> & blocks,
                    {{kernel|generate_constructor_parameters(['indexVector', 'indexVectorSize', 'forceVector', 'forceVectorSize'])}}{{additional_data_handler.constructor_arguments}})
         : {{additional_data_handler.initialiser_list}} {{ kernel|generate_constructor_initializer_list(['indexVector', 'indexVectorSize', 'forceVector', 'forceVectorSize']) }}
     {
-        auto createIdxVector = []( IBlock * const , StructuredBlockStorage * const ) { return new IndexVectors(); };
-        indexVectorID = blocks->addStructuredBlockData< IndexVectors >( createIdxVector, "IndexField_{{class_name}}");
+        indexVectorID = blocks->addBlockData( std::make_shared< IndexVectorsHandling >(), "IndexField_{{class_name}}");
         {% if calculate_force -%}
-        auto createForceVector = []( IBlock * const , StructuredBlockStorage * const ) { return new ForceVector(); };
-        forceVectorID = blocks->addStructuredBlockData< ForceVector >( createForceVector, "forceVector_{{class_name}}");
+        forceVectorID = blocks->addBlockData( std::make_shared< ForceVectorHandling >(), "forceVector_{{class_name}}");
         {%- endif %}
     }
 
