@@ -669,7 +669,7 @@ int main(int argc, char** argv)
    if (performanceRun){numTimeSteps = 3000;}
    else{numTimeSteps = uint_c(simulationTimeFactor * turnOverPeriod);}
    const uint_t samplingInterval = uint_c(0.04 * turnOverPeriod);
-   checkPointingFrequency        = checkPointingFrequency * samplingInterval;
+   checkPointingFrequency        = checkPointingFrequency * 1;//samplingInterval;
    uint_t startTimeStep          = uint_t(0);
    real_t currentPidForce        = 0_r;
    uint_t statsAveragingCounter  = 0;
@@ -795,6 +795,7 @@ int main(int argc, char** argv)
    }
    else
    {
+      WALBERLA_LOG_INFO_ON_ROOT("Creating block forest from checkpoint forest file!");
       blocks = blockforest::createUniformBlockGrid(checkpointingFileName + "_forest.txt", cellsPerBlockPerDirection[0],
                                                    cellsPerBlockPerDirection[1], cellsPerBlockPerDirection[2], false);
    }
@@ -911,7 +912,7 @@ int main(int argc, char** argv)
       auto dataHandling = make_shared< field::DefaultBlockDataHandling< PdfField_fluid_T > >(
          blocks, uint_t(1), real_c(std::nan("")), field::fzyx);
 
-      pdfFieldFluidID = blocks->loadBlockData(checkpointingFileName + "_lbm.txt", dataHandling, "pdf field",false);
+      pdfFieldFluidID = blocks->loadBlockData(checkpointingFileName + "_lbm.txt", dataHandling, "pdf fluid field CPU",false);
       pdfFieldFluidGPUID = gpu::addGPUFieldToStorage< PdfField_fluid_T >(blocks, pdfFieldFluidID, "pdf fluid field GPU");
 
       gpu::fieldCpy<gpu::GPUField< real_t > , PdfField_fluid_T>(blocks,pdfFieldFluidGPUID, pdfFieldFluidID );
@@ -950,6 +951,20 @@ int main(int argc, char** argv)
    BlockDataID sosVelFieldGPUID =
       gpu::addGPUFieldToStorage< TensorField_T >(blocks, sosVelFieldID, "sum of squares velocity field GPU");
 
+   if (startFluidFromCheckPointFile == true)
+   {
+      WALBERLA_LOG_INFO_ON_ROOT("Loading welford avg fields from restart file")
+      auto dataHandling = make_shared< field::DefaultBlockDataHandling< VelocityField_fluid_T > >(
+        blocks, uint_t(1), real_c(std::nan("")), field::fzyx);
+      meanVelFieldID = blocks->loadBlockData(checkpointingFileName + "_welfordVelocity.txt", dataHandling, "welford mean fluid field CPU",false);
+
+      meanVelFieldGPUID = gpu::addGPUFieldToStorage< VelocityField_fluid_T >(blocks, meanVelFieldID, "welford mean fluid field GPU");
+
+      gpu::fieldCpy<gpu::GPUField< real_t > , VelocityField_fluid_T>(blocks,meanVelFieldGPUID, meanVelFieldID );
+
+
+   }
+
 
 
 
@@ -964,8 +979,11 @@ int main(int argc, char** argv)
    {
       auto dataHandlingTemperature = make_shared< field::DefaultBlockDataHandling< PdfField_temperature_T > >(
          blocks, uint_t(1), real_c(std::nan("")), field::fzyx);
+      WALBERLA_LOG_INFO_ON_ROOT("Loading welford  next")
       pdfFieldTemperatureID = blocks->loadBlockData(checkpointingFileName + "_lbm_temperature.txt",
-                                                    dataHandlingTemperature, "pdf field");
+                                                    dataHandlingTemperature, "pdf temperature field CPU",false);
+
+      WALBERLA_LOG_INFO_ON_ROOT("Loading welford  next")
       pdfFieldTemperatureGPUID =
          gpu::addGPUFieldToStorage< PdfField_temperature_T >(blocks, pdfFieldTemperatureID, "pdf temperature field GPU");
       gpu::fieldCpy< PdfField_temperature_T, gpu::GPUField< real_t > >(blocks, pdfFieldTemperatureID,
@@ -984,6 +1002,7 @@ int main(int argc, char** argv)
    BlockDataID temperatureFieldGPUID =
       gpu::addGPUFieldToStorage< DensityField_temperature_T >(blocks, temperatureFieldID, "temperature field GPU");
 
+   // might not need  particleTemperaturesFieldID at all later on
    BlockDataID particleTemperaturesFieldID = field::addToStorage< particleTemperaturesField_T >(
       blocks, "particle temperatures field CPU", real_t(0), field::fzyx, uint_t(1), true);
    BlockDataID particleTemperaturesFieldGPUID = gpu::addGPUFieldToStorage< particleTemperaturesField_T >(
@@ -1003,9 +1022,20 @@ int main(int argc, char** argv)
       field::addToStorage< DensityField_temperature_T >(blocks, "sum of squares temperature field CPU", real_t(0), field::fzyx);
    BlockDataID sosTemperatureFieldGPUID =
       gpu::addGPUFieldToStorage< DensityField_temperature_T >(blocks, sosTemperatureFieldID, "sum of squares temperature field GPU");
+
+
+   if (startTemperatureFromCheckPointFile)
+   {
+      auto dataHandling = make_shared< field::DefaultBlockDataHandling< DensityField_temperature_T > >(
+      blocks, uint_t(1), real_c(std::nan("")), field::fzyx);
+
+      meanTemperatureFieldID = blocks->loadBlockData(checkpointingFileName + "_welfordTemperature.txt", dataHandling, "welford mean temperature field CPU",false);
+      meanTemperatureFieldGPUID = gpu::addGPUFieldToStorage< DensityField_temperature_T >(blocks, meanTemperatureFieldID, "welford mean temperature field GPU");
+
+      gpu::fieldCpy<gpu::GPUField< real_t > , DensityField_temperature_T>(blocks,meanTemperatureFieldGPUID, meanTemperatureFieldID );
+   }
    #endif
-
-
+   WALBERLA_LOG_INFO_ON_ROOT("Loading welford avg fields from restart file temp")
    /////////////////////////////////////////////////////////
    // other fields creation on CPU required for sampling //
    ///////////////////////////////////////////////////////
@@ -1095,7 +1125,7 @@ int main(int argc, char** argv)
    {
       boundariesBlockString +=
          "Border { direction T;    walldistance -1;  flag Neumann_Temperature; }"
-         "Border { direction B;    walldistance -1;  flag Neumann_Temperature; }"; // Neumann_Energy
+         "Border { direction B;    walldistance -1;  flag Neumann_Temperature; }";
    }
    boundariesBlockString += "}";
 #endif
@@ -1159,12 +1189,18 @@ int main(int argc, char** argv)
    ///////////////////////////////////
 
    // Velocity field setup
-   setVelocityFieldsAsmuth<VectorField_T>(
-      blocks, velFieldFluidID, meanVelFieldID,
-      target_friction_velocity, uint_c(forceParams.channelHalfWidth),
-      5.5_r, 0.4_r, kinematicViscosityLB,
-      forceParams.wallAxis, codegen::flow_axis );
-  // gpu::fieldCpy< gpu::GPUField< real_t >, VelocityField_fluid_T >(blocks, velFieldFluidGPUID, velFieldFluidID);
+   if (!startFluidFromCheckPointFile)
+   {
+     // WALBERLA_LOG_INFO_ON_ROOT("Initializing velocity field from asmuth initialization")
+      setVelocityFieldsAsmuth<VectorField_T>(
+         blocks, velFieldFluidID, meanVelFieldID,
+         target_friction_velocity, uint_c(forceParams.channelHalfWidth),
+         5.5_r, 0.4_r, kinematicViscosityLB,
+         forceParams.wallAxis, codegen::flow_axis );
+       gpu::fieldCpy< gpu::GPUField< real_t >, VelocityField_fluid_T >(blocks, velFieldFluidGPUID, velFieldFluidID);
+   }
+   //gpu::fieldCpy< gpu::GPUField< real_t >, VelocityField_fluid_T >(blocks, velFieldFluidGPUID, velFieldFluidID);
+
 
    // Map particles into the fluid domain
    ParticleAndVolumeFractionSoA_T< Weighting > particleAndVolumeFractionSoA_fluid(blocks, omega_f);
@@ -1197,7 +1233,7 @@ int main(int argc, char** argv)
 
    // calculate the initial force for initialization:
    forceCalculator.setBulkVelocity(forceParams.targetBulkVelocity);
-   const auto initialForce = forceCalculator.calculateDrivingForce();
+   const auto initialForce = (target_friction_velocity*target_friction_velocity)/channel_half_width;
    WALBERLA_LOG_INFO_ON_ROOT("Initial driving force: " << initialForce);
 
 
@@ -1211,7 +1247,7 @@ int main(int argc, char** argv)
 
    #ifdef run_with_temperature
    pystencils::InitializeTemperatureDomain pdfSetterTemperature(particleAndVolumeFractionSoA_temperature.BFieldID,
-      pdfFieldTemperatureGPUID, temperatureFieldGPUID, velFieldFluidGPUID, 0 ,gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2]);
+      pdfFieldTemperatureGPUID, temperatureFieldGPUID, velFieldFluidGPUID, particleTemperature ,gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2]);
    #endif
 
 
@@ -1233,11 +1269,14 @@ int main(int argc, char** argv)
    for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
    {
       psmSweepCollectionFluid.setParticleVelocitiesSweep(&(*blockIt));
-      psmSweepCollectionTemperature.setParticleVelocitiesSweep(&(*blockIt));
+
 #ifdef run_with_temperature
+      psmSweepCollectionTemperature.setParticleVelocitiesSweep(&(*blockIt));
       settemperatureparticles(&(*blockIt));
       gpu::fieldCpy< particleTemperaturesFieldGPU_T, particleTemperaturesField_T >(blocks, particleTemperaturesFieldGPUID,
                                                                                    particleTemperaturesFieldID);
+
+      // this copy is needed for the updated temperatureFieldGPUID required for the pdfTemperatureSetter
       gpu::fieldCpy< gpu::GPUField< real_t >, DensityField_temperature_T >(blocks, temperatureFieldGPUID,
                                                                            temperatureFieldID);
       #endif
@@ -1275,10 +1314,7 @@ int main(int argc, char** argv)
 #ifdef run_with_temperature
       for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
       {
-        
-         #ifdef run_with_temperature
          getterSweep_temperature(&(*blockIt));
-         #endif
       }
 #endif
       gpu::fieldCpy< VelocityField_fluid_T, gpu::GPUField< real_t > >(blocks, velFieldFluidID, velFieldFluidGPUID);
@@ -1299,7 +1335,7 @@ int main(int argc, char** argv)
    com_fluid.addPackInfo(make_shared< PackInfoFluid_T >(pdfFieldFluidGPUID));
    auto communication_fluid = std::function< void() >([&]() { com_fluid.communicate(); });
 
-   #ifdef run_with_temperature
+#ifdef run_with_temperature
    gpu::communication::UniformGPUScheme< Stencil_Temperature_T > com_temperature(blocks, sendDirectlyFromGPU, false);
    com_temperature.addPackInfo(make_shared< PackInfoTemperature_T >(pdfFieldTemperatureGPUID));
    auto communication_temperature = std::function< void() >([&]() { com_temperature.communicate(); });
@@ -1401,10 +1437,13 @@ int main(int argc, char** argv)
          make_shared< field::VTKWriter< DensityField_temperature_T > >(meanTemperatureFieldID, "mean temperature field"));
 #endif
 
-      timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Fluid), "VTK output Fluid");
+      if (!writeSlice)
+      {
+         timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Fluid), "VTK output Fluid");
 #ifdef run_with_temperature
-      timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Temperature), "VTK output Temperature");
+         timeloop.addFuncBeforeTimeStep(vtk::writeFiles(vtkOutput_Temperature), "VTK output Temperature");
 #endif
+      }
 
 
       if(writeSlice){
@@ -1442,11 +1481,6 @@ int main(int argc, char** argv)
       particleAndVolumeFractionSoA_fluid.BsFieldID, particleAndVolumeFractionSoA_fluid.BFieldID,
       particleAndVolumeFractionSoA_fluid.particleForcesFieldID, particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID,
       pdfFieldFluidGPUID, velFieldFluidGPUID, initialForce,gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2], omega_f);
-
-   /*pystencils::PSMFluidSweep psmFluidSweep(
-     particleAndVolumeFractionSoA_fluid.BsFieldID, particleAndVolumeFractionSoA_fluid.BFieldID,
-     particleAndVolumeFractionSoA_fluid.particleForcesFieldID, particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID,
-     pdfFieldFluidGPUID, velFieldFluidGPUID, initialForce, omega_f);*/
 
 
    #ifdef run_with_temperature
@@ -1742,9 +1776,10 @@ int main(int argc, char** argv)
 
    // welford fields are only updated up until wallstatistics are converged and after (nTurnovers * turnOverPeriod), not in between. Hence even checkpointing is done in these intervals only
 
+   // welford lamda begins
    auto welfordPhasesSweepLambda =
       std::function< void(IBlock*) >([&](IBlock* block) {
-            if (wall_statistics.getWallStatisticsConvergence() == false)
+            if (wall_statistics.getWallStatisticsConvergence() == false) // required for wall_statistics convergence monitoring
             {
                welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
                welfordVelocitySweep(block);
@@ -1754,7 +1789,7 @@ int main(int argc, char** argv)
                    (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
                    timeloop.getCurrentTimeStep() != startTimeStep)
                {
-                  blocks->saveBlockData(checkpointingFileName + "_welfordVelocity_tmp.txt", meanVelFieldID);
+                  blocks->saveBlockData(checkpointingFileName + "_welfordVelocity_tmp.txt", meanVelFieldID,false);
                   WALBERLA_ROOT_SECTION(){renameFile(checkpointingFileName + "_welfordVelocity_tmp.txt", checkpointingFileName + "_welfordVelocity.txt");}
                }
 
@@ -1767,13 +1802,13 @@ int main(int argc, char** argv)
                    (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
                    timeloop.getCurrentTimeStep() != startTimeStep)
                {
-                  blocks->saveBlockData(checkpointingFileName + "_welfordTemperature_tmp.txt", meanTemperatureFieldID);
+                  blocks->saveBlockData(checkpointingFileName + "_welfordTemperature_tmp.txt", meanTemperatureFieldID,false);
                   WALBERLA_ROOT_SECTION(){renameFile(checkpointingFileName + "_welfordTemperature_tmp.txt", checkpointingFileName + "_welfordTemperature.txt");}
                }
 #endif
-            }
+            } // required for wall_statistics convergence monitoring
 
-
+         // for post processing
          if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod) && timeloop.getCurrentTimeStep() % samplingInterval == 0 && wall_statistics.getWallStatisticsConvergence() == true)
          {
             welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
@@ -1783,11 +1818,11 @@ int main(int argc, char** argv)
                    (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
                    timeloop.getCurrentTimeStep() != startTimeStep)
             {
-               blocks->saveBlockData(checkpointingFileName + "_welfordVelocity_tmp.txt", meanVelFieldID);
+               blocks->saveBlockData(checkpointingFileName + "_welfordVelocity_tmp.txt", meanVelFieldID,false);
                WALBERLA_ROOT_SECTION()
                {
-                  // renameFile(checkpointingFileName + "_welfordVelocity_tmp.txt",
-                  //            checkpointingFileName + "_welfordVelocity.txt");
+                   renameFile(checkpointingFileName + "_welfordVelocity_tmp.txt",
+                              checkpointingFileName + "_welfordVelocity.txt");
                }
             }
 
@@ -1801,7 +1836,7 @@ int main(int argc, char** argv)
                    (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
                    timeloop.getCurrentTimeStep() != startTimeStep)
             {
-               blocks->saveBlockData(checkpointingFileName + "_welfordTemperature_tmp.txt", meanTemperatureFieldID);
+               blocks->saveBlockData(checkpointingFileName + "_welfordTemperature_tmp.txt", meanTemperatureFieldID,false);
                WALBERLA_ROOT_SECTION()
                {
                   renameFile(checkpointingFileName + "_welfordTemperature_tmp.txt",
@@ -1897,8 +1932,9 @@ int main(int argc, char** argv)
 
 
 
-      });
+      }); // welford lamda begins
 
+   // wallstatistics lamda begins
    auto wallstatisticsLamda = [&]() {
       if (timeloop.getCurrentTimeStep() % samplingInterval == 0  && wall_statistics.getWallStatisticsConvergence() == false )
       {
@@ -1914,7 +1950,9 @@ int main(int argc, char** argv)
 
 #endif
       }
-      };
+      }; // wall statstics lamda ends
+
+
    ///////////////////////////////////
    // add everything to the timeloop//
    ///////////////////////////////////
@@ -1979,15 +2017,15 @@ int main(int argc, char** argv)
    timeloop.add() << Sweep(deviceSyncWrapper(psmTemperatureSweep), "PSM Temperature sweep");
 #endif
 
-   if (useParticles)
-   {
+  // if (useParticles)
+  // {
       // after both the sweeps, reduce the particle forces.
-      timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.reduceParticleForcesSweep),
-                              "Reduce particle forces");
-   }
+      //timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.reduceParticleForcesSweep),
+        //                      "Reduce particle forces");
+   //}
 
    bool resetCounters = false;
-   timeloop.addFuncAfterTimeStep(postProcessingLamdas, "custom HeatFlux, velocity statistics and other post processing");
+   timeloop.addFuncAfterTimeStep(postProcessingLamdas, "post processing lamda");
    timeloop.add() << BeforeFunction(
                         [&]() {
                            if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod) && wall_statistics.getWallStatisticsConvergence() == true && resetCounters == false)
@@ -2012,23 +2050,19 @@ int main(int argc, char** argv)
                                  gpu::fieldCpy<TensorGPUField_T,TensorField_T >(blocks, sosVelFieldGPUID,sosVelFieldID);
                               }
                            }
-                           //welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
-#ifdef run_with_temperature
-                           //welfordTemperatureSweep.setCounter(welfordTemperatureSweep.getCounter() + real_c(1.0));
-#endif
                         },
-                        "welford sweep")
-                  << Sweep(welfordPhasesSweepLambda, "welford sweep");
+                        "welford sweep lamda")
+                  << Sweep(welfordPhasesSweepLambda, "welford sweep lamda");
 
 
-   timeloop.addFuncAfterTimeStep(wallstatisticsLamda, "wall statistics computations");
+   timeloop.addFuncAfterTimeStep(wallstatisticsLamda, "wall statistics lamda");
 
    for (uint_t timeStep = startTimeStep; timeStep < numTimeSteps; ++timeStep)
    {
 
       if (checkPointingFrequency > uint_t(0) && (timeStep % checkPointingFrequency == 0) && timeStep != startTimeStep)
       {
-         //WALBERLA_LOG_INFO_ON_ROOT("writing checkpoint at timestep " << timeStep << " (pre-step)");
+         WALBERLA_LOG_INFO_ON_ROOT("writing checkpoint at timestep " << timeStep << " (pre-step)");
          checkpointTimer.start();
          gpu::fieldCpy<PdfField_fluid_T,gpu::GPUField< real_t >>(blocks,pdfFieldFluidID,pdfFieldFluidGPUID);
          blocks->saveBlockData(checkpointingFileName + "_lbm_tmp.txt", pdfFieldFluidID,false);

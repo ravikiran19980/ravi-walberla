@@ -514,7 +514,7 @@ class WallStatistics
             convergenceCounter_ = 0;
          }
 
-         if (convergenceCounter_ == 20)
+         if (convergenceCounter_ == 200*outputFrequency_)
          {
             wallstatistics_convergence_ = true;
             WALBERLA_LOG_INFO_ON_ROOT("converged wall stats");

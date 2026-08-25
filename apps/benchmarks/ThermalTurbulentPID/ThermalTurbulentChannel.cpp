@@ -658,7 +658,7 @@ int main(int argc, char** argv)
    if (performanceRun){numTimeSteps = 3000;}
    else{numTimeSteps = uint_c(simulationTimeFactor * turnOverPeriod);}
    const uint_t samplingInterval = uint_c(0.04 * turnOverPeriod);
-   checkPointingFrequency        = checkPointingFrequency * samplingInterval;
+   checkPointingFrequency        = checkPointingFrequency ;//* samplingInterval;
    uint_t startTimeStep          = uint_t(0);
    real_t currentPidForce        = 0_r;
    uint_t statsAveragingCounter  = 0;
@@ -784,6 +784,7 @@ int main(int argc, char** argv)
    }
    else
    {
+      WALBERLA_LOG_INFO_ON_ROOT("Creating block forest from checkpoint forest file!");
       blocks = blockforest::createUniformBlockGrid(checkpointingFileName + "_forest.txt", cellsPerBlockPerDirection[0],
                                                    cellsPerBlockPerDirection[1], cellsPerBlockPerDirection[2], false);
    }
@@ -824,10 +825,11 @@ int main(int argc, char** argv)
 
    auto sphereShape         = ss->create< mesa_pd::data::Sphere >(particleDiameter * real_t(0.5));
    ss->shapes[sphereShape]->updateMassAndInertia(densityParticle);
-
+   bool initializingParticlesFirstTime = false;
    if (useParticles && !startParticlesFromCheckPointFile)
    {
-      WALBERLA_LOG_INFO_ON_ROOT("Creating " << numParticles << "particles in Random positions as no Checkpoint file exists for particles");
+      initializingParticlesFirstTime = true;
+      WALBERLA_LOG_INFO_ON_ROOT("Creating " << numParticles << " particles in Random positions as no Checkpoint file exists for particles");
       // prevent particles from interfering with inflow and outflow by putting the bounding planes slightly in front
       const real_t planeOffsetFromInflow  = 1_r;
       const real_t planeOffsetFromOutflow = 1_r;
@@ -896,7 +898,7 @@ int main(int argc, char** argv)
    {
       auto dataHandling = make_shared< field::DefaultBlockDataHandling< PdfField_fluid_T > >(
          blocks, uint_t(1), real_c(std::nan("")), field::fzyx);
-      pdfFieldFluidID = blocks->loadBlockData(checkpointingFileName + "_lbm.txt", dataHandling, "pdf field");
+      pdfFieldFluidID = blocks->loadBlockData(checkpointingFileName + "_lbm.txt", dataHandling, "pdf field",false);
    }
    else
    {
@@ -923,7 +925,7 @@ int main(int argc, char** argv)
       auto dataHandlingTemperature = make_shared< field::DefaultBlockDataHandling< PdfField_temperature_T > >(
          blocks, uint_t(1), real_c(std::nan("")), field::fzyx);
       pdfFieldTemperatureID = blocks->loadBlockData(checkpointingFileName + "_lbm_temperature.txt",
-                                                    dataHandlingTemperature, "pdf field");
+                                                    dataHandlingTemperature, "pdf field",false);
    }
    else
    {
@@ -1044,7 +1046,7 @@ int main(int argc, char** argv)
    {
       boundariesBlockString +=
          "Border { direction T;    walldistance -1;  flag Neumann_Temperature; }"
-         "Border { direction B;    walldistance -1;  flag Neumann_Temperature; }"; // Neumann_Energy
+         "Border { direction B;    walldistance -1;  flag Neumann_Temperature; }";
    }
    boundariesBlockString += "}";
 #endif
@@ -1153,43 +1155,9 @@ int main(int argc, char** argv)
       particleAndVolumeFractionSoA_fluid.BsFieldID, particleAndVolumeFractionSoA_fluid.BFieldID,
       particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID, pdfFieldFluidID, velFieldFluidID,initialForce,real_t(1));
 
-#ifdef run_with_temperature
-   pystencils::InitializeTemperatureDomain pdfSetterTemperature(particleAndVolumeFractionSoA_temperature.BFieldID,
-                                                                pdfFieldTemperatureID, temperatureFieldID,velFieldFluidID, particleTemperature);
-#endif
 
+   pystencils::initializeVelocityFieldParticles initializeVels(particleAndVolumeFractionSoA_fluid.BFieldID,particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID,velFieldFluidID);
 
-   for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
-   {
-      psmSweepCollectionFluid.particleMappingSweep(&(*blockIt));
-#ifdef run_with_temperature
-      psmSweepCollectionTemperature.particleMappingSweep(&(*blockIt));
-#endif
-   }
-
-#ifdef run_with_temperature
-   walberla::initConcentrationFieldCoutte(blocks, temperatureFieldID,particleAndVolumeFractionSoA_fluid.BFieldID,
-                                domainSize);
-#endif
-
-
-   for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
-   {
-      psmSweepCollectionFluid.setParticleVelocitiesSweep(&(*blockIt));
-#ifdef run_with_temperature
-      settemperatureparticles(&(*blockIt));
-#endif
-      if (!startFluidFromCheckPointFile)
-      {
-         pdfSetterFluid(&(*blockIt));
-      }
-#ifdef run_with_temperature
-      if (!startTemperatureFromCheckPointFile)
-      {
-         pdfSetterTemperature(&(*blockIt));
-      }
-#endif
-   }
 
 
    // objects to get the macroscopic quantities
@@ -1216,6 +1184,54 @@ int main(int argc, char** argv)
       for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
       {
          getterSweep_temperature(&(*blockIt));
+      }
+#endif
+   }
+
+
+#ifdef run_with_temperature
+   pystencils::InitializeTemperatureDomain pdfSetterTemperature(particleAndVolumeFractionSoA_temperature.BFieldID,
+                                                                pdfFieldTemperatureID, temperatureFieldID,velFieldFluidID, particleTemperature);
+#endif
+
+
+   for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
+   {
+      psmSweepCollectionFluid.particleMappingSweep(&(*blockIt));
+#ifdef run_with_temperature
+      psmSweepCollectionTemperature.particleMappingSweep(&(*blockIt));
+#endif
+   }
+
+#ifdef run_with_temperature
+   walberla::initConcentrationFieldCoutte(blocks, temperatureFieldID,particleAndVolumeFractionSoA_fluid.BFieldID,
+                                domainSize);
+#endif
+
+
+   for (auto blockIt = blocks->begin(); blockIt != blocks->end(); ++blockIt)
+   {
+      if (initializingParticlesFirstTime == true)
+      {
+         WALBERLA_LOG_INFO_ON_ROOT("initializing particle position velocities to fluid velocities")
+         initializeVels(&(*blockIt));
+        // pdfSetterFluid(&(*blockIt));
+      }
+      else
+      {
+         psmSweepCollectionFluid.setParticleVelocitiesSweep(&(*blockIt));
+      }
+#ifdef run_with_temperature
+      settemperatureparticles(&(*blockIt));
+#endif
+      if (!startFluidFromCheckPointFile)
+      {
+         pdfSetterFluid(&(*blockIt));
+      }
+#ifdef run_with_temperature
+      if (!startTemperatureFromCheckPointFile)
+      {
+         pdfSetterTemperature(&(*blockIt));
       }
 #endif
    }
@@ -1291,6 +1307,8 @@ int main(int argc, char** argv)
          make_shared< field::VTKWriter< VelocityField_fluid_T > >(meanVelFieldID, "mean Fluid velocity"));
       vtkOutput_Fluid->addCellDataWriter(
          make_shared< field::VTKWriter< DensityField_fluid_T > >(densityFluidFieldID, "Fluid Density"));
+      vtkOutput_Fluid->addCellDataWriter(
+         make_shared< field::VTKWriter< particleVelocitiesField_T > >(particleAndVolumeFractionSoA_fluid.particleVelocitiesFieldID, "particle Velocity field"));
       //vtkOutput_Fluid->addCellDataWriter(
       //   make_shared< field::VTKWriter< FlagField_T > >(flagFieldFluidID, "FluidFlagField"));
 
@@ -1374,7 +1392,18 @@ int main(int argc, char** argv)
       psmFluidSweep(block);
    };
 
-
+   bool setVel = false;
+   auto setParticleVelocitiesLamda = [&](IBlock* block) {
+      if (initializingParticlesFirstTime && setVel == false )
+      {
+         initializeVels(block);
+         setVel = true;
+      }
+      else
+      {
+         psmSweepCollectionFluid.setParticleVelocitiesSweep(block);
+      }
+   };
 
 
    // Add performance logging
@@ -1650,7 +1679,7 @@ int main(int argc, char** argv)
                    (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
                    timeloop.getCurrentTimeStep() != startTimeStep)
                {
-                  blocks->saveBlockData(checkpointingFileName + "_welfordVelocity_tmp.txt", meanVelFieldID);
+                  blocks->saveBlockData(checkpointingFileName + "_welfordVelocity_tmp.txt", meanVelFieldID,false);
                   WALBERLA_ROOT_SECTION(){renameFile(checkpointingFileName + "_welfordVelocity_tmp.txt", checkpointingFileName + "_welfordVelocity.txt");}
                }
 
@@ -1662,7 +1691,7 @@ int main(int argc, char** argv)
                    (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
                    timeloop.getCurrentTimeStep() != startTimeStep)
                {
-                  blocks->saveBlockData(checkpointingFileName + "_welfordTemperature_tmp.txt", meanTemperatureFieldID);
+                  blocks->saveBlockData(checkpointingFileName + "_welfordTemperature_tmp.txt", meanTemperatureFieldID,false);
                   WALBERLA_ROOT_SECTION(){renameFile(checkpointingFileName + "_welfordTemperature_tmp.txt", checkpointingFileName + "_welfordTemperature.txt");}
                }
 #endif
@@ -1677,7 +1706,7 @@ int main(int argc, char** argv)
                    (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
                    timeloop.getCurrentTimeStep() != startTimeStep)
             {
-               blocks->saveBlockData(checkpointingFileName + "_welfordVelocity_tmp.txt", meanVelFieldID);
+               blocks->saveBlockData(checkpointingFileName + "_welfordVelocity_tmp.txt", meanVelFieldID,false);
                WALBERLA_ROOT_SECTION()
                {
                   renameFile(checkpointingFileName + "_welfordVelocity_tmp.txt",
@@ -1694,7 +1723,7 @@ int main(int argc, char** argv)
                    (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
                    timeloop.getCurrentTimeStep() != startTimeStep)
             {
-               blocks->saveBlockData(checkpointingFileName + "_welfordTemperature_tmp.txt", meanTemperatureFieldID);
+               blocks->saveBlockData(checkpointingFileName + "_welfordTemperature_tmp.txt", meanTemperatureFieldID,false);
                WALBERLA_ROOT_SECTION()
                {
                   renameFile(checkpointingFileName + "_welfordTemperature_tmp.txt",
@@ -1829,7 +1858,7 @@ int main(int argc, char** argv)
    {
       timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.particleMappingSweep), "Particle mapping Fluid"); // uses weighting for hydrodynamics specified in Cmakelists file
 
-      timeloop.add() << Sweep(deviceSyncWrapper(psmSweepCollectionFluid.setParticleVelocitiesSweep),
+      timeloop.add() << Sweep(setParticleVelocitiesLamda,
                               "Set particle velocities from fluid sweepcollection");
    }
 #ifdef run_with_temperature
@@ -1908,11 +1937,11 @@ int main(int argc, char** argv)
       {
          WALBERLA_LOG_INFO_ON_ROOT("writing checkpoint at timestep " << timeStep << " (pre-step)");
          checkpointTimer.start();
-         blocks->saveBlockData(checkpointingFileName + "_lbm_tmp.txt", pdfFieldFluidID);
+         blocks->saveBlockData(checkpointingFileName + "_lbm_tmp.txt", pdfFieldFluidID,false);
          checkpointTimer.end();
          WALBERLA_LOG_INFO_ON_ROOT("time to write checkpoint fluid is  " << checkpointTimer.last());
 #ifdef run_with_temperature
-         blocks->saveBlockData(checkpointingFileName + "_lbm_tmp_temperature.txt", pdfFieldTemperatureID);
+         blocks->saveBlockData(checkpointingFileName + "_lbm_tmp_temperature.txt", pdfFieldTemperatureID,false);
 #endif
          if (useParticles)
          {

@@ -2,7 +2,7 @@ PhysicalSetup // all to be specified in SI/ref units
 {
 
     xSize 128;
-    ySize 40;
+    ySize 64;
     zSize 64;
 
     periodicInX true;
@@ -15,7 +15,7 @@ PhysicalSetup // all to be specified in SI/ref units
     dynamicFrictionCoefficient 0.15;
     coefficientOfRestitution 0.97;
     collisionTimeFactor 1.0;
-    simulationTimeFactor 4;   // total timesteps of simulation = simulationTimeFactor * turnOverPeriod
+    simulationTimeFactor 40;   // total timesteps of simulation = simulationTimeFactor * turnOverPeriod
 
 }
 
@@ -23,10 +23,10 @@ NumericalSetup
 {
 
     // product of number of blocks should be equal to number of used processes
-    numXBlocks 1;
-    numYBlocks 1;
-    numZBlocks 1;
-    gpuBlockSize   < 800, 1, 1>;
+    numXBlocks 2;
+    numYBlocks 2;
+    numZBlocks 2;
+    gpuBlockSize   < 64, 1, 1>;
 
     useLubricationForces true;
     useParticles false;
@@ -42,7 +42,7 @@ NumericalSetup
 
 TurbulenceSetup
 {
-    target_bulk_Reynolds        5600;
+    target_bulk_Reynolds        2000;
     target_friction_Reynolds    180;
     target_bulk_velocity        0.086;
     center_line_velocity        0.1;
@@ -63,9 +63,9 @@ TemperatureSetup
 vtk_params
 {
     infoSpacing 1000; // in s
-    vtkSpacingParticles 0; // in s
+    vtkSpacingParticles 1000; // in s
     vtkSpacingFluid 1000; // ins
-    vtkFolder vtk_out;
+    vtkFolder vtk_out_re2000;
     writeSlice true;
 
 
@@ -74,12 +74,12 @@ vtk_params
 
 checkpoint_params
 {
-    restart_simulation false;
-    startFluidFromCheckPointFile false;
+    restart_simulation true;
+    startFluidFromCheckPointFile true;
     startTemperatureFromCheckPointFile false;
     startParticlesFromCheckPointFile false;
     checkpointingFileName testCheckpoint_cpu;
-    checkPointingFrequency 10000;                   // this is a factor that is multiplied with samplingInterval
+    checkPointingFrequency 1000;                   // this is a factor that is multiplied with samplingInterval
     writeContinuousCheckPoints false;
 }
 
@@ -92,7 +92,7 @@ statistics_params{
 }
 
 performance_params{
-    performanceLogFrequency 1000000000;
+    performanceLogFrequency 50000000;
     sendDirectlyFromGPU false;
     performanceRun false;
 }

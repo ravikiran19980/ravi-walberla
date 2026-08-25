@@ -270,6 +270,15 @@ with CodeGeneration() as ctx:
     initializetemperatureField_ac = ps.AssignmentCollection(initializetemperatureField)
     generate_sweep(ctx, "initializeTemperatureField", initializetemperatureField_ac)
 
+    @ps.kernel
+    def initializeVelocityFieldParticles():
+        for p in range(MaxParticlesPerCell):
+            for i in range(stencil_fluid.D):
+                particle_velocities.center[p * stencil_fluid.D + i] @= B.center * velocity_field.center_vector[i]
+
+    initializeVelocityFieldParticles_ac = ps.AssignmentCollection(initializeVelocityFieldParticles)
+    generate_sweep(ctx, "initializeVelocityFieldParticles", initializeVelocityFieldParticles_ac)
+
 
     generate_sweep(
         ctx,

@@ -27,20 +27,20 @@ inline void renameCheckpointFile(const std::string& oldName, const std::string& 
    }
 }
 
-template < typename DomainSizeT, typename VelocityProfilesT
+template < typename DomainSize_T, typename VelocityProfiles_T
 #ifdef run_with_temperature
-         , typename TemperatureProfilesT
+         , typename TemperatureProfiles_T
 #endif
          >
-inline void writeCheckpointStatistics(const DomainSizeT& domainSize, const uint_t currentTimeStep,
+inline void writeCheckpointStatistics(const DomainSize_T& domainSize, const uint_t currentTimeStep,
                                       const uint_t startTimeStep,
                                       const uint_t checkPointingFrequency,
                                       const std::string& checkpointingFileName,
                                       const uint_t nTurnovers,
                                       const real_t turnOverPeriod,
-                                      const VelocityProfilesT& planeAveragedProfiles_velocity
+                                      const VelocityProfiles_T& planeAveragedProfiles_velocity
 #ifdef run_with_temperature
-                                      , const TemperatureProfilesT& planeAveragedProfiles_temperature
+                                      , const TemperatureProfiles_T& planeAveragedProfiles_temperature
 #endif
 )
 {
@@ -113,7 +113,7 @@ inline void writeCheckpointStatistics(const DomainSizeT& domainSize, const uint_
                checkpointTimeStatsTemperatureOS << "\n";
             };
 
-            printRowTemperature("Tt_f", "TTt_f", "Tt_f", "TTt_p");
+            printRowTemperature("Tt_f", "TTt_f", "Tt_p", "TTt_p");
 
             for (uint_t idx = 0; idx < domainSize[codegen::wall_axis]; ++idx)
             {
@@ -156,8 +156,8 @@ inline void writeCheckpointStatistics(const DomainSizeT& domainSize, const uint_
    }
 }
 
-template < typename DomainSizeT >
-inline void readCheckpointStatistics(const DomainSizeT& domainSize, const std::string& checkpointingFileName,
+template < typename DomainSize_T >
+inline void readCheckpointStatistics(const DomainSize_T& domainSize, const std::string& checkpointingFileName,
                                      std::vector< real_t >& timeAveragedFluidProfile_velocity,
                                      std::vector< real_t >& timeAveragedFluidSquaredProfile_velocity,
                                      std::vector< real_t >& timeAveragedParticleProfile_velocity,
