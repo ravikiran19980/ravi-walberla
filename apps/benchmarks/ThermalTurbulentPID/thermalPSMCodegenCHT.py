@@ -277,7 +277,7 @@ with CodeGeneration() as ctx:
                 particle_velocities.center[p * stencil_fluid.D + i] @= B.center * velocity_field.center_vector[i]
 
     initializeVelocityFieldParticles_ac = ps.AssignmentCollection(initializeVelocityFieldParticles)
-    generate_sweep(ctx, "initializeVelocityFieldParticles", initializeVelocityFieldParticles_ac)
+    generate_sweep(ctx, "initializeVelocityFieldParticles", initializeVelocityFieldParticles_ac, target=target)
 
 
     generate_sweep(

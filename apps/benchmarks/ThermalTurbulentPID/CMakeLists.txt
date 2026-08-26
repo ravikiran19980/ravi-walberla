@@ -31,8 +31,8 @@ if (WALBERLA_BUILD_WITH_CODEGEN)
                     FluidMacroGetter.h FluidMacroGetter.${CODEGEN_FILE_SUFFIX}
                     TemperatureMacroSetter.h TemperatureMacroSetter.${CODEGEN_FILE_SUFFIX}
                     TemperatureMacroGetter.h TemperatureMacroGetter.${CODEGEN_FILE_SUFFIX}
-                    initializeTemperatureField.h initializeTemperatureField.cpp
                     initializeVelocityFieldParticles.h initializeVelocityFieldParticles.${CODEGEN_FILE_SUFFIX}
+                    initializeTemperatureField.h initializeTemperatureField.cpp
                     GeneralInfoHeader.h
             )
             message(STATUS "generated in thermal PSM is: ${config}" )
