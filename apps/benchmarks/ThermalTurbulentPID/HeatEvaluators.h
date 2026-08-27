@@ -467,6 +467,7 @@ class WallStatistics
       resetWallValues();
    }
 
+   void setWallStatisticsConvergence(bool wallStatsConvergenceStatus) { wallstatistics_convergence_ = wallStatsConvergenceStatus; }
    bool getWallStatisticsConvergence() { return wallstatistics_convergence_; }
    real_t getWallShearStress() { return tauBottomOld_; }
    real_t getNusseltNumber() { return nuBottomOld_; }

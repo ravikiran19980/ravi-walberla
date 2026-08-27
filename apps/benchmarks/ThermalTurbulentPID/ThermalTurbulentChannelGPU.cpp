@@ -649,7 +649,9 @@ int main(int argc, char** argv)
 
    const real_t vonkarman_kappa = 2.5;
    const real_t B = 5.5;
-   const real_t target_friction_velocity  = center_line_velocity/(vonkarman_kappa*std::log(target_friction_Reynolds) + B);
+
+   // set the turnOverPeriod based on friction Reynolds number of 180.
+   const real_t target_friction_velocity  = center_line_velocity/(vonkarman_kappa*std::log(180) + B);
    const real_t turnOverPeriod = channel_half_width/target_friction_velocity;
 
    //const real_t kinematicViscosityLB = (target_friction_velocity*channel_half_width)/target_friction_Reynolds;
@@ -668,11 +670,21 @@ int main(int argc, char** argv)
    uint_t numTimeSteps;
    if (performanceRun){numTimeSteps = 3000;}
    else{numTimeSteps = uint_c(simulationTimeFactor * turnOverPeriod);}
-   const uint_t samplingInterval = 11000;//uint_c(0.04 * turnOverPeriod);
-   checkPointingFrequency        = checkPointingFrequency * 1;//samplingInterval;
+
+   // make everything the factor of sampling Interval so as to ensure consistent checkpointing and vtk visualizations
+   const uint_t samplingInterval = uint_c(0.04 * turnOverPeriod);
+   checkPointingFrequency        = checkPointingFrequency * samplingInterval;
+   infoSpacing                   = infoSpacing * samplingInterval;
+   vtkSpacingFluid               = vtkSpacingFluid * samplingInterval;
+   vtkSpacingParticles           = vtkSpacingParticles * samplingInterval;
+
+
    uint_t startTimeStep          = uint_t(0);
    real_t currentPidForce        = 0_r;
    uint_t statsAveragingCounter  = 0;
+   uint_t welfordCounter = 0;
+   bool wallStatsConvergenceStatus = false;
+   bool resetWelfordCounters = false;
 
    std::vector<real_t> timeAveragedFluidProfile_velocity(domainSize[codegen::wall_axis]*codegen::vectorSize);
    std::vector<real_t> timeAveragedFluidSquaredProfile_velocity(domainSize[codegen::wall_axis]*codegen::tensorSize);
@@ -680,10 +692,10 @@ int main(int argc, char** argv)
    std::vector<real_t> timeAveragedParticleSquaredProfile_velocity(domainSize[codegen::wall_axis]*codegen::tensorSize);
 
 #ifdef run_with_temperature
-   std::vector<real_t> timeAveragedFluidProfile_temperature(domainSize[codegen::wall_axis]*codegen::vectorSize);
-   std::vector<real_t> timeAveragedFluidSquaredProfile_temperature(domainSize[codegen::wall_axis]*codegen::tensorSize);
-   std::vector<real_t> timeAveragedParticleProfile_temperature(domainSize[codegen::wall_axis]*codegen::vectorSize);
-   std::vector<real_t> timeAveragedParticleSquaredProfile_temperature(domainSize[codegen::wall_axis]*codegen::tensorSize);
+   std::vector<real_t> timeAveragedFluidProfile_temperature(domainSize[codegen::wall_axis]*codegen::scalarSize);
+   std::vector<real_t> timeAveragedFluidSquaredProfile_temperature(domainSize[codegen::wall_axis]*codegen::scalarSize);
+   std::vector<real_t> timeAveragedParticleProfile_temperature(domainSize[codegen::wall_axis]*codegen::scalarSize);
+   std::vector<real_t> timeAveragedParticleSquaredProfile_temperature(domainSize[codegen::wall_axis]*codegen::scalarSize);
 #endif
 
    if (restart_simulation)
@@ -699,10 +711,16 @@ int main(int argc, char** argv)
          {
             checkpointConfigIS >> startTimeStep;
             checkpointConfigIS >> currentPidForce;
+            checkpointConfigIS >> welfordCounter;
+            checkpointConfigIS >> wallStatsConvergenceStatus;
+            checkpointConfigIS >> resetWelfordCounters;
          }
       }
       walberla::mpi::broadcastObject(startTimeStep);
       walberla::mpi::broadcastObject(currentPidForce);
+      walberla::mpi::broadcastObject(welfordCounter);
+      walberla::mpi::broadcastObject(wallStatsConvergenceStatus);
+      walberla::mpi::broadcastObject(resetWelfordCounters);
       WALBERLA_LOG_INFO_ON_ROOT("Restarting simulation from checkpoint at time step " << startTimeStep);
    }
 
@@ -1183,9 +1201,9 @@ int main(int argc, char** argv)
 
    // create the welford fluid and temperature sweep objects:
 
-   WelfordSweepVelocity_T welfordVelocitySweep(meanVelFieldGPUID, sosVelFieldGPUID, velFieldFluidGPUID,0_r,gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2]);
+   WelfordSweepVelocity_T welfordVelocitySweep(meanVelFieldGPUID, sosVelFieldGPUID, velFieldFluidGPUID,real_c(welfordCounter),gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2]);
    #ifdef run_with_temperature
-   WelfordSweepTemperature_T welfordTemperatureSweep(meanTemperatureFieldGPUID, sosTemperatureFieldGPUID, temperatureFieldGPUID,0_r,gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2]);
+   WelfordSweepTemperature_T welfordTemperatureSweep(meanTemperatureFieldGPUID, sosTemperatureFieldGPUID, temperatureFieldGPUID,real_c(welfordCounter),gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2]);
    #endif
 
    ////////////////////////////////////
@@ -1370,6 +1388,7 @@ int main(int argc, char** argv)
 
    // set the outputfrequency to turnOverPeriod as it checks for convergence and also prints it to the wall_statistics.txt file every turnOverPeriod
    WallStatistics wall_statistics(domainSize[codegen::wall_axis], 1, kinematicViscosityLB, uint_c(samplingInterval));
+   wall_statistics.setWallStatisticsConvergence(wallStatsConvergenceStatus);
    // vtk output
    if (vtkSpacingParticles != uint_t(0))
    {
@@ -1423,6 +1442,8 @@ int main(int argc, char** argv)
                                                                           pdfFieldTemperatureGPUID);
          gpu::fieldCpy< DensityField_temperature_T, gpu::GPUField< real_t > >(blocks, temperatureFieldID,
                                                                           temperatureFieldGPUID);
+         gpu::fieldCpy< DensityField_temperature_T, gpu::GPUField< real_t > >(blocks, meanTemperatureFieldID,
+                                                                          meanTemperatureFieldGPUID);
       });
 #endif
 
@@ -1767,7 +1788,7 @@ int main(int argc, char** argv)
             };
 
             // plotting everything in normalized wall units
-            printRowTemperature("y","y+", "T_f", "T_p", "TT_f", "TT_p");
+            printRowTemperature("y","y+", "T_f", "TT_f", "T_p", "TT_p");
 
             // at the wall
             printRowTemperature(0,0,Thot,Thot,0,0);
@@ -1810,73 +1831,84 @@ int main(int argc, char** argv)
       std::function< void(IBlock*) >([&](IBlock* block) {
             if (wall_statistics.getWallStatisticsConvergence() == false) // required for wall_statistics convergence monitoring
             {
+               if (checkPointingFrequency > uint_t(0) &&
+                   (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
+                   timeloop.getCurrentTimeStep() != startTimeStep)
+               {
+                  gpu::fieldCpy< VelocityField_fluid_T, gpu::GPUField< real_t > >(blocks, meanVelFieldID,
+                                                                                  meanVelFieldGPUID);
+                  blocks->saveBlockData(checkpointingFileName + "_welfordVelocity_tmp.txt", meanVelFieldID, false);
+                  WALBERLA_ROOT_SECTION()
+                  {
+                     renameFile(checkpointingFileName + "_welfordVelocity_tmp.txt",
+                                checkpointingFileName + "_welfordVelocity.txt");
+                  }
+               }
                welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
                welfordVelocitySweep(block);
                WALBERLA_GPU_CHECK(gpuDeviceSynchronize());
-               
+
+#ifdef run_with_temperature
+
                if (checkPointingFrequency > uint_t(0) &&
                    (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
                    timeloop.getCurrentTimeStep() != startTimeStep)
                {
-                  gpu::fieldCpy<VelocityField_fluid_T,gpu::GPUField< real_t >>(blocks,meanVelFieldID,meanVelFieldGPUID);
-                  blocks->saveBlockData(checkpointingFileName + "_welfordVelocity_tmp.txt", meanVelFieldID,false);
-                  WALBERLA_ROOT_SECTION(){renameFile(checkpointingFileName + "_welfordVelocity_tmp.txt", checkpointingFileName + "_welfordVelocity.txt");}
+                  gpu::fieldCpy< DensityField_temperature_T, gpu::GPUField< real_t > >(blocks, meanTemperatureFieldID,
+                                                                                       meanTemperatureFieldGPUID);
+                  blocks->saveBlockData(checkpointingFileName + "_welfordTemperature_tmp.txt", meanTemperatureFieldID,
+                                        false);
+                  WALBERLA_ROOT_SECTION()
+                  {
+                     renameFile(checkpointingFileName + "_welfordTemperature_tmp.txt",
+                                checkpointingFileName + "_welfordTemperature.txt");
+                  }
                }
 
-#ifdef run_with_temperature
                welfordTemperatureSweep.setCounter(welfordTemperatureSweep.getCounter() + real_c(1.0));
                welfordTemperatureSweep(block);
                WALBERLA_GPU_CHECK(gpuDeviceSynchronize());
-               
-               if (checkPointingFrequency > uint_t(0) &&
-                   (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
-                   timeloop.getCurrentTimeStep() != startTimeStep)
-               {
-                  gpu::fieldCpy<DensityField_temperature_T,gpu::GPUField< real_t >>(blocks,meanTemperatureFieldID,meanTemperatureFieldGPUID);
-                  blocks->saveBlockData(checkpointingFileName + "_welfordTemperature_tmp.txt", meanTemperatureFieldID,false);
-                  WALBERLA_ROOT_SECTION(){renameFile(checkpointingFileName + "_welfordTemperature_tmp.txt", checkpointingFileName + "_welfordTemperature.txt");}
-               }
 #endif
             } // required for wall_statistics convergence monitoring
 
          // for post processing
          if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod) && timeloop.getCurrentTimeStep() % samplingInterval == 0 && wall_statistics.getWallStatisticsConvergence() == true)
          {
-            welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
-            welfordVelocitySweep(block);
-          //  gpu::fieldCpy<VelocityField_fluid_T,gpu::GPUField< real_t >>(blocks,meanVelFieldID,meanVelFieldGPUID);
-            WALBERLA_GPU_CHECK(gpuDeviceSynchronize());
-            if (checkPointingFrequency > uint_t(0) &&
-                   (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
-                   timeloop.getCurrentTimeStep() != startTimeStep)
+            if (checkPointingFrequency > uint_t(0) && (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
+                timeloop.getCurrentTimeStep() != startTimeStep)
             {
-               gpu::fieldCpy<VelocityField_fluid_T,gpu::GPUField< real_t >>(blocks,meanVelFieldID,meanVelFieldGPUID);
-               blocks->saveBlockData(checkpointingFileName + "_welfordVelocity_tmp.txt", meanVelFieldID,false);
+               gpu::fieldCpy< VelocityField_fluid_T, gpu::GPUField< real_t > >(blocks, meanVelFieldID,
+                                                                               meanVelFieldGPUID);
+               blocks->saveBlockData(checkpointingFileName + "_welfordVelocity_tmp.txt", meanVelFieldID, false);
                WALBERLA_ROOT_SECTION()
                {
-                   renameFile(checkpointingFileName + "_welfordVelocity_tmp.txt",
-                              checkpointingFileName + "_welfordVelocity.txt");
+                  renameFile(checkpointingFileName + "_welfordVelocity_tmp.txt",
+                             checkpointingFileName + "_welfordVelocity.txt");
                }
             }
+            welfordVelocitySweep.setCounter(welfordVelocitySweep.getCounter() + real_c(1.0));
+            welfordVelocitySweep(block);
+            WALBERLA_GPU_CHECK(gpuDeviceSynchronize());
 
 #ifdef run_with_temperature
+
+            if (checkPointingFrequency > uint_t(0) && (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
+                timeloop.getCurrentTimeStep() != startTimeStep)
+            {
+               gpu::fieldCpy< DensityField_temperature_T, gpu::GPUField< real_t > >(blocks, meanTemperatureFieldID,
+                                                                                    meanTemperatureFieldGPUID);
+               blocks->saveBlockData(checkpointingFileName + "_welfordTemperature_tmp.txt", meanTemperatureFieldID,
+                                     false);
+               WALBERLA_ROOT_SECTION()
+               {
+                  renameFile(checkpointingFileName + "_welfordTemperature_tmp.txt",
+                             checkpointingFileName + "_welfordTemperature.txt");
+               }
+            }
 
             welfordTemperatureSweep.setCounter(welfordTemperatureSweep.getCounter() + real_c(1.0));
             welfordTemperatureSweep(block);
             WALBERLA_GPU_CHECK(gpuDeviceSynchronize());
-
-            if (checkPointingFrequency > uint_t(0) &&
-                   (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
-                   timeloop.getCurrentTimeStep() != startTimeStep)
-            {
-               gpu::fieldCpy<DensityField_temperature_T,gpu::GPUField< real_t >>(blocks,meanTemperatureFieldID,meanTemperatureFieldGPUID);
-               blocks->saveBlockData(checkpointingFileName + "_welfordTemperature_tmp.txt", meanTemperatureFieldID,false);
-               WALBERLA_ROOT_SECTION()
-               {
-                  renameFile(checkpointingFileName + "_welfordTemperature_tmp.txt",
-                          checkpointingFileName + "_welfordTemperature.txt");
-               }
-            }
 #endif
 
 
@@ -1891,11 +1923,23 @@ int main(int argc, char** argv)
                                                                                 meanVelFieldGPUID);
                gpu::fieldCpy< TensorField_T, gpu::GPUField< real_t > >(blocks, sosVelFieldID, sosVelFieldGPUID);
 
-               reduceWelfordFields<VectorField_T, TensorField_T> reduceWelford_velocity(blocks,meanVelFieldID,sosVelFieldID,
+               reduceWelfordFields<VectorField_T, TensorField_T,WelfordVelocity> reduceWelford_velocity(blocks,meanVelFieldID,sosVelFieldID,
                               codegen::wall_axis, domainSize[codegen::wall_axis], welfordVelocitySweep);
                reduceWelford_velocity();
                auto welford_mean_velocity = reduceWelford_velocity.getPlaneMeans();
                auto welford_sos_velocity = reduceWelford_velocity.getPlaneSoSMeans();
+
+#ifdef run_with_temperature
+               reduceWelfordFields<ScalarField_T, ScalarField_T,WelfordTemperature> reduceWelford_temperature(blocks,meanTemperatureFieldID,sosTemperatureFieldID,
+                              codegen::wall_axis, domainSize[codegen::wall_axis], welfordTemperatureSweep);
+
+               reduceWelford_temperature();
+               auto welford_mean_temperature = reduceWelford_temperature.getPlaneMeans();
+               auto welford_sos_temperature = reduceWelford_temperature.getPlaneSoSMeans();
+
+#endif
+
+
 
                // compute viscous stresses here dU_mean/dy ny using the "meanVelFieldID" vector from above.
                auto viscousStress = computeViscousStress<VectorField_T>( blocks,meanVelFieldID ,domainSize);
@@ -2031,19 +2075,22 @@ int main(int argc, char** argv)
                     proportionalGain,  derivativeGain,  integralGain,  maxRamp,
                     minActuatingVariable,  maxActuatingVariable);
 
-   timeloop.add() << BeforeFunction([&]() {
-
-         forceAdjusterPID.calculateBulkVelocity(gpuBlockSize[0],gpuBlockSize[1],gpuBlockSize[2]);
-
-   }, "bulk velocity calculation")
-               << BeforeFunction(
-                     [&]() {
-                        forceAdjusterPID(forceAdjusterPID.bulkVelocity());
-                        currentPidForce = forceAdjusterPID.getCurrentDrivingForce();
-                        setNewForce(currentPidForce);
-                     },
-                     "new force setter")
-               << Sweep([](IBlock*) {}, "new force setter");
+   timeloop.add() << BeforeFunction(
+                        [&]() {
+                           if (timeloop.getCurrentTimeStep() % 5000 == 0)
+                           {
+                              forceAdjusterPID.calculateBulkVelocity(gpuBlockSize[0], gpuBlockSize[1], gpuBlockSize[2]);
+                              forceAdjusterPID(forceAdjusterPID.bulkVelocity());
+                           }
+                        },
+                        "bulk velocity calculation")
+                  << BeforeFunction(
+                        [&]() {
+                           currentPidForce = forceAdjusterPID.getCurrentDrivingForce();
+                           setNewForce(currentPidForce);
+                        },
+                        "new force setter")
+                  << Sweep([](IBlock*) {}, "new force setter");
 
    timeloop.add() << Sweep(psmFluidSweeplamda, "PSM Fluid sweep");
 
@@ -2058,14 +2105,13 @@ int main(int argc, char** argv)
                               "Reduce particle forces");
    }
 
-   bool resetCounters = false;
    timeloop.addFuncAfterTimeStep(postProcessingLamdas, "post processing lamda");
    timeloop.add() << BeforeFunction(
                         [&]() {
-                           if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod) && wall_statistics.getWallStatisticsConvergence() == true && resetCounters == false)
+                           if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod) && wall_statistics.getWallStatisticsConvergence() == true && resetWelfordCounters == false)
                            {
                               WALBERLA_LOG_INFO_ON_ROOT("Resetting Welford fields and counters")
-                              resetCounters = true;
+                              resetWelfordCounters = true;
                               welfordVelocitySweep.setCounter(0);
 #ifdef run_with_temperature
                               welfordTemperatureSweep.setCounter(0);
@@ -2121,6 +2167,9 @@ int main(int argc, char** argv)
                                                             << " for writing");
             checkpointConfigOS << timeStep << "\n";
             checkpointConfigOS << currentPidForce << "\n";
+            checkpointConfigOS << welfordVelocitySweep.getCounter() << "\n";
+            checkpointConfigOS << wall_statistics.getWallStatisticsConvergence() << "\n";
+            checkpointConfigOS << resetWelfordCounters << "\n";
             checkpointConfigOS.close();
          }
          WALBERLA_MPI_BARRIER();

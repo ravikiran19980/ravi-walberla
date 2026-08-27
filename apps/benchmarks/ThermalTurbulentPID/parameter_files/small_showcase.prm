@@ -15,7 +15,7 @@ PhysicalSetup // all to be specified in SI/ref units
     dynamicFrictionCoefficient 0.15;
     coefficientOfRestitution 0.97;
     collisionTimeFactor 1.0;
-    simulationTimeFactor 40;   // total timesteps of simulation = simulationTimeFactor * turnOverPeriod
+    simulationTimeFactor 10;   // total timesteps of simulation = simulationTimeFactor * turnOverPeriod
 
 }
 
@@ -23,15 +23,15 @@ NumericalSetup
 {
 
     // product of number of blocks should be equal to number of used processes
-    numXBlocks 2;
-    numYBlocks 2;
-    numZBlocks 2;
+    numXBlocks 1;
+    numYBlocks 1;
+    numZBlocks 1;
     gpuBlockSize   < 64, 1, 1>;
 
     useLubricationForces true;
     useParticles false;
     numberOfParticleSubCycles 1;
-    useIntegrators true;
+    useIntegrators false;
     particleSubBlockSize <2, 2, 2>;
     linkedCellWidthRation 1.01;
     particleBarriers true;
@@ -42,11 +42,11 @@ NumericalSetup
 
 TurbulenceSetup
 {
-    target_bulk_Reynolds        2000;
+    target_bulk_Reynolds        5600;
     target_friction_Reynolds    180;
     target_bulk_velocity        0.086;
     center_line_velocity        0.1;
-    nTurnovers                  1;
+    nTurnovers                  3;
 }
 
 TemperatureSetup
@@ -62,10 +62,10 @@ TemperatureSetup
 
 vtk_params
 {
-    infoSpacing 1000; // in s
-    vtkSpacingParticles 1000; // in s
-    vtkSpacingFluid 1000; // ins
-    vtkFolder vtk_out_re2000;
+    infoSpacing 1; // in s
+    vtkSpacingParticles 1; // in s
+    vtkSpacingFluid 1; // ins
+    vtkFolder vtk_out_re5600;
     writeSlice true;
 
 
@@ -74,17 +74,17 @@ vtk_params
 
 checkpoint_params
 {
-    restart_simulation true;
-    startFluidFromCheckPointFile true;
+    restart_simulation false;
+    startFluidFromCheckPointFile false;
     startTemperatureFromCheckPointFile false;
     startParticlesFromCheckPointFile false;
     checkpointingFileName testCheckpoint_cpu;
-    checkPointingFrequency 1000;                   // this is a factor that is multiplied with samplingInterval
+    checkPointingFrequency 1;                   // this is a factor that is multiplied with samplingInterval
     writeContinuousCheckPoints false;
 }
 
 statistics_params{
-    convergenceTolerance 5;                      // percentage tolerance of wall shear and nusselt numbers
+    convergenceTolerance 10;                      // percentage tolerance of wall shear and nusselt numbers
     outputFrequency 10;                        // how often you want to monitor convergence and output the wall statistics
     planeAveragingtimeBlock 10000;               // required only for heat flux budgets
     heatFluxAveragingtimeBlock 600000;           // required only for heat flux budgets

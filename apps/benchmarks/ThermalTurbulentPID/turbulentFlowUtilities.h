@@ -697,12 +697,12 @@ void setVelocityFieldsAsmuth(const std::weak_ptr< StructuredBlockStorage >& fore
    }
 }
 
-template<typename FieldMean_T, typename FieldSoS_T>
+template<typename FieldMean_T, typename FieldSoS_T, typename WelfordSweep_T>
 class reduceWelfordFields
 {
  public:
    reduceWelfordFields(const std::shared_ptr< StructuredBlockStorage >& blocks, const BlockDataID meanfieldId,const BlockDataID sosfieldId,
-                              const uint_t wallAxis, const uint_t numHeights, WelfordVelocity welfordSweep)
+                              const uint_t wallAxis, const uint_t numHeights, WelfordSweep_T welfordSweep)
       : blocks_(blocks), meanfieldId_(meanfieldId),sosfieldId_(sosfieldId), wallAxis_(wallAxis), numHeights_(numHeights), fieldSize_(uint_c(FieldMean_T::F_SIZE)),
         planeMeans_(numHeights_ * fieldSize_, real_t(0)),planeSOSMeans_(numHeights_ * fieldSize_*fieldSize_, real_t(0)), planeCounts_(numHeights_, uint_t(0)), welfordSweep_(welfordSweep)
    {}
@@ -779,7 +779,7 @@ class reduceWelfordFields
    std::vector< real_t > planeMeans_;
    std::vector< real_t > planeSOSMeans_;
    std::vector< uint_t > planeCounts_;
-      WelfordVelocity welfordSweep_;
+   WelfordSweep_T welfordSweep_;
 };
 
 template<typename FieldMean_T>
