@@ -560,6 +560,7 @@ int main(int argc, char** argv)
    checkpointingFileName = "checkPointFiles/" + checkpointingFileName;
    uint_t checkPointingFrequency     = checkpoint_params.getParameter< uint_t >("checkPointingFrequency");
    const bool writeContinuousCheckPoints   = checkpoint_params.getParameter< bool >("writeContinuousCheckPoints");
+   const bool writeWelfordCheckPoints      = checkpoint_params.getParameter< bool >("writeWelfordCheckPoints", true);
 
    if (restart_simulation==true && startFluidFromCheckPointFile==false)
    {
@@ -1408,8 +1409,8 @@ int main(int argc, char** argv)
       auto particleVtkWriter = vtk::createVTKOutput_PointData(particleVtkOutput, "particles", vtkSpacingParticles, vtkFolder);
       timeloop.addFuncBeforeTimeStep(vtk::writeFiles(particleVtkWriter), "VTK (sphere data)");
    }
-
-   if (vtkSpacingFluid != uint_t(0)){
+   const uint_t quarterInterval = uint_c(numTimeSteps / 4);
+   if (vtkSpacingFluid != uint_t(0)  && (timeloop.getCurrentTimeStep() + 1) % quarterInterval  == 0){
       // Fields
       auto vtkOutput_Fluid = vtk::createVTKOutput_BlockData(blocks, "vtk files fluid", vtkSpacingFluid, 0, false, vtkFolder);
 
@@ -1829,11 +1830,14 @@ int main(int argc, char** argv)
    // welford lamda begins
    auto welfordPhasesSweepLambda =
       std::function< void(IBlock*) >([&](IBlock* block) {
+            const bool writeWelfordCheckpointNow =
+               writeWelfordCheckPoints && checkPointingFrequency > uint_t(0) &&
+               (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
+               timeloop.getCurrentTimeStep() != startTimeStep;
+
             if (wall_statistics.getWallStatisticsConvergence() == false) // required for wall_statistics convergence monitoring
             {
-               if (checkPointingFrequency > uint_t(0) &&
-                   (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
-                   timeloop.getCurrentTimeStep() != startTimeStep)
+               if (writeWelfordCheckpointNow)
                {
                   gpu::fieldCpy< VelocityField_fluid_T, gpu::GPUField< real_t > >(blocks, meanVelFieldID,
                                                                                   meanVelFieldGPUID);
@@ -1850,9 +1854,7 @@ int main(int argc, char** argv)
 
 #ifdef run_with_temperature
 
-               if (checkPointingFrequency > uint_t(0) &&
-                   (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
-                   timeloop.getCurrentTimeStep() != startTimeStep)
+               if (writeWelfordCheckpointNow)
                {
                   gpu::fieldCpy< DensityField_temperature_T, gpu::GPUField< real_t > >(blocks, meanTemperatureFieldID,
                                                                                        meanTemperatureFieldGPUID);
@@ -1874,8 +1876,7 @@ int main(int argc, char** argv)
          // for post processing
          if (timeloop.getCurrentTimeStep() >= uint_c(nTurnovers * turnOverPeriod) && timeloop.getCurrentTimeStep() % samplingInterval == 0 && wall_statistics.getWallStatisticsConvergence() == true)
          {
-            if (checkPointingFrequency > uint_t(0) && (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
-                timeloop.getCurrentTimeStep() != startTimeStep)
+            if (writeWelfordCheckpointNow)
             {
                gpu::fieldCpy< VelocityField_fluid_T, gpu::GPUField< real_t > >(blocks, meanVelFieldID,
                                                                                meanVelFieldGPUID);
@@ -1892,8 +1893,7 @@ int main(int argc, char** argv)
 
 #ifdef run_with_temperature
 
-            if (checkPointingFrequency > uint_t(0) && (timeloop.getCurrentTimeStep() % checkPointingFrequency == 0) &&
-                timeloop.getCurrentTimeStep() != startTimeStep)
+            if (writeWelfordCheckpointNow)
             {
                gpu::fieldCpy< DensityField_temperature_T, gpu::GPUField< real_t > >(blocks, meanTemperatureFieldID,
                                                                                     meanTemperatureFieldGPUID);
